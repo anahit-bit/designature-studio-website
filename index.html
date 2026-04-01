@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Designature Studio | Interior Design Yerevan</title>
+    <meta name="description" content="Designature Studio is a premier interior design and architectural firm in Yerevan, Armenia. We create exceptional spaces that blend aesthetics with functionality through innovative design and AI-powered concepts." />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://designature.studio" />
+    <meta property="og:title" content="Designature Studio | Interior Design Yerevan" />
+    <meta property="og:description" content="Premier interior design and architectural firm in Yerevan, Armenia. Exceptional spaces blending aesthetics with functionality through innovative design." />
+    <meta property="og:image" content="https://res.cloudinary.com/dys2k5muv/image/upload/v1772532381/1_h9ofqr.jpg" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://designature.studio" />
+    <meta property="twitter:title" content="Designature Studio | Interior Design Yerevan" />
+    <meta property="twitter:description" content="Premier interior design and architectural firm in Yerevan, Armenia. Exceptional spaces blending aesthetics with functionality through innovative design." />
+    <meta property="twitter:image" content="https://res.cloudinary.com/dys2k5muv/image/upload/v1772532381/1_h9ofqr.jpg" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              display: ['"Cormorant Garamond"', 'serif'],
+              body: ['Montserrat', 'sans-serif'],
+            },
+            letterSpacing: { architectural: '-0.04em' },
+            keyframes: {
+              shake: {
+                '0%, 100%': { transform: 'translateX(0)' },
+                '25%': { transform: 'translateX(-5px)' },
+                '75%': { transform: 'translateX(5px)' },
+              }
+            },
+            animation: { shake: 'shake 0.2s ease-in-out 0s 2' }
+          }
+        }
+      }
+    </script>
+    <style>
+      * { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+      body { background-color: #FFFFFF; color: #000000; scroll-behavior: smooth; overflow-x: hidden; }
+      html { overflow-x: hidden; }
+      ::selection { background: #000000; color: #FFFFFF; }
+      ::-webkit-scrollbar { width: 6px; }
+      ::-webkit-scrollbar-track { background: #fff; }
+      ::-webkit-scrollbar-thumb { background: #000; }
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes slideInFromBottom { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+      .fade-in { animation: fadeIn 1s ease-out forwards; }
+      .slide-in-from-bottom { animation: slideInFromBottom 1s ease-out forwards; }
+    </style>
+  </head>
+  <body class="font-body">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
