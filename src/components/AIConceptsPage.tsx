@@ -1,13 +1,23 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ArrowLeft, Layout, Box, Palette, ArrowRight, CheckCircle2, X, Download, AlertCircle, RefreshCw, LogOut, FileDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleGenAI } from "@google/genai";
 import { useLanguage } from '../LanguageContext';
+import {
+  getStoredToken,
+  storeToken,
+  clearSessionLocal,
+  touchActivity,
+  SESSION_EXPIRED_EVENT,
+} from '../sessionClient';
 import Header from './Header';
 import Footer from './Footer';
 
 // ─── Google OAuth client ID ────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const QUIZ_VOTE_UNLOCK_MS = process.env.NODE_ENV === 'test' ? 10 : 1500;
+/** Free tier: max generated concepts in the UI row (paid tier can be raised later). */
+const FREE_TIER_MAX_CONCEPT_SLOTS = 3;
 
 const STYLES = [
   'Japandi', 'Modern', 'Mid-Century', 'Bohemian', 'Rustic', 'Art Deco',
@@ -185,22 +195,12 @@ interface AuthUser {
   name: string;
   picture: string;
   generationsLeft: number;
+  /** Free-tier shopping list runs remaining (from server) */
+  shoppingListsLeft?: number;
   isPaid?: boolean;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
-const SESSION_KEY = 'ds_session_token';
-
-function getStoredToken(): string | null {
-  return localStorage.getItem(SESSION_KEY);
-}
-function storeToken(token: string) {
-  localStorage.setItem(SESSION_KEY, token);
-}
-function clearToken() {
-  localStorage.removeItem(SESSION_KEY);
-}
-
 async function apiFetch(path: string, options: RequestInit = {}) {
   const token = getStoredToken();
   const headers: Record<string, string> = {
@@ -252,8 +252,32 @@ const AIConceptsPage: React.FC = () => {
   const [results, setResults] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [selectedResult, setSelectedResult] = useState<number>(0);
+  /** Index into `allSessionConcepts` (current results first, then pre-reset archive). */
+  const [selectedConceptIndex, setSelectedConceptIndex] = useState<number>(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  /** Data URLs from resets — session-only (cleared on logout); not sent to server. */
+  const [sessionConceptArchive, setSessionConceptArchive] = useState<string[]>([]);
+
+  const allSessionConcepts = useMemo(() => {
+    const out: string[] = [];
+    const seen = new Set<string>();
+    for (const r of results) {
+      if (!seen.has(r)) {
+        seen.add(r);
+        out.push(r);
+      }
+    }
+    for (const a of sessionConceptArchive) {
+      if (!seen.has(a)) {
+        seen.add(a);
+        out.push(a);
+      }
+    }
+    return out;
+  }, [results, sessionConceptArchive]);
+
+  const selectedConceptUrl = allSessionConcepts[selectedConceptIndex] ?? null;
+  const maxConceptSlots = user?.isPaid ? 30 : FREE_TIER_MAX_CONCEPT_SLOTS;
 
   // ── Shopping state ──
   const [shoppingResults, setShoppingResults] = useState<any[]>([]);
@@ -282,6 +306,7 @@ const AIConceptsPage: React.FC = () => {
   const [quizVotes, setQuizVotes] = useState<Record<string, number>>({});
   const [quizDone, setQuizDone] = useState<boolean>(false);
   const [quizResult, setQuizResult] = useState<{ style: string; pct: number }[]>([]);
+  const [quizImageReady, setQuizImageReady] = useState<boolean>(false);
   const [activeTool, setActiveTool] = useState<'quiz' | 'vision' | 'shopping'>('quiz');
   const [quizRooms, setQuizRooms] = useState<QuizRooms>(QUIZ_ROOMS_FALLBACK);
   const [downloadCount, setDownloadCount] = useState<number>(() => {
@@ -344,6 +369,23 @@ const AIConceptsPage: React.FC = () => {
     return imgs[(sessionSeed + step * 7) % imgs.length];
   }, [quizRooms]);
 
+  const currentQuizStyle = quizSequence[quizStep] || STYLES[0];
+  const currentQuizImage = getQuizImage(currentQuizStyle, quizSeed, quizStep);
+
+  // Lock voting until the current quiz image is fully loaded.
+  useEffect(() => {
+    if (quizDone) return;
+    if (!currentQuizImage.url) {
+      setQuizImageReady(true);
+      return;
+    }
+    setQuizImageReady(false);
+
+    // Safety fallback: if browser/image event is delayed, re-enable controls after a short timeout.
+    const unlockTimer = setTimeout(() => setQuizImageReady(true), QUIZ_VOTE_UNLOCK_MS);
+    return () => clearTimeout(unlockTimer);
+  }, [quizStep, quizSeed, quizSequence, currentQuizImage.url, quizDone]);
+
   // ── Load Google script ──
   useEffect(() => {
     // If script tag already exists
@@ -381,24 +423,39 @@ const AIConceptsPage: React.FC = () => {
     apiFetch('/api/auth/me')
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (data?.email) setUser(data);
-        else clearToken();
+        if (data?.email) {
+          touchActivity();
+          setUser(data);
+        } else clearSessionLocal();
       })
-      .catch(() => clearToken())
+      .catch(() => clearSessionLocal())
       .finally(() => setAuthLoading(false));
+  }, []);
+
+  // ── Sync UI when app-wide inactivity guard clears the session ──
+  useEffect(() => {
+    const onExpired = () => {
+      setUser(null);
+      setResults([]);
+      setSessionConceptArchive([]);
+      setRoomImage(null);
+      setInspirationImages([]);
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
   }, []);
 
   // ── Warn before leaving if unsaved concepts ──
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (results.length > 0) {
+      if (results.length > 0 || sessionConceptArchive.length > 0) {
         e.preventDefault();
         e.returnValue = '';
       }
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [results]);
+  }, [results, sessionConceptArchive]);
 
   // ── Clear Google button when logged in ──
   useEffect(() => {
@@ -461,27 +518,46 @@ const AIConceptsPage: React.FC = () => {
     try {
       const res = await apiFetch('/api/auth/google', {
         method: 'POST',
-        body: JSON.stringify({ credential: response.credential }),
+        body: JSON.stringify({
+          credential: response.credential,
+          toolUsed: activeTool,
+          source: 'ai-concepts',
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Auth failed');
       storeToken(data.token);
       setUser(data.user);
+      try {
+        window.google?.accounts?.id?.cancel?.();
+        requestAnimationFrame(() => {
+          window.google?.accounts?.id?.cancel?.();
+        });
+      } catch {
+        /* ignore */
+      }
     } catch (err) {
       console.error('Google auth error:', err);
       setError(t('ai.signInFailed'));
     }
-  }, [t]);
+  }, [t, activeTool]);
 
   // ── Logout ──
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
+    try {
+      window.google?.accounts?.id?.cancel?.();
+      window.google?.accounts?.id?.disableAutoSelect?.();
+    } catch {
+      /* gsi not loaded */
+    }
     await apiFetch('/api/auth/logout', { method: 'POST' });
-    clearToken();
+    clearSessionLocal();
     setUser(null);
     setResults([]);
+    setSessionConceptArchive([]);
     setRoomImage(null);
     setInspirationImages([]);
-  };
+  }, []);
 
   // ── Escape key for lightbox ──
   useEffect(() => {
@@ -627,22 +703,39 @@ Output ONLY the redesigned room image. No text.`;
       if (isVariation) {
         setResults(prev => {
           const newResults = [...prev, ...generatedImages];
-          setSelectedResult(newResults.length - 1);
+          setSelectedConceptIndex(newResults.length - 1);
           return newResults;
         });
       } else {
         setResults(generatedImages);
-        setSelectedResult(0);
+        setSelectedConceptIndex(0);
       }
 
     } catch (err: any) {
       console.error(err);
       // Restore 1 generation on failure
-      await apiFetch('/api/generation/restore', { 
+      const restoreRes = await apiFetch('/api/generation/restore', {
         method: 'POST',
-        body: JSON.stringify({ count: 1 })
+        body: JSON.stringify({ count: 1 }),
       });
-      setUser(prev => prev ? { ...prev, generationsLeft: Math.min(3, (prev.generationsLeft ?? 0) + 1) } : null);
+      let restoredGens: number | undefined;
+      if (restoreRes.ok) {
+        try {
+          const data = await restoreRes.json();
+          if (typeof data?.generationsLeft === 'number') restoredGens = data.generationsLeft;
+        } catch {
+          /* ignore */
+        }
+      }
+      setUser(prev =>
+        prev
+          ? {
+              ...prev,
+              generationsLeft:
+                restoredGens ?? Math.min(3, (prev.generationsLeft ?? 0) + 1),
+            }
+          : null
+      );
 
       let errorMessage = t('ai.generationFailed');
       if (err?.message?.includes('403') || err?.message?.toLowerCase().includes('permission')) {
@@ -670,7 +763,15 @@ Output ONLY the redesigned room image. No text.`;
   };
 
   const handleReset = () => {
+    setSessionConceptArchive((prev) => {
+      const next = [...prev];
+      for (const r of results) {
+        if (!next.includes(r)) next.push(r);
+      }
+      return next;
+    });
     setResults([]);
+    setSelectedConceptIndex(0);
     setInspirationImages([]);
     setRoomImage(null);
     setError(null);
@@ -686,7 +787,7 @@ Output ONLY the redesigned room image. No text.`;
   // ── PDF Download ──
   const handleDownloadShoppingPDF = async () => {
     const { jsPDF } = await import('jspdf');
-    const conceptImage = results[selectedResult];
+    const conceptImage = allSessionConcepts[selectedConceptIndex];
 
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
     const pageW = 210;
@@ -802,6 +903,8 @@ Output ONLY the redesigned room image. No text.`;
 
   // ── Style Quiz handlers ──
   const handleQuizVote = (vote: 'love' | 'skip' | 'no') => {
+    if (!quizImageReady) return;
+
     const style = quizSequence[quizStep];
     const newVotes = { ...quizVotes };
     if (vote === 'love') newVotes[style] = (newVotes[style] || 0) + 2;
@@ -815,6 +918,7 @@ Output ONLY the redesigned room image. No text.`;
       setQuizResult(sorted);
       setQuizDone(true);
     } else {
+      setQuizImageReady(false);
       setQuizVotes(newVotes);
       setQuizStep(prev => prev + 1);
     }
@@ -825,6 +929,7 @@ Output ONLY the redesigned room image. No text.`;
     setQuizVotes({});
     setQuizDone(false);
     setQuizResult([]);
+    setQuizImageReady(false);
     setQuizSeed(Math.floor(Math.random() * 100));
     setQuizSequence(generateQuizSequence());
   };
@@ -839,7 +944,7 @@ Output ONLY the redesigned room image. No text.`;
   };
 
   const handleShoppingSearch = async (overrideItems?: any[]) => {
-    const imageToAnalyse = results[selectedResult] || standaloneShoppingImage;
+    const imageToAnalyse = allSessionConcepts[selectedConceptIndex] || standaloneShoppingImage;
     if (!imageToAnalyse && !overrideItems) return;
     setShoppingLoading(true);
     setShoppingError(null);
@@ -888,6 +993,9 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       if (!res.ok) throw new Error(data.error || 'Search failed');
       setShoppingResults(data.results || []);
       setShoppingDone(true);
+      if (typeof data.shoppingListsLeft === 'number') {
+        setUser((prev) => (prev ? { ...prev, shoppingListsLeft: data.shoppingListsLeft } : null));
+      }
     } catch (err: any) {
       console.error("Shopping search error:", err);
       setShoppingError(err.message || t('ai.searchFailed'));
@@ -896,6 +1004,15 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     }
   };
 
+  /** Switch to Shopping tab + scroll to section (vision tab hides shopping-focused UI). */
+  const focusShoppingTabAndRunSearch = () => {
+    setActiveTool('shopping');
+    setTimeout(() => {
+      void handleShoppingSearch();
+      const el = document.getElementById('shop-this-look');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  };
 
   const triggerGoogleSignIn = () => {
     // Create a temporary hidden button container and render Google Sign-In into it
@@ -965,44 +1082,57 @@ Output ONLY valid JSON with no markdown fences, no explanation:
               onClick={() => {
                 if (!user) {
                   triggerGoogleSignIn();
+                } else if (activeTool === 'quiz') {
+                  document.getElementById('style-quiz-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else if (activeTool === 'vision') {
+                  document.getElementById('ai-vision-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 } else {
-                  setActiveTool('quiz');
+                  document.getElementById('shop-this-look')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
               }}
               className="inline-flex items-center gap-3 bg-[#0047AB] text-white text-[10px] font-bold uppercase tracking-[0.25em] px-7 py-4 hover:bg-[#003d99] transition-colors"
             >
-              {user ? `${t('ai.discoverDNA')} →` : `${t('ai.signInToStart')} →`}
+              {!user
+                ? `${t('ai.signInToStart')} →`
+                : activeTool === 'quiz'
+                  ? `${t('ai.heroCtaQuiz')} →`
+                  : activeTool === 'vision'
+                    ? `${t('ai.heroCtaVision')} →`
+                    : `${t('ai.heroCtaShopping')} →`}
             </button>
           </div>
           <div className="w-[240px] flex-shrink-0">
             {authLoading ? (
               <div className="w-full h-[100px]" />
-            ) : user ? (
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-3 p-3 bg-white/5 border border-white/10">
-                  {user.picture && <img src={user.picture} alt={user.name} className="w-8 h-8 rounded-full" />}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[11px] font-bold text-white/70 truncate">{user.name}</div>
-                    <div className="text-[9px] text-white/30 truncate">{user.email}</div>
-                  </div>
-                  <button onClick={handleLogout}>
-                    <LogOut className="w-3.5 h-3.5 text-white/20 hover:text-white/50 transition-colors" />
-                  </button>
-                </div>
-                <div className="text-[9px] text-white/20 uppercase tracking-[0.15em] text-right">
-                  {user.generationsLeft} {t('ai.remaining')}
-                </div>
-              </div>
             ) : (
-              <div>
-                <p className="text-[8px] text-white/20 uppercase tracking-[0.2em] text-right mb-2">
-                  {t('ai.unlockAll')}
-                </p>
-                <div id="google-signin-btn" className="w-full"></div>
-                <p className="text-[8px] text-white/10 uppercase tracking-[0.15em] text-right mt-2">
-                  {t('ai.noCard')}
-                </p>
-              </div>
+              <>
+                {user && (
+                  <div className="flex flex-col gap-3 mb-3">
+                    <div className="flex items-center gap-3 p-3 bg-white/5 border border-white/10">
+                      {user.picture && <img src={user.picture} alt={user.name} className="w-8 h-8 rounded-full" />}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[11px] font-bold text-white/70 truncate">{user.name}</div>
+                        <div className="text-[9px] text-white/30 truncate">{user.email}</div>
+                      </div>
+                      <button type="button" onClick={handleLogout}>
+                        <LogOut className="w-3.5 h-3.5 text-white/20 hover:text-white/50 transition-colors" />
+                      </button>
+                    </div>
+                    <div className="text-[9px] text-white/70 uppercase tracking-[0.15em] text-right font-bold">
+                      {user.generationsLeft} {t('ai.remaining')}
+                    </div>
+                  </div>
+                )}
+                <div className={user ? 'hidden' : 'block'}>
+                  <p className="text-[8px] text-white/20 uppercase tracking-[0.2em] text-right mb-2">
+                    {t('ai.unlockAll')}
+                  </p>
+                  <div id="google-signin-btn" className="w-full min-h-[42px]" />
+                  <p className="text-[8px] text-white/10 uppercase tracking-[0.15em] text-right mt-2">
+                    {t('ai.noCard')}
+                  </p>
+                </div>
+              </>
             )}
             <div className="flex gap-0 mt-8 pt-6 border-t border-white/8">
               <div className="flex-1 pr-5 border-r border-white/8">
@@ -1033,6 +1163,11 @@ Output ONLY valid JSON with no markdown fences, no explanation:
               <div className={`font-display text-base font-bold leading-tight mb-1 ${activeTool === 'quiz' ? 'text-white' : 'text-black'}`}>{t('ai.styleQuiz')}</div>
               <div className={`text-[9px] leading-relaxed uppercase tracking-wide ${activeTool === 'quiz' ? 'text-white/50' : 'text-black/40'}`}>
                 {t('ai.discoverDNA')}
+                {user && (
+                  <span className={`block mt-1 font-bold ${activeTool === 'quiz' ? 'text-white' : 'text-black'}`}>
+                    · {t('ai.unlimited')}
+                  </span>
+                )}
               </div>
               <div className="absolute bottom-3 right-3">
                 <span className={`text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'quiz' ? 'text-blue-200 bg-blue-900/30' : 'text-green-600 bg-green-50'}`}>{t('ai.nowActive')}</span>
@@ -1075,6 +1210,16 @@ Output ONLY valid JSON with no markdown fences, no explanation:
               <div className={`font-display text-base font-bold leading-tight mb-1 ${activeTool === 'shopping' ? 'text-white' : 'text-black'}`}>{t('ai.shoppingList')}</div>
               <div className={`text-[9px] leading-relaxed uppercase tracking-wide ${activeTool === 'shopping' ? 'text-white/50' : 'text-black/40'}`}>
                 {t('ai.shopInterior')}
+                {user && (
+                  <span className={`block mt-1 font-bold ${activeTool === 'shopping' ? 'text-white' : 'text-black'}`}>
+                    · {user.shoppingListsLeft ?? 3} {t('ai.remainingShopping')}
+                  </span>
+                )}
+                {!user && (
+                  <span className="block mt-1">
+                    · 3 {t('ai.toExplore')}
+                  </span>
+                )}
               </div>
               <div className="absolute bottom-3 right-3">
                 <span className={`text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'shopping' ? 'text-blue-200 bg-blue-900/30' : 'text-green-600 bg-green-50'}`}>{t('ai.nowActive')}</span>
@@ -1150,7 +1295,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         <div className="max-w-[1600px] w-full mx-auto px-8 md:px-16 flex-grow flex flex-col lg:flex-row" style={{ minHeight: '75vh' }}>
 
         {/* ════ LEFT SIDEBAR ════ */}
-        <div className={`w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 border-r border-black/8 flex flex-col${activeTool === 'shopping' || activeTool === 'quiz' ? ' hidden' : ''}`}>
+        <div id="ai-vision-panel" className={`w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 border-r border-black/8 flex flex-col${activeTool === 'shopping' || activeTool === 'quiz' ? ' hidden' : ''}`}>
           <div className="flex-grow p-8 flex flex-col gap-7 overflow-y-auto">
 
             {/* ── LOGGED OUT: Show placeholder ── */}
@@ -1419,9 +1564,14 @@ Output ONLY valid JSON with no markdown fences, no explanation:
           )}
 
           {/* Results state */}
-          {(results.length > 0 || activeTool === 'shopping' || activeTool === 'quiz') && !isProcessing && (
+          {(results.length > 0 ||
+            sessionConceptArchive.length > 0 ||
+            activeTool === 'shopping' ||
+            activeTool === 'quiz') &&
+            !isProcessing && (
             <div className="flex-grow flex flex-col">
-              {results.length > 0 && activeTool !== 'shopping' && (<>
+              {(results.length > 0 || sessionConceptArchive.length > 0) && activeTool !== 'shopping' && (<>
+              {results.length > 0 && (
               <div className="flex items-center justify-between px-8 py-4 bg-white border-b border-black/8">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-green-500" />
@@ -1442,57 +1592,86 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                   </button>
                 </div>
               </div>
+              )}
 
+              {results.length > 0 && roomImage && (
               <div className="grid grid-cols-2 border-b border-black/8" style={{ gap: '1px', background: 'rgba(0,0,0,0.08)' }}>
                 <div className="bg-white">
                   <div className="px-5 py-2.5 border-b border-black/6">
                     <span className="text-xs font-bold uppercase tracking-[0.3em] text-black/30">{t('ai.originalRoom')}</span>
                   </div>
-                  {roomImage && <img src={roomImage} className="w-full object-cover" style={{ aspectRatio: roomAspectRatio }} alt="Original" />}
+                  <img src={roomImage} className="w-full object-cover" style={{ aspectRatio: roomAspectRatio }} alt="Original" />
                 </div>
                 <div className="bg-white">
                   <div className="px-5 py-2.5 border-b border-black/6 flex items-center justify-between">
                     <span className="text-xs font-bold uppercase tracking-[0.3em] text-black/30">{t('ai.genConcept')}</span>
                     <span className="text-[7px] text-black/20 uppercase tracking-widest">AI{selectedStyle ? ` · ${t(`ai.style.${selectedStyle.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}` : ''}</span>
                   </div>
+                  {selectedConceptUrl && (
                   <img
-                    src={results[selectedResult]}
+                    src={selectedConceptUrl}
                     className="w-full object-cover cursor-zoom-in hover:opacity-90 transition-opacity"
                     style={{ aspectRatio: roomAspectRatio }}
-                    alt={`Design ${selectedResult + 1}`}
+                    alt={`Design ${selectedConceptIndex + 1}`}
                     onClick={() => setIsLightboxOpen(true)}
                   />
+                  )}
                 </div>
               </div>
+              )}
 
               <div className="px-8 py-5 bg-white border-b border-black/8">
-                <p className="text-xs font-bold uppercase tracking-[0.3em] text-black/30 mb-3">{t('ai.genConcepts')}</p>
-                <div className="flex gap-2">
-                  {results.map((img, idx) => (
-                    <button key={idx} onClick={() => setSelectedResult(idx)} className={`relative overflow-hidden border-2 transition-all ${selectedResult === idx ? 'border-black' : 'border-transparent opacity-50 hover:opacity-75'}`} style={{ width: 72, height: 72 }}>
+                <p className="text-xs font-bold uppercase tracking-[0.3em] text-black/30 mb-1">{t('ai.genConcepts')}</p>
+                {sessionConceptArchive.length > 0 && (
+                  <p className="text-[10px] text-black/40 mb-3 leading-relaxed max-w-xl">
+                    {t('ai.sessionConceptsArchiveHint')}
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {allSessionConcepts.map((img, idx) => (
+                    <button
+                      key={`concept-${idx}`}
+                      type="button"
+                      onClick={() => setSelectedConceptIndex(idx)}
+                      className={`relative overflow-hidden border-2 transition-all ${selectedConceptIndex === idx ? 'border-black' : 'border-transparent opacity-50 hover:opacity-75'}`}
+                      style={{ width: 72, height: 72 }}
+                    >
                       <img src={img} className="w-full h-full object-cover" alt={`Variant ${idx + 1}`} />
-                      {selectedResult === idx && <div className="absolute bottom-1 right-1"><CheckCircle2 className="w-3 h-3 text-white drop-shadow" /></div>}
+                      {selectedConceptIndex === idx && (
+                        <div className="absolute bottom-1 right-1">
+                          <CheckCircle2 className="w-3 h-3 text-white drop-shadow" />
+                        </div>
+                      )}
                     </button>
                   ))}
-                  {Array.from({ length: Math.max(0, 3 - results.length) }).map((_, idx) => (
+                  {Array.from({ length: Math.max(0, maxConceptSlots - allSessionConcepts.length) }).map((_, idx) => (
                     <div key={`locked-${idx}`} className="border border-dashed border-black/10 bg-neutral-50 flex items-center justify-center text-black/15 text-xs" style={{ width: 72, height: 72 }}>🔒</div>
                   ))}
                 </div>
               </div>
 
               <div className="px-8 py-5 bg-white flex gap-2">
-                <button onClick={() => handleDownload(results[selectedResult])} className="flex-1 py-3.5 bg-black text-white text-sm md:text-base font-bold uppercase tracking-[0.3em] flex items-center justify-center gap-2 hover:bg-black/80 transition-all">
+                <button
+                  type="button"
+                  disabled={!selectedConceptUrl}
+                  onClick={() => selectedConceptUrl && handleDownload(selectedConceptUrl)}
+                  className="flex-1 py-3.5 bg-black text-white text-sm md:text-base font-bold uppercase tracking-[0.3em] flex items-center justify-center gap-2 hover:bg-black/80 transition-all disabled:opacity-40 disabled:pointer-events-none"
+                >
                   <Download className="w-3.5 h-3.5" />
                   {t('btn.downloadFull')}
                 </button>
-                {results.length > 1 && (
-                  <button onClick={() => results.forEach((img) => handleDownload(img))} className="px-5 py-3.5 border border-black/15 text-sm md:text-base font-bold uppercase tracking-[0.2em] text-black/50 hover:border-black hover:text-black transition-all">
+                {allSessionConcepts.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => allSessionConcepts.forEach((img) => handleDownload(img))}
+                    className="px-5 py-3.5 border border-black/15 text-sm md:text-base font-bold uppercase tracking-[0.2em] text-black/50 hover:border-black hover:text-black transition-all"
+                  >
                     {t('btn.downloadAll')}
                   </button>
                 )}
               </div>
               {/* Save notice — free tier */}
-              {!user?.isPaid && results.length > 0 && (
+              {!user?.isPaid && allSessionConcepts.length > 0 && (
                 <div className="mx-8 mb-4 px-4 py-3 bg-amber-50 border border-amber-200/60 flex items-start gap-3">
                   <AlertCircle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
                   <p className="text-[9px] text-amber-700 uppercase tracking-[0.15em] leading-[1.8]">
@@ -1543,22 +1722,6 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                         {t('ai.quiz.roomOf').replace('{current}', (quizStep + 1).toString()).replace('{total}', QUIZ_LENGTH.toString())}
                       </p>
                       <div className="flex items-center gap-3">
-                        {quizStep > 0 && (
-                          <button
-                            onClick={() => {
-                              const total = Object.values(quizVotes).reduce((a: number, b: number) => a + b, 0) || 1;
-                              const sorted = STYLES
-                                .map(s => ({ style: s, pct: Math.round(((quizVotes[s] || 0) / total) * 100) }))
-                                .filter(r => r.pct > 0)
-                                .sort((a, b) => b.pct - a.pct);
-                              setQuizResult(sorted);
-                              setQuizDone(true);
-                            }}
-                            className="text-[8px] font-bold uppercase tracking-[0.15em] text-black/30 hover:text-black/60 transition-colors border border-black/10 px-2 py-1 hover:border-black/30"
-                          >
-                            Stop &amp; see results
-                          </button>
-                        )}
                         <p className="text-[9px] text-black/30 uppercase tracking-widest">
                           {t('ai.quiz.rateHonestly')}
                         </p>
@@ -1572,15 +1735,17 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                     <div className="flex items-center justify-center bg-neutral-50 p-6">
                       <div className="relative w-full max-w-[480px]">
                         <img
-                          src={getQuizImage(quizSequence[quizStep] || STYLES[0], quizSeed, quizStep).url}
-                          alt={quizSequence[quizStep] || ""}
+                          src={currentQuizImage.url}
+                          alt={currentQuizStyle}
+                          onLoad={() => setQuizImageReady(true)}
+                          onError={() => setQuizImageReady(true)}
                           className="w-full object-cover"
                           style={{ aspectRatio: '1/1', display: 'block' }}
                         />
                         <div className="absolute top-3 left-3 bg-white/90 px-3 py-1.5 border border-black/10">
-                          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/60">{t(`ai.style.${(quizSequence[quizStep] || '').toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
+                          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/60">{t(`ai.style.${currentQuizStyle.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
                         </div>
-                        {getQuizImage(quizSequence[quizStep] || STYLES[0], quizSeed, quizStep).credit.includes('Designature') && (
+                        {currentQuizImage.credit.includes('Designature') && (
                           <div className="absolute bottom-3 left-3 bg-black/60 px-2 py-1">
                             <span className="text-[8px] text-white/70 uppercase tracking-widest">{t('ai.quiz.fromPortfolio')}</span>
                           </div>
@@ -1598,22 +1763,41 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                         <div className="flex flex-col gap-2">
                           <button
                             onClick={() => handleQuizVote('love')}
-                            className="w-full py-3.5 bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-black/80 transition-all flex items-center justify-center gap-2"
+                            disabled={!quizImageReady}
+                            className="w-full py-3.5 bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-black/80 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <span>✦</span> {t('ai.quiz.loveIt')}
                           </button>
                           <button
                             onClick={() => handleQuizVote('skip')}
-                            className="w-full py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/40 hover:border-black/40 hover:text-black transition-all"
+                            disabled={!quizImageReady}
+                            className="w-full py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/40 hover:border-black/40 hover:text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {t('ai.quiz.skip')}
                           </button>
                           <button
                             onClick={() => handleQuizVote('no')}
-                            className="w-full py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/40 hover:border-black/40 hover:text-black transition-all"
+                            disabled={!quizImageReady}
+                            className="w-full py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/40 hover:border-black/40 hover:text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {t('ai.quiz.notMyStyle')}
                           </button>
+                          {quizStep > 0 && (
+                            <button
+                              onClick={() => {
+                                const total = Object.values(quizVotes).reduce((a: number, b: number) => a + b, 0) || 1;
+                                const sorted = STYLES
+                                  .map(s => ({ style: s, pct: Math.round(((quizVotes[s] || 0) / total) * 100) }))
+                                  .filter(r => r.pct > 0)
+                                  .sort((a, b) => b.pct - a.pct);
+                                setQuizResult(sorted);
+                                setQuizDone(true);
+                              }}
+                              className="w-full py-3 border border-black/20 text-[10px] font-bold uppercase tracking-[0.25em] text-black/60 hover:border-black/50 hover:text-black transition-all"
+                            >
+                              Stop &amp; see results
+                            </button>
+                          )}
                         </div>
                       </div>
                       <div className="p-6 flex-grow overflow-y-auto">
@@ -1700,7 +1884,10 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
 
               {/* ══ SHOP THIS LOOK ══ */}
-              <div id="shop-this-look" className={`border-t-2 border-black/8${activeTool === 'quiz' ? ' hidden' : ''}`}>
+              <div
+                id="shop-this-look"
+                className={`scroll-mt-28 border-t-2 border-black/8${activeTool === 'quiz' ? ' hidden' : ''}`}
+              >
 
                 {/* Sign-in gate */}
                 {!authLoading && !user && (
@@ -1756,7 +1943,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                 {!shoppingDone && !shoppingLoading && !shoppingError && shoppingItems.length === 0 && (
                   <div className="px-8 py-6 bg-neutral-50">
                     {/* AI concept exists — one-click CTA */}
-                    {results[selectedResult] ? (
+                    {selectedConceptUrl ? (
                       <div className="flex items-center justify-between gap-6">
                         <div>
                           <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-black mb-1">
@@ -1767,14 +1954,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                           </p>
                         </div>
                         <button
-                          onClick={() => {
-                            setActiveTool('shopping');
-                            setTimeout(() => {
-                              handleShoppingSearch();
-                              const el = document.getElementById('shop-this-look');
-                              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            }, 80);
-                          }}
+                          onClick={focusShoppingTabAndRunSearch}
                           className="flex-shrink-0 flex items-center gap-2 bg-[#0047AB] text-white text-[10px] font-bold uppercase tracking-[0.3em] px-6 py-4 hover:bg-[#003d99] transition-all whitespace-nowrap"
                         >
                           {t('ai.findTheseProducts')} →
@@ -1795,7 +1975,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                             <div className="flex-1">
                               <p className="text-[9px] text-black/40 uppercase tracking-widest mb-2">{t('ai.shop.imageReady')}</p>
                               <div className="flex gap-2">
-                                <button onClick={() => handleShoppingSearch()} className="flex items-center gap-2 bg-black text-white text-[10px] font-bold uppercase tracking-[0.25em] px-5 py-3 hover:bg-black/80 transition-all">
+                                <button onClick={focusShoppingTabAndRunSearch} className="flex items-center gap-2 bg-black text-white text-[10px] font-bold uppercase tracking-[0.25em] px-5 py-3 hover:bg-black/80 transition-all">
                                   🛒 {t('ai.shop.findProducts')}
                                 </button>
                                 <button onClick={() => setStandaloneShoppingImage(null)} className="text-[9px] text-black/30 uppercase tracking-widest border border-black/10 px-3 py-3 hover:text-black hover:border-black/40 transition-all">
@@ -1832,7 +2012,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                         {t('ai.shop.newConceptDesc')}
                       </p>
                     </div>
-                    <button onClick={() => handleShoppingSearch()} className="flex-shrink-0 flex items-center gap-2 bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] px-6 py-4 hover:bg-black/80 transition-all whitespace-nowrap">
+                    <button onClick={focusShoppingTabAndRunSearch} className="flex-shrink-0 flex items-center gap-2 bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] px-6 py-4 hover:bg-black/80 transition-all whitespace-nowrap">
                       🔄 {t('ai.shop.reSearch')}
                     </button>
                   </div>
@@ -1858,7 +2038,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                       <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
                       <p className="text-[10px] font-bold uppercase tracking-widest">{shoppingError}</p>
                     </div>
-                    <button onClick={() => handleShoppingSearch()} className="text-[10px] font-bold uppercase tracking-widest text-black border-b border-black pb-0.5 hover:text-black/60 transition-colors">
+                    <button onClick={focusShoppingTabAndRunSearch} className="text-[10px] font-bold uppercase tracking-widest text-black border-b border-black pb-0.5 hover:text-black/60 transition-colors">
                       {t('btn.tryAgain')}
                     </button>
                   </div>
@@ -1869,16 +2049,16 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                   <div className="bg-white">
 
                     {/* Source image banner */}
-                    {(results[selectedResult] || standaloneShoppingImage) && (
+                    {(selectedConceptUrl || standaloneShoppingImage) && (
                       <div className="border-b border-black/8 bg-white px-8 py-6 flex items-start gap-6">
                         <img
-                          src={results[selectedResult] || standaloneShoppingImage || ''}
+                          src={selectedConceptUrl || standaloneShoppingImage || ''}
                           className="w-40 h-40 object-cover flex-shrink-0 border border-black/10"
                           alt="Source"
                         />
                         <div className="pt-1">
                           <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/30 mb-2">
-                            {results[selectedResult]
+                            {selectedConceptUrl
                               ? (language === 'en' ? 'Shopping from your AI concept' : 'Shopping from AI concept')
                               : (language === 'en' ? 'Shopping from your uploaded photo' : 'Shopping from uploaded photo')}
                           </p>
@@ -1962,17 +2142,23 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                       ))}
                     </div>
 
-                    <div className="px-8 py-5 border-t border-black/8 bg-neutral-50 flex items-center justify-between gap-4">
+                    <div className="px-8 py-5 border-t border-black/8 bg-neutral-50 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
                       <p className="text-[9px] text-black/30 leading-relaxed">
                         {t('ai.shop.resultsVia')}
                       </p>
-                      <button
-                        onClick={handleDownloadShoppingPDF}
-                        className="flex-shrink-0 flex items-center gap-2 bg-black text-white text-[9px] font-bold uppercase tracking-[0.25em] px-5 py-3 hover:bg-black/80 transition-all whitespace-nowrap"
-                      >
-                        <FileDown className="w-3 h-3" />
-                        {t('ai.shop.downloadPDF')}
-                      </button>
+                      <div className="flex flex-col items-stretch sm:items-end gap-2 flex-shrink-0">
+                        <p className="text-[10px] text-black/50 text-left sm:text-right leading-snug max-w-[min(100%,300px)]">
+                          {t('ai.shop.downloadPdfNotice')}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleDownloadShoppingPDF}
+                          className="flex items-center justify-center gap-2 bg-black text-white text-[9px] font-bold uppercase tracking-[0.25em] px-5 py-3 hover:bg-black/80 transition-all whitespace-nowrap"
+                        >
+                          <FileDown className="w-3 h-3" />
+                          {t('ai.shop.downloadPDF')}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1987,7 +2173,10 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       </div>
 
       {/* ── PERSISTENT BOOKING CTA — shows after any interaction ── */}
-      {(results.length > 0 || shoppingDone || !!standaloneShoppingImage) && (
+      {(results.length > 0 ||
+        sessionConceptArchive.length > 0 ||
+        shoppingDone ||
+        !!standaloneShoppingImage) && (
         <div className="border-t border-black/8 bg-black">
           <div className="max-w-[1600px] mx-auto px-8 md:px-16 py-8 flex flex-col md:flex-row items-center justify-between gap-6">
             <div>
@@ -2016,10 +2205,10 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
       {/* ── LIGHTBOX ── */}
       <AnimatePresence>
-        {isLightboxOpen && results[selectedResult] && (
+        {isLightboxOpen && selectedConceptUrl && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsLightboxOpen(false)} className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 md:p-12 cursor-zoom-out">
             <div className="absolute top-8 right-8 flex gap-4 z-[110]">
-              <button onClick={(e) => { e.stopPropagation(); handleDownload(results[selectedResult]); }} className="flex items-center gap-2 px-4 py-2 bg-white text-black text-sm md:text-base font-bold uppercase tracking-widest hover:bg-white/90 transition-all">
+              <button onClick={(e) => { e.stopPropagation(); handleDownload(selectedConceptUrl); }} className="flex items-center gap-2 px-4 py-2 bg-white text-black text-sm md:text-base font-bold uppercase tracking-widest hover:bg-white/90 transition-all">
                 <Download className="w-4 h-4" /> {t('btn.download')}
               </button>
               <button onClick={(e) => { e.stopPropagation(); setIsLightboxOpen(false); }} className="text-white/50 hover:text-white transition-colors">
@@ -2027,7 +2216,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
               </button>
             </div>
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} transition={{ type: 'spring', damping: 25, stiffness: 300 }} className="relative max-w-full max-h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-              <img src={results[selectedResult]} className="max-w-full max-h-[90vh] object-contain shadow-2xl" alt="Full resolution" />
+              <img src={selectedConceptUrl} className="max-w-full max-h-[90vh] object-contain shadow-2xl" alt="Full resolution" />
             </motion.div>
           </motion.div>
         )}

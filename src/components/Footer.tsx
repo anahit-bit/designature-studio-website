@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mail, Instagram, Facebook, X } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 import Logo from './Logo';
+import PolicyModal, { type PolicyKind } from './PolicyModal';
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
   <svg 
@@ -54,6 +55,7 @@ const Footer: React.FC = () => {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [policyModal, setPolicyModal] = useState<PolicyKind | null>(null);
 
   const validateEmail = (emailStr: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -109,9 +111,8 @@ const Footer: React.FC = () => {
       { name: t('footer.about'), action: () => navigateTo('studio') },
     ],
     useful: [
-      { name: t('nav.contact'), action: () => navigateTo('home') },
-      { name: t('footer.terms'), action: () => navigateTo('home') },
-      { name: t('footer.privacy'), action: () => navigateTo('home') },
+      { name: t('footer.terms'), policy: 'terms' as const },
+      { name: t('footer.privacy'), policy: 'privacy' as const },
     ]
   };
 
@@ -145,9 +146,10 @@ const Footer: React.FC = () => {
               <h4 className="text-xs font-bold uppercase tracking-[0.4em] text-white/30">{t('footer.usefulLinks')}</h4>
               <nav className="flex flex-col gap-4">
                 {footerLinks.useful.map((link) => (
-                  <button 
-                    key={link.name} 
-                    onClick={link.action}
+                  <button
+                    key={link.name}
+                    type="button"
+                    onClick={() => setPolicyModal(link.policy)}
                     className="text-left text-xs font-bold uppercase tracking-widest text-white/60 hover:text-[#0047AB] transition-colors duration-300"
                   >
                     {link.name}
@@ -242,6 +244,7 @@ const Footer: React.FC = () => {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
       />
+      <PolicyModal open={policyModal} onClose={() => setPolicyModal(null)} />
     </>
   );
 };

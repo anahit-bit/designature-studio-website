@@ -18,6 +18,7 @@ import PricingPage from './components/PricingPage';
 import CTABanner from './components/CTABanner';
 import Footer from './components/Footer';
 import { LanguageProvider, useLanguage } from './LanguageContext';
+import SessionInactivityGuard from './components/SessionInactivityGuard';
 
 const AppContent: React.FC = () => {
   const { currentPage } = useLanguage();
@@ -112,6 +113,7 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => (
   <LanguageProvider>
+    <SessionInactivityGuard />
     <AppContent />
   </LanguageProvider>
 );

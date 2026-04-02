@@ -7,7 +7,7 @@ import { useLanguage } from '../LanguageContext';
 
 const Hero: React.FC = () => {
   const [current, setCurrent] = useState(0);
-  const { language, t } = useLanguage();
+  const { language, t, navigateTo } = useLanguage();
   const slides = getHeroSlides(language);
 
   useEffect(() => {
@@ -60,7 +60,11 @@ const Hero: React.FC = () => {
             <p className="text-base md:text-xl font-light text-white/70 max-w-xl leading-relaxed fade-in" style={{ animationDelay: '500ms' }}>
               {slides[current].subtitle}
             </p>
-            <button className="group flex items-center gap-6 text-white text-sm md:text-base font-bold uppercase tracking-[0.4em] fade-in" style={{ animationDelay: '700ms' }}>
+            <button
+              onClick={() => navigateTo('portfolio')}
+              className="group flex items-center gap-6 text-white text-sm md:text-base font-bold uppercase tracking-[0.4em] fade-in"
+              style={{ animationDelay: '700ms' }}
+            >
               <span className="border-b border-white pb-1 group-hover:text-white/50 group-hover:border-white/50 transition-all">{t('btn.explore')}</span>
               <div className="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all">
                 <ChevronRight className="w-4 h-4" />

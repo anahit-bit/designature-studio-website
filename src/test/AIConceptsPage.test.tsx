@@ -1,6 +1,7 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import AIConceptsPage from '../components/AIConceptsPage';
+import SessionInactivityGuard from '../components/SessionInactivityGuard';
 import { LanguageProvider } from '../LanguageContext';
 
 // Mock GoogleGenAI
@@ -23,6 +24,7 @@ vi.mock('../components/Footer', () => ({
 const renderWithProvider = (ui: React.ReactElement) => {
   return render(
     <LanguageProvider>
+      <SessionInactivityGuard />
       {ui}
     </LanguageProvider>
   );
@@ -40,7 +42,8 @@ describe('AIConceptsPage - Style Quiz', () => {
             email: 'test@example.com',
             name: 'Test User',
             picture: '',
-            generationsLeft: 3
+            generationsLeft: 3,
+            shoppingListsLeft: 3,
           }),
         });
       }
@@ -52,6 +55,12 @@ describe('AIConceptsPage - Style Quiz', () => {
             { public_id: 'mock-1', secure_url: 'https://example.com/mock-1.jpg' },
             { public_id: 'mock-2', secure_url: 'https://example.com/mock-2.jpg' },
           ]),
+        });
+      }
+      if (url === '/api/auth/logout') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ ok: true }),
         });
       }
       return Promise.resolve({
@@ -74,6 +83,17 @@ describe('AIConceptsPage - Style Quiz', () => {
     })();
     Object.defineProperty(window, 'localStorage', { value: localStorageMock, writable: true });
   });
+
+  const voteMany = async (count: number) => {
+    for (let i = 0; i < count; i++) {
+      const loveButton = await screen.findByRole('button', { name: /Love it/i });
+      await waitFor(() => expect(loveButton).not.toBeDisabled(), { timeout: 3000 });
+      fireEvent.click(loveButton);
+      if (i < count - 1) {
+        await screen.findByText(new RegExp(`Room ${i + 2} of 24`, 'i'));
+      }
+    }
+  };
 
   it('renders the quiz initial state', async () => {
     renderWithProvider(<AIConceptsPage />);
@@ -101,27 +121,21 @@ describe('AIConceptsPage - Style Quiz', () => {
 
   it('progresses through the quiz when voting', async () => {
     renderWithProvider(<AIConceptsPage />);
-    
-    const loveButton = await screen.findByText(/Love it/i);
-    
+
     // Initial step is 0
     expect(await screen.findByText(/Room 1 of 24/i)).toBeInTheDocument();
-    
-    fireEvent.click(loveButton);
-    
+
+    await voteMany(1);
+
     // Should progress to Room 2 of 24
     expect(await screen.findByText(/Room 2 of 24/i)).toBeInTheDocument();
   });
 
   it('completes the quiz and shows results after 24 votes', async () => {
     renderWithProvider(<AIConceptsPage />);
-    const loveButton = await screen.findByText(/Love it/i);
-    
-    // Vote 24 times
-    for (let i = 0; i < 24; i++) {
-      fireEvent.click(loveButton);
-    }
-    
+
+    await voteMany(24);
+
     // Check for results screen
     // Based on translations: 'ai.quiz.designDNA' is "Your design DNA"
     expect(await screen.findByText(/^Your design DNA$/i)).toBeInTheDocument();
@@ -132,12 +146,9 @@ describe('AIConceptsPage - Style Quiz', () => {
 
   it('switches to vision tool when clicking Apply Style', async () => {
     renderWithProvider(<AIConceptsPage />);
-    const loveButton = await screen.findByText(/Love it/i);
-    
-    for (let i = 0; i < 24; i++) {
-      fireEvent.click(loveButton);
-    }
-    
+
+    await voteMany(24);
+
     // 'ai.quiz.applyStyle' is "Apply {style} style to AI Vision"
     // We don't know the style, so we use a regex
     const applyButton = await screen.findByText(/Apply .* style to AI Vision/i);
@@ -148,4 +159,34 @@ describe('AIConceptsPage - Style Quiz', () => {
     // And the quiz should be gone or hidden
     expect(screen.queryByText(/Room 1 of 24/i)).not.toBeInTheDocument();
   });
+
+  it(
+    'logs out after 15 minutes of inactivity',
+    async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+
+      renderWithProvider(<AIConceptsPage />);
+      expect(await screen.findByText(/test@example.com/i)).toBeInTheDocument();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(15 * 60 * 1000 + 5000);
+      });
+
+      await waitFor(
+        () => {
+          expect(global.fetch).toHaveBeenCalledWith(
+            '/api/auth/logout',
+            expect.objectContaining({ method: 'POST', headers: expect.any(Object) })
+          );
+        },
+        { timeout: 10_000 }
+      );
+      await waitFor(() => {
+        expect(screen.queryByText(/test@example.com/i)).not.toBeInTheDocument();
+      });
+
+      vi.useRealTimers();
+    },
+    15_000
+  );
 });

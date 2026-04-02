@@ -7,8 +7,21 @@ import { v2 as cloudinary } from "cloudinary";
 import multer from "multer";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import path from "path";
+import { google } from "googleapis";
+import * as net from "net";
 
 dotenv.config();
+
+/** Free tier caps (UI + API). Paid tier can be added later with an `isPaid` flag. */
+const FREE_TIER_MAX_CONCEPTS = 3;
+const FREE_TIER_MAX_SHOPPING_LISTS = 3;
+
+/** This account keeps a higher `generationsLeft` in DB for internal testing (not clamped to 3). */
+const CONCEPT_TEST_ACCOUNT_EMAIL = "anahit@designature.studio";
+
+function isConceptTestAccountEmail(email: string): boolean {
+  return email.trim().toLowerCase() === CONCEPT_TEST_ACCOUNT_EMAIL;
+}
 
 // ─── Simple JSON "database" stored in users.json ───────────────────────────
 const DB_PATH = "./users.json";
@@ -20,8 +33,28 @@ interface User {
   picture: string;
   googleId: string;
   generationsLeft: number;
+  /** Remaining shopping-list runs (Serper searches) for free tier; optional in older `users.json` */
+  shoppingListsLeft?: number;
   createdAt: string;
   lastUsed: string;
+}
+
+function normalizeUserForFreeTier(user: User): { user: User; changed: boolean } {
+  let changed = false;
+  const u = { ...user };
+  if (!isConceptTestAccountEmail(u.email) && u.generationsLeft > FREE_TIER_MAX_CONCEPTS) {
+    u.generationsLeft = FREE_TIER_MAX_CONCEPTS;
+    changed = true;
+  }
+  if (typeof u.shoppingListsLeft !== "number" || Number.isNaN(u.shoppingListsLeft)) {
+    u.shoppingListsLeft = FREE_TIER_MAX_SHOPPING_LISTS;
+    changed = true;
+  }
+  if (u.shoppingListsLeft > FREE_TIER_MAX_SHOPPING_LISTS) {
+    u.shoppingListsLeft = FREE_TIER_MAX_SHOPPING_LISTS;
+    changed = true;
+  }
+  return { user: u, changed };
 }
 
 interface DB {
@@ -132,10 +165,173 @@ async function startServer() {
     return googleId;
   }
 
+  // ── Free-tier users Google Sheets upsert (best-effort) ──────────────────
+  async function upsertFreeTierUserByEmail(params: {
+    email: string;
+    name: string;
+    provider: string;
+    plan: string;
+    country: string;
+    toolUsed: string;
+    source: string;
+    createdAt: string;
+    nowIso: string;
+  }) {
+    const spreadsheetId =
+      (process.env.FREE_USERS_SPREADSHEET_ID ||
+        "14aFSp92YNw7DiBS-k3Ci7-pW_rIzQ_qURPkqzLirg0M").trim();
+
+    const serviceAccountJson = (process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON || "").trim();
+    const keyFile = (process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_KEYFILE || "").trim();
+
+    // Do not break auth flow if env vars are missing.
+    if (!serviceAccountJson && !keyFile) {
+      console.warn(
+        "Google Sheets upsert skipped: missing GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON/GOOGLE_SHEETS_SERVICE_ACCOUNT_KEYFILE"
+      );
+      return;
+    }
+
+    if (!spreadsheetId) {
+      console.warn("Google Sheets upsert skipped: missing FREE_USERS_SPREADSHEET_ID");
+      return;
+    }
+
+    let credentials: any;
+    try {
+      if (serviceAccountJson) {
+        credentials = JSON.parse(serviceAccountJson);
+        if (typeof credentials?.private_key === "string" && credentials.private_key.includes("\\n")) {
+          credentials.private_key = credentials.private_key.replace(/\\n/g, "\n");
+        }
+      } else {
+        credentials = JSON.parse(readFileSync(keyFile, "utf-8"));
+        if (typeof credentials?.private_key === "string" && credentials.private_key.includes("\\n")) {
+          credentials.private_key = credentials.private_key.replace(/\\n/g, "\n");
+        }
+      }
+    } catch (err) {
+      console.error("Google Sheets upsert skipped: invalid service account credentials", err);
+      return;
+    }
+
+    if (!credentials?.client_email || !credentials?.private_key) {
+      console.error("Google Sheets upsert skipped: missing client_email/private_key in service account JSON");
+      return;
+    }
+
+    const scopes = ["https://www.googleapis.com/auth/spreadsheets"];
+    const jwtClient = new google.auth.JWT({
+      email: credentials.client_email,
+      key: credentials.private_key,
+      scopes,
+    });
+
+    const sheetsApi = google.sheets({ version: "v4", auth: jwtClient });
+
+    const createdAt = params.createdAt || params.nowIso;
+    const rowNow = params.nowIso;
+    const emailLower = params.email.trim().toLowerCase();
+
+    // 1) Find the first worksheet/tab title
+    const meta = await sheetsApi.spreadsheets.get({
+      spreadsheetId,
+      fields: "sheets(properties(title))",
+    });
+    const firstSheetTitle = meta.data.sheets?.[0]?.properties?.title;
+    if (!firstSheetTitle) {
+      console.warn("Google Sheets upsert skipped: could not read first worksheet/tab title");
+      return;
+    }
+
+    // 2) Read existing A-K cells and upsert by email (column B)
+    const range = `${firstSheetTitle}!A:K`;
+    const existing = await sheetsApi.spreadsheets.values.get({
+      spreadsheetId,
+      range,
+      majorDimension: "ROWS",
+    });
+    const rows = existing.data.values ?? [];
+
+    // Optional header detection: if row 1 looks like our headers, skip it.
+    let headerOffset = 0;
+    const firstRow = rows[0] || [];
+    const firstCell = String(firstRow[0] || "").toLowerCase();
+    const secondCell = String(firstRow[1] || "").toLowerCase();
+    if (firstCell === "created_at" && secondCell === "email") headerOffset = 1;
+
+    let matchIndex = -1;
+    for (let i = headerOffset; i < rows.length; i++) {
+      const row = rows[i] || [];
+      const rowEmail = String(row[1] || "").trim().toLowerCase();
+      if (rowEmail === emailLower) {
+        matchIndex = i;
+        break;
+      }
+    }
+
+    // Column order A-K:
+    // created_at,email,name,provider,plan,first_login_at,last_login_at,login_count,country,tool_used,source
+    const toStr = (v: any) => (v == null ? "" : String(v));
+
+    if (matchIndex >= 0) {
+      const existingRow = rows[matchIndex] || [];
+      const createdAtExisting = toStr(existingRow[0]) || createdAt;
+      const firstLoginExisting = toStr(existingRow[5]) || createdAt;
+
+      const parsedCount = parseInt(String(existingRow[7] ?? ""), 10);
+      const loginCountNext = Number.isFinite(parsedCount) ? parsedCount + 1 : 1;
+
+      const rowNumber = matchIndex + 1; // sheet rows are 1-indexed
+      const rowUpdate = [
+        createdAtExisting, // preserve created_at
+        params.email,
+        params.name,
+        params.provider,
+        params.plan,
+        firstLoginExisting, // preserve first_login_at
+        rowNow, // last_login_at
+        loginCountNext,
+        params.country,
+        params.toolUsed,
+        params.source,
+      ];
+
+      await sheetsApi.spreadsheets.values.update({
+        spreadsheetId,
+        range: `${firstSheetTitle}!A${rowNumber}:K${rowNumber}`,
+        valueInputOption: "RAW",
+        requestBody: { values: [rowUpdate] },
+      });
+    } else {
+      const newRow = [
+        createdAt,
+        params.email,
+        params.name,
+        params.provider,
+        params.plan,
+        createdAt, // first_login_at
+        rowNow, // last_login_at
+        1, // login_count
+        params.country,
+        params.toolUsed,
+        params.source,
+      ];
+
+      await sheetsApi.spreadsheets.values.append({
+        spreadsheetId,
+        range: `${firstSheetTitle}!A:K`,
+        valueInputOption: "RAW",
+        insertDataOption: "INSERT_ROWS",
+        requestBody: { values: [newRow] },
+      });
+    }
+  }
+
   // ── POST /api/auth/google — exchange Google ID token for session ──
   app.post("/api/auth/google", async (req, res) => {
     try {
-      const { credential } = req.body;
+      const { credential, toolUsed, source } = req.body || {};
       if (!credential) {
         return res.status(400).json({ error: "Missing credential" });
       }
@@ -161,13 +357,14 @@ async function startServer() {
       let user = db.users[googleId];
 
       if (!user) {
-        // New user — give 3 free generations
+        // New user — give 3 free generations + 3 shopping list runs
         user = {
           email,
           name: name || email,
           picture: picture || "",
           googleId,
-          generationsLeft: 3,
+          generationsLeft: FREE_TIER_MAX_CONCEPTS,
+          shoppingListsLeft: FREE_TIER_MAX_SHOPPING_LISTS,
           createdAt: new Date().toISOString(),
           lastUsed: new Date().toISOString(),
         };
@@ -185,7 +382,31 @@ async function startServer() {
         console.log(`Existing user logged in: ${email} (${user.generationsLeft} gens left)`);
       }
 
+      // Clamp legacy accounts (e.g. admin-inflated concept counts) and migrate shoppingListsLeft
+      {
+        const norm = normalizeUserForFreeTier(user);
+        user = norm.user;
+        if (norm.changed) {
+          db.users[googleId] = user;
+          writeDB(db);
+        }
+      }
+
       const token = createSession(googleId);
+
+      // Best-effort free-tier tracking update (must never break auth flow)
+      const nowIso = new Date().toISOString();
+      void upsertFreeTierUserByEmail({
+        email,
+        name: user.name,
+        provider: "google",
+        plan: "free",
+        country: "",
+        toolUsed: typeof toolUsed === "string" ? toolUsed : "",
+        source: typeof source === "string" ? source : "",
+        createdAt: user.createdAt || nowIso,
+        nowIso,
+      }).catch((err) => console.error("Free-tier Google Sheets upsert error:", err));
 
       res.json({
         token,
@@ -194,6 +415,7 @@ async function startServer() {
           name: user.name,
           picture: user.picture,
           generationsLeft: user.generationsLeft,
+          shoppingListsLeft: user.shoppingListsLeft,
         },
       });
     } catch (err) {
@@ -208,9 +430,16 @@ async function startServer() {
     if (!googleId) return;
 
     const db = readDB();
-    const user = db.users[googleId];
+    let user = db.users[googleId];
     if (!user) {
       return res.status(404).json({ error: "User not found" });
+    }
+
+    const norm = normalizeUserForFreeTier(user);
+    user = norm.user;
+    if (norm.changed) {
+      db.users[googleId] = user;
+      writeDB(db);
     }
 
     res.json({
@@ -218,6 +447,7 @@ async function startServer() {
       name: user.name,
       picture: user.picture,
       generationsLeft: user.generationsLeft,
+      shoppingListsLeft: user.shoppingListsLeft,
     });
   });
 
@@ -268,8 +498,8 @@ async function startServer() {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Never restore above 3
-    user.generationsLeft = Math.min(3, user.generationsLeft + count);
+    const cap = isConceptTestAccountEmail(user.email) ? 999 : FREE_TIER_MAX_CONCEPTS;
+    user.generationsLeft = Math.min(cap, user.generationsLeft + count);
     db.users[googleId] = user;
     writeDB(db);
 
@@ -279,6 +509,27 @@ async function startServer() {
   // ── POST /api/shopping/search — Serper.dev Google Shopping API ──
   app.post("/api/shopping/search", async (req, res) => {
     try {
+      const googleIdShopping = requireAuth(req, res);
+      if (!googleIdShopping) return;
+
+      const dbShop = readDB();
+      let shopUser = dbShop.users[googleIdShopping];
+      if (!shopUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      const normShop = normalizeUserForFreeTier(shopUser);
+      shopUser = normShop.user;
+      if (normShop.changed) {
+        dbShop.users[googleIdShopping] = shopUser;
+        writeDB(dbShop);
+      }
+      if (shopUser.shoppingListsLeft < 1) {
+        return res.status(403).json({
+          error: "No shopping list runs left",
+          shoppingListsLeft: shopUser.shoppingListsLeft,
+        });
+      }
+
       const { items, country } = req.body;
       const gl = country || 'us';
       if (!items || !Array.isArray(items)) return res.status(400).json({ error: "Missing or invalid items list" });
@@ -412,7 +663,12 @@ async function startServer() {
         })
       );
 
-      res.json({ results: searchResults });
+      shopUser.shoppingListsLeft -= 1;
+      shopUser.lastUsed = new Date().toISOString();
+      dbShop.users[googleIdShopping] = shopUser;
+      writeDB(dbShop);
+
+      res.json({ results: searchResults, shoppingListsLeft: shopUser.shoppingListsLeft });
 
     } catch (err: any) {
       console.error("Shopping search error:", err);
@@ -426,7 +682,9 @@ async function startServer() {
     const db = readDB();
     const user = Object.values(db.users).find((u: User) => u.email === email);
     if (!user) return res.status(404).json({ error: "User not found" });
-    user.generationsLeft = count;
+    const cap = isConceptTestAccountEmail(user.email) ? 999 : FREE_TIER_MAX_CONCEPTS;
+    user.generationsLeft = Math.min(cap, Number(count) || FREE_TIER_MAX_CONCEPTS);
+    user.shoppingListsLeft = FREE_TIER_MAX_SHOPPING_LISTS;
     db.users[user.googleId] = user;
     writeDB(db);
     res.json({ ok: true, email: user.email, generationsLeft: user.generationsLeft });
@@ -447,8 +705,42 @@ async function startServer() {
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    // Vite default HMR WebSocket port 24678 often conflicts.
+    // If the configured port is already taken (e.g. you ran another dev server), auto-pick a free one.
+    const desiredPort = Number(process.env.VITE_HMR_PORT) || 24778;
+    const isPortAvailable = (port: number) =>
+      new Promise<boolean>((resolve) => {
+        const srv = net.createServer();
+        srv.unref();
+        srv.on("error", (err: any) => {
+          if (err && err.code === "EADDRINUSE") return resolve(false);
+          resolve(false);
+        });
+        // Listen on all interfaces so we detect conflicts on IPv4/IPv6/localhost.
+        srv.listen(port, () => {
+          srv.close(() => resolve(true));
+        });
+      });
+
+    let hmrPort = desiredPort;
+    // Try up to 25 ports: desiredPort..desiredPort+24
+    for (let i = 0; i < 25; i++) {
+      const candidate = desiredPort + i;
+      // eslint-disable-next-line no-await-in-loop
+      if (await isPortAvailable(candidate)) {
+        hmrPort = candidate;
+        break;
+      }
+    }
+    if (hmrPort !== desiredPort) {
+      console.warn(`HMR port ${desiredPort} was busy; using ${hmrPort} instead.`);
+    }
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        // Force IPv4 loopback to avoid Windows localhost (IPv6) port collisions.
+        hmr: { port: hmrPort, clientPort: hmrPort, host: "127.0.0.1" },
+      },
       appType: "spa",
     });
     app.use(vite.middlewares);
