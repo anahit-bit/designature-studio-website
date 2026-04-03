@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Upload, AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleGenAI } from "@google/genai";
 import { getStoredToken } from '../sessionClient';
@@ -22,8 +22,8 @@ interface RoomAuditProps {
   authLoading: boolean;
   t: (key: string) => string;
   language: string;
-  onAuditComplete?: () => void;   // Signals parent that an audit was done (for booking CTA)
-  onRequestLogin?: () => void;    // Trigger Google sign-in
+  onAuditComplete?: () => void;
+  onRequestLogin?: () => void;
   onProcessingChange?: (processing: boolean) => void;
 }
 
@@ -37,7 +37,7 @@ const AUDIT_GOALS = [
   { id: 'minimal', label: 'Reduce clutter' },
 ];
 
-// ─── Dimension color coding ────────────────────────────────────────────────
+// ─── Scoring helpers ────────────────────────────────────────────────────────
 function scoreColor(score: number): string {
   if (score >= 8) return 'bg-emerald-500';
   if (score >= 6) return 'bg-amber-400';
@@ -71,9 +71,7 @@ function formatGeminiError(err: unknown): string {
     try {
       const parsed = JSON.parse(trimmed) as { error?: { message?: string } };
       if (parsed?.error?.message) return parsed.error.message;
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
   }
   return msg || 'Audit failed. Please try again.';
 }
@@ -82,27 +80,22 @@ function formatGeminiError(err: unknown): string {
 const RoomAudit: React.FC<RoomAuditProps> = ({
   user,
   authLoading,
-  t,
-  language,
   onAuditComplete,
   onRequestLogin,
   onProcessingChange,
 }) => {
-  const [roomImage, setRoomImage] = useState<string | null>(null);
+  const [roomImage, setRoomImage]           = useState<string | null>(null);
   const [roomAspectRatio, setRoomAspectRatio] = useState<string>('4/3');
-  const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<AuditResult | null>(null);
+  const [selectedGoals, setSelectedGoals]   = useState<string[]>([]);
+  const [isProcessing, setIsProcessing]     = useState(false);
+  const [error, setError]                   = useState<string | null>(null);
+  const [result, setResult]                 = useState<AuditResult | null>(null);
 
-  const isPaid = user?.isPaid ?? false;
-  const auditsLeftRaw = user?.auditsLeft;
-  const auditsLeft = typeof auditsLeftRaw === 'number' ? auditsLeftRaw : 0;
+  const isPaid         = user?.isPaid ?? false;
+  const auditsLeftRaw  = user?.auditsLeft;
+  const auditsLeft     = typeof auditsLeftRaw === 'number' ? auditsLeftRaw : 0;
   const generationsLeft = user?.generationsLeft ?? 0;
 
-  // Backend currently only provides `generationsLeft` (free tier), so:
-  // - paid users: use `auditsLeft` when present
-  // - free users: fall back to `generationsLeft` quota
   const canAudit = isPaid
     ? typeof auditsLeftRaw === 'number'
       ? auditsLeftRaw === 999 || auditsLeftRaw > 0
@@ -118,18 +111,13 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      setError('Image must be under 10 MB');
-      return;
-    }
+    if (file.size > 10 * 1024 * 1024) { setError('Image must be under 10 MB'); return; }
     const reader = new FileReader();
     reader.onload = (ev) => {
       const dataUrl = ev.target?.result as string;
       setRoomImage(dataUrl);
       setError(null);
       setResult(null);
-
-      // Detect aspect ratio
       const img = new Image();
       img.onload = () => {
         const ratio = img.width / img.height;
@@ -145,11 +133,8 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
   }, []);
 
   // ── Goal toggle ──
-  const toggleGoal = (id: string) => {
-    setSelectedGoals(prev =>
-      prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]
-    );
-  };
+  const toggleGoal = (id: string) =>
+    setSelectedGoals(prev => prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]);
 
   // ── Run audit ──
   const handleAudit = async () => {
@@ -161,26 +146,16 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
 
     let quotaConsumed = false;
     try {
-      // Free-tier quota consumption: reuse existing concept generation quota.
-      // If Gemini fails, we restore the quota so the user doesn't lose a run.
       if (!isPaid) {
         const token = getStoredToken();
         if (!token) throw new Error('Not authenticated');
-
         const useRes = await fetch('/api/generation/use', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-session-token': token,
-          },
+          headers: { 'Content-Type': 'application/json', 'x-session-token': token },
           body: JSON.stringify({ count: 1 }),
         });
-
         const useData = await useRes.json().catch(() => ({}));
-        if (!useRes.ok) {
-          throw new Error(useData?.error || 'No generations left');
-        }
-
+        if (!useRes.ok) throw new Error(useData?.error || 'No generations left');
         quotaConsumed = true;
       }
 
@@ -213,7 +188,6 @@ Finally, list exactly 3 "Fix Now" items — the highest-impact, most actionable 
 Output ONLY valid JSON with no markdown fences, no explanation:
 {"overallScore":72,"dimensions":[{"label":"Layout & Flow","score":7,"verdict":"The sofa placement creates a clear conversation zone, but the dining table blocks the path to the balcony."},{"label":"Lighting","score":5,"verdict":"..."},{"label":"Color Harmony","score":8,"verdict":"..."},{"label":"Clutter & Organization","score":6,"verdict":"..."},{"label":"Functionality","score":7,"verdict":"..."},{"label":"Style Cohesion","score":6,"verdict":"..."}],"fixNow":["Move the dining table 30cm left to open the balcony path","Add a floor lamp in the dark corner by the bookshelf","Replace the mismatched throw pillows with a cohesive neutral set"]}`;
 
-      // Avoid preview IDs that 404 on v1beta; match multimodal text used in AIConceptsPage shopping flow.
       const geminiRes = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: {
@@ -230,36 +204,28 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       if (!jsonMatch) throw new Error('Could not parse audit results');
 
       const parsed: AuditResult = JSON.parse(jsonMatch[0]);
-
-      // Validate structure
       if (
         typeof parsed.overallScore !== 'number' ||
         !Array.isArray(parsed.dimensions) ||
         parsed.dimensions.length < 6 ||
         !Array.isArray(parsed.fixNow)
-      ) {
-        throw new Error('Incomplete audit response');
-      }
+      ) throw new Error('Incomplete audit response');
 
       setResult(parsed);
       onAuditComplete?.();
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (quotaConsumed && !isPaid) {
-        // Best-effort restore; never override the main error.
         try {
           const token = getStoredToken();
           if (token) {
             await fetch('/api/generation/restore', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'x-session-token': token,
-              },
+              headers: { 'Content-Type': 'application/json', 'x-session-token': token },
               body: JSON.stringify({ count: 1 }),
             });
           }
-        } catch {}
+        } catch { /* best-effort */ }
       }
       console.error('Room Audit error:', err);
       setError(formatGeminiError(err));
@@ -269,7 +235,6 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     }
   };
 
-  // ── Reset ──
   const handleReset = () => {
     setRoomImage(null);
     setSelectedGoals([]);
@@ -281,250 +246,276 @@ Output ONLY valid JSON with no markdown fences, no explanation:
   // RENDER
   // ════════════════════════════════════════════════════════════════════════════
 
-  // Loading state
+  // Loading
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div className="flex items-center justify-center py-20 flex-grow">
         <div className="w-5 h-5 border-2 border-black/10 border-t-black rounded-full animate-spin" />
       </div>
     );
   }
 
-  // Not logged in
+  // Not logged in — mirrors AI Vision logged-out states
   if (!user) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 px-8 text-center">
-        <div className="w-14 h-14 bg-black/5 text-black/20 flex items-center justify-center text-2xl mx-auto rounded-full mb-6">
-          ✦
+      <div className="flex w-full">
+        {/* Left panel — logged out placeholder */}
+        <div className="w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 border-r border-black/8 flex flex-col">
+          <div className="flex-grow p-8 flex flex-col gap-6 items-center justify-center text-center">
+            <div className="w-12 h-12 bg-black/5 text-black/20 flex items-center justify-center text-2xl rounded-full">✦</div>
+            <div>
+              <h3 className="font-display text-xl font-bold tracking-tight mb-2">Room Audit</h3>
+              <p className="text-xs text-black/40 leading-relaxed uppercase tracking-widest">
+                Sign in to unlock AI-powered room audits
+              </p>
+            </div>
+            {onRequestLogin && (
+              <button
+                onClick={onRequestLogin}
+                className="inline-flex items-center gap-2 bg-black text-white text-[9px] font-bold uppercase tracking-[0.25em] px-6 py-3 hover:bg-black/80 transition-colors"
+              >
+                Sign in to start
+              </button>
+            )}
+          </div>
         </div>
-        <h3 className="font-display text-xl font-bold tracking-tight mb-2">Room Audit</h3>
-        <p className="text-xs text-black/40 leading-relaxed uppercase tracking-widest max-w-xs mb-6">
-          Sign in to unlock AI-powered room audits
-        </p>
-        {onRequestLogin && (
-          <button
-            onClick={onRequestLogin}
-            className="inline-flex items-center gap-2 bg-black text-white text-[9px] font-bold uppercase tracking-[0.25em] px-6 py-3 hover:bg-black/80 transition-colors"
-          >
-            Sign in to start
-          </button>
-        )}
+        {/* Right panel — empty state */}
+        <div className="flex-grow flex flex-col items-center justify-center gap-5 p-16 text-center">
+          <div className="w-16 h-16 border border-black/8 flex items-center justify-center text-black/10 text-3xl">✦</div>
+          <h3 className="font-display text-3xl font-light text-black/20 tracking-tight">
+            Your audit will appear here
+          </h3>
+          <p className="text-sm uppercase tracking-[0.3em] text-black/20 leading-[2]">
+            Sign in · Upload a photo · Score your room
+          </p>
+        </div>
       </div>
     );
   }
 
-  // ── Full audit UI ──
+  // ── Logged in: full 2-column layout ──
+  const isDisabled = !roomImage || isProcessing || !canAudit;
+
   return (
-    <div className="w-full">
-      <AnimatePresence mode="wait">
-        {!result ? (
-          /* ──────── INPUT PHASE ──────── */
-          <motion.div
-            key="input"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="p-8 flex flex-col gap-7"
-          >
-            {/* STEP 1: Upload room photo */}
-            <div>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-5 h-5 bg-black text-white text-[8px] flex items-center justify-center font-bold flex-shrink-0">1</div>
-                <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/50">
-                  Upload your room
-                </span>
-              </div>
-              <label htmlFor="audit-room-upload" className="block cursor-pointer">
-                <input id="audit-room-upload" type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-                <div
-                  className={`relative overflow-hidden border transition-colors ${roomImage ? 'border-black' : 'border-dashed border-black/20 hover:border-black/50'}`}
-                  style={{ aspectRatio: roomAspectRatio }}
-                >
-                  {roomImage ? (
-                    <>
-                      <img src={roomImage} className="w-full h-full object-cover" alt="Room to audit" />
-                      <div className="absolute bottom-0 inset-x-0 bg-black/60 py-2 px-3 text-[8px] font-bold uppercase tracking-widest text-white text-center">
-                        Change
-                      </div>
-                    </>
-                  ) : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-50">
-                      <div className="w-9 h-9 border border-black/15 flex items-center justify-center text-black/25 text-xl font-thin">⌂</div>
-                      <span className="text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/35">
-                        Upload room photo
-                      </span>
-                      <span className="text-[8px] text-black/20 uppercase tracking-widest">JPG, PNG · max 10MB</span>
-                    </div>
-                  )}
-                </div>
-              </label>
-            </div>
+    <div className="flex w-full min-h-0 flex-grow">
 
-            <div className="h-px bg-black/6" />
+      {/* ══════════ LEFT PANEL ══════════ */}
+      <div className="w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 border-r border-black/8 flex flex-col">
+        <div className="flex-grow p-8 flex flex-col gap-7 overflow-y-auto">
 
-            {/* STEP 2: Goals (optional) */}
-            <div>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-5 h-5 bg-black/20 text-white text-[8px] flex items-center justify-center font-bold flex-shrink-0">2</div>
-                <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/50">
-                  Your goals{' '}
-                  <span className="text-black/20 normal-case font-normal tracking-normal ml-1">
-                    (optional)
-                  </span>
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {AUDIT_GOALS.map((goal) => (
-                  <button
-                    key={goal.id}
-                    onClick={() => toggleGoal(goal.id)}
-                    className={`px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.12em] border transition-all rounded-[2px] ${
-                      selectedGoals.includes(goal.id)
-                        ? 'border-black bg-black text-white'
-                        : 'border-black/15 text-black/40 hover:border-black/40 hover:text-black/70'
-                    }`}
-                  >
-                    {goal.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="h-px bg-black/6" />
-
-            {/* Audit budget indicator */}
-            <div className="flex items-center justify-between bg-neutral-50 border border-black/8 px-4 py-3">
-              <span className="text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/40">
-                {remainingLabel}
-              </span>
-              <span className="text-sm font-bold text-black/70">
-                {remainingValue}
+          {/* STEP 1: Upload room photo */}
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-5 h-5 bg-black text-white text-[8px] flex items-center justify-center font-bold flex-shrink-0">1</div>
+              <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/50">
+                Upload your room
               </span>
             </div>
-
-            {/* Error */}
-            {error && (
-              <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 text-red-700 text-[10px]">
-                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            {/* Audit button — only shown when no image uploaded yet */}
-            {!roomImage && (
-              <button
-                disabled
-                className="w-full py-4 text-[10px] font-bold uppercase tracking-[0.3em] bg-black/10 text-black/25 cursor-not-allowed"
+            <label htmlFor="audit-room-upload" className="block cursor-pointer">
+              <input id="audit-room-upload" type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+              <div
+                className={`relative overflow-hidden border transition-colors ${roomImage ? 'border-black' : 'border-dashed border-black/20 hover:border-black/50'}`}
+                style={{ aspectRatio: roomAspectRatio }}
               >
-                Upload a photo to start →
-              </button>
-            )}
-          </motion.div>
-        ) : (
-          /* ──────── RESULTS PHASE ──────── */
-          <motion.div
-            key="results"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.4 }}
-            className="flex flex-col lg:flex-row"
-          >
-            {/* ── LEFT: Photo + overall score ── */}
-            <div className="lg:w-[340px] xl:w-[380px] flex-shrink-0 flex flex-col">
-              {roomImage && (
-                <div className="relative overflow-hidden" style={{ aspectRatio: roomAspectRatio }}>
-                  <img src={roomImage} className="w-full h-full object-cover" alt="Audited room" />
-                  <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent px-5 py-4">
-                    <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-white/50">Room Audit Report</p>
-                    <p className="text-[8px] text-white/30 uppercase tracking-widest mt-0.5">AI · Gemini</p>
+                {roomImage ? (
+                  <>
+                    <img src={roomImage} className="w-full h-full object-cover" alt="Room to audit" />
+                    <div className="absolute bottom-0 inset-x-0 bg-black/60 py-2 px-3 text-[8px] font-bold uppercase tracking-widest text-white text-center">
+                      Change photo
+                    </div>
+                  </>
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-50">
+                    <div className="w-9 h-9 border border-black/15 flex items-center justify-center text-black/25 text-xl font-thin">⌂</div>
+                    <span className="text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/35">
+                      Upload room photo
+                    </span>
+                    <span className="text-[8px] text-black/20 uppercase tracking-widest">JPG, PNG · max 10MB</span>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+            </label>
+          </div>
 
-              {/* Overall score */}
-              <div className="p-6 border-b border-black/8 border-r border-r-black/8">
-                <div className="flex items-end gap-3 mb-4">
-                  <div className={`text-6xl font-display font-bold tracking-tight leading-none ${overallGrade(result.overallScore).color}`}>
+          <div className="h-px bg-black/6" />
+
+          {/* STEP 2: Goals (optional) */}
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-5 h-5 bg-black/20 text-white text-[8px] flex items-center justify-center font-bold flex-shrink-0">2</div>
+              <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/50">
+                Your goals{' '}
+                <span className="text-black/20 normal-case font-normal tracking-normal ml-1">(optional)</span>
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {AUDIT_GOALS.map((goal) => (
+                <button
+                  key={goal.id}
+                  onClick={() => toggleGoal(goal.id)}
+                  className={`px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.12em] border transition-all rounded-[2px] ${
+                    selectedGoals.includes(goal.id)
+                      ? 'border-black bg-black text-white'
+                      : 'border-black/15 text-black/40 hover:border-black/40 hover:text-black/70'
+                  }`}
+                >
+                  {goal.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="h-px bg-black/6" />
+
+          {/* Counter */}
+          <div className="flex items-center justify-between bg-neutral-50 border border-black/8 px-4 py-3">
+            <span className="text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/40">
+              {remainingLabel}
+            </span>
+            <div className="flex gap-1">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className={`w-5 h-1 ${i < Math.min(Number(remainingValue), 3) ? 'bg-black' : 'bg-black/15'}`} />
+              ))}
+            </div>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 text-red-700 text-[10px]">
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Audit button */}
+          <button
+            onClick={handleAudit}
+            disabled={isDisabled}
+            className="w-full bg-black text-white py-5 text-sm md:text-base font-bold uppercase tracking-[0.4em] transition-all hover:bg-black/80 flex items-center justify-center gap-3 disabled:bg-black/20 disabled:cursor-not-allowed mt-auto"
+          >
+            {isProcessing ? (
+              <>
+                <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                Analyzing…
+              </>
+            ) : (
+              <>Score My Room <ArrowRight className="w-3.5 h-3.5" /></>
+            )}
+          </button>
+
+        </div>
+      </div>
+
+      {/* ══════════ RIGHT PANEL ══════════ */}
+      <div className="flex-grow flex flex-col overflow-y-auto">
+        <AnimatePresence mode="wait">
+          {!result ? (
+            /* Empty state */
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex-grow flex flex-col items-center justify-center gap-5 p-16 text-center"
+            >
+              <div className="w-16 h-16 border border-black/8 flex items-center justify-center text-black/10 text-3xl">✦</div>
+              <h3 className="font-display text-3xl font-light text-black/20 tracking-tight">
+                Your audit will appear here
+              </h3>
+              <p className="text-sm uppercase tracking-[0.3em] text-black/20 leading-[2]">
+                {roomImage ? 'Click Score My Room to start' : 'Complete the steps on the left'}
+              </p>
+            </motion.div>
+          ) : (
+            /* Results */
+            <motion.div
+              key="results"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.4 }}
+              className="flex flex-col p-8 gap-8"
+            >
+              {/* Overall score header */}
+              <div className="flex items-end gap-4 pb-6 border-b border-black/8">
+                {/* Photo thumbnail */}
+                {roomImage && (
+                  <div className="w-20 h-20 flex-shrink-0 overflow-hidden border border-black/10">
+                    <img src={roomImage} className="w-full h-full object-cover" alt="Audited room" />
+                  </div>
+                )}
+                <div className="flex items-end gap-3 flex-1">
+                  <div className={`text-7xl font-display font-bold tracking-tight leading-none ${overallGrade(result.overallScore).color}`}>
                     {result.overallScore}
                   </div>
-                  <div className="pb-1">
-                    <div className={`text-xl font-bold ${overallGrade(result.overallScore).color}`}>
+                  <div className="pb-2">
+                    <div className={`text-2xl font-bold ${overallGrade(result.overallScore).color}`}>
                       {overallGrade(result.overallScore).letter}
                     </div>
-                    <div className="text-[7px] text-black/25 uppercase tracking-widest">/ 100</div>
+                    <div className="text-[8px] text-black/25 uppercase tracking-widest">/ 100</div>
                   </div>
                 </div>
-                <p className="text-[8px] text-black/30 leading-relaxed">
-                  Weighted average of 6 dimensions (each scored /10), scaled to 100.
+                <p className="text-[8px] text-black/25 leading-relaxed self-end pb-2 max-w-[180px] text-right">
+                  Weighted avg of 6 dimensions (each /10), scaled to 100
                 </p>
-
-                {/* Mini bars */}
-                <div className="mt-4 flex flex-col gap-1.5">
-                  {result.dimensions.map((dim, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <span className="text-[8px] text-black/40 w-[70px] truncate uppercase tracking-wide">
-                        {dim.label.split(' ')[0]}
-                      </span>
-                      <div className="flex-1 h-1.5 bg-black/6 rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${dim.score * 10}%` }}
-                          transition={{ duration: 0.6, delay: 0.1 * i, ease: 'easeOut' }}
-                          className={`h-full rounded-full ${scoreColor(dim.score)}`}
-                        />
-                      </div>
-                      <span className={`text-[9px] font-bold w-8 text-right ${scoreTextColor(dim.score)}`}>
-                        {dim.score}/10
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  onClick={handleReset}
-                  className="mt-5 w-full flex items-center justify-center gap-2 py-2.5 border border-black/15 text-[9px] font-bold uppercase tracking-[0.25em] text-black/40 hover:border-black/40 hover:text-black/70 transition-all"
-                >
-                  <RefreshCw className="w-3 h-3" />
-                  Audit another room
-                </button>
               </div>
-            </div>
 
-            {/* ── RIGHT: Detailed breakdown + Fix Now ── */}
-            <div className="flex-1 flex flex-col overflow-y-auto">
-              {/* Detailed dimensions */}
-              <div className="px-8 py-6 space-y-4">
+              {/* Mini score bars */}
+              <div className="flex flex-col gap-2">
+                {result.dimensions.map((dim, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <span className="text-[8px] text-black/40 w-[90px] truncate uppercase tracking-wide flex-shrink-0">
+                      {dim.label.split(' ')[0]}
+                    </span>
+                    <div className="flex-1 h-1.5 bg-black/6 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${dim.score * 10}%` }}
+                        transition={{ duration: 0.6, delay: 0.08 * i, ease: 'easeOut' }}
+                        className={`h-full rounded-full ${scoreColor(dim.score)}`}
+                      />
+                    </div>
+                    <span className={`text-[9px] font-bold w-10 text-right flex-shrink-0 ${scoreTextColor(dim.score)}`}>
+                      {dim.score}/10
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Detailed breakdown */}
+              <div>
                 <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/25 mb-4">
                   Detailed breakdown
                 </p>
-                {result.dimensions.map((dim, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.05 * i }}
-                    className="flex gap-3"
-                  >
-                    <div className="flex-shrink-0 text-right w-10">
-                      <span className={`text-base font-bold ${scoreTextColor(dim.score)}`}>{dim.score}</span>
-                      <span className="text-[7px] text-black/20 block">/ 10</span>
-                    </div>
-                    <div className="flex-1 pb-4 border-b border-black/6 last:border-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className={`w-2 h-2 rounded-full ${scoreColor(dim.score)}`} />
-                        <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-black/70">
-                          {dim.label}
-                        </span>
+                <div className="space-y-4">
+                  {result.dimensions.map((dim, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.05 * i }}
+                      className="flex gap-3"
+                    >
+                      <div className="flex-shrink-0 text-right w-10">
+                        <span className={`text-base font-bold ${scoreTextColor(dim.score)}`}>{dim.score}</span>
+                        <span className="text-[7px] text-black/20 block">/ 10</span>
                       </div>
-                      <p className="text-[11px] text-black/50 leading-relaxed">{dim.verdict}</p>
-                    </div>
-                  </motion.div>
-                ))}
+                      <div className="flex-1 pb-4 border-b border-black/6 last:border-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className={`w-2 h-2 rounded-full ${scoreColor(dim.score)}`} />
+                          <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-black/70">
+                            {dim.label}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-black/50 leading-relaxed">{dim.verdict}</p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
               </div>
 
               {/* Fix Now */}
-              <div className="mx-8 mb-8 bg-black p-6">
+              <div className="bg-black p-6">
                 <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-white/40 mb-4">
                   Fix now — Top 3 improvements
                 </p>
@@ -545,10 +536,21 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                   ))}
                 </div>
               </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+              {/* Reset */}
+              <button
+                onClick={handleReset}
+                className="self-center flex items-center gap-2 py-2.5 px-5 border border-black/15 text-[9px] font-bold uppercase tracking-[0.25em] text-black/40 hover:border-black/40 hover:text-black/70 transition-all"
+              >
+                <RefreshCw className="w-3 h-3" />
+                Audit another room
+              </button>
+
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
     </div>
   );
 };
