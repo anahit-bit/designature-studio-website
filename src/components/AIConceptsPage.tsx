@@ -1103,7 +1103,9 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                   ? `${t('ai.heroCtaQuiz')} →`
                   : activeTool === 'vision'
                     ? `${t('ai.heroCtaVision')} →`
-                    : `${t('ai.heroCtaShopping')} →`}
+                    : activeTool === 'audit'
+                      ? 'Score My Room →'
+                      : `${t('ai.heroCtaShopping')} →`}
             </button>
           </div>
           <div className="w-[240px] flex-shrink-0">
