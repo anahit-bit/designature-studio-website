@@ -12,6 +12,7 @@ import {
 } from '../sessionClient';
 import Header from './Header';
 import Footer from './Footer';
+import RoomAudit from './RoomAudit';
 
 // ─── Google OAuth client ID ────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
@@ -307,7 +308,9 @@ const AIConceptsPage: React.FC = () => {
   const [quizDone, setQuizDone] = useState<boolean>(false);
   const [quizResult, setQuizResult] = useState<{ style: string; pct: number }[]>([]);
   const [quizImageReady, setQuizImageReady] = useState<boolean>(false);
-  const [activeTool, setActiveTool] = useState<'quiz' | 'vision' | 'shopping'>('quiz');
+  const [activeTool, setActiveTool] = useState<'quiz' | 'vision' | 'shopping' | 'audit'>('quiz');
+  const [auditComplete, setAuditComplete] = useState(false);
+  const [auditProcessing, setAuditProcessing] = useState(false);
   const [quizRooms, setQuizRooms] = useState<QuizRooms>(QUIZ_ROOMS_FALLBACK);
   const [downloadCount, setDownloadCount] = useState<number>(() => {
     const saved = localStorage.getItem('ds_download_count');
@@ -1086,6 +1089,8 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                   document.getElementById('style-quiz-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 } else if (activeTool === 'vision') {
                   document.getElementById('ai-vision-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else if (activeTool === 'audit') {
+                  document.getElementById('room-audit-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 } else {
                   document.getElementById('shop-this-look')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
@@ -1226,15 +1231,31 @@ Output ONLY valid JSON with no markdown fences, no explanation:
               </div>
             </div>
 
-            {/* Tool 4 — Room Audit (SOON) */}
-            <div className="group relative bg-[#f7f6f4] p-4 border-r border-black/8 cursor-default" style={{ minHeight: '130px' }}>
-              <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-black/20 mb-3">04</div>
-              <div className="font-display text-base font-bold leading-tight mb-1 text-black/30">{t('ai.roomAudit')}</div>
-              <div className="text-[9px] text-black/20 leading-relaxed uppercase tracking-wide">
+            {/* Tool 4 — Room Audit (LIVE) */}
+            <div
+              onClick={() => { if (!(isProcessing || auditProcessing)) setActiveTool('audit'); }}
+              className={`group relative p-4 border-r border-black/10 transition-all ${
+                (isProcessing || auditProcessing) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+              } ${activeTool === 'audit' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
+              style={{ minHeight: '130px' }}
+            >
+              <div className={`text-[8px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'audit' ? 'text-white/40' : 'text-black/25'}`}>04</div>
+              <div className={`font-display text-base font-bold leading-tight mb-1 ${activeTool === 'audit' ? 'text-white' : 'text-black'}`}>{t('ai.roomAudit')}</div>
+              <div className={`text-[9px] leading-relaxed uppercase tracking-wide ${activeTool === 'audit' ? 'text-white/50' : 'text-black/40'}`}>
                 {t('ai.scoreSpace')}
+                {user && (
+                  <span className={`block mt-1 font-bold ${activeTool === 'audit' ? 'text-white' : 'text-black'}`}>
+                    · {user.generationsLeft} {t('ai.remaining')}
+                  </span>
+                )}
+                {!user && (
+                  <span className="block mt-1">· 3 {t('ai.toExplore')}</span>
+                )}
               </div>
               <div className="absolute bottom-3 right-3">
-                <span className="text-[8px] font-bold uppercase tracking-wide text-black/20 bg-black/5 px-1.5 py-0.5">Soon</span>
+                <span className={`text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'audit' ? 'text-blue-200 bg-blue-900/30' : 'text-green-600 bg-green-50'}`}>
+                  {t('ai.nowActive')}
+                </span>
               </div>
             </div>
 
@@ -1270,17 +1291,19 @@ Output ONLY valid JSON with no markdown fences, no explanation:
           <div className="bg-[#0047AB] flex items-center justify-between px-6 py-3">
             <div>
               <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-white/40 mb-0.5">
-                {activeTool === 'quiz' ? '01' : activeTool === 'vision' ? '02' : '03'} — {t('ai.nowActive')}
+                {activeTool === 'quiz' ? '01' : activeTool === 'vision' ? '02' : activeTool === 'shopping' ? '03' : '04'} — {t('ai.nowActive')}
               </div>
               <div className="text-[11px] font-bold text-white">
-                {activeTool === 'quiz' ? t('ai.styleQuiz') : activeTool === 'vision' ? t('ai.aiVision') : t('ai.shoppingList')}
+                {activeTool === 'quiz' ? t('ai.styleQuiz') : activeTool === 'vision' ? t('ai.aiVision') : activeTool === 'shopping' ? t('ai.shoppingList') : t('ai.roomAudit')}
               </div>
               <div className="text-[9px] text-white/45 mt-0.5">
                 {activeTool === 'quiz'
                   ? t('ai.quizDesc')
                   : activeTool === 'vision'
                   ? t('ai.visionDesc')
-                  : t('ai.shopDesc')}
+                  : activeTool === 'shopping'
+                  ? t('ai.shopDesc')
+                  : 'Get a scored report card for any room with actionable fixes'}
               </div>
             </div>
             <div className="text-[9px] font-bold uppercase tracking-[0.15em] text-white/40 hidden md:block">
@@ -1295,7 +1318,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         <div className="max-w-[1600px] w-full mx-auto px-8 md:px-16 flex-grow flex flex-col lg:flex-row" style={{ minHeight: '75vh' }}>
 
         {/* ════ LEFT SIDEBAR ════ */}
-        <div id="ai-vision-panel" className={`w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 border-r border-black/8 flex flex-col${activeTool === 'shopping' || activeTool === 'quiz' ? ' hidden' : ''}`}>
+        <div id="ai-vision-panel" className={`w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 border-r border-black/8 flex flex-col${activeTool === 'shopping' || activeTool === 'quiz' || activeTool === 'audit' ? ' hidden' : ''}`}>
           <div className="flex-grow p-8 flex flex-col gap-7 overflow-y-auto">
 
             {/* ── LOGGED OUT: Show placeholder ── */}
@@ -1502,6 +1525,33 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         {/* ════ RIGHT CONTENT AREA ════ */}
         <div className="flex-grow bg-neutral-50 flex flex-col">
 
+          {/* ── 04 Room Audit ── */}
+          {activeTool === 'audit' && (
+            <div id="room-audit-panel" className="flex-grow flex flex-col bg-white min-h-[50vh]">
+              <RoomAudit
+                user={user ? { email: user.email, isPaid: user.isPaid, generationsLeft: user.generationsLeft } : null}
+                authLoading={authLoading}
+                t={t}
+                language={language}
+                onProcessingChange={setAuditProcessing}
+                onAuditComplete={async () => {
+                  setAuditComplete(true);
+                  try {
+                    const res = await apiFetch('/api/auth/me');
+                    if (res.ok) {
+                      const data = await res.json();
+                      setUser((prev) =>
+                        prev
+                          ? { ...prev, generationsLeft: data?.generationsLeft ?? prev.generationsLeft, shoppingListsLeft: data?.shoppingListsLeft ?? prev.shoppingListsLeft }
+                          : prev
+                      );
+                    }
+                  } catch {}
+                }}
+                onRequestLogin={triggerGoogleSignIn}
+              />
+            </div>
+          )}
 
           {/* Not logged in — right panel (vision only) */}
           {!authLoading && !user && activeTool === 'vision' && (
