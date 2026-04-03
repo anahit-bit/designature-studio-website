@@ -342,11 +342,34 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                 onChange={handleFileChange}
               />
               {roomImage ? (
-                <div className="relative overflow-hidden border border-black" style={{ aspectRatio: roomAspectRatio }}>
-                  <img src={roomImage} className="w-full h-full object-cover" alt="Room to audit" />
-                  <label htmlFor="audit-room-upload" className="absolute bottom-0 inset-x-0 bg-black/60 py-2 px-3 text-[8px] font-bold uppercase tracking-widest text-white text-center cursor-pointer hover:bg-black/80 transition-colors">
-                    Change photo
-                  </label>
+                <div className="flex items-center gap-4">
+                  <img src={roomImage} className="w-28 h-28 object-cover border border-black/10 flex-shrink-0" alt="Room to audit" />
+                  <div className="flex-1">
+                    <p className="text-[9px] text-black/40 uppercase tracking-widest mb-2">Image ready</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleAudit}
+                        disabled={isProcessing || !canAudit}
+                        className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.25em] px-5 py-3 transition-all ${
+                          isProcessing || !canAudit
+                            ? 'bg-black/10 text-black/25 cursor-not-allowed'
+                            : 'bg-black text-white hover:bg-black/80'
+                        }`}
+                      >
+                        {isProcessing ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                            Analyzing...
+                          </>
+                        ) : (
+                          '◎ Audit my room'
+                        )}
+                      </button>
+                      <label htmlFor="audit-room-upload" className="text-[9px] text-black/30 uppercase tracking-widest border border-black/10 px-3 py-3 hover:text-black hover:border-black/40 transition-all cursor-pointer">
+                        Change
+                      </label>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <label htmlFor="audit-room-upload" className="flex items-center gap-3 border border-dashed border-black/20 hover:border-black/50 bg-white px-5 py-4 cursor-pointer transition-colors w-fit">
@@ -406,25 +429,15 @@ Output ONLY valid JSON with no markdown fences, no explanation:
               </div>
             )}
 
-            {/* Audit button */}
-            <button
-              onClick={handleAudit}
-              disabled={!roomImage || isProcessing || !canAudit}
-              className={`w-full py-4 text-[10px] font-bold uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-3 ${
-                !roomImage || isProcessing || !canAudit
-                  ? 'bg-black/10 text-black/25 cursor-not-allowed'
-                  : 'bg-black text-white hover:bg-black/85'
-              }`}
-            >
-              {isProcessing ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  Analyzing your room...
-                </>
-              ) : (
-                'Audit my room →'
-              )}
-            </button>
+            {/* Audit button — only shown when no image uploaded yet */}
+            {!roomImage && (
+              <button
+                disabled
+                className="w-full py-4 text-[10px] font-bold uppercase tracking-[0.3em] bg-black/10 text-black/25 cursor-not-allowed"
+              >
+                Upload a photo to start →
+              </button>
+            )}
           </motion.div>
         ) : (
           /* ──────── RESULTS PHASE ──────── */

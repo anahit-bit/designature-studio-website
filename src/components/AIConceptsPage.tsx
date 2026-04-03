@@ -2021,7 +2021,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                         </p>
                         {standaloneShoppingImage ? (
                           <div className="flex items-center gap-4">
-                            <img src={standaloneShoppingImage} className="w-16 h-16 object-cover border border-black/10 flex-shrink-0" alt="Shopping source" />
+                            <img src={standaloneShoppingImage} className="w-28 h-28 object-cover border border-black/10 flex-shrink-0" alt="Shopping source" />
                             <div className="flex-1">
                               <p className="text-[9px] text-black/40 uppercase tracking-widest mb-2">{t('ai.shop.imageReady')}</p>
                               <div className="flex gap-2">
