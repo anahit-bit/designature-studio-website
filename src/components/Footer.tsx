@@ -79,10 +79,7 @@ const Footer: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          email: normalizedEmail,
-          country: navigator.language?.split('-')[1]?.toUpperCase() || '',
-        }),
+        body: JSON.stringify({ email: normalizedEmail }),
       });
 
       if (response.ok) {

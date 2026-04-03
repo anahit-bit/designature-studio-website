@@ -691,7 +691,7 @@ async function startServer() {
 
   // ── POST /api/newsletter/subscribe — append email to newsletter sheet ──
   app.post("/api/newsletter/subscribe", async (req, res) => {
-    const { email, country } = req.body || {};
+    const { email } = req.body || {};
 
     if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       return res.status(400).json({ error: "Invalid email" });
@@ -735,6 +735,17 @@ async function startServer() {
       const sheetTitle = meta.data.sheets?.[0]?.properties?.title;
       if (!sheetTitle) throw new Error("Could not read sheet title");
 
+      // Detect country server-side from IP (accurate, not browser language)
+      let detectedCountry = '';
+      try {
+        const rawIp = (req.headers['x-forwarded-for'] as string || req.ip || '').split(',')[0].trim();
+        const isLocal = !rawIp || rawIp === '127.0.0.1' || rawIp === '::1' || rawIp.startsWith('192.168.') || rawIp.startsWith('10.');
+        if (!isLocal) {
+          const geoRes = await fetch(`https://ipapi.co/${rawIp}/country/`);
+          if (geoRes.ok) detectedCountry = (await geoRes.text()).trim();
+        }
+      } catch { /* non-fatal — country stays empty */ }
+
       const now = new Date().toISOString();
       await sheetsApi.spreadsheets.values.append({
         spreadsheetId,
@@ -743,9 +754,9 @@ async function startServer() {
         insertDataOption: "INSERT_ROWS",
         requestBody: {
           values: [[
-            now,                                                       // created_at
-            email.trim().toLowerCase(),                                // email
-            typeof country === "string" ? country.trim() : "",        // country
+            now,                         // created_at
+            email.trim().toLowerCase(),  // email
+            detectedCountry,             // country (from IP)
           ]],
         },
       });
