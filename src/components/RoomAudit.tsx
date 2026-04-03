@@ -334,49 +334,30 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                   Upload your room
                 </span>
               </div>
-              <input
-                id="audit-room-upload"
-                type="file"
-                className="hidden"
-                accept="image/*"
-                onChange={handleFileChange}
-              />
-              {roomImage ? (
-                <div className="flex items-center gap-4">
-                  <img src={roomImage} className="w-28 h-28 object-cover border border-black/10 flex-shrink-0" alt="Room to audit" />
-                  <div className="flex-1">
-                    <p className="text-[9px] text-black/40 uppercase tracking-widest mb-2">Image ready</p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleAudit}
-                        disabled={isProcessing || !canAudit}
-                        className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.25em] px-5 py-3 transition-all ${
-                          isProcessing || !canAudit
-                            ? 'bg-black/10 text-black/25 cursor-not-allowed'
-                            : 'bg-black text-white hover:bg-black/80'
-                        }`}
-                      >
-                        {isProcessing ? (
-                          <>
-                            <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                            Analyzing...
-                          </>
-                        ) : (
-                          '◎ Audit my room'
-                        )}
-                      </button>
-                      <label htmlFor="audit-room-upload" className="text-[9px] text-black/30 uppercase tracking-widest border border-black/10 px-3 py-3 hover:text-black hover:border-black/40 transition-all cursor-pointer">
+              <label htmlFor="audit-room-upload" className="block cursor-pointer">
+                <input id="audit-room-upload" type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+                <div
+                  className={`relative overflow-hidden border transition-colors ${roomImage ? 'border-black' : 'border-dashed border-black/20 hover:border-black/50'}`}
+                  style={{ aspectRatio: roomAspectRatio }}
+                >
+                  {roomImage ? (
+                    <>
+                      <img src={roomImage} className="w-full h-full object-cover" alt="Room to audit" />
+                      <div className="absolute bottom-0 inset-x-0 bg-black/60 py-2 px-3 text-[8px] font-bold uppercase tracking-widest text-white text-center">
                         Change
-                      </label>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-50">
+                      <div className="w-9 h-9 border border-black/15 flex items-center justify-center text-black/25 text-xl font-thin">⌂</div>
+                      <span className="text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/35">
+                        Upload room photo
+                      </span>
+                      <span className="text-[8px] text-black/20 uppercase tracking-widest">JPG, PNG · max 10MB</span>
                     </div>
-                  </div>
+                  )}
                 </div>
-              ) : (
-                <label htmlFor="audit-room-upload" className="flex items-center gap-3 border border-dashed border-black/20 hover:border-black/50 bg-white px-5 py-4 cursor-pointer transition-colors w-fit">
-                  <Upload className="w-4 h-4 text-black/30" />
-                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/50">+ Upload room photo</span>
-                </label>
-              )}
+              </label>
             </div>
 
             <div className="h-px bg-black/6" />
