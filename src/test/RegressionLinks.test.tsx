@@ -71,7 +71,7 @@ describe('Regression: links and email flows', () => {
         '/api/newsletter/subscribe',
         expect.objectContaining({
           method: 'POST',
-          body: expect.stringContaining('"email":"qa@example.com"'),
+          body: JSON.stringify({ email: 'qa@example.com', country: 'US' }),
         })
       );
     });

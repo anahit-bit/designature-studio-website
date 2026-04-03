@@ -81,9 +81,7 @@ const Footer: React.FC = () => {
         },
         body: JSON.stringify({
           email: normalizedEmail,
-          source: 'footer',
           country: navigator.language?.split('-')[1]?.toUpperCase() || '',
-          tag: 'newsletter',
         }),
       });
 

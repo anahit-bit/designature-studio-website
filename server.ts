@@ -691,7 +691,7 @@ async function startServer() {
 
   // ── POST /api/newsletter/subscribe — append email to newsletter sheet ──
   app.post("/api/newsletter/subscribe", async (req, res) => {
-    const { email, source, country, tag } = req.body || {};
+    const { email, country } = req.body || {};
 
     if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       return res.status(400).json({ error: "Invalid email" });
@@ -738,16 +738,14 @@ async function startServer() {
       const now = new Date().toISOString();
       await sheetsApi.spreadsheets.values.append({
         spreadsheetId,
-        range: `${sheetTitle}!A:E`,
+        range: `${sheetTitle}!A:C`,
         valueInputOption: "RAW",
         insertDataOption: "INSERT_ROWS",
         requestBody: {
           values: [[
-            now,                                          // created_at
-            email.trim().toLowerCase(),                   // email
-            typeof source === "string" ? source.trim() : "footer",  // source
-            typeof country === "string" ? country.trim() : "",       // country
-            typeof tag === "string" ? tag.trim() : "newsletter",     // tag
+            now,                                                       // created_at
+            email.trim().toLowerCase(),                                // email
+            typeof country === "string" ? country.trim() : "",        // country
           ]],
         },
       });
