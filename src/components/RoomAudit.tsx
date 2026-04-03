@@ -447,52 +447,42 @@ Output ONLY valid JSON with no markdown fences, no explanation:
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4 }}
-            className="flex flex-col"
+            className="flex flex-col lg:flex-row"
           >
-            {/* Room image banner */}
-            {roomImage && (
-              <div className="relative">
-                <img
-                  src={roomImage}
-                  className="w-full object-cover"
-                  style={{ maxHeight: '280px' }}
-                  alt="Audited room"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                <div className="absolute bottom-4 left-6 right-6 flex items-end justify-between">
-                  <div>
-                    <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-white/50 mb-1">
-                      Room Audit Report
-                    </p>
-                    <p className="text-[9px] text-white/40 uppercase tracking-widest">
-                      AI · Gemini
-                    </p>
+            {/* ── LEFT: Photo + overall score ── */}
+            <div className="lg:w-[340px] xl:w-[380px] flex-shrink-0 flex flex-col">
+              {roomImage && (
+                <div className="relative overflow-hidden" style={{ aspectRatio: roomAspectRatio }}>
+                  <img src={roomImage} className="w-full h-full object-cover" alt="Audited room" />
+                  <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent px-5 py-4">
+                    <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-white/50">Room Audit Report</p>
+                    <p className="text-[8px] text-white/30 uppercase tracking-widest mt-0.5">AI · Gemini</p>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Overall score card */}
-            <div className="px-8 py-6 border-b border-black/8">
-              <div className="flex items-center gap-6">
-                {/* Big score */}
-                <div className="flex-shrink-0 text-center">
-                  <div className={`text-5xl font-display font-bold tracking-tight ${overallGrade(result.overallScore).color}`}>
+              {/* Overall score */}
+              <div className="p-6 border-b border-black/8 border-r border-r-black/8">
+                <div className="flex items-end gap-3 mb-4">
+                  <div className={`text-6xl font-display font-bold tracking-tight leading-none ${overallGrade(result.overallScore).color}`}>
                     {result.overallScore}
                   </div>
-                  <div className={`text-sm font-bold ${overallGrade(result.overallScore).color}`}>
-                    {overallGrade(result.overallScore).letter}
-                  </div>
-                  <div className="text-[7px] text-black/25 uppercase tracking-widest mt-1">
-                    out of 100
+                  <div className="pb-1">
+                    <div className={`text-xl font-bold ${overallGrade(result.overallScore).color}`}>
+                      {overallGrade(result.overallScore).letter}
+                    </div>
+                    <div className="text-[7px] text-black/25 uppercase tracking-widest">/ 100</div>
                   </div>
                 </div>
+                <p className="text-[8px] text-black/30 leading-relaxed">
+                  Weighted average of 6 dimensions (each scored /10), scaled to 100.
+                </p>
 
-                {/* Mini dimension bars */}
-                <div className="flex-1 flex flex-col gap-1.5">
+                {/* Mini bars */}
+                <div className="mt-4 flex flex-col gap-1.5">
                   {result.dimensions.map((dim, i) => (
                     <div key={i} className="flex items-center gap-2">
-                      <span className="text-[8px] text-black/40 w-[90px] truncate uppercase tracking-wide">
+                      <span className="text-[8px] text-black/40 w-[70px] truncate uppercase tracking-wide">
                         {dim.label.split(' ')[0]}
                       </span>
                       <div className="flex-1 h-1.5 bg-black/6 rounded-full overflow-hidden">
@@ -503,82 +493,77 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                           className={`h-full rounded-full ${scoreColor(dim.score)}`}
                         />
                       </div>
-                      <span className={`text-[9px] font-bold w-4 text-right ${scoreTextColor(dim.score)}`}>
-                        {dim.score}
+                      <span className={`text-[9px] font-bold w-8 text-right ${scoreTextColor(dim.score)}`}>
+                        {dim.score}/10
                       </span>
                     </div>
                   ))}
                 </div>
+
+                <button
+                  onClick={handleReset}
+                  className="mt-5 w-full flex items-center justify-center gap-2 py-2.5 border border-black/15 text-[9px] font-bold uppercase tracking-[0.25em] text-black/40 hover:border-black/40 hover:text-black/70 transition-all"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  Audit another room
+                </button>
               </div>
             </div>
 
-            {/* Detailed dimensions */}
-            <div className="px-8 py-6 space-y-4">
-              <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/25 mb-4">
-                Detailed breakdown
-              </p>
-              {result.dimensions.map((dim, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.05 * i }}
-                  className="flex gap-3"
-                >
-                  <div className="flex-shrink-0 w-8 text-right">
-                    <span className={`text-base font-bold ${scoreTextColor(dim.score)}`}>
-                      {dim.score}
-                    </span>
-                  </div>
-                  <div className="flex-1 pb-4 border-b border-black/6 last:border-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className={`w-2 h-2 rounded-full ${scoreColor(dim.score)}`} />
-                      <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-black/70">
-                        {dim.label}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-black/50 leading-relaxed">
-                      {dim.verdict}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Fix Now section */}
-            <div className="mx-8 mb-6 bg-black p-6">
-              <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-white/40 mb-4">
-                Fix now — Top 3 improvements
-              </p>
-              <div className="space-y-3">
-                {result.fixNow.map((fix, i) => (
+            {/* ── RIGHT: Detailed breakdown + Fix Now ── */}
+            <div className="flex-1 flex flex-col overflow-y-auto">
+              {/* Detailed dimensions */}
+              <div className="px-8 py-6 space-y-4">
+                <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/25 mb-4">
+                  Detailed breakdown
+                </p>
+                {result.dimensions.map((dim, i) => (
                   <motion.div
                     key={i}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 + 0.1 * i }}
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.05 * i }}
                     className="flex gap-3"
                   >
-                    <div className="w-5 h-5 bg-white text-black text-[9px] flex items-center justify-center font-bold flex-shrink-0">
-                      {i + 1}
+                    <div className="flex-shrink-0 text-right w-10">
+                      <span className={`text-base font-bold ${scoreTextColor(dim.score)}`}>{dim.score}</span>
+                      <span className="text-[7px] text-black/20 block">/ 10</span>
                     </div>
-                    <p className="text-[11px] text-white/80 leading-relaxed pt-0.5">
-                      {fix}
-                    </p>
+                    <div className="flex-1 pb-4 border-b border-black/6 last:border-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className={`w-2 h-2 rounded-full ${scoreColor(dim.score)}`} />
+                        <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-black/70">
+                          {dim.label}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-black/50 leading-relaxed">{dim.verdict}</p>
+                    </div>
                   </motion.div>
                 ))}
               </div>
-            </div>
 
-            {/* Reset button */}
-            <div className="px-8 pb-8">
-              <button
-                onClick={handleReset}
-                className="w-full flex items-center justify-center gap-2 py-3 border border-black/15 text-[9px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black/70 transition-all"
-              >
-                <RefreshCw className="w-3 h-3" />
-                Audit another room
-              </button>
+              {/* Fix Now */}
+              <div className="mx-8 mb-8 bg-black p-6">
+                <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-white/40 mb-4">
+                  Fix now — Top 3 improvements
+                </p>
+                <div className="space-y-3">
+                  {result.fixNow.map((fix, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4 + 0.1 * i }}
+                      className="flex gap-3"
+                    >
+                      <div className="w-5 h-5 bg-white text-black text-[9px] flex items-center justify-center font-bold flex-shrink-0">
+                        {i + 1}
+                      </div>
+                      <p className="text-[11px] text-white/80 leading-relaxed pt-0.5">{fix}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
             </div>
           </motion.div>
         )}
