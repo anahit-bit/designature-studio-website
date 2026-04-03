@@ -676,6 +676,69 @@ async function startServer() {
     }
   });
 
+  // ── POST /api/newsletter/subscribe — append email to newsletter sheet ──
+  app.post("/api/newsletter/subscribe", async (req, res) => {
+    const { email } = req.body || {};
+
+    if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      return res.status(400).json({ error: "Invalid email" });
+    }
+
+    const spreadsheetId = "1ADcawOqI2VElxwPSSuL-PGX3OjHehacod_ApDPRqFo4";
+    const serviceAccountJson = (process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON || "").trim();
+    const keyFile = (process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_KEYFILE || "").trim();
+
+    if (!serviceAccountJson && !keyFile) {
+      console.warn("Newsletter subscribe: missing service account credentials");
+      return res.status(503).json({ error: "Sheet integration not configured" });
+    }
+
+    try {
+      let credentials: any;
+      if (serviceAccountJson) {
+        credentials = JSON.parse(serviceAccountJson);
+        if (typeof credentials?.private_key === "string" && credentials.private_key.includes("\\n")) {
+          credentials.private_key = credentials.private_key.replace(/\\n/g, "\n");
+        }
+      } else {
+        credentials = JSON.parse(readFileSync(keyFile, "utf-8"));
+        if (typeof credentials?.private_key === "string" && credentials.private_key.includes("\\n")) {
+          credentials.private_key = credentials.private_key.replace(/\\n/g, "\n");
+        }
+      }
+
+      const jwtClient = new google.auth.JWT({
+        email: credentials.client_email,
+        key: credentials.private_key,
+        scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+      });
+
+      const sheetsApi = google.sheets({ version: "v4", auth: jwtClient });
+
+      const meta = await sheetsApi.spreadsheets.get({
+        spreadsheetId,
+        fields: "sheets(properties(title))",
+      });
+      const sheetTitle = meta.data.sheets?.[0]?.properties?.title;
+      if (!sheetTitle) throw new Error("Could not read sheet title");
+
+      await sheetsApi.spreadsheets.values.append({
+        spreadsheetId,
+        range: `${sheetTitle}!A:B`,
+        valueInputOption: "RAW",
+        insertDataOption: "INSERT_ROWS",
+        requestBody: {
+          values: [[email.trim().toLowerCase(), new Date().toISOString()]],
+        },
+      });
+
+      res.json({ ok: true });
+    } catch (err: any) {
+      console.error("Newsletter subscribe error:", err);
+      res.status(500).json({ error: "Failed to save subscription" });
+    }
+  });
+
   // ── POST /api/admin/reset-user — reset generations for testing ──
   app.post("/api/admin/reset-user", (req, res) => {
     const { email, count = 3 } = req.body;

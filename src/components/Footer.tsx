@@ -74,15 +74,12 @@ const Footer: React.FC = () => {
     setStatus('loading');
 
     try {
-      const response = await fetch('https://api.sheetbest.com/sheets/95dd9d19-701f-44a3-aab9-58cffd572606', {
+      const response = await fetch('/api/newsletter/subscribe', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          "Email": normalizedEmail,
-          "Date": new Date().toLocaleString(),
-        }),
+        body: JSON.stringify({ email: normalizedEmail }),
       });
 
       if (response.ok) {
