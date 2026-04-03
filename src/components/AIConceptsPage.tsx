@@ -2022,65 +2022,67 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                         <p className="text-[10px] text-black/50 leading-relaxed mb-4">
                           {t('ai.shop.anyInteriorDesc')}
                         </p>
-                        <label htmlFor="standalone-shop-upload" className="block cursor-pointer">
-                          <input
-                            id="standalone-shop-upload"
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              const reader = new FileReader();
-                              reader.onload = (ev) => {
-                                const dataUrl = ev.target?.result as string;
-                                setStandaloneShoppingImage(dataUrl);
-                                const img = new Image();
-                                img.onload = () => {
-                                  const ratio = img.width / img.height;
-                                  if (ratio > 1.4) setStandaloneShoppingAspectRatio('16/9');
-                                  else if (ratio > 1.1) setStandaloneShoppingAspectRatio('4/3');
-                                  else if (ratio > 0.85) setStandaloneShoppingAspectRatio('1/1');
-                                  else setStandaloneShoppingAspectRatio('3/4');
+                        <div className="w-[316px] xl:w-[356px]">
+                          <label htmlFor="standalone-shop-upload" className="block cursor-pointer">
+                            <input
+                              id="standalone-shop-upload"
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const reader = new FileReader();
+                                reader.onload = (ev) => {
+                                  const dataUrl = ev.target?.result as string;
+                                  setStandaloneShoppingImage(dataUrl);
+                                  const img = new Image();
+                                  img.onload = () => {
+                                    const ratio = img.width / img.height;
+                                    if (ratio > 1.4) setStandaloneShoppingAspectRatio('16/9');
+                                    else if (ratio > 1.1) setStandaloneShoppingAspectRatio('4/3');
+                                    else if (ratio > 0.85) setStandaloneShoppingAspectRatio('1/1');
+                                    else setStandaloneShoppingAspectRatio('3/4');
+                                  };
+                                  img.src = dataUrl;
                                 };
-                                img.src = dataUrl;
-                              };
-                              reader.readAsDataURL(file);
-                              e.target.value = '';
-                            }}
-                          />
-                          <div
-                            className={`relative overflow-hidden border transition-colors ${standaloneShoppingImage ? 'border-black' : 'border-dashed border-black/20 hover:border-black/50'}`}
-                            style={{ aspectRatio: standaloneShoppingAspectRatio }}
-                          >
-                            {standaloneShoppingImage ? (
-                              <>
-                                <img src={standaloneShoppingImage} className="w-full h-full object-cover" alt="Shopping source" />
-                                <div className="absolute bottom-0 inset-x-0 bg-black/60 py-2 px-3 text-[8px] font-bold uppercase tracking-widest text-white text-center">
-                                  {t('btn.change')}
+                                reader.readAsDataURL(file);
+                                e.target.value = '';
+                              }}
+                            />
+                            <div
+                              className={`relative overflow-hidden border transition-colors ${standaloneShoppingImage ? 'border-black' : 'border-dashed border-black/20 hover:border-black/50'}`}
+                              style={{ aspectRatio: standaloneShoppingAspectRatio }}
+                            >
+                              {standaloneShoppingImage ? (
+                                <>
+                                  <img src={standaloneShoppingImage} className="w-full h-full object-cover" alt="Shopping source" />
+                                  <div className="absolute bottom-0 inset-x-0 bg-black/60 py-2 px-3 text-[8px] font-bold uppercase tracking-widest text-white text-center">
+                                    {t('btn.change')}
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-50">
+                                  <div className="w-9 h-9 border border-black/15 flex items-center justify-center text-black/25 text-xl font-thin">⌂</div>
+                                  <span className="text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/35">
+                                    {t('ai.shop.uploadPhoto')}
+                                  </span>
+                                  <span className="text-[8px] text-black/20 uppercase tracking-widest">JPG, PNG · max 10MB</span>
                                 </div>
-                              </>
-                            ) : (
-                              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-50">
-                                <div className="w-9 h-9 border border-black/15 flex items-center justify-center text-black/25 text-xl font-thin">⌂</div>
-                                <span className="text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/35">
-                                  {t('ai.shop.uploadPhoto')}
-                                </span>
-                                <span className="text-[8px] text-black/20 uppercase tracking-widest">JPG, PNG · max 10MB</span>
-                              </div>
-                            )}
-                          </div>
-                        </label>
-                        {standaloneShoppingImage && (
-                          <div className="flex gap-2 mt-3">
-                            <button onClick={focusShoppingTabAndRunSearch} className="flex-1 flex items-center justify-center gap-2 bg-black text-white text-[10px] font-bold uppercase tracking-[0.25em] py-3 hover:bg-black/80 transition-all">
-                              🛒 {t('ai.shop.findProducts')}
-                            </button>
-                            <button onClick={() => setStandaloneShoppingImage(null)} className="text-[9px] text-black/30 uppercase tracking-widest border border-black/10 px-4 hover:text-black hover:border-black/40 transition-all">
-                              {t('ai.shop.change')}
-                            </button>
-                          </div>
-                        )}
+                              )}
+                            </div>
+                          </label>
+                          {standaloneShoppingImage && (
+                            <div className="flex gap-2 mt-3">
+                              <button onClick={focusShoppingTabAndRunSearch} className="flex-1 flex items-center justify-center gap-2 bg-black text-white text-[10px] font-bold uppercase tracking-[0.25em] py-3 hover:bg-black/80 transition-all">
+                                🛒 {t('ai.shop.findProducts')}
+                              </button>
+                              <button onClick={() => setStandaloneShoppingImage(null)} className="text-[9px] text-black/30 uppercase tracking-widest border border-black/10 px-4 hover:text-black hover:border-black/40 transition-all">
+                                {t('ai.shop.change')}
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
