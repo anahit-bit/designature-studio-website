@@ -115,11 +115,11 @@ const PricingSection: React.FC<{ compact?: boolean }> = ({ compact }) => {
           {/* DESIGN */}
           <div className="bg-[#0a0a0a] border-r border-white/8 p-8 flex flex-col">
             <span className="text-[8px] font-bold uppercase tracking-[0.15em] px-2 py-1 bg-[#0047AB] text-white w-fit mb-5">Most popular</span>
-            <div className="mb-2">
-              <span className="text-[34px] font-bold tracking-tight leading-none text-white" style={{ filter: 'blur(7px)', userSelect: 'none' }}>$9</span>
+            <div className="mb-4">
+              <span className="text-[34px] font-bold tracking-tight leading-none text-white">$19</span>
               <span className="text-[12px] text-white/30 ml-1">/ month</span>
             </div>
-            <div className="text-[8px] font-bold uppercase tracking-[0.2em] text-white/30 mb-3">Coming soon</div>
+            <div className="h-[22px] mb-3" />
             <div className="text-[13px] font-medium text-white mb-1">Design</div>
             <div className="text-[10px] text-white/35 leading-relaxed mb-5 pb-5 border-b border-white/8">
               For homeowners actively working on one space.
@@ -138,18 +138,17 @@ const PricingSection: React.FC<{ compact?: boolean }> = ({ compact }) => {
             </div>
             <div className="mt-auto pt-4">
               <NotifyButton dark />
-              <p className="text-[8px] text-white/20 text-center mt-2 tracking-[0.08em]">Price shown when launched</p>
             </div>
           </div>
 
           {/* STUDIO */}
           <div className="p-8 flex flex-col">
             <span className="text-[8px] font-bold uppercase tracking-[0.15em] px-2 py-1 bg-black/5 text-black/40 w-fit mb-5">Studio</span>
-            <div className="mb-2">
-              <span className="text-[34px] font-bold tracking-tight leading-none text-[#0047AB]" style={{ filter: 'blur(7px)', userSelect: 'none' }}>$24</span>
+            <div className="mb-4">
+              <span className="text-[34px] font-bold tracking-tight leading-none text-[#0047AB]">$39</span>
               <span className="text-[12px] text-black/40 ml-1">/ month</span>
             </div>
-            <div className="text-[8px] font-bold uppercase tracking-[0.2em] text-black/30 mb-3">Coming soon</div>
+            <div className="h-[22px] mb-3" />
             <div className="text-[13px] font-medium text-black mb-1">Studio</div>
             <div className="text-[10px] text-black/50 leading-relaxed mb-5 pb-5 border-b border-black/8">
               For designers or anyone renovating multiple spaces.
@@ -169,7 +168,6 @@ const PricingSection: React.FC<{ compact?: boolean }> = ({ compact }) => {
             </div>
             <div className="mt-auto pt-4">
               <NotifyButton />
-              <p className="text-[8px] text-black/30 text-center mt-2 tracking-[0.08em]">Price shown when launched</p>
             </div>
           </div>
 
