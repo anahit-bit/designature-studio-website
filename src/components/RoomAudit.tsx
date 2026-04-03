@@ -334,46 +334,26 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                   Upload your room
                 </span>
               </div>
-              <label htmlFor="audit-room-upload" className="block cursor-pointer">
-                <input
-                  id="audit-room-upload"
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                />
-                <div
-                  className={`relative overflow-hidden border transition-colors ${
-                    roomImage
-                      ? 'border-black'
-                      : 'border-dashed border-black/20 hover:border-black/50'
-                  }`}
-                  style={{ aspectRatio: roomAspectRatio }}
-                >
-                  {roomImage ? (
-                    <>
-                      <img
-                        src={roomImage}
-                        className="w-full h-full object-cover"
-                        alt="Room to audit"
-                      />
-                      <div className="absolute bottom-0 inset-x-0 bg-black/60 py-2 px-3 text-[8px] font-bold uppercase tracking-widest text-white text-center">
-                        Change photo
-                      </div>
-                    </>
-                  ) : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-50">
-                      <Upload className="w-6 h-6 text-black/20" />
-                      <span className="text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/35">
-                        Upload room photo
-                      </span>
-                      <span className="text-[8px] text-black/20 uppercase tracking-widest">
-                        JPG, PNG · max 10MB
-                      </span>
-                    </div>
-                  )}
+              <input
+                id="audit-room-upload"
+                type="file"
+                className="hidden"
+                accept="image/*"
+                onChange={handleFileChange}
+              />
+              {roomImage ? (
+                <div className="relative overflow-hidden border border-black" style={{ aspectRatio: roomAspectRatio }}>
+                  <img src={roomImage} className="w-full h-full object-cover" alt="Room to audit" />
+                  <label htmlFor="audit-room-upload" className="absolute bottom-0 inset-x-0 bg-black/60 py-2 px-3 text-[8px] font-bold uppercase tracking-widest text-white text-center cursor-pointer hover:bg-black/80 transition-colors">
+                    Change photo
+                  </label>
                 </div>
-              </label>
+              ) : (
+                <label htmlFor="audit-room-upload" className="flex items-center gap-3 border border-dashed border-black/20 hover:border-black/50 bg-white px-5 py-4 cursor-pointer transition-colors w-fit">
+                  <Upload className="w-4 h-4 text-black/30" />
+                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/50">+ Upload room photo</span>
+                </label>
+              )}
             </div>
 
             <div className="h-px bg-black/6" />
