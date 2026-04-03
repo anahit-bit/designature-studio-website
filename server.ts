@@ -42,17 +42,24 @@ interface User {
 function normalizeUserForFreeTier(user: User): { user: User; changed: boolean } {
   let changed = false;
   const u = { ...user };
-  if (!isConceptTestAccountEmail(u.email) && u.generationsLeft > FREE_TIER_MAX_CONCEPTS) {
+  const isOwner = isConceptTestAccountEmail(u.email);
+  if (!isOwner && u.generationsLeft > FREE_TIER_MAX_CONCEPTS) {
     u.generationsLeft = FREE_TIER_MAX_CONCEPTS;
     changed = true;
   }
-  if (typeof u.shoppingListsLeft !== "number" || Number.isNaN(u.shoppingListsLeft)) {
-    u.shoppingListsLeft = FREE_TIER_MAX_SHOPPING_LISTS;
-    changed = true;
-  }
-  if (u.shoppingListsLeft > FREE_TIER_MAX_SHOPPING_LISTS) {
-    u.shoppingListsLeft = FREE_TIER_MAX_SHOPPING_LISTS;
-    changed = true;
+  if (isOwner) {
+    // Owner account gets unlimited everything — never clamp
+    if (u.generationsLeft !== 999) { u.generationsLeft = 999; changed = true; }
+    if (u.shoppingListsLeft !== 999) { u.shoppingListsLeft = 999; changed = true; }
+  } else {
+    if (typeof u.shoppingListsLeft !== "number" || Number.isNaN(u.shoppingListsLeft)) {
+      u.shoppingListsLeft = FREE_TIER_MAX_SHOPPING_LISTS;
+      changed = true;
+    }
+    if (u.shoppingListsLeft > FREE_TIER_MAX_SHOPPING_LISTS) {
+      u.shoppingListsLeft = FREE_TIER_MAX_SHOPPING_LISTS;
+      changed = true;
+    }
   }
   return { user: u, changed };
 }
@@ -408,6 +415,7 @@ async function startServer() {
         nowIso,
       }).catch((err) => console.error("Free-tier Google Sheets upsert error:", err));
 
+      const ownerLogin = isConceptTestAccountEmail(user.email);
       res.json({
         token,
         user: {
@@ -416,6 +424,8 @@ async function startServer() {
           picture: user.picture,
           generationsLeft: user.generationsLeft,
           shoppingListsLeft: user.shoppingListsLeft,
+          isPaid: ownerLogin ? true : false,
+          auditsLeft: ownerLogin ? 999 : 0,
         },
       });
     } catch (err) {
@@ -442,12 +452,15 @@ async function startServer() {
       writeDB(db);
     }
 
+    const ownerAccount = isConceptTestAccountEmail(user.email);
     res.json({
       email: user.email,
       name: user.name,
       picture: user.picture,
       generationsLeft: user.generationsLeft,
       shoppingListsLeft: user.shoppingListsLeft,
+      isPaid: ownerAccount ? true : false,
+      auditsLeft: ownerAccount ? 999 : 0,
     });
   });
 
