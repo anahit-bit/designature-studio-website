@@ -1234,33 +1234,41 @@ Output ONLY valid JSON with no markdown fences, no explanation:
               </div>
             </div>
 
-            {/* Tool 4 — Room Audit (LIVE) */}
-            <div
-              onClick={() => { if (!(isProcessing || auditProcessing)) setActiveTool('audit'); }}
-              className={`group relative p-4 border-r border-black/10 transition-all ${
-                (isProcessing || auditProcessing) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-              } ${activeTool === 'audit' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
-              style={{ minHeight: '130px' }}
-            >
-              <div className={`text-[8px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'audit' ? 'text-white/40' : 'text-black/25'}`}>04</div>
-              <div className={`font-display text-base font-bold leading-tight mb-1 ${activeTool === 'audit' ? 'text-white' : 'text-black'}`}>{t('ai.roomAudit')}</div>
-              <div className={`text-[9px] leading-relaxed uppercase tracking-wide ${activeTool === 'audit' ? 'text-white/50' : 'text-black/40'}`}>
-                {t('ai.scoreSpace')}
-                {user && (
+            {/* Tool 4 — Room Audit (LIVE for paid/owner only, SOON for everyone else) */}
+            {user?.isPaid ? (
+              <div
+                onClick={() => { if (!(isProcessing || auditProcessing)) setActiveTool('audit'); }}
+                className={`group relative p-4 border-r border-black/10 transition-all ${
+                  (isProcessing || auditProcessing) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+                } ${activeTool === 'audit' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
+                style={{ minHeight: '130px' }}
+              >
+                <div className={`text-[8px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'audit' ? 'text-white/40' : 'text-black/25'}`}>04</div>
+                <div className={`font-display text-base font-bold leading-tight mb-1 ${activeTool === 'audit' ? 'text-white' : 'text-black'}`}>{t('ai.roomAudit')}</div>
+                <div className={`text-[9px] leading-relaxed uppercase tracking-wide ${activeTool === 'audit' ? 'text-white/50' : 'text-black/40'}`}>
+                  {t('ai.scoreSpace')}
                   <span className={`block mt-1 font-bold ${activeTool === 'audit' ? 'text-white' : 'text-black'}`}>
-                    · {user.generationsLeft} {t('ai.remaining')}
+                    · {user.auditsLeft === 999 ? 'Unlimited' : user.auditsLeft} {t('ai.remaining')}
                   </span>
-                )}
-                {!user && (
-                  <span className="block mt-1">· 3 {t('ai.toExplore')}</span>
-                )}
+                </div>
+                <div className="absolute bottom-3 right-3">
+                  <span className={`text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'audit' ? 'text-blue-200 bg-blue-900/30' : 'text-green-600 bg-green-50'}`}>
+                    {t('ai.nowActive')}
+                  </span>
+                </div>
               </div>
-              <div className="absolute bottom-3 right-3">
-                <span className={`text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'audit' ? 'text-blue-200 bg-blue-900/30' : 'text-green-600 bg-green-50'}`}>
-                  {t('ai.nowActive')}
-                </span>
+            ) : (
+              <div className="group relative bg-[#f7f6f4] p-4 border-r border-black/8 cursor-default" style={{ minHeight: '130px' }}>
+                <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-black/20 mb-3">04</div>
+                <div className="font-display text-base font-bold leading-tight mb-1 text-black/30">{t('ai.roomAudit')}</div>
+                <div className="text-[9px] text-black/20 leading-relaxed uppercase tracking-wide">
+                  {t('ai.scoreSpace')}
+                </div>
+                <div className="absolute bottom-3 right-3">
+                  <span className="text-[8px] font-bold uppercase tracking-wide text-black/20 bg-black/5 px-1.5 py-0.5">Soon</span>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Tool 5 — Design Brief (SOON) */}
             <div className="group relative bg-[#f7f6f4] p-4 border-r border-black/8 cursor-default" style={{ minHeight: '130px' }}>
@@ -1528,8 +1536,8 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         {/* ════ RIGHT CONTENT AREA ════ */}
         <div className="flex-grow bg-neutral-50 flex flex-col">
 
-          {/* ── 04 Room Audit ── */}
-          {activeTool === 'audit' && (
+          {/* ── 04 Room Audit ── paid/owner only ── */}
+          {activeTool === 'audit' && user?.isPaid && (
             <div id="room-audit-panel" className="flex-grow flex flex-col bg-white min-h-[50vh]">
               <RoomAudit
                 user={user ? { email: user.email, isPaid: user.isPaid, generationsLeft: user.generationsLeft } : null}

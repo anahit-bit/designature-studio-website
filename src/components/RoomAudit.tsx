@@ -264,7 +264,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
           Score your space
         </h3>
         <p className="text-sm text-black/30 uppercase tracking-[0.2em] leading-[2]">
-          Free · 3 audits · Instant results
+          Design & Studio plans · Instant results
         </p>
         {onRequestLogin && (
           <button
