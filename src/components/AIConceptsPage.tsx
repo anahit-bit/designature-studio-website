@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { ArrowLeft, Layout, Box, Palette, ArrowRight, CheckCircle2, X, Download, AlertCircle, RefreshCw, LogOut, FileDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleGenAI } from "@google/genai";
@@ -324,6 +324,8 @@ const AIConceptsPage: React.FC = () => {
   const [quizResult, setQuizResult] = useState<{ style: string; pct: number }[]>([]);
   const [quizImageReady, setQuizImageReady] = useState<boolean>(false);
   const [quizHistory, setQuizHistory] = useState<{ style: string; pct: number }[][]>([]);
+  const [selectedPrevResult, setSelectedPrevResult] = useState<number | null>(null);
+  const quizResultSavedRef = useRef(false);
   const [activeTool, setActiveTool] = useState<'quiz' | 'vision' | 'shopping' | 'audit'>('quiz');
   const [auditComplete, setAuditComplete] = useState(false);
   const [auditProcessing, setAuditProcessing] = useState(false);
@@ -945,9 +947,11 @@ Output ONLY the redesigned room image. No text.`;
   };
 
   const handleQuizReset = () => {
-    if (quizDone && quizResult.length > 0) {
+    if (quizDone && quizResult.length > 0 && !quizResultSavedRef.current) {
       setQuizHistory(prev => [quizResult, ...prev].slice(0, 3));
     }
+    quizResultSavedRef.current = false;
+    setSelectedPrevResult(null);
     setQuizStep(0);
     setQuizVotes({});
     setQuizDone(false);
@@ -960,7 +964,10 @@ Output ONLY the redesigned room image. No text.`;
   const handleApplyQuizStyle = () => {
     if (quizResult.length > 0) {
       setSelectedStyle(quizResult[0].style);
-      setQuizHistory(prev => [quizResult, ...prev].slice(0, 3));
+      if (!quizResultSavedRef.current) {
+        setQuizHistory(prev => [quizResult, ...prev].slice(0, 3));
+        quizResultSavedRef.current = true;
+      }
     }
     setActiveTool('vision');
     setTimeout(() => {
@@ -1835,7 +1842,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
                   {/* LEFT — room image (current during quiz, last loved when done) */}
                   <div className="flex-grow flex items-start justify-center bg-neutral-50 p-4 min-w-0">
-                    <div className="relative w-full">
+                    <div className="relative w-full max-w-[600px]">
                       <img
                         src={currentQuizImage.url}
                         alt={currentQuizStyle}
@@ -1930,24 +1937,45 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                           <>
                             <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/30">Previous results</p>
                             <div className="flex flex-col gap-3">
-                              {quizHistory.map((result, idx) => (
-                                <div key={idx} className="border border-black/8 p-4 bg-neutral-50">
-                                  <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-black/30 mb-3">Quiz {quizHistory.length - idx}</p>
-                                  <div className="flex flex-col gap-2">
-                                    {result.slice(0, 3).map((r, i) => (
-                                      <div key={r.style}>
-                                        <div className="flex items-center justify-between mb-1">
-                                          <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-black/70">{t(`ai.style.${r.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
-                                          <span className="text-[9px] font-bold text-[#0047AB]">{r.pct}%</span>
-                                        </div>
-                                        <div className="h-0.5 bg-black/8">
-                                          <div className="h-0.5" style={{ width: `${r.pct}%`, background: i === 0 ? '#0047AB' : i === 1 ? '#4477CC' : '#8899BB' }} />
+                              {quizHistory.map((result, idx) => {
+                                const isOpen = selectedPrevResult === idx;
+                                const topStyle = result[0]?.style;
+                                const desc = topStyle ? STYLE_DESCRIPTIONS[topStyle] : null;
+                                return (
+                                  <div key={idx}>
+                                    <button
+                                      onClick={() => setSelectedPrevResult(isOpen ? null : idx)}
+                                      className={`w-full text-left border p-4 transition-all ${isOpen ? 'border-[#0047AB] bg-white' : 'border-black/8 bg-neutral-50 hover:border-black/20'}`}
+                                    >
+                                      <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-black/30 mb-3">Quiz {quizHistory.length - idx}</p>
+                                      <div className="flex flex-col gap-2">
+                                        {result.slice(0, 3).map((r, i) => (
+                                          <div key={r.style}>
+                                            <div className="flex items-center justify-between mb-1">
+                                              <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-black/70">{t(`ai.style.${r.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
+                                              <span className="text-[9px] font-bold text-[#0047AB]">{r.pct}%</span>
+                                            </div>
+                                            <div className="h-0.5 bg-black/8">
+                                              <div className="h-0.5" style={{ width: `${r.pct}%`, background: i === 0 ? '#0047AB' : i === 1 ? '#4477CC' : '#8899BB' }} />
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </button>
+                                    {isOpen && desc && (
+                                      <div className="border border-t-0 border-[#0047AB]/30 p-4 bg-white">
+                                        <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#0047AB] mb-2">{topStyle}</p>
+                                        <p className="text-[10px] text-black/50 leading-relaxed mb-3">{desc.summary}</p>
+                                        <div className="flex flex-wrap gap-1">
+                                          {desc.elements.map(el => (
+                                            <span key={el} className="text-[7px] font-bold uppercase tracking-wide text-black/40 border border-black/10 px-2 py-0.5">{el}</span>
+                                          ))}
                                         </div>
                                       </div>
-                                    ))}
+                                    )}
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </>
                         )}
