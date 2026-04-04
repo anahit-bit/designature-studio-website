@@ -1558,22 +1558,20 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
           {/* Not logged in — right panel (vision only) */}
           {!authLoading && !user && activeTool === 'vision' && (
-            <div className="flex-grow flex flex-col items-center justify-center gap-6 p-16 text-center">
-              <div className="w-16 h-16 border border-black/8 flex items-center justify-center text-black/10 text-3xl">✦</div>
-              <h3 className="font-display text-3xl font-light text-black/30 tracking-tight">
-                {t('ai.unlockAll')}
+            <div className="flex-grow flex flex-col items-center justify-center gap-6 py-20 px-8 text-center">
+              <div className="w-16 h-16 border border-black/8 flex items-center justify-center text-black/10 text-3xl">◎</div>
+              <h3 className="font-display text-2xl font-light text-black/30 tracking-tight">
+                Transform your room
               </h3>
-              <p className="text-sm md:text-base uppercase tracking-[0.3em] text-black/20 leading-[2] text-center">
-                3 {t('ai.remaining')} · {t('ai.noCard')}
+              <p className="text-sm text-black/30 uppercase tracking-[0.2em] leading-[2]">
+                Free · 3 concepts · No card needed
               </p>
-                  <button
-                    onClick={() => {
-                  triggerGoogleSignIn();
-                    }}
-                    className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.25em] px-5 py-3 hover:bg-[#003d99] transition-colors"
-                  >
-                    {t('ai.signInVision')} →
-                  </button>
+              <button
+                onClick={() => triggerGoogleSignIn()}
+                className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.25em] px-5 py-3 hover:bg-[#003d99] transition-colors"
+              >
+                Sign in to start →
+              </button>
             </div>
           )}
 
@@ -1944,21 +1942,19 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
                 {/* Sign-in gate */}
                 {!authLoading && !user && (
-                  <div className="flex flex-col items-center justify-center gap-6 py-20 px-8 text-center bg-neutral-50">
-                    <div className="w-16 h-16 border border-black/8 flex items-center justify-center text-black/10 text-3xl">✦</div>
+                  <div className="flex flex-col items-center justify-center gap-6 py-20 px-8 text-center flex-grow bg-white">
+                    <div className="w-16 h-16 border border-black/8 flex items-center justify-center text-black/10 text-3xl">◎</div>
                     <h3 className="font-display text-2xl font-light text-black/30 tracking-tight">
-                      {t('ai.signInShopping')}
+                      Shop any interior
                     </h3>
                     <p className="text-sm text-black/30 uppercase tracking-[0.2em] leading-[2]">
-                      {t('ai.noCard')}
+                      Free · 3 shopping lists · PDF included
                     </p>
                     <button
-                      onClick={() => {
-                  triggerGoogleSignIn();
-                      }}
+                      onClick={() => triggerGoogleSignIn()}
                       className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.25em] px-5 py-3 hover:bg-[#003d99] transition-colors"
                     >
-                      {t('ai.signInShopping')} →
+                      Sign in to shop →
                     </button>
                   </div>
                 )}

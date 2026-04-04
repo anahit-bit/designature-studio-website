@@ -255,40 +255,25 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     );
   }
 
-  // Not logged in — mirrors AI Vision logged-out states
+  // Not logged in — matches Style Quiz / AI Vision / Shopping List logged-out pattern
   if (!user) {
     return (
-      <div className="flex w-full">
-        {/* Left panel — logged out placeholder */}
-        <div className="w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 border-r border-black/8 flex flex-col">
-          <div className="flex-grow p-8 flex flex-col gap-6 items-center justify-center text-center">
-            <div className="w-12 h-12 bg-black/5 text-black/20 flex items-center justify-center text-2xl rounded-full">✦</div>
-            <div>
-              <h3 className="font-display text-xl font-bold tracking-tight mb-2">Room Audit</h3>
-              <p className="text-xs text-black/40 leading-relaxed uppercase tracking-widest">
-                Sign in to unlock AI-powered room audits
-              </p>
-            </div>
-            {onRequestLogin && (
-              <button
-                onClick={onRequestLogin}
-                className="inline-flex items-center gap-2 bg-black text-white text-[9px] font-bold uppercase tracking-[0.25em] px-6 py-3 hover:bg-black/80 transition-colors"
-              >
-                Sign in to start
-              </button>
-            )}
-          </div>
-        </div>
-        {/* Right panel — empty state */}
-        <div className="flex-grow flex flex-col items-center justify-center gap-5 p-16 text-center">
-          <div className="w-16 h-16 border border-black/8 flex items-center justify-center text-black/10 text-3xl">✦</div>
-          <h3 className="font-display text-3xl font-light text-black/20 tracking-tight">
-            Your audit will appear here
-          </h3>
-          <p className="text-sm uppercase tracking-[0.3em] text-black/20 leading-[2]">
-            Sign in · Upload a photo · Score your room
-          </p>
-        </div>
+      <div className="flex flex-col items-center justify-center gap-6 py-20 px-8 text-center flex-grow">
+        <div className="w-16 h-16 border border-black/8 flex items-center justify-center text-black/10 text-3xl">◎</div>
+        <h3 className="font-display text-2xl font-light text-black/30 tracking-tight">
+          Score your space
+        </h3>
+        <p className="text-sm text-black/30 uppercase tracking-[0.2em] leading-[2]">
+          Free · 3 audits · Instant results
+        </p>
+        {onRequestLogin && (
+          <button
+            onClick={onRequestLogin}
+            className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.25em] px-5 py-3 hover:bg-[#003d99] transition-colors"
+          >
+            Sign in to audit →
+          </button>
+        )}
       </div>
     );
   }
