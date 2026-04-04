@@ -1810,7 +1810,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
                 {!quizDone ? (
                   <div className="flex flex-col lg:flex-row flex-grow">
-                    <div className="flex items-center justify-center bg-neutral-50 p-6">
+                    <div className="flex items-start justify-center bg-neutral-50 px-6 pb-6 pt-0">
                       <div className="relative w-full max-w-[480px]">
                         <img
                           src={currentQuizImage.url}
@@ -2311,6 +2311,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         </div>
       )}
 
+      <div className="border-t border-black/10" />
       <Footer />
 
       {/* ── LIGHTBOX ── */}
