@@ -1325,7 +1325,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       </div>
 
       {/* ── MAIN TWO-COLUMN ── */}
-      <div className="flex-grow flex flex-col">
+      <div className="flex-grow flex flex-col border-t border-black/10">
         <div className="max-w-[1600px] w-full mx-auto px-8 md:px-16 flex-grow flex flex-col lg:flex-row" style={{ minHeight: '75vh' }}>
 
         {/* ════ LEFT SIDEBAR ════ */}
@@ -1810,7 +1810,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
                 {!quizDone ? (
                   <div className="flex flex-col lg:flex-row flex-grow">
-                    <div className="flex items-start justify-center bg-neutral-50 px-6 pb-6 pt-0">
+                    <div className="flex items-start justify-center bg-neutral-50 p-6">
                       <div className="relative w-full max-w-[480px]">
                         <img
                           src={currentQuizImage.url}
