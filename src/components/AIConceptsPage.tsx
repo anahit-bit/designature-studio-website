@@ -1589,7 +1589,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                 onClick={() => triggerGoogleSignIn()}
                 className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.25em] px-5 py-3 hover:bg-[#003d99] transition-colors"
               >
-                Sign in to shop →
+                Shop any interior →
               </button>
             </div>
           )}
