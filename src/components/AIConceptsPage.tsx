@@ -325,6 +325,7 @@ const AIConceptsPage: React.FC = () => {
   const [quizImageReady, setQuizImageReady] = useState<boolean>(false);
   const [quizHistory, setQuizHistory] = useState<{ style: string; pct: number }[][]>([]);
   const [selectedPrevResult, setSelectedPrevResult] = useState<number | null>(null);
+  const [showQuizResults, setShowQuizResults] = useState(false);
   const quizResultSavedRef = useRef(false);
   const [activeTool, setActiveTool] = useState<'quiz' | 'vision' | 'shopping' | 'audit'>('quiz');
   const [auditComplete, setAuditComplete] = useState(false);
@@ -952,6 +953,7 @@ Output ONLY the redesigned room image. No text.`;
     }
     quizResultSavedRef.current = false;
     setSelectedPrevResult(null);
+    setShowQuizResults(false);
     setQuizStep(0);
     setQuizVotes({});
     setQuizDone(false);
@@ -1935,7 +1937,10 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                           </div>
                         ) : (
                           <>
-                            <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/30">Previous results</p>
+                            <div>
+                              <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/30 mb-1">Previous results</p>
+                              <p className="text-[8px] text-black/20 uppercase tracking-[0.15em]">Click a card to see the style</p>
+                            </div>
                             <div className="flex flex-col gap-3">
                               {quizHistory.map((result, idx) => {
                                 const isOpen = selectedPrevResult === idx;
@@ -2003,7 +2008,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                       </div>
                     ) : (
                       /* Results panel */
-                      <div className="p-8 flex flex-col gap-6 flex-grow">
+                      <div className="p-8 flex flex-col gap-5 flex-grow">
                         <div>
                           <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-[#0047AB] mb-2">{t('ai.quiz.designDNA')}</p>
                           <h2 className="font-display text-3xl font-bold tracking-tight mb-1">
@@ -2012,30 +2017,53 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                           </h2>
                           <p className="text-xs text-black/40 uppercase tracking-[0.2em]">{t('ai.quiz.basedOnRatings')}</p>
                         </div>
-                        <div className="flex flex-col gap-3">
-                          {quizResult.slice(0, 5).map((r, i) => (
-                            <div key={r.style}>
-                              <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-black">{t(`ai.style.${r.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
-                                <span className="text-[10px] font-bold text-[#0047AB]">{r.pct}%</span>
-                              </div>
-                              <div className="h-1 bg-black/8">
-                                <div className="h-1 transition-all duration-700" style={{ width: `${r.pct}%`, background: i === 0 ? '#0047AB' : i === 1 ? '#4477CC' : '#8899BB' }} />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="flex flex-col gap-2 mt-auto">
+
+                        <div className="flex flex-col gap-2">
                           <button onClick={handleApplyQuizStyle} className="w-full py-4 bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-black/80 transition-all flex items-center justify-center gap-2">
                             ✦ {t('ai.quiz.applyStyle').replace('{style}', t(`ai.style.${quizResult[0]?.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`))}
+                          </button>
+                          <button
+                            onClick={() => setShowQuizResults(v => !v)}
+                            className="w-full py-3.5 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all flex items-center justify-center gap-2"
+                          >
+                            {showQuizResults ? '↑ Hide results' : '↓ See quiz results'}
                           </button>
                           <button onClick={handleQuizReset} className="w-full py-3.5 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all">
                             {t('ai.quiz.retake')}
                           </button>
-                          <p className="text-[9px] text-black/20 uppercase tracking-widest leading-relaxed">
-                            {t('ai.quiz.stylePreselected').replace('{style}', t(`ai.style.${quizResult[0]?.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`))}
-                          </p>
                         </div>
+
+                        {showQuizResults && (
+                          <div className="flex flex-col gap-4 border-t border-black/8 pt-4">
+                            <div className="flex flex-col gap-3">
+                              {quizResult.slice(0, 5).map((r, i) => (
+                                <div key={r.style}>
+                                  <div className="flex items-center justify-between mb-1.5">
+                                    <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-black">{t(`ai.style.${r.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
+                                    <span className="text-[10px] font-bold text-[#0047AB]">{r.pct}%</span>
+                                  </div>
+                                  <div className="h-1 bg-black/8">
+                                    <div className="h-1 transition-all duration-700" style={{ width: `${r.pct}%`, background: i === 0 ? '#0047AB' : i === 1 ? '#4477CC' : '#8899BB' }} />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            {quizResult[0] && STYLE_DESCRIPTIONS[quizResult[0].style] && (() => {
+                              const desc = STYLE_DESCRIPTIONS[quizResult[0].style];
+                              return (
+                                <div className="border border-black/8 p-4 bg-neutral-50">
+                                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#0047AB] mb-2">{quizResult[0].style}</p>
+                                  <p className="text-[10px] text-black/50 leading-relaxed mb-3">{desc.summary}</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {desc.elements.map(el => (
+                                      <span key={el} className="text-[7px] font-bold uppercase tracking-wide text-black/40 border border-black/10 px-2 py-0.5">{el}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
