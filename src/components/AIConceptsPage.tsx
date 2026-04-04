@@ -1843,7 +1843,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                 <div className="flex flex-col lg:flex-row flex-grow">
 
                   {/* LEFT — room image (current during quiz, last loved when done) */}
-                  <div className="flex-grow flex items-start justify-center bg-neutral-50 p-4 min-w-0">
+                  <div className="flex-grow flex items-start justify-center bg-neutral-50 p-1 min-w-0">
                     <div className="relative w-full max-w-[600px]">
                       <img
                         src={currentQuizImage.url}

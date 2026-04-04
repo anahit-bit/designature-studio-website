@@ -140,8 +140,8 @@ describe('AIConceptsPage - Style Quiz', () => {
     // Based on translations: 'ai.quiz.designDNA' is "Your design DNA"
     expect(await screen.findByText(/^Your design DNA$/i)).toBeInTheDocument();
 
-    // Should show at least one style with percentage
-    expect((await screen.findAllByText(/%/))[0]).toBeInTheDocument();
+    // Should show the apply button (percentages are behind the "See quiz results" toggle)
+    expect(await screen.findByText(/Apply.*style.*AI Vision/i)).toBeInTheDocument();
   }, 30_000);
 
   it('switches to vision tool when clicking Apply Style', async () => {
