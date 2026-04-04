@@ -1648,7 +1648,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
             activeTool === 'quiz') &&
             !isProcessing && (
             <div className="flex-grow flex flex-col">
-              {(results.length > 0 || sessionConceptArchive.length > 0) && activeTool !== 'shopping' && (<>
+              {(results.length > 0 || sessionConceptArchive.length > 0) && activeTool !== 'shopping' && activeTool !== 'quiz' && (<>
               {results.length > 0 && (
               <div className="flex items-center justify-between px-8 py-4 bg-white border-b border-black/8">
                 <div className="flex items-center gap-2">
