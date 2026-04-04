@@ -1977,6 +1977,27 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                                 );
                               })}
                             </div>
+                            <div className="mt-auto pt-4">
+                              <button
+                                disabled={selectedPrevResult === null}
+                                onClick={() => {
+                                  if (selectedPrevResult !== null && quizHistory[selectedPrevResult]?.[0]) {
+                                    setSelectedStyle(quizHistory[selectedPrevResult][0].style);
+                                    setActiveTool('vision');
+                                    setTimeout(() => {
+                                      const el = document.getElementById('ai-concepts-tools');
+                                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                                    }, 50);
+                                  }
+                                }}
+                                className="w-full py-4 bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-black/80 transition-all flex items-center justify-center gap-2 disabled:opacity-20 disabled:cursor-not-allowed"
+                              >
+                                ✦ Apply selected style
+                              </button>
+                              {selectedPrevResult === null && (
+                                <p className="text-[8px] text-black/25 uppercase tracking-widest text-center mt-2">Select a quiz to apply</p>
+                              )}
+                            </div>
                           </>
                         )}
                       </div>
