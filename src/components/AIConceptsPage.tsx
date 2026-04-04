@@ -34,6 +34,18 @@ const VISION_STYLES = [
 type QuizRoom = { url: string; credit: string };
 type QuizRooms = Record<string, QuizRoom[]>;
 
+// ─── Style education descriptions ────────────────────────────────────────────
+const STYLE_DESCRIPTIONS: Record<string, { summary: string; elements: string[] }> = {
+  'Japandi':     { summary: 'A fusion of Japanese wabi-sabi and Scandinavian hygge. Celebrates imperfection, natural materials, and quiet beauty — everything earns its place.', elements: ['Neutral tones', 'Natural textures', 'Low furniture', 'Negative space'] },
+  'Modern':      { summary: 'Clean geometry, minimal ornament, honest materials. Form follows function — every line is intentional, every surface purposeful.', elements: ['Clean lines', 'Open layout', 'Monochrome palette', 'Statement lighting'] },
+  'Mid-Century': { summary: 'Born in the 1950s–60s, it balances organic forms with geometric precision. Warm woods and bold accents meet sculptural furniture.', elements: ['Tapered legs', 'Warm wood', 'Pops of colour', 'Organic shapes'] },
+  'Bohemian':    { summary: 'Layered, personal, and free-spirited. A curated mix of textiles, cultures, and eras that feels lived-in and full of stories.', elements: ['Mixed textiles', 'Plants & greenery', 'Global artefacts', 'Rich colour'] },
+  'Rustic':      { summary: 'Rooted in nature and craftsmanship. Raw edges, weathered surfaces, and handmade quality bring warmth and authenticity.', elements: ['Reclaimed wood', 'Stone & brick', 'Earthy tones', 'Handmade details'] },
+  'Art Deco':    { summary: 'Glamour, geometry, and opulence from the 1920s. Bold symmetry, luxe materials, and rich contrast make every room feel like a statement.', elements: ['Gold accents', 'Geometric patterns', 'Velvet & marble', 'High contrast'] },
+  'Industrial':  { summary: 'Celebrates the beauty of raw, unfinished spaces. Exposed structure and utilitarian materials are the decoration.', elements: ['Exposed brick', 'Raw metal', 'Concrete', 'Edison bulbs'] },
+  'Coastal':     { summary: 'Light, airy, and unhurried. Inspired by shorelines — bleached woods, sandy tones, and ocean blues create effortless calm.', elements: ['Sandy neutrals', 'Ocean blues', 'Natural linen', 'Weathered wood'] },
+};
+
 const QUIZ_ROOMS_FALLBACK: QuizRooms = {
   'Art Deco': [
     { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Art-Deco/1_kedomn.png', credit: 'Art Deco' },
@@ -309,6 +321,8 @@ const AIConceptsPage: React.FC = () => {
   const [quizDone, setQuizDone] = useState<boolean>(false);
   const [quizResult, setQuizResult] = useState<{ style: string; pct: number }[]>([]);
   const [quizImageReady, setQuizImageReady] = useState<boolean>(false);
+  const [ratedHistory, setRatedHistory] = useState<{ url: string; style: string; verdict: 'love' | 'skip' | 'no' }[]>([]);
+  const [selectedHistoryIndex, setSelectedHistoryIndex] = useState<number | null>(null);
   const [activeTool, setActiveTool] = useState<'quiz' | 'vision' | 'shopping' | 'audit'>('quiz');
   const [auditComplete, setAuditComplete] = useState(false);
   const [auditProcessing, setAuditProcessing] = useState(false);
@@ -910,8 +924,14 @@ Output ONLY the redesigned room image. No text.`;
     if (!quizImageReady) return;
 
     const style = quizSequence[quizStep];
+    const imageUrl = currentQuizImage.url;
     const newVotes = { ...quizVotes };
     if (vote === 'love') newVotes[style] = (newVotes[style] || 0) + 2;
+
+    // Track last 3 rated rooms for the history strip
+    setRatedHistory(prev => [{ url: imageUrl, style, verdict: vote }, ...prev].slice(0, 3));
+    setSelectedHistoryIndex(null);
+
     if (quizStep >= QUIZ_LENGTH - 1) {
       const total = Object.values(newVotes).reduce((a, b) => a + b, 0) || 1;
       const sorted = STYLES
@@ -936,6 +956,8 @@ Output ONLY the redesigned room image. No text.`;
     setQuizImageReady(false);
     setQuizSeed(Math.floor(Math.random() * 100));
     setQuizSequence(generateQuizSequence());
+    setRatedHistory([]);
+    setSelectedHistoryIndex(null);
   };
 
   const handleApplyQuizStyle = () => {
@@ -1878,33 +1900,81 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                           )}
                         </div>
                       </div>
-                      <div className="p-6 flex-grow overflow-y-auto">
-                        <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/30 mb-4">
-                          {t('ai.quiz.tasteSoFar')}
-                        </p>
-                        <div className="flex flex-col gap-2.5">
-                          {(() => {
-                            const total = Object.values(quizVotes).reduce((a: number, b: number) => a + b, 0) || 1;
-                            return STYLES
-                              .slice()
-                              .sort((a, b) => (quizVotes[b] || 0) - (quizVotes[a] || 0))
-                              .map(style => {
-                                const pct = Object.keys(quizVotes).length === 0 ? 0 : Math.round(((quizVotes[style] || 0) / total) * 100);
-                                const hasVotes = (quizVotes[style] || 0) > 0;
-                                return (
-                                  <div key={style}>
-                                    <div className="flex items-center justify-between mb-1">
-                                      <span className={`text-[8px] font-bold uppercase tracking-[0.08em] ${hasVotes ? 'text-black' : 'text-black/25'}`}>{t(`ai.style.${style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
-                                      <span className={`text-[8px] font-bold ${hasVotes ? 'text-[#0047AB]' : 'text-black/15'}`}>{pct}%</span>
+                      <div className="p-6 overflow-y-auto flex flex-col gap-6">
+                        {/* Your Taste So Far */}
+                        <div>
+                          <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/30 mb-4">
+                            {t('ai.quiz.tasteSoFar')}
+                          </p>
+                          <div className="flex flex-col gap-2.5">
+                            {(() => {
+                              const total = Object.values(quizVotes).reduce((a: number, b: number) => a + b, 0) || 1;
+                              return STYLES
+                                .slice()
+                                .sort((a, b) => (quizVotes[b] || 0) - (quizVotes[a] || 0))
+                                .map(style => {
+                                  const pct = Object.keys(quizVotes).length === 0 ? 0 : Math.round(((quizVotes[style] || 0) / total) * 100);
+                                  const hasVotes = (quizVotes[style] || 0) > 0;
+                                  return (
+                                    <div key={style}>
+                                      <div className="flex items-center justify-between mb-1">
+                                        <span className={`text-[8px] font-bold uppercase tracking-[0.08em] ${hasVotes ? 'text-black' : 'text-black/25'}`}>{t(`ai.style.${style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
+                                        <span className={`text-[8px] font-bold ${hasVotes ? 'text-[#0047AB]' : 'text-black/15'}`}>{pct}%</span>
+                                      </div>
+                                      <div className="h-0.5 bg-black/6">
+                                        <div className="h-0.5 bg-[#0047AB] transition-all duration-500" style={{ width: `${pct}%` }} />
+                                      </div>
                                     </div>
-                                    <div className="h-0.5 bg-black/6">
-                                      <div className="h-0.5 bg-[#0047AB] transition-all duration-500" style={{ width: `${pct}%` }} />
-                                    </div>
-                                  </div>
-                                );
-                              });
-                          })()}
+                                  );
+                                });
+                            })()}
+                          </div>
                         </div>
+
+                        {/* Last rated rooms */}
+                        {ratedHistory.length > 0 && (
+                          <div>
+                            <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/30 mb-3">
+                              Last rated
+                            </p>
+                            <div className="flex gap-2 mb-3">
+                              {ratedHistory.map((item, idx) => (
+                                <button
+                                  key={idx}
+                                  onClick={() => setSelectedHistoryIndex(selectedHistoryIndex === idx ? null : idx)}
+                                  className={`relative flex-1 overflow-hidden border transition-all ${selectedHistoryIndex === idx ? 'border-[#0047AB]' : 'border-black/10 hover:border-black/30'}`}
+                                  style={{ aspectRatio: '1/1' }}
+                                >
+                                  <img src={item.url} className="w-full h-full object-cover" alt={item.style} />
+                                  <div className={`absolute top-1 right-1 w-4 h-4 flex items-center justify-center text-[8px] font-bold ${item.verdict === 'love' ? 'bg-green-500 text-white' : item.verdict === 'no' ? 'bg-red-400 text-white' : 'bg-black/50 text-white'}`}>
+                                    {item.verdict === 'love' ? '♥' : item.verdict === 'no' ? '✕' : '→'}
+                                  </div>
+                                  <div className="absolute bottom-0 inset-x-0 bg-black/50 px-1 py-0.5">
+                                    <span className="text-[6px] font-bold uppercase tracking-wide text-white/90 truncate block">{item.style}</span>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+
+                            {/* Style education card */}
+                            {selectedHistoryIndex !== null && ratedHistory[selectedHistoryIndex] && (() => {
+                              const item = ratedHistory[selectedHistoryIndex];
+                              const desc = STYLE_DESCRIPTIONS[item.style];
+                              if (!desc) return null;
+                              return (
+                                <div className="border border-black/8 p-4 bg-neutral-50">
+                                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/50 mb-2">{item.style}</p>
+                                  <p className="text-[10px] text-black/50 leading-relaxed mb-3">{desc.summary}</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {desc.elements.map(el => (
+                                      <span key={el} className="text-[7px] font-bold uppercase tracking-wide text-black/40 border border-black/10 px-2 py-0.5">{el}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
