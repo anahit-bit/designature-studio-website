@@ -323,8 +323,7 @@ const AIConceptsPage: React.FC = () => {
   const [quizDone, setQuizDone] = useState<boolean>(false);
   const [quizResult, setQuizResult] = useState<{ style: string; pct: number }[]>([]);
   const [quizImageReady, setQuizImageReady] = useState<boolean>(false);
-  const [ratedHistory, setRatedHistory] = useState<{ url: string; style: string; verdict: 'love' | 'skip' | 'no' }[]>([]);
-  const [selectedHistoryIndex, setSelectedHistoryIndex] = useState<number | null>(null);
+  const [quizHistory, setQuizHistory] = useState<{ style: string; pct: number }[][]>([]);
   const [activeTool, setActiveTool] = useState<'quiz' | 'vision' | 'shopping' | 'audit'>('quiz');
   const [auditComplete, setAuditComplete] = useState(false);
   const [auditProcessing, setAuditProcessing] = useState(false);
@@ -926,13 +925,8 @@ Output ONLY the redesigned room image. No text.`;
     if (!quizImageReady) return;
 
     const style = quizSequence[quizStep];
-    const imageUrl = currentQuizImage.url;
     const newVotes = { ...quizVotes };
     if (vote === 'love') newVotes[style] = (newVotes[style] || 0) + 2;
-
-    // Track last 3 rated rooms for the history strip
-    setRatedHistory(prev => [{ url: imageUrl, style, verdict: vote }, ...prev].slice(0, 3));
-    setSelectedHistoryIndex(null);
 
     if (quizStep >= QUIZ_LENGTH - 1) {
       const total = Object.values(newVotes).reduce((a, b) => a + b, 0) || 1;
@@ -951,6 +945,9 @@ Output ONLY the redesigned room image. No text.`;
   };
 
   const handleQuizReset = () => {
+    if (quizDone && quizResult.length > 0) {
+      setQuizHistory(prev => [quizResult, ...prev].slice(0, 3));
+    }
     setQuizStep(0);
     setQuizVotes({});
     setQuizDone(false);
@@ -958,12 +955,13 @@ Output ONLY the redesigned room image. No text.`;
     setQuizImageReady(false);
     setQuizSeed(Math.floor(Math.random() * 100));
     setQuizSequence(generateQuizSequence());
-    setRatedHistory([]);
-    setSelectedHistoryIndex(null);
   };
 
   const handleApplyQuizStyle = () => {
-    if (quizResult.length > 0) setSelectedStyle(quizResult[0].style);
+    if (quizResult.length > 0) {
+      setSelectedStyle(quizResult[0].style);
+      setQuizHistory(prev => [quizResult, ...prev].slice(0, 3));
+    }
     setActiveTool('vision');
     setTimeout(() => {
       const el = document.getElementById('ai-concepts-tools');
@@ -1835,12 +1833,12 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                 {/* ── 3-col during quiz / 2-col on results ── */}
                 <div className="flex flex-col lg:flex-row flex-grow">
 
-                  {/* LEFT — room image (current during quiz, last rated when done) */}
-                  <div className="flex-grow flex items-start justify-center bg-neutral-50 p-6 min-w-0">
-                    <div className="relative w-full max-w-[480px]">
+                  {/* LEFT — room image (current during quiz, last loved when done) */}
+                  <div className="flex-grow flex items-start justify-center bg-neutral-50 p-4 min-w-0">
+                    <div className="relative w-full">
                       <img
-                        src={!quizDone ? currentQuizImage.url : (ratedHistory[0]?.url ?? currentQuizImage.url)}
-                        alt={!quizDone ? currentQuizStyle : (ratedHistory[0]?.style ?? currentQuizStyle)}
+                        src={currentQuizImage.url}
+                        alt={currentQuizStyle}
                         onLoad={() => { if (!quizDone) setQuizImageReady(true); }}
                         onError={() => { if (!quizDone) setQuizImageReady(true); }}
                         className="w-full object-cover"
@@ -1848,7 +1846,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                       />
                       <div className="absolute top-3 left-3 bg-white/90 px-3 py-1.5 border border-black/10">
                         <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/60">
-                          {t(`ai.style.${(!quizDone ? currentQuizStyle : (ratedHistory[0]?.style ?? currentQuizStyle)).toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}
+                          {t(`ai.style.${currentQuizStyle.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}
                         </span>
                       </div>
                       {!quizDone && currentQuizImage.credit.includes('Designature') && (
@@ -1921,50 +1919,36 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                   {/* RIGHT — history + education during quiz / full results when done */}
                   <div className={`w-full flex-shrink-0 flex flex-col border-l border-black/8 overflow-y-auto ${quizDone ? 'lg:w-[400px]' : 'lg:w-[280px]'}`}>
                     {!quizDone ? (
-                      /* History strip */
-                      <div className="p-6 flex flex-col gap-5 flex-grow">
-                        {ratedHistory.length === 0 ? (
+                      /* Previous quiz results */
+                      <div className="p-6 flex flex-col gap-4 flex-grow">
+                        {quizHistory.length === 0 ? (
                           <div className="flex-grow flex flex-col items-center justify-center gap-3 text-center">
                             <div className="w-10 h-10 border border-black/8 flex items-center justify-center text-black/10 text-xl">◎</div>
-                            <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/20">Rate rooms to see<br/>your history here</p>
+                            <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/20">Previous quiz<br/>results appear here</p>
                           </div>
                         ) : (
                           <>
-                            <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/30">Last rated</p>
-                            <div className="flex gap-2">
-                              {ratedHistory.map((item, idx) => (
-                                <button
-                                  key={idx}
-                                  onClick={() => setSelectedHistoryIndex(selectedHistoryIndex === idx ? null : idx)}
-                                  className={`relative flex-1 overflow-hidden border transition-all ${selectedHistoryIndex === idx ? 'border-[#0047AB]' : 'border-black/10 hover:border-black/30'}`}
-                                  style={{ aspectRatio: '1/1' }}
-                                >
-                                  <img src={item.url} className="w-full h-full object-cover" alt={item.style} />
-                                  <div className={`absolute top-1 right-1 w-4 h-4 flex items-center justify-center text-[8px] font-bold ${item.verdict === 'love' ? 'bg-green-500 text-white' : item.verdict === 'no' ? 'bg-red-400 text-white' : 'bg-black/50 text-white'}`}>
-                                    {item.verdict === 'love' ? '♥' : item.verdict === 'no' ? '✕' : '→'}
-                                  </div>
-                                  <div className="absolute bottom-0 inset-x-0 bg-black/50 px-1 py-0.5">
-                                    <span className="text-[6px] font-bold uppercase tracking-wide text-white/90 truncate block">{item.style}</span>
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                            {selectedHistoryIndex !== null && ratedHistory[selectedHistoryIndex] && (() => {
-                              const item = ratedHistory[selectedHistoryIndex];
-                              const desc = STYLE_DESCRIPTIONS[item.style];
-                              if (!desc) return null;
-                              return (
-                                <div className="border border-black/8 p-4 bg-neutral-50">
-                                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/50 mb-2">{item.style}</p>
-                                  <p className="text-[10px] text-black/50 leading-relaxed mb-3">{desc.summary}</p>
-                                  <div className="flex flex-wrap gap-1">
-                                    {desc.elements.map(el => (
-                                      <span key={el} className="text-[7px] font-bold uppercase tracking-wide text-black/40 border border-black/10 px-2 py-0.5">{el}</span>
+                            <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/30">Previous results</p>
+                            <div className="flex flex-col gap-3">
+                              {quizHistory.map((result, idx) => (
+                                <div key={idx} className="border border-black/8 p-4 bg-neutral-50">
+                                  <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-black/30 mb-3">Quiz {quizHistory.length - idx}</p>
+                                  <div className="flex flex-col gap-2">
+                                    {result.slice(0, 3).map((r, i) => (
+                                      <div key={r.style}>
+                                        <div className="flex items-center justify-between mb-1">
+                                          <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-black/70">{t(`ai.style.${r.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
+                                          <span className="text-[9px] font-bold text-[#0047AB]">{r.pct}%</span>
+                                        </div>
+                                        <div className="h-0.5 bg-black/8">
+                                          <div className="h-0.5" style={{ width: `${r.pct}%`, background: i === 0 ? '#0047AB' : i === 1 ? '#4477CC' : '#8899BB' }} />
+                                        </div>
+                                      </div>
                                     ))}
                                   </div>
                                 </div>
-                              );
-                            })()}
+                              ))}
+                            </div>
                           </>
                         )}
                       </div>
