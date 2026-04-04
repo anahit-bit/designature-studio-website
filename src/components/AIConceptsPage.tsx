@@ -211,6 +211,8 @@ interface AuthUser {
   /** Free-tier shopping list runs remaining (from server) */
   shoppingListsLeft?: number;
   isPaid?: boolean;
+  /** Paid-tier audit quota (999 = unlimited) */
+  auditsLeft?: number;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
