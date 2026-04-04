@@ -1558,7 +1558,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
           {/* Not logged in — right panel (vision only) */}
           {!authLoading && !user && activeTool === 'vision' && (
-            <div className="flex-grow flex flex-col items-center justify-center gap-6 py-20 px-8 text-center">
+            <div className="flex-grow flex flex-col items-center justify-center gap-6 py-20 px-8 text-center bg-white">
               <div className="w-16 h-16 border border-black/8 flex items-center justify-center text-black/10 text-3xl">◎</div>
               <h3 className="font-display text-2xl font-light text-black/30 tracking-tight">
                 Transform your room
