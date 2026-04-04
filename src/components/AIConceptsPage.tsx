@@ -1843,7 +1843,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                 <div className="flex flex-col lg:flex-row flex-grow">
 
                   {/* LEFT — room image (current during quiz, last loved when done) */}
-                  <div className="flex-grow flex items-start justify-start bg-neutral-50 p-4 min-w-0">
+                  <div className="flex-shrink-0 flex items-start justify-start bg-neutral-50 p-4 w-full lg:w-[632px]">
                     <div className="relative w-full max-w-[600px]">
                       <img
                         src={currentQuizImage.url}
@@ -1926,7 +1926,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                   )}
 
                   {/* RIGHT — history + education during quiz / full results when done */}
-                  <div className={`w-full flex-shrink-0 flex flex-col border-l border-black/8 overflow-y-auto ${quizDone ? 'lg:w-[400px]' : 'lg:w-[280px]'}`}>
+                  <div className={`flex-grow flex flex-col border-l border-black/8 overflow-y-auto ${quizDone ? 'lg:max-w-[500px]' : ''}`}>
                     {!quizDone ? (
                       /* Previous quiz results */
                       <div className="p-6 flex flex-col gap-4 flex-grow">
