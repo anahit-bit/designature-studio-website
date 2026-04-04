@@ -1832,66 +1832,58 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                   </div>
                 )}
 
-                {!quizDone ? (
-                  <div className="flex flex-col lg:flex-row flex-grow">
-                    <div className="flex items-start justify-center bg-neutral-50 p-6">
-                      <div className="relative w-full max-w-[480px]">
-                        <img
-                          src={currentQuizImage.url}
-                          alt={currentQuizStyle}
-                          onLoad={() => setQuizImageReady(true)}
-                          onError={() => setQuizImageReady(true)}
-                          className="w-full object-cover"
-                          style={{ aspectRatio: '1/1', display: 'block' }}
-                        />
-                        <div className="absolute top-3 left-3 bg-white/90 px-3 py-1.5 border border-black/10">
-                          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/60">{t(`ai.style.${currentQuizStyle.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
+                {/* ── 3-col during quiz / 2-col on results ── */}
+                <div className="flex flex-col lg:flex-row flex-grow">
+
+                  {/* LEFT — room image (current during quiz, last rated when done) */}
+                  <div className="flex-grow flex items-start justify-center bg-neutral-50 p-6 min-w-0">
+                    <div className="relative w-full max-w-[480px]">
+                      <img
+                        src={!quizDone ? currentQuizImage.url : (ratedHistory[0]?.url ?? currentQuizImage.url)}
+                        alt={!quizDone ? currentQuizStyle : (ratedHistory[0]?.style ?? currentQuizStyle)}
+                        onLoad={() => { if (!quizDone) setQuizImageReady(true); }}
+                        onError={() => { if (!quizDone) setQuizImageReady(true); }}
+                        className="w-full object-cover"
+                        style={{ aspectRatio: '1/1', display: 'block' }}
+                      />
+                      <div className="absolute top-3 left-3 bg-white/90 px-3 py-1.5 border border-black/10">
+                        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/60">
+                          {t(`ai.style.${(!quizDone ? currentQuizStyle : (ratedHistory[0]?.style ?? currentQuizStyle)).toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}
+                        </span>
+                      </div>
+                      {!quizDone && currentQuizImage.credit.includes('Designature') && (
+                        <div className="absolute bottom-3 left-3 bg-black/60 px-2 py-1">
+                          <span className="text-[8px] text-white/70 uppercase tracking-widest">{t('ai.quiz.fromPortfolio')}</span>
                         </div>
-                        {currentQuizImage.credit.includes('Designature') && (
-                          <div className="absolute bottom-3 left-3 bg-black/60 px-2 py-1">
-                            <span className="text-[8px] text-white/70 uppercase tracking-widest">{t('ai.quiz.fromPortfolio')}</span>
-                          </div>
-                        )}
-                        <div className="absolute bottom-3 right-3 bg-black/40 px-2 py-1">
-                          <span className="text-[7px] text-white/50 uppercase tracking-widest">AI · Gemini</span>
-                        </div>
+                      )}
+                      <div className="absolute bottom-3 right-3 bg-black/40 px-2 py-1">
+                        <span className="text-[7px] text-white/50 uppercase tracking-widest">AI · Gemini</span>
                       </div>
                     </div>
-                    <div className="w-full lg:w-[280px] flex-shrink-0 flex flex-col border-l border-black/8">
+                  </div>
+
+                  {/* MIDDLE — voting + taste bars (quiz only) */}
+                  {!quizDone && (
+                    <div className="w-full lg:w-[260px] flex-shrink-0 flex flex-col border-l border-black/8">
                       <div className="p-6 border-b border-black/8">
                         <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-black mb-5">
                           {t('ai.quiz.howFeel')}
                         </p>
                         <div className="flex flex-col gap-2">
-                          <button
-                            onClick={() => handleQuizVote('love')}
-                            disabled={!quizImageReady}
-                            className="w-full py-3.5 bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-black/80 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
+                          <button onClick={() => handleQuizVote('love')} disabled={!quizImageReady} className="w-full py-3.5 bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-black/80 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                             <span>✦</span> {t('ai.quiz.loveIt')}
                           </button>
-                          <button
-                            onClick={() => handleQuizVote('skip')}
-                            disabled={!quizImageReady}
-                            className="w-full py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/40 hover:border-black/40 hover:text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
+                          <button onClick={() => handleQuizVote('skip')} disabled={!quizImageReady} className="w-full py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/40 hover:border-black/40 hover:text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                             {t('ai.quiz.skip')}
                           </button>
-                          <button
-                            onClick={() => handleQuizVote('no')}
-                            disabled={!quizImageReady}
-                            className="w-full py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/40 hover:border-black/40 hover:text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
+                          <button onClick={() => handleQuizVote('no')} disabled={!quizImageReady} className="w-full py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/40 hover:border-black/40 hover:text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                             {t('ai.quiz.notMyStyle')}
                           </button>
                           {quizStep > 0 && (
                             <button
                               onClick={() => {
                                 const total = Object.values(quizVotes).reduce((a: number, b: number) => a + b, 0) || 1;
-                                const sorted = STYLES
-                                  .map(s => ({ style: s, pct: Math.round(((quizVotes[s] || 0) / total) * 100) }))
-                                  .filter(r => r.pct > 0)
-                                  .sort((a, b) => b.pct - a.pct);
+                                const sorted = STYLES.map(s => ({ style: s, pct: Math.round(((quizVotes[s] || 0) / total) * 100) })).filter(r => r.pct > 0).sort((a, b) => b.pct - a.pct);
                                 setQuizResult(sorted);
                                 setQuizDone(true);
                               }}
@@ -1902,44 +1894,44 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                           )}
                         </div>
                       </div>
-                      <div className="p-6 overflow-y-auto flex flex-col gap-6">
-                        {/* Your Taste So Far */}
-                        <div>
-                          <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/30 mb-4">
-                            {t('ai.quiz.tasteSoFar')}
-                          </p>
-                          <div className="flex flex-col gap-2.5">
-                            {(() => {
-                              const total = Object.values(quizVotes).reduce((a: number, b: number) => a + b, 0) || 1;
-                              return STYLES
-                                .slice()
-                                .sort((a, b) => (quizVotes[b] || 0) - (quizVotes[a] || 0))
-                                .map(style => {
-                                  const pct = Object.keys(quizVotes).length === 0 ? 0 : Math.round(((quizVotes[style] || 0) / total) * 100);
-                                  const hasVotes = (quizVotes[style] || 0) > 0;
-                                  return (
-                                    <div key={style}>
-                                      <div className="flex items-center justify-between mb-1">
-                                        <span className={`text-[8px] font-bold uppercase tracking-[0.08em] ${hasVotes ? 'text-black' : 'text-black/25'}`}>{t(`ai.style.${style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
-                                        <span className={`text-[8px] font-bold ${hasVotes ? 'text-[#0047AB]' : 'text-black/15'}`}>{pct}%</span>
-                                      </div>
-                                      <div className="h-0.5 bg-black/6">
-                                        <div className="h-0.5 bg-[#0047AB] transition-all duration-500" style={{ width: `${pct}%` }} />
-                                      </div>
-                                    </div>
-                                  );
-                                });
-                            })()}
-                          </div>
+                      <div className="p-5 overflow-y-auto">
+                        <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/30 mb-4">{t('ai.quiz.tasteSoFar')}</p>
+                        <div className="flex flex-col gap-2.5">
+                          {(() => {
+                            const total = Object.values(quizVotes).reduce((a: number, b: number) => a + b, 0) || 1;
+                            return STYLES.slice().sort((a, b) => (quizVotes[b] || 0) - (quizVotes[a] || 0)).map(style => {
+                              const pct = Object.keys(quizVotes).length === 0 ? 0 : Math.round(((quizVotes[style] || 0) / total) * 100);
+                              const hasVotes = (quizVotes[style] || 0) > 0;
+                              return (
+                                <div key={style}>
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className={`text-[8px] font-bold uppercase tracking-[0.08em] ${hasVotes ? 'text-black' : 'text-black/25'}`}>{t(`ai.style.${style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
+                                    <span className={`text-[8px] font-bold ${hasVotes ? 'text-[#0047AB]' : 'text-black/15'}`}>{pct}%</span>
+                                  </div>
+                                  <div className="h-0.5 bg-black/6"><div className="h-0.5 bg-[#0047AB] transition-all duration-500" style={{ width: `${pct}%` }} /></div>
+                                </div>
+                              );
+                            });
+                          })()}
                         </div>
+                      </div>
+                    </div>
+                  )}
 
-                        {/* Last rated rooms */}
-                        {ratedHistory.length > 0 && (
-                          <div>
-                            <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/30 mb-3">
-                              Last rated
-                            </p>
-                            <div className="flex gap-2 mb-3">
+                  {/* RIGHT — history + education during quiz / full results when done */}
+                  <div className={`w-full flex-shrink-0 flex flex-col border-l border-black/8 overflow-y-auto ${quizDone ? 'lg:w-[400px]' : 'lg:w-[280px]'}`}>
+                    {!quizDone ? (
+                      /* History strip */
+                      <div className="p-6 flex flex-col gap-5 flex-grow">
+                        {ratedHistory.length === 0 ? (
+                          <div className="flex-grow flex flex-col items-center justify-center gap-3 text-center">
+                            <div className="w-10 h-10 border border-black/8 flex items-center justify-center text-black/10 text-xl">◎</div>
+                            <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/20">Rate rooms to see<br/>your history here</p>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/30">Last rated</p>
+                            <div className="flex gap-2">
                               {ratedHistory.map((item, idx) => (
                                 <button
                                   key={idx}
@@ -1957,8 +1949,6 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                                 </button>
                               ))}
                             </div>
-
-                            {/* Style education card */}
                             {selectedHistoryIndex !== null && ratedHistory[selectedHistoryIndex] && (() => {
                               const item = ratedHistory[selectedHistoryIndex];
                               const desc = STYLE_DESCRIPTIONS[item.style];
@@ -1975,58 +1965,49 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                                 </div>
                               );
                             })()}
-                          </div>
+                          </>
                         )}
                       </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex-grow p-8 md:p-12 max-w-[800px] mx-auto w-full">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-[#0047AB] mb-2">
-                      {t('ai.quiz.designDNA')}
-                    </p>
-                    <h2 className="font-display text-4xl font-bold tracking-tight mb-2">
-                      {t(`ai.style.${quizResult[0]?.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}
-                      {quizResult[1] && <span className="text-black/30"> · {t(`ai.style.${quizResult[1].style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>}
-                    </h2>
-                    <p className="text-sm text-black/40 uppercase tracking-[0.2em] mb-8">
-                      {t('ai.quiz.basedOnRatings')}
-                    </p>
-                    <div className="flex flex-col gap-4 mb-10">
-                      {quizResult.slice(0, 5).map((r, i) => (
-                        <div key={r.style}>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-black">{t(`ai.style.${r.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
-                            <span className="text-[11px] font-bold text-[#0047AB]">{r.pct}%</span>
-                          </div>
-                          <div className="h-1 bg-black/8">
-                            <div
-                              className="h-1 transition-all duration-700"
-                              style={{ width: `${r.pct}%`, background: i === 0 ? '#0047AB' : i === 1 ? '#4477CC' : '#8899BB' }}
-                            />
-                          </div>
+                    ) : (
+                      /* Results panel */
+                      <div className="p-8 flex flex-col gap-6 flex-grow">
+                        <div>
+                          <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-[#0047AB] mb-2">{t('ai.quiz.designDNA')}</p>
+                          <h2 className="font-display text-3xl font-bold tracking-tight mb-1">
+                            {t(`ai.style.${quizResult[0]?.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}
+                            {quizResult[1] && <span className="text-black/30"> · {t(`ai.style.${quizResult[1].style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>}
+                          </h2>
+                          <p className="text-xs text-black/40 uppercase tracking-[0.2em]">{t('ai.quiz.basedOnRatings')}</p>
                         </div>
-                      ))}
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <button
-                        onClick={handleApplyQuizStyle}
-                        className="flex-1 py-4 bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-black/80 transition-all flex items-center justify-center gap-2"
-                      >
-                        ✦ {t('ai.quiz.applyStyle').replace('{style}', t(`ai.style.${quizResult[0]?.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`))}
-                      </button>
-                      <button
-                        onClick={handleQuizReset}
-                        className="py-4 px-6 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all"
-                      >
-                        {t('ai.quiz.retake')}
-                      </button>
-                    </div>
-                    <p className="text-[9px] text-black/20 uppercase tracking-widest mt-6 leading-relaxed">
-                      {t('ai.quiz.stylePreselected').replace('{style}', t(`ai.style.${quizResult[0]?.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`))}
-                    </p>
+                        <div className="flex flex-col gap-3">
+                          {quizResult.slice(0, 5).map((r, i) => (
+                            <div key={r.style}>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-black">{t(`ai.style.${r.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
+                                <span className="text-[10px] font-bold text-[#0047AB]">{r.pct}%</span>
+                              </div>
+                              <div className="h-1 bg-black/8">
+                                <div className="h-1 transition-all duration-700" style={{ width: `${r.pct}%`, background: i === 0 ? '#0047AB' : i === 1 ? '#4477CC' : '#8899BB' }} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex flex-col gap-2 mt-auto">
+                          <button onClick={handleApplyQuizStyle} className="w-full py-4 bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-black/80 transition-all flex items-center justify-center gap-2">
+                            ✦ {t('ai.quiz.applyStyle').replace('{style}', t(`ai.style.${quizResult[0]?.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`))}
+                          </button>
+                          <button onClick={handleQuizReset} className="w-full py-3.5 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all">
+                            {t('ai.quiz.retake')}
+                          </button>
+                          <p className="text-[9px] text-black/20 uppercase tracking-widest leading-relaxed">
+                            {t('ai.quiz.stylePreselected').replace('{style}', t(`ai.style.${quizResult[0]?.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`))}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
+
+                </div>
 
                 </> )}
               </div>
