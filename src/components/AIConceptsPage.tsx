@@ -1321,7 +1321,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         <div className="max-w-[1600px] w-full mx-auto px-8 md:px-16 flex-grow flex flex-col lg:flex-row" style={{ minHeight: '75vh' }}>
 
         {/* ════ LEFT SIDEBAR ════ */}
-        <div id="ai-vision-panel" className={`w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 border-r border-black/8 flex flex-col${activeTool === 'shopping' || activeTool === 'quiz' || activeTool === 'audit' ? ' hidden' : ''}`}>
+        <div id="ai-vision-panel" className={`w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 border-r border-black/8 flex flex-col${activeTool === 'shopping' || activeTool === 'quiz' || activeTool === 'audit' || (!user && activeTool === 'vision') ? ' hidden' : ''}`}>
           <div className="flex-grow p-8 flex flex-col gap-7 overflow-y-auto">
 
             {/* ── LOGGED OUT: Show placeholder ── */}
