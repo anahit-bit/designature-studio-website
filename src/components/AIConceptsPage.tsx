@@ -1575,6 +1575,25 @@ Output ONLY valid JSON with no markdown fences, no explanation:
             </div>
           )}
 
+          {/* Not logged in — shopping list */}
+          {!authLoading && !user && activeTool === 'shopping' && (
+            <div className="flex-grow flex flex-col items-center justify-center gap-6 py-20 px-8 text-center bg-white">
+              <div className="w-16 h-16 border border-black/8 flex items-center justify-center text-black/10 text-3xl">◎</div>
+              <h3 className="font-display text-2xl font-light text-black/30 tracking-tight">
+                Shop any interior
+              </h3>
+              <p className="text-sm text-black/30 uppercase tracking-[0.2em] leading-[2]">
+                Free · 3 shopping lists · PDF included
+              </p>
+              <button
+                onClick={() => triggerGoogleSignIn()}
+                className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.25em] px-5 py-3 hover:bg-[#003d99] transition-colors"
+              >
+                Sign in to shop →
+              </button>
+            </div>
+          )}
+
           {/* Empty state — vision only */}
           {!authLoading && user && results.length === 0 && !isProcessing && !error && activeTool === 'vision' && (
             <div className="flex-grow flex flex-col items-center justify-center gap-5 p-16 text-center">
@@ -1617,7 +1636,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
           {/* Results state */}
           {(results.length > 0 ||
             sessionConceptArchive.length > 0 ||
-            activeTool === 'shopping' ||
+            (activeTool === 'shopping' && !!user) ||
             activeTool === 'quiz') &&
             !isProcessing && (
             <div className="flex-grow flex flex-col">
