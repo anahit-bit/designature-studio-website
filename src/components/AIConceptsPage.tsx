@@ -1741,13 +1741,13 @@ Output ONLY valid JSON with no markdown fences, no explanation:
               {results.length > 0 && roomImage && (
               <div className="grid grid-cols-2 border-b border-black/8" style={{ gap: '1px', background: 'rgba(0,0,0,0.08)' }}>
                 <div className="bg-white">
-                  <div className="px-5 py-2.5 border-b border-black/6">
+                  <div className="px-5 border-b border-black/6 flex items-center justify-between" style={{ height: 38 }}>
                     <span className="text-xs font-bold uppercase tracking-[0.3em] text-black/30">{t('ai.originalRoom')}</span>
                   </div>
                   <img src={roomImage} className="w-full object-cover" style={{ aspectRatio: roomAspectRatio }} alt="Original" />
                 </div>
                 <div className="bg-white">
-                  <div className="px-5 py-2.5 border-b border-black/6 flex items-center justify-between">
+                  <div className="px-5 border-b border-black/6 flex items-center justify-between" style={{ height: 38 }}>
                     <span className="text-xs font-bold uppercase tracking-[0.3em] text-black/30">{t('ai.genConcept')}</span>
                     <span className="text-[7px] text-black/20 uppercase tracking-widest">AI{selectedStyle ? ` · ${t(`ai.style.${selectedStyle.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}` : ''}</span>
                   </div>
