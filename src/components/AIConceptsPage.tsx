@@ -1532,18 +1532,27 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                 )}
 
                 {(user?.generationsLeft ?? 0) <= 0 && (
-                  <div className="text-center space-y-3">
-                    <p className="text-sm md:text-base font-bold uppercase tracking-widest text-red-500 leading-relaxed">
-                      {t('ai.usedAll')}
-                    </p>
-                    <a 
-                      href="https://calendly.com/designature-studio-us/free_consultation" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-sm md:text-base font-bold uppercase tracking-[0.3em] text-black border-b border-black pb-0.5 hover:text-black/60 flex items-center gap-2 mx-auto"
-                    >
-                      {t('ai.bookConversation')} <ArrowRight className="w-3 h-3" />
-                    </a>
+                  <div className="border border-black/10 p-5 space-y-4 bg-neutral-50">
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-black/40 mb-1">Free tier complete</p>
+                      <p className="text-sm font-bold text-black leading-snug">{t('ai.usedAll')}</p>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => navigateTo('pricing')}
+                        className="w-full py-3.5 bg-[#0047AB] text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-[#003d99] transition-all flex items-center justify-center gap-2"
+                      >
+                        ✦ Upgrade plan
+                      </button>
+                      <a
+                        href="https://calendly.com/designature-studio-us/free_consultation"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all flex items-center justify-center gap-2"
+                      >
+                        {t('ai.bookConversation')} <ArrowRight className="w-3 h-3" />
+                      </a>
+                    </div>
                   </div>
                 )}
 
@@ -2163,9 +2172,37 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                     <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-black/40 text-[10px]">▾</div>
                   </div>
                 </div>
+                {/* Shopping quota exhausted */}
+                {(user?.shoppingListsLeft ?? 1) <= 0 && !shoppingDone && (
+                  <div className="px-8 py-6">
+                    <div className="border border-black/10 p-5 space-y-4 bg-neutral-50">
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-black/40 mb-1">Free tier complete</p>
+                        <p className="text-sm font-bold text-black leading-snug">You've used all 3 free shopping lists.</p>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => navigateTo('pricing')}
+                          className="w-full py-3.5 bg-[#0047AB] text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-[#003d99] transition-all flex items-center justify-center gap-2"
+                        >
+                          ✦ Upgrade plan
+                        </button>
+                        <a
+                          href="https://calendly.com/designature-studio-us/free_consultation"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all flex items-center justify-center gap-2"
+                        >
+                          {t('ai.bookConversation')} <ArrowRight className="w-3 h-3" />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Initial CTA — first time or after clear */}
-                {!shoppingDone && !shoppingLoading && !shoppingError && shoppingItems.length === 0 && (
-                  <div className="px-8 py-6 bg-neutral-50">
+                {!shoppingDone && !shoppingLoading && !shoppingError && shoppingItems.length === 0 && (user?.shoppingListsLeft ?? 1) > 0 && (
+                  <div className="px-8 py-6 bg-white">
                     {/* AI concept exists (active generation) — one-click CTA */}
                     {selectedConceptUrl && results.length > 0 && !forceStandaloneUpload ? (
                       <div className="flex flex-col gap-4">
