@@ -2080,7 +2080,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
               {/* ══ SHOP THIS LOOK ══ */}
               <div
                 id="shop-this-look"
-                className={`scroll-mt-28 border-t-2 border-black/8${activeTool === 'quiz' ? ' hidden' : ''}`}
+                className={`scroll-mt-28 border-t-2 border-black/8${activeTool !== 'shopping' ? ' hidden' : ''}`}
               >
 
                 {/* Sign-in gate */}
