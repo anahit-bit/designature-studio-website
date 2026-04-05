@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ArrowLeft, Layout, Box, Palette, ArrowRight, CheckCircle2, X, Download, AlertCircle, RefreshCw, LogOut, FileDown } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, X, Download, AlertCircle, RefreshCw, LogOut, FileDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleGenAI } from "@google/genai";
 import { useLanguage } from '../LanguageContext';
@@ -29,6 +29,11 @@ const STYLES = [
 const VISION_STYLES = [
   'Japandi', 'Modern', 'Mid-Century', 'Bohemian', 'Rustic', 'Art Deco',
   'Industrial', 'Coastal', 'Minimalist', 'Maximalist', 'Biophilic'
+];
+
+const ROOM_TYPES = [
+  'Living Room', 'Dining Room', 'Bedroom', 'Kitchen',
+  'Bathroom', 'Home Office', 'Kids Room', 'Outdoor',
 ];
 
 type QuizRoom = { url: string; credit: string };
@@ -263,6 +268,7 @@ const AIConceptsPage: React.FC = () => {
   const [roomAspectRatio, setRoomAspectRatio] = useState<string>('3/4');
   const [apiAspectRatio, setApiAspectRatio] = useState<"1:1" | "3:4" | "4:3" | "9:16" | "16:9">("3:4");
   const [selectedStyle, setSelectedStyle] = useState<string>('');
+  const [selectedRoom, setSelectedRoom] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingPhase, setProcessingPhase] = useState(0);
   const processingRef = useRef<HTMLDivElement>(null);
@@ -702,6 +708,7 @@ const AIConceptsPage: React.FC = () => {
       const promptText = `You are an expert interior designer.
 The first ${inspirationImages.length} image(s) are inspiration references showing the desired style, colors, and materials.
 The last image is the actual room to redesign.
+${selectedRoom ? `This is a ${selectedRoom}. Choose furniture, layout, and decor appropriate for a ${selectedRoom}.` : 'Identify the room type from the photo and use appropriate furniture and layout.'}
 Generate a photorealistic interior design render of that room, redesigned in the exact style of the inspiration images.
 Style preference: ${selectedStyle || 'No specific style — use your best judgment based on the room'}.
 Keep the same room structure (windows, walls, ceiling). Apply the style, colors, furniture, lighting from the inspirations.
@@ -1087,23 +1094,6 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
   const isGenerateDisabled = isProcessing || inspirationImages.length === 0 || !roomImage || !user || (user?.generationsLeft ?? 0) <= 0;
 
-  const features = [
-    {
-      icon: <Layout className="w-4 h-4" />,
-      title: t('ai.spatialLogic'),
-      desc: t('ai.spatialDesc'),
-    },
-    {
-      icon: <Palette className="w-4 h-4" />,
-      title: t('ai.materialSynthesis'),
-      desc: t('ai.materialDesc'),
-    },
-    {
-      icon: <Box className="w-4 h-4" />,
-      title: t('ai.volumeAnalysis'),
-      desc: t('ai.volumeDesc'),
-    },
-  ];
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -1478,10 +1468,43 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
                 <div className="h-px bg-black/6" />
 
-                {/* STEP 3: Style */}
+                {/* STEP 3: Room Type */}
                 <div>
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-5 h-5 bg-black/20 text-white text-[8px] flex items-center justify-center font-bold flex-shrink-0">3</div>
+                    <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/50">
+                      Room Type <span className="text-black/20 normal-case font-normal tracking-normal ml-1">({t('common.optional')})</span>
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      onClick={() => setSelectedRoom('')}
+                      className={`px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.12em] border transition-all rounded-[2px] ${
+                        selectedRoom === '' ? 'border-black bg-black text-white' : 'border-dashed border-black/20 text-black/30 hover:border-black/40 hover:text-black/50'
+                      }`}
+                    >
+                      Auto-detect
+                    </button>
+                    {ROOM_TYPES.map((room) => (
+                      <button
+                        key={room}
+                        onClick={() => setSelectedRoom(room)}
+                        className={`px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.12em] border transition-all rounded-[2px] ${
+                          selectedRoom === room ? 'border-black bg-black text-white' : 'border-black/15 text-black/40 hover:border-black/40 hover:text-black/70'
+                        }`}
+                      >
+                        {room}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="h-px bg-black/6" />
+
+                {/* STEP 4: Style */}
+                <div>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-5 h-5 bg-black/20 text-white text-[8px] flex items-center justify-center font-bold flex-shrink-0">4</div>
                     <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/50">
                       {t('ai.styleQuiz')} <span className="text-black/20 normal-case font-normal tracking-normal ml-1">({t('common.optional')})</span>
                     </span>
@@ -1577,18 +1600,6 @@ Output ONLY valid JSON with no markdown fences, no explanation:
               </>
             )}
 
-            {/* Feature list — always visible */}
-            <div className="flex flex-col gap-4 pt-2 border-t border-black/6">
-              {features.map((f, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div className="w-6 h-6 border border-black/10 flex items-center justify-center text-black/30 flex-shrink-0 mt-0.5">{f.icon}</div>
-                  <div>
-                    <h4 className="text-sm md:text-base font-bold uppercase tracking-[0.2em] mb-0.5">{f.title}</h4>
-                    <p className="text-xs text-black/35 leading-relaxed">{f.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
 
           </div>
         </div>
@@ -2418,6 +2429,15 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                       <div className="px-8 py-8 text-center">
                         <p className="text-[10px] text-black/50 uppercase tracking-widest">
                           {t('ai.shop.noProducts')}
+                        </p>
+                      </div>
+                    )}
+
+                    {shoppingResults.length > 0 && (
+                      <div className="mx-8 mt-6 mb-2 px-4 py-3 border border-amber-200 bg-amber-50 flex items-start gap-2.5">
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+                        <p className="text-[10px] text-amber-800/80 leading-relaxed">
+                          <strong className="font-semibold">Before you buy</strong> — these are AI-matched suggestions, not guaranteed exact matches. Always verify dimensions, materials, and quality before purchasing.
                         </p>
                       </div>
                     )}

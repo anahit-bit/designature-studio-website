@@ -17,15 +17,20 @@ const CROSS = () => (
   </svg>
 );
 
-const NotifyButton: React.FC<{ dark?: boolean }> = ({ dark }) => {
+const NotifyButton: React.FC<{ dark?: boolean; plan: string }> = ({ dark, plan }) => {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!email || !email.includes('@')) return;
-    // mailto as simple backend-free capture
-    window.location.href = `mailto:hello@designature.studio?subject=Notify me — Pricing Launch&body=Please notify me when paid plans launch.%0A%0AEmail: ${email}`;
+    try {
+      await fetch('/api/pricing/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, plan }),
+      });
+    } catch { /* non-fatal */ }
     setSent(true);
     setTimeout(() => { setOpen(false); setSent(false); setEmail(''); }, 2000);
   };
@@ -128,7 +133,7 @@ const PricingSection: React.FC<{ compact?: boolean }> = ({ compact }) => {
             <div className="flex flex-col gap-2 mb-4">
               <div className="flex items-start gap-2"><CHECK_W /><span className="text-[10px] text-white/45 leading-relaxed">Everything in Free</span></div>
               <div className="flex items-start gap-2"><CHECK_W /><span className="text-[10px] text-white/45 leading-relaxed"><strong className="text-white/80 font-medium">AI Vision</strong> — 30 credits / month</span></div>
-              <div className="flex items-start gap-2"><CHECK_W /><span className="text-[10px] text-white/45 leading-relaxed"><strong className="text-white/80 font-medium">Shopping Lists</strong> — 20 / month</span></div>
+              <div className="flex items-start gap-2"><CHECK_W /><span className="text-[10px] text-white/45 leading-relaxed"><strong className="text-white/80 font-medium">Shopping Lists</strong> — 20 / month <span className="text-white/25">· budget filter</span></span></div>
               <div className="flex items-start gap-2"><CHECK_W /><span className="text-[10px] text-white/45 leading-relaxed"><strong className="text-white/80 font-medium">Room Audit</strong> — 3 / month</span></div>
               <div className="flex items-start gap-2"><CHECK_W /><span className="text-[10px] text-white/45 leading-relaxed"><strong className="text-white/80 font-medium">Design Brief</strong> — 1 / month</span></div>
             </div>
@@ -137,7 +142,7 @@ const PricingSection: React.FC<{ compact?: boolean }> = ({ compact }) => {
               <div className="flex items-start gap-2"><CHECK_W /><span className="text-[10px] text-white/45 leading-relaxed"><strong className="text-white/80 font-medium">10% off</strong> full design project</span></div>
             </div>
             <div className="mt-auto pt-4">
-              <NotifyButton dark />
+              <NotifyButton dark plan="Design $19" />
             </div>
           </div>
 
@@ -145,7 +150,7 @@ const PricingSection: React.FC<{ compact?: boolean }> = ({ compact }) => {
           <div className="p-8 flex flex-col">
             <span className="text-[8px] font-bold uppercase tracking-[0.15em] px-2 py-1 bg-black/5 text-black/40 w-fit mb-5">Studio</span>
             <div className="mb-4">
-              <span className="text-[34px] font-bold tracking-tight leading-none text-[#0047AB]">$39</span>
+              <span className="text-[34px] font-bold tracking-tight leading-none text-[#0047AB]">$49</span>
               <span className="text-[12px] text-black/40 ml-1">/ month</span>
             </div>
             <div className="h-[22px] mb-3" />
@@ -167,7 +172,7 @@ const PricingSection: React.FC<{ compact?: boolean }> = ({ compact }) => {
               <div className="flex items-start gap-2"><CHECK /><span className="text-[10px] text-black/60 leading-relaxed"><strong className="text-black font-medium">20% off</strong> full design project</span></div>
             </div>
             <div className="mt-auto pt-4">
-              <NotifyButton />
+              <NotifyButton plan="Studio $49" />
             </div>
           </div>
 
