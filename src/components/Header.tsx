@@ -86,7 +86,7 @@ const Header: React.FC = () => {
       >
         <div className="max-w-[1800px] mx-auto px-8 md:px-16 flex items-center">
           <div onClick={() => navigateTo('home')} className="cursor-pointer mr-auto">
-            <Logo invert={isAIConceptsPage || !(isDarkTextNeeded && !useLightNav)} className="h-8 md:h-10" />
+            <Logo invert={!(isDarkTextNeeded && !useLightNav)} className="h-8 md:h-10" />
           </div>
 
           <nav className="hidden lg:flex items-center gap-8 mr-12">
