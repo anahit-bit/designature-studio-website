@@ -250,7 +250,7 @@ const Services: React.FC = () => {
                         disabled={isDownloading}
                         className="text-[9px] font-bold uppercase tracking-[0.1em] text-[#0047AB] hover:text-black transition-colors duration-200 text-left disabled:opacity-50 disabled:cursor-wait w-fit flex items-center gap-1"
                       >
-                        {isDownloading ? 'Downloading...' : 'View example →'}
+                        {isDownloading ? t('services.downloading') : `${t('btn.example')} →`}
                         {!isDownloading && asset?.action === 'pdf-download' && <Download className="w-2.5 h-2.5 opacity-50" />}
                         {!isDownloading && asset?.action === 'video-popup' && <Play className="w-2.5 h-2.5 opacity-50" />}
                       </button>
