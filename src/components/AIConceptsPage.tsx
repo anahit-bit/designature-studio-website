@@ -790,13 +790,12 @@ Output ONLY the redesigned room image. No text.`;
   };
 
   // ── Download ──
-  const handleDownload = (dataUrl: string) => {
-    const newCount = downloadCount + 1;
-    setDownloadCount(newCount);
-    localStorage.setItem('ds_download_count', newCount.toString());
+  const handleDownload = (dataUrl: string, conceptNumber?: number) => {
+    const num = conceptNumber ?? ((allSessionConcepts.indexOf(dataUrl) + 1) || 1);
+    const filename = `Designature_Studio_Generated_Concept_${num}.jpg`;
     const link = document.createElement('a');
     link.href = dataUrl;
-    link.download = `Designature_Studio_${newCount}.jpg`;
+    link.download = filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1798,7 +1797,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                 <button
                   type="button"
                   disabled={!selectedConceptUrl}
-                  onClick={() => selectedConceptUrl && handleDownload(selectedConceptUrl)}
+                  onClick={() => selectedConceptUrl && handleDownload(selectedConceptUrl, selectedConceptIndex + 1)}
                   className="flex-1 py-3.5 bg-black text-white text-sm md:text-base font-bold uppercase tracking-[0.3em] flex items-center justify-center gap-2 hover:bg-black/80 transition-all disabled:opacity-40 disabled:pointer-events-none"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -1807,7 +1806,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                 {allSessionConcepts.length > 1 && (
                   <button
                     type="button"
-                    onClick={() => allSessionConcepts.forEach((img) => handleDownload(img))}
+                    onClick={() => allSessionConcepts.forEach((img, idx) => handleDownload(img, idx + 1))}
                     className="px-5 py-3.5 border border-black/15 text-sm md:text-base font-bold uppercase tracking-[0.2em] text-black/50 hover:border-black hover:text-black transition-all"
                   >
                     {t('btn.downloadAll')}
@@ -2496,7 +2495,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         {isLightboxOpen && selectedConceptUrl && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsLightboxOpen(false)} className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 md:p-12 cursor-zoom-out">
             <div className="absolute top-8 right-8 flex gap-4 z-[110]">
-              <button onClick={(e) => { e.stopPropagation(); handleDownload(selectedConceptUrl); }} className="flex items-center gap-2 px-4 py-2 bg-white text-black text-sm md:text-base font-bold uppercase tracking-widest hover:bg-white/90 transition-all">
+              <button onClick={(e) => { e.stopPropagation(); handleDownload(selectedConceptUrl, selectedConceptIndex + 1); }} className="flex items-center gap-2 px-4 py-2 bg-white text-black text-sm md:text-base font-bold uppercase tracking-widest hover:bg-white/90 transition-all">
                 <Download className="w-4 h-4" /> {t('btn.download')}
               </button>
               <button onClick={(e) => { e.stopPropagation(); setIsLightboxOpen(false); }} className="text-white/50 hover:text-white transition-colors">
