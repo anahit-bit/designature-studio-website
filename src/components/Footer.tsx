@@ -217,29 +217,29 @@ const Footer: React.FC = () => {
           </div>
 
           <div className="pt-10 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-8">
+            <div className="text-[9px] font-bold tracking-[0.3em] uppercase text-white/20">
+              {t('footer.rights')}
+            </div>
+
             <Logo invert={true} className="h-6 md:h-8" />
-            
+
             <div className="flex items-center gap-10">
-              <a 
-                href="https://www.facebook.com/Designature.Design.Studio" 
-                target="_blank" 
-                rel="noopener noreferrer" 
+              <a
+                href="https://www.facebook.com/Designature.Design.Studio"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-white hover:text-[#0047AB] transition-colors duration-300"
               >
                 <Facebook className="w-5 h-5" />
               </a>
-              <a 
-                href="https://www.instagram.com/designature_interior/" 
-                target="_blank" 
-                rel="noopener noreferrer" 
+              <a
+                href="https://www.instagram.com/designature_interior/"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-white hover:text-[#0047AB] transition-colors duration-300"
               >
                 <Instagram className="w-5 h-5" />
               </a>
-            </div>
-            
-            <div className="text-[9px] font-bold tracking-[0.3em] uppercase text-white/20 md:order-first">
-              {t('footer.rights')}
             </div>
           </div>
         </div>
