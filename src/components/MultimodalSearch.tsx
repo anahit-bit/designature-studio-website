@@ -101,7 +101,7 @@ const MultimodalSearch: React.FC = () => {
 
           {/* Right — description */}
           <div className="md:max-w-xs md:text-right hidden md:block">
-            <p className="text-white/20 text-[10px] uppercase tracking-[0.2em] leading-[2.2]">
+            <p className="text-white/50 text-sm tracking-wide leading-relaxed">
               {language === 'en'
                 ? 'Your complete starting point — style, vision, and shopping list — before you speak to anyone.'
                 : 'Book a consultation'}
