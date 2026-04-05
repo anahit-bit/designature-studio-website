@@ -301,6 +301,7 @@ const AIConceptsPage: React.FC = () => {
   const [shoppingError, setShoppingError] = useState<string | null>(null);
   const [shoppingDone, setShoppingDone] = useState(false);
   const [standaloneShoppingImage, setStandaloneShoppingImage] = useState<string | null>(null);
+  const [forceStandaloneUpload, setForceStandaloneUpload] = useState(false);
   const [standaloneShoppingAspectRatio, setStandaloneShoppingAspectRatio] = useState<string>('4/3');
   const [shoppingCountry, setShoppingCountry] = useState<string>('us');
 
@@ -652,6 +653,7 @@ const AIConceptsPage: React.FC = () => {
       setShoppingResults([]);
       setShoppingItems([]);
       setShoppingDone(false);
+      setForceStandaloneUpload(false);
     } else {
       // Variation: keep shoppingItems so re-search CTA appears, but clear old results
       setShoppingResults([]);
@@ -2132,27 +2134,43 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                 {/* Initial CTA — first time or after clear */}
                 {!shoppingDone && !shoppingLoading && !shoppingError && shoppingItems.length === 0 && (
                   <div className="px-8 py-6 bg-neutral-50">
-                    {/* AI concept exists — one-click CTA */}
-                    {selectedConceptUrl ? (
-                      <div className="flex items-center justify-between gap-6">
-                        <div>
-                          <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-black mb-1">
-                            {t('ai.shopThisLook')}
-                          </p>
-                          <p className="text-[10px] text-black/50 leading-relaxed max-w-xs">
-                            {t('ai.shopThisLookDesc')}
-                          </p>
+                    {/* AI concept exists (active generation) — one-click CTA */}
+                    {selectedConceptUrl && results.length > 0 && !forceStandaloneUpload ? (
+                      <div className="flex flex-col gap-4">
+                        <div className="flex items-center justify-between gap-6">
+                          <div>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-black mb-1">
+                              {t('ai.shopThisLook')}
+                            </p>
+                            <p className="text-[10px] text-black/50 leading-relaxed max-w-xs">
+                              {t('ai.shopThisLookDesc')}
+                            </p>
+                          </div>
+                          <button
+                            onClick={focusShoppingTabAndRunSearch}
+                            className="flex-shrink-0 flex items-center gap-2 bg-[#0047AB] text-white text-[10px] font-bold uppercase tracking-[0.3em] px-6 py-4 hover:bg-[#003d99] transition-all whitespace-nowrap"
+                          >
+                            {t('ai.findTheseProducts')} →
+                          </button>
                         </div>
                         <button
-                          onClick={focusShoppingTabAndRunSearch}
-                          className="flex-shrink-0 flex items-center gap-2 bg-[#0047AB] text-white text-[10px] font-bold uppercase tracking-[0.3em] px-6 py-4 hover:bg-[#003d99] transition-all whitespace-nowrap"
+                          onClick={() => setForceStandaloneUpload(true)}
+                          className="text-[8px] font-bold uppercase tracking-[0.2em] text-black/30 hover:text-black/60 transition-colors text-left"
                         >
-                          {t('ai.findTheseProducts')} →
+                          ↑ Use a different photo instead
                         </button>
                       </div>
                     ) : (
                       /* No AI concept — standalone upload */
                       <div>
+                        {forceStandaloneUpload && results.length > 0 && (
+                          <button
+                            onClick={() => setForceStandaloneUpload(false)}
+                            className="text-[8px] font-bold uppercase tracking-[0.2em] text-black/30 hover:text-black/60 transition-colors mb-4 block"
+                          >
+                            ← Back to AI concept
+                          </button>
+                        )}
                         <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-black mb-1">
                           {t('ai.shop.anyInterior')}
                         </p>
