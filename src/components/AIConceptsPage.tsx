@@ -1196,8 +1196,8 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
             {/* Tool 1 — Style Quiz (LIVE) */}
             <div
-              onClick={() => setActiveTool('quiz')}
-              className={`group relative p-4 cursor-pointer border-r border-black/10 transition-all ${activeTool === 'quiz' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
+              onClick={() => { if (!isProcessing) setActiveTool('quiz'); }}
+              className={`group relative p-4 border-r border-black/10 transition-all ${isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${activeTool === 'quiz' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
               style={{ minHeight: '130px' }}
             >
               <div className={`text-[8px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'quiz' ? 'text-white/40' : 'text-black/25'}`}>01</div>
@@ -1243,8 +1243,8 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
             {/* Tool 3 — Shopping List (LIVE) */}
             <div
-              onClick={() => setActiveTool('shopping')}
-              className={`group relative p-4 cursor-pointer border-r border-black/10 transition-all ${activeTool === 'shopping' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
+              onClick={() => { if (!isProcessing) setActiveTool('shopping'); }}
+              className={`group relative p-4 border-r border-black/10 transition-all ${isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${activeTool === 'shopping' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
               style={{ minHeight: '130px' }}
             >
               <div className={`text-[8px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'shopping' ? 'text-white/40' : 'text-black/25'}`}>03</div>
@@ -1649,7 +1649,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
           )}
 
           {/* Processing state */}
-          {isProcessing && (
+          {isProcessing && activeTool === 'vision' && (
             <div className="flex-grow flex flex-col items-center justify-center gap-6 bg-black p-16 text-center">
               <div className="w-12 h-12 border-2 border-white/10 border-t-white/60 rounded-full animate-spin" />
               <div className="space-y-3">
