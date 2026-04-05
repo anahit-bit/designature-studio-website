@@ -427,6 +427,9 @@ const translations = {
     'btn.send': 'Send',
 
     // Pricing Section (full)
+    'pricing.backHome': 'Back to Home',
+    'pricing.hero': 'Pricing',
+    'pricing.subtitle': 'Start free — no card needed. Paid plans launching soon.',
     'pricing.eyebrow': 'Pricing',
     'pricing.title': 'Simple, honest pricing.',
     'pricing.subtitle2': "Start free. Upgrade when you're ready.\nPaid plans launching soon.",
