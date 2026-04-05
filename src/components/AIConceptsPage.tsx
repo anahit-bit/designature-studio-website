@@ -1537,10 +1537,10 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                       <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-black/40 mb-1">Free tier complete</p>
                       <p className="text-sm font-bold text-black leading-snug">{t('ai.usedAll')}</p>
                     </div>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <button
                         onClick={() => navigateTo('pricing')}
-                        className="w-full py-3.5 bg-[#0047AB] text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-[#003d99] transition-all flex items-center justify-center gap-2"
+                        className="px-6 py-3 bg-[#0047AB] text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-[#003d99] transition-all flex items-center gap-2"
                       >
                         ✦ Upgrade plan
                       </button>
@@ -1548,7 +1548,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                         href="https://calendly.com/designature-studio-us/free_consultation"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-full py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all flex items-center justify-center gap-2"
+                        className="px-6 py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all flex items-center gap-2"
                       >
                         {t('ai.bookConversation')} <ArrowRight className="w-3 h-3" />
                       </a>
@@ -2180,10 +2180,10 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                         <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-black/40 mb-1">Free tier complete</p>
                         <p className="text-sm font-bold text-black leading-snug">You've used all 3 free shopping lists.</p>
                       </div>
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <button
                           onClick={() => navigateTo('pricing')}
-                          className="w-full py-3.5 bg-[#0047AB] text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-[#003d99] transition-all flex items-center justify-center gap-2"
+                          className="px-6 py-3 bg-[#0047AB] text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-[#003d99] transition-all flex items-center gap-2"
                         >
                           ✦ Upgrade plan
                         </button>
@@ -2191,7 +2191,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                           href="https://calendly.com/designature-studio-us/free_consultation"
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="w-full py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all flex items-center justify-center gap-2"
+                          className="px-6 py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all flex items-center gap-2"
                         >
                           {t('ai.bookConversation')} <ArrowRight className="w-3 h-3" />
                         </a>
