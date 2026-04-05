@@ -7,7 +7,7 @@ import { useLanguage } from '../LanguageContext';
 import { ArrowLeft } from 'lucide-react';
 
 const PricingPage: React.FC = () => {
-  const { navigateTo } = useLanguage();
+  const { navigateTo, t } = useLanguage();
 
   return (
     <div className="min-h-screen bg-white font-body">
@@ -28,13 +28,13 @@ const PricingPage: React.FC = () => {
               className="text-[9px] font-bold uppercase tracking-[0.35em] text-white/40 mb-10 hover:text-white transition-colors flex items-center gap-2 group w-fit"
             >
               <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
-              Back to Home
+              {t('pricing.backHome')}
             </button>
             <h1 className="text-3xl md:text-5xl lg:text-[5.5vw] font-bold font-display text-white tracking-architectural leading-[0.85] uppercase mb-8 animate-in fade-in slide-in-from-bottom duration-1000">
-              Pricing.
+              {t('pricing.hero')}
             </h1>
             <p className="text-white/60 text-base font-light leading-relaxed animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
-              Start free — no card needed. Paid plans launching soon.
+              {t('pricing.subtitle')}
             </p>
           </div>
         </div>
@@ -43,7 +43,7 @@ const PricingPage: React.FC = () => {
       <div className="bg-white w-full">
         <div className="max-w-[1800px] mx-auto px-8 md:px-16 pt-16 pb-2">
           <h2 className="text-3xl md:text-5xl font-bold font-display text-black tracking-architectural uppercase leading-[0.9] text-center">
-            Simple, honest pricing.
+            {t('pricing.title')}
           </h2>
         </div>
       </div>

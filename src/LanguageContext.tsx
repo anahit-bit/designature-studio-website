@@ -468,7 +468,7 @@ const translations = {
     'nav.services': 'Ծառայություններ',
     'nav.aiConcepts': 'AI Կոնցեպտներ',
     'nav.aiStudio': 'AI Ստուդիա',
-    'nav.pricing': 'Գնագիր',
+    'nav.pricing': 'Գներ',
     'nav.contact': 'Կապ',
     'nav.blog': 'Բլոգ',
     'nav.bookConsultation': 'Ամրագրել Խորհրդատվություն',
@@ -853,9 +853,9 @@ const translations = {
 
     // Pricing page
     'pricing.backHome': 'Վերադառնալ Գլխավոր',
-    'pricing.eyebrow': 'Գնագիր',
-    'pricing.hero': 'Գնագիր',
-    'pricing.subtitle': 'Սկսեք անվճար — քարտ չի պահանջվում: Ազնիվ պայմաններ նրանց համար, ովքեր դիզայն են անում:',
+    'pricing.eyebrow': 'Գներ',
+    'pricing.hero': 'Գներ',
+    'pricing.subtitle': 'Սկսեք անվճար — քարտ պետք չէ: Վճարովի պլաններ շուտով:',
     'pricing.title': 'Պարզ, ազնիվ գներ:',
     'pricing.subtitle2': 'Սկսեք անվճար: Բարելավեք երբ պատրաստ եք:\nՎճարովի պլաններ շուտով:',
     'pricing.free.badge': 'Free',
