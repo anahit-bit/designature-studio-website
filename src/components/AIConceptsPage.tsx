@@ -265,6 +265,7 @@ const AIConceptsPage: React.FC = () => {
   const [selectedStyle, setSelectedStyle] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingPhase, setProcessingPhase] = useState(0);
+  const processingRef = useRef<HTMLDivElement>(null);
   const PROCESSING_PHASES = [
     'Analysing spatial structure…',
     'Reading light and proportion…',
@@ -1549,7 +1550,10 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
                 {/* Generate button */}
                 <button
-                  onClick={() => handleGenerate()}
+                  onClick={() => {
+                    handleGenerate();
+                    setTimeout(() => processingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80);
+                  }}
                   disabled={isGenerateDisabled}
                   className="w-full bg-black text-white py-5 text-sm md:text-base font-bold uppercase tracking-[0.4em] transition-all hover:bg-black/80 flex items-center justify-center gap-3 disabled:bg-black/20 disabled:cursor-not-allowed mt-auto"
                 >
@@ -1582,7 +1586,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         </div>
 
         {/* ════ RIGHT CONTENT AREA ════ */}
-        <div className="flex-grow bg-neutral-50 flex flex-col">
+        <div className="flex-grow bg-white flex flex-col">
 
           {/* ── 04 Room Audit ── paid/owner only ── */}
           {activeTool === 'audit' && user?.isPaid && (
@@ -1665,7 +1669,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
           {/* Processing state */}
           {isProcessing && activeTool === 'vision' && (
-            <div className="p-8 flex items-start justify-center">
+            <div ref={processingRef} className="p-8 flex items-start justify-center">
               <div className="relative w-full max-w-[520px] overflow-hidden" style={{ aspectRatio: roomAspectRatio }}>
                 {/* Room photo underneath */}
                 {roomImage && (
