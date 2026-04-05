@@ -33,7 +33,7 @@ describe('Regression: links and email flows', () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
     renderWithProvider(<Header />);
 
-    fireEvent.click(screen.getAllByText(/Book a Conversation/i)[0]);
+    fireEvent.click(screen.getAllByText(/Let's Talk/i)[0]);
 
     expect(openSpy).toHaveBeenCalledWith(
       'https://calendly.com/designature-studio-us/free_consultation',
