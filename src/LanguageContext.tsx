@@ -546,7 +546,7 @@ const translations = {
     // AI Section / Design First
     'ai.jumpToTool': 'Ընտրեք ցանկացած գործիք վերևից',
     'ai.designFirst.label': 'AI-ով Աշխատող Դիզայն Ստուդիա',
-    'ai.designFirst.title1': 'Դիզայնը՝ Առաջին:',
+    'ai.designFirst.title1': 'Դիզայնը սկզբից.',
     'ai.designFirst.title2': 'Պարտավորությունները՝ Հետո:',
     'ai.designFirst.desc': 'Օգտագործեք մեր AI գործիքները՝ հնարավորությունները ուսումնասիրելու համար:',
     'ai.designFirst.tool1': 'Style Quiz — բացահայտեք Ձեր դիզայնի ԴՆԹ-ն',
