@@ -2298,15 +2298,27 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                           className="w-40 h-40 object-cover flex-shrink-0 border border-black/10"
                           alt="Source"
                         />
-                        <div className="pt-1">
+                        <div className="pt-1 flex-grow">
                           <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/30 mb-2">
                             {selectedConceptUrl
                               ? (language === 'en' ? 'Shopping from your AI concept' : 'Shopping from AI concept')
                               : (language === 'en' ? 'Shopping from your uploaded photo' : 'Shopping from uploaded photo')}
                           </p>
-                          <p className="text-[11px] text-black/60 leading-relaxed">
+                          <p className="text-[11px] text-black/60 leading-relaxed mb-4">
                             {language === 'en' ? 'Products matched to the items identified in this interior.' : 'Products matched to this interior'}
                           </p>
+                          <button
+                            onClick={() => {
+                              setShoppingDone(false);
+                              setShoppingResults([]);
+                              setShoppingItems([]);
+                              setStandaloneShoppingImage(null);
+                              setForceStandaloneUpload(true);
+                            }}
+                            className="text-[8px] font-bold uppercase tracking-[0.2em] text-black/30 hover:text-black/60 transition-colors"
+                          >
+                            ↑ Search with a different photo
+                          </button>
                         </div>
                       </div>
                     )}
