@@ -264,6 +264,14 @@ const AIConceptsPage: React.FC = () => {
   const [apiAspectRatio, setApiAspectRatio] = useState<"1:1" | "3:4" | "4:3" | "9:16" | "16:9">("3:4");
   const [selectedStyle, setSelectedStyle] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingPhase, setProcessingPhase] = useState(0);
+  const PROCESSING_PHASES = [
+    'Analysing spatial structure…',
+    'Reading light and proportion…',
+    'Synthesising materials…',
+    'Composing the palette…',
+    'Rendering your concept…',
+  ];
   const [results, setResults] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -336,6 +344,13 @@ const AIConceptsPage: React.FC = () => {
     const saved = localStorage.getItem('ds_download_count');
     return saved ? parseInt(saved, 10) : 0;
   });
+
+  // ── Cycle processing phase text while generating ──
+  useEffect(() => {
+    if (!isProcessing) { setProcessingPhase(0); return; }
+    const id = setInterval(() => setProcessingPhase(p => (p + 1) % PROCESSING_PHASES.length), 4000);
+    return () => clearInterval(id);
+  }, [isProcessing]);
 
   // ── Load Quiz images automatically from Cloudinary ──
   useEffect(() => {
@@ -1650,15 +1665,29 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
           {/* Processing state */}
           {isProcessing && activeTool === 'vision' && (
-            <div className="flex-grow flex flex-col items-center justify-center gap-6 bg-black p-16 text-center">
-              <div className="w-12 h-12 border-2 border-white/10 border-t-white/60 rounded-full animate-spin" />
-              <div className="space-y-3">
-                <p className="text-sm md:text-base font-bold uppercase tracking-[0.4em] text-white/50">
-                  {t('common.processing')}
-                </p>
-                <p className="text-[9px] text-white/20 uppercase tracking-widest">
-                  {t('ai.processingTime')}
-                </p>
+            <div className="p-8 flex items-start justify-center">
+              <div className="relative w-full max-w-[520px] overflow-hidden" style={{ aspectRatio: roomAspectRatio }}>
+                {/* Room photo underneath */}
+                {roomImage && (
+                  <img src={roomImage} className="w-full h-full object-cover" alt="Your room" />
+                )}
+                {/* Dark overlay */}
+                <div className="absolute inset-0 bg-black/70" />
+                {/* Centered content */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 text-center px-8">
+                  <div className="w-10 h-10 border-2 border-white/15 border-t-white/70 rounded-full animate-spin" />
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/40">
+                      Generating
+                    </p>
+                    <p key={processingPhase} className="text-sm font-light text-white/80 tracking-wide animate-pulse">
+                      {PROCESSING_PHASES[processingPhase]}
+                    </p>
+                  </div>
+                  <p className="text-[8px] text-white/20 uppercase tracking-widest">
+                    {t('ai.processingTime')}
+                  </p>
+                </div>
               </div>
             </div>
           )}
