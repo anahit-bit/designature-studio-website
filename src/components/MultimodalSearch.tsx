@@ -77,21 +77,21 @@ const MultimodalSearch: React.FC = () => {
               {t('ai.desc')}
             </p>
             {/* Tool list */}
-            <div className="flex flex-col gap-2.5 mb-8">
+            <div className="flex flex-col gap-3.5 mb-8">
               {[
-                { n: '01', label: language === 'en' ? 'Style Quiz — discover your design DNA' : 'Style Quiz', live: true },
-                { n: '02', label: language === 'en' ? 'AI Vision — see your room transformed' : 'AI Vision', live: true },
-                { n: '03', label: language === 'en' ? 'Shopping List — find the real products' : 'Shopping List', live: true },
-                { n: '04', label: language === 'en' ? 'Room Audit — score your space' : 'Room Audit', live: false },
-                { n: '05', label: language === 'en' ? 'Design Brief — build your brief' : 'Design Brief', live: false },
+                { n: '01', label: language === 'en' ? 'Style Quiz — find out what you actually love' : 'Style Quiz', live: true },
+                { n: '02', label: language === 'en' ? 'AI Vision — see it in your real room' : 'AI Vision', live: true },
+                { n: '03', label: language === 'en' ? 'Shopping List — get the exact products' : 'Shopping List', live: true },
+                { n: '04', label: language === 'en' ? 'Room Audit — score your current space' : 'Room Audit', live: false },
+                { n: '05', label: language === 'en' ? 'Design Brief — walk in knowing what you want' : 'Design Brief', live: false },
                 { n: '06', label: language === 'en' ? 'Cultural Advisor — blend global styles' : 'Cultural Advisor', live: false },
               ].map(tool => (
-                <div key={tool.n} className="flex items-center gap-3">
-                  <span className={`text-[8px] font-bold tracking-widest w-6 ${tool.live ? 'text-[#0047AB]' : 'text-white/20'}`}>{tool.n}</span>
-                  <span className={`text-[11px] tracking-wide ${tool.live ? 'text-white/60' : 'text-white/25'}`}>{tool.label}</span>
+                <div key={tool.n} className="flex items-center gap-4">
+                  <span className={`text-[11px] font-bold tracking-widest w-7 flex-shrink-0 ${tool.live ? 'text-[#0047AB]' : 'text-white/20'}`}>{tool.n}</span>
+                  <span className={`text-sm tracking-wide ${tool.live ? 'text-white/70' : 'text-white/25'}`}>{tool.label}</span>
                   {tool.live
-                    ? <span className="text-[7px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 bg-green-500/15 text-green-400">Live</span>
-                    : <span className="text-[7px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 bg-white/5 text-white/20">Soon</span>
+                    ? <span className="text-[7px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 bg-green-500/15 text-green-400 flex-shrink-0">Live</span>
+                    : <span className="text-[7px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 bg-white/5 text-white/20 flex-shrink-0">Soon</span>
                   }
                 </div>
               ))}
@@ -103,7 +103,7 @@ const MultimodalSearch: React.FC = () => {
           <div className="md:max-w-xs md:text-right hidden md:block">
             <p className="text-white/20 text-[10px] uppercase tracking-[0.2em] leading-[2.2]">
               {language === 'en'
-                ? 'Then book a consultation with Anahit — and come in knowing exactly what you want.'
+                ? 'Your complete starting point — style, vision, and shopping list — before you speak to anyone.'
                 : 'Book a consultation'}
             </p>
           </div>
