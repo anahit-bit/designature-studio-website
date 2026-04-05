@@ -95,21 +95,24 @@ const WhyChooseUs: React.FC = () => {
           {/* Right — AI differentiator panel */}
           <div className="bg-[#0a0a0a] px-10 py-12 flex flex-col justify-center gap-6">
             <div className="text-[8px] font-bold uppercase tracking-[0.3em] text-[#0047AB]">
-              {language === 'en' ? 'The human edge' : ''}
+              {t('why.humanEdge')}
             </div>
             <h4 className="font-display text-4xl md:text-5xl font-bold text-white leading-[0.92] tracking-tight uppercase">
-              AI helps you<br />explore.<br /><span className="italic font-light text-white/40">We make it</span><br /><span className="italic font-light text-white/40">extraordinary.</span>
+              AI {language === 'en' ? <>helps you<br />explore.</> : <>{t('why.aiExplore')}</>}<br />
+              <span className="italic font-light text-white/40">
+                {language === 'en' ? <>We make it<br />extraordinary.</> : t('why.weMakeExtraordinary')}
+              </span>
             </h4>
             <p className="text-[11px] text-white/40 leading-[1.9] max-w-sm">
               {language === 'en'
                 ? <>Our tools let you visualise and discover — but the <span className="text-white/75 font-medium">design decisions that make a space uniquely yours</span> come from a trained eye, years of engineering knowledge, and genuine creative instinct. That&apos;s the part AI can&apos;t replicate.</>
-                : 'Our AI tools help you explore. The design vision is ours.'}
+                : t('why.aiDesc')}
             </p>
             <button
               onClick={() => window.open('https://calendly.com/designature-studio-us/free_consultation', '_blank')}
               className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#0047AB] hover:text-white transition-colors duration-200 text-left w-fit mt-2"
             >
-              {language === 'en' ? 'Book a consultation →' : 'Book a consultation →'}
+              {t('btn.bookCall')} →
             </button>
           </div>
 

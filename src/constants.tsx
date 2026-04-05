@@ -135,7 +135,7 @@ export const PROJECTS_LIST: ProjectData[] = [
   {
     id: '25',
     titleEN:  'Glass House',
-    titleAM:  'Hajeli Twuny',
+    titleAM:  'Հայելի Տունը',
 
     categoryEN: 'Residential',   // 'Residential' or 'Commercial'
     categoryAM: 'Բնակելի',      // 'Բնակելի' or 'Կոմերցիոն'

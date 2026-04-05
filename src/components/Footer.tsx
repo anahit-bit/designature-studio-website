@@ -110,7 +110,8 @@ const Footer: React.FC = () => {
     useful: [
       { name: t('footer.terms'), policy: 'terms' as const },
       { name: t('footer.privacy'), policy: 'privacy' as const },
-    ]
+    ],
+    faq: { name: 'FAQ', action: () => navigateTo('faq') },
   };
 
   const getButtonText = () => {
@@ -142,6 +143,13 @@ const Footer: React.FC = () => {
             <div className="space-y-8">
               <h4 className="text-xs font-bold uppercase tracking-[0.4em] text-white/30">{t('footer.usefulLinks')}</h4>
               <nav className="flex flex-col gap-4">
+                <button
+                  type="button"
+                  onClick={footerLinks.faq.action}
+                  className="text-left text-xs font-bold uppercase tracking-widest text-white/60 hover:text-[#0047AB] transition-colors duration-300"
+                >
+                  {footerLinks.faq.name}
+                </button>
                 {footerLinks.useful.map((link) => (
                   <button
                     key={link.name}

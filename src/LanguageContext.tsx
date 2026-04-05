@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 export type Language = 'en' | 'am';
-export type Page = 'home' | 'portfolio' | 'project-detail' | 'services' | 'studio' | 'ai-concepts' | 'ai-vision' | 'pricing';
+export type Page = 'home' | 'portfolio' | 'project-detail' | 'services' | 'studio' | 'ai-concepts' | 'ai-vision' | 'pricing' | 'faq';
 export type PortfolioFilter = 'All' | 'Residential' | 'Commercial';
 
 const STORAGE_KEYS = {
@@ -13,7 +13,7 @@ function getInitialPage(): Page {
   const raw = localStorage.getItem(STORAGE_KEYS.currentPage);
   if (!raw) return 'home';
   // Only allow known pages (guards against stale/invalid values)
-  const allowed: Page[] = ['home', 'portfolio', 'project-detail', 'services', 'studio', 'ai-concepts', 'ai-vision', 'pricing'];
+  const allowed: Page[] = ['home', 'portfolio', 'project-detail', 'services', 'studio', 'ai-concepts', 'ai-vision', 'pricing', 'faq'];
   return (allowed as string[]).includes(raw) ? (raw as Page) : 'home';
 }
 
@@ -70,7 +70,7 @@ const translations = {
     'serv.cta.ren': 'View All Projects',
     'serv.final.title': 'Ready to Start?',
     'serv.final.desc': 'Let\'s transform your vision into an architectural reality.',
-    'serv.final.btn': 'Book a Conversation',
+    'serv.final.btn': "Let's Talk",
     'services.desc': 'Our comprehensive suite of services ensures every aspect of your architectural journey is handled with precision and artistic integrity.',
     'services.downloading': 'Downloading...',
     'services.downloadFailed': 'PDF download failed, opening in new tab',
@@ -184,7 +184,7 @@ const translations = {
     'ai.visionDesc': 'Upload your room · Choose a style · Generate your concept',
     'ai.shopDesc': 'Upload any interior · Find real products · Download PDF',
     'ai.usedAll': "You've used all 3 free generations.",
-    'ai.bookConversation': 'Book a Conversation',
+    'ai.bookConversation': "Let's Talk",
     'ai.generateConcept': 'Generate Concept',
     'ai.conceptAppear': 'Your concept will appear here',
     'ai.completeSteps': 'Complete the steps on the left',
@@ -264,7 +264,7 @@ const translations = {
     'ai.shop.downloadPdfNotice': 'Download now — your list is not saved and will not be available later.',
     'ai.loveWhatSee': 'Love what you see?',
     'ai.readyMakeReal': 'Ready to make this real?',
-    'ai.firstConversation': 'First conversation is on us — no commitment',
+    'ai.firstConversation': 'First conversation is on us — no commitment needed',
     'ai.design': 'Design',
     'ai.studio': 'Studio',
     'ai.studio.desc': 'Your personal interior design assistant. Experiment with styles, visualize transformations, and find real products.',
@@ -293,7 +293,7 @@ const translations = {
     'ai.designFirst.tool2': 'AI Vision — see your room transformed',
     'ai.designFirst.tool3': 'Shopping List — find the real products',
     'ai.designFirst.tool4': 'Room Audit, Design Brief & more',
-    'ai.designFirst.footerDesc': 'Then book a consultation with Anahit — and come in knowing exactly what you want.',
+    'ai.designFirst.footerDesc': 'Then have a conversation with Anahit — and walk in already knowing what you love.',
     'ai.designFirst.freeConcepts': 'Free concepts',
     'ai.designFirst.designStyles': 'Design styles',
     'ai.designFirst.genTime': 'Generation time',
@@ -317,8 +317,8 @@ const translations = {
 
     // CTA Banner
     'cta.banner.title': 'Ready when you are.',
-    'cta.banner.subtext': 'You\'ve seen the AI concepts. Now let\'s build the real thing.',
-    'cta.banner.btn': 'Book a Conversation',
+    'cta.banner.subtext': "You've explored the possibilities. Let's bring your space to life — together.",
+    'cta.banner.btn': 'Start a Conversation',
 
     // Footer
     'footer.studio': 'Studio',
@@ -345,8 +345,8 @@ const translations = {
     'footer.success': 'Subscribed!',
 
     // Header Buttons
-    'btn.bookCall': 'Book a Conversation',
-    'btn.firstConvo': 'First Conversation is on Us',
+    'btn.bookCall': "Let's Talk",
+    'btn.firstConvo': 'Free — no commitment',
 
     // Studio Page
     'studio.heroTitle': 'The Studio',
@@ -417,7 +417,7 @@ const translations = {
     // General Buttons
     'btn.generate': 'Generate Concept',
     'btn.download': 'Download',
-    'btn.book': 'Book a Conversation',
+    'btn.book': "Let's Talk",
     'btn.back': 'Back',
     'btn.next': 'Next',
     'btn.close': 'Close',
@@ -425,12 +425,18 @@ const translations = {
   },
   am: {
     // Nav
+    'nav.home': 'Գլխավոր',
     'nav.studio': 'Ստուդիա',
     'nav.portfolio': 'Պորտֆոլիո',
     'nav.services': 'Ծառայություններ',
     'nav.aiConcepts': 'AI Կոնցեպտներ',
+    'nav.aiStudio': 'AI Ստուդիա',
+    'nav.pricing': 'Գնագիր',
     'nav.contact': 'Կապ',
     'nav.blog': 'Բլոգ',
+    'nav.bookConsultation': 'Ամրագրել Խորհրդատվություն',
+    'nav.freeConsultation': 'Անվճար Խորհրդատվություն',
+    'nav.backToHome': 'Վերադառնալ Գլխավոր',
 
     // Hero
     'hero.studio2021': 'Ճարտարապետական Ստուդիա / Հիմն. 2021',
@@ -458,7 +464,10 @@ const translations = {
     'serv.cta.ren': 'Տեսնել Բոլորը',
     'serv.final.title': 'Պատրա՞ստ եք Սկսել',
     'serv.final.desc': 'Եկեք վերափոխենք Ձեր տեսլականը ճարտարապետական իրականության:',
-    'serv.final.btn': 'Ամրագրել զրույց',
+    'serv.final.btn': 'Սկսել Զրույց',
+    'services.desc': 'Մեր ծառայությունների ամբողջական փաթեթն ապահովում է, որ Ձեր ճարտարապետական ճանապարհի յուրաքանչյուր ասպեկտ կառավարվի ճշգրտությամբ:',
+    'services.downloading': 'Ներբեռնվում է...',
+    'services.downloadFailed': 'PDF ներբեռնումը ձախողվեց',
 
     // Process
     'proc.title': 'Մեր Գործընթացը',
@@ -483,6 +492,26 @@ const translations = {
     'btn.viewAllProjects': 'Տեսնել Բոլոր Նախագծերը',
 
     // Portfolio
+    'portfolio.title': 'Ընտրված Տարածքներ',
+    'portfolio.backHome': 'ՎԵՐԱԴԱՌՆԱԼ ԳԼԽԱՎՈՐ',
+    'portfolio.back': 'ՎԵՐԱԴԱՌՆԱԼ ՊՈՐՏՖՈԼԻՈ',
+    'portfolio.view': 'ՏԵՍՆԵԼ',
+    'portfolio.next': 'Հաջորդ Նախագիծ',
+    'portfolio.exploreMore': 'Տեսնել Ավելին',
+    'portfolio.return': 'Վերադառնալ Պատկերասրահ',
+    'portfolio.mainPerspective': 'Հիմնական Տեսարան',
+    'portfolio.detailView1': 'Մանրամաս I',
+    'portfolio.detailView2': 'Մանրամաս II',
+    'portfolio.widePerspective': 'Լայն Տեսարան',
+    'portfolio.contextView1': 'Համատեքստ I',
+    'portfolio.contextView2': 'Համատեքստ II',
+    'portfolio.closeup1': 'Մոտ Պլան I',
+    'portfolio.closeup2': 'Մոտ Պլան II',
+    'portfolio.closeup3': 'Մոտ Պլան III',
+    'portfolio.atmosphere1': 'Մթնոլորտ I',
+    'portfolio.atmosphere2': 'Մթնոլորտ II',
+    'portfolio.additionalView': 'Լրացուցիչ Տեսարան {n}',
+    'portfolio.noImage': 'Նկարը Հասանելի Չէ',
     'port.title': 'Մեր Պորտֆոլիոն',
     'port.heading': 'Ընտրված Նախագծեր',
     'port.all': 'Բոլորը',
@@ -494,27 +523,47 @@ const translations = {
     'port.detail.location': 'Վայրը',
 
     // Why Choose Us
-    'why.title': 'Ինչու ynt8el Mez',
+    'why.title': 'Ինչու ընտրել մեզ',
+    'why.label': 'Ինչու Դիզայնեյչր',
     'why.heading': 'Ստուդիայի Ստանդարտը',
-    'why.desc': 'Մենք համատեղում ենք ինժեներական ճշգրտությունը գեղարվեստական տեսլականի հետ:',
-    'why.p1.title': 'Ինժեներական Ճշգրտություն',
-    'why.p1.desc': 'Յուրաքանչյուր դիզայն հիմնված է խիստ տեխնիկական ստանդարտների և կառուցվածքային ամրության վրա:',
+    'why.desc': 'Ինժեներական կրթությունը հանդիպում է դիզայնի տեսլականին — յուրաքանչյուր նախագիծ տեխնիկապես խիստ, էսթետիկ մտածված և ամբողջությամբ կառավարված՝ կոնցեպտից մինչև ավարտ:',
+    'why.humanEdge': 'Մարդկային Առավելությունը',
+    'why.aiExplore': 'AI-ն օգնում է ուսումնասիրել:',
+    'why.weMakeExtraordinary': 'Մենք դարձնում ենք անկրկնելի:',
+    'why.aiDesc': 'Մեր գործիքները թույլ են տալիս վիզուալիզացնել — սակայն տարածքը Ձեր սեփականը դարձնող դիզայնի որոշումները գալիս են մարզված աչքից, ճարտարապետական գիտելիքից և ստեղծագործական բնազդից:',
+    'why.p1.title': 'Ինժեներական Հիմք',
+    'why.p1.desc': 'Յուրաքանչյուր կոնցեպտ կառուցվածքային ամուր է — ոչ միայն գեղեցիկ:',
     'why.p2.title': 'Գլոբալ Հեռանկար',
-    'why.p2.desc': 'Միջազգային դիզայնի տենդենցների և ստանդարտների ներդրում յուրաքանչյուր տեղական նախագծում:',
-    'why.p3.title': 'Անխափան Գործընթաց',
-    'why.p3.desc': 'Առաջին էսքիզից մինչև վերջին աղյուսը, մենք կառավարում ենք բարդությունը Ձեր փոխարեն:',
-    'why.p4.title': 'Հեռավար Աշխատանք',
-    'why.p4.desc': 'Ժամանակակից թվային գործիքները թույլ են տալիս մեզ արդյունավետ համագործակցել հաճախորդների հետ ամբողջ աշխարհում:',
+    'why.p2.desc': 'Միջազգային դիզայնի ստանդարտներ կիրառված յուրաքանչյուր տեղական նախագծում:',
+    'why.p3.title': 'Ամբողջական Գործընթաց',
+    'why.p3.desc': 'Առաջին էսքիզից մինչև վերջին աղյուս — մենք կառավարում ենք բարդությունը:',
+    'why.p4.title': 'Հեռավար Պատրաստ',
+    'why.p4.desc': 'Ամբողջական դիզայն ծառայություն թվային ձևաչափով — 3D տուրեր, ուղիղ ստուգումներ:',
 
-    // AI Section
+    // AI Section / Design First
+    'ai.jumpToTool': 'Ընտրեք ցանկացած գործիք վերևից',
+    'ai.designFirst.label': 'AI-ով Աշխատող Դիզայն Ստուդիա',
+    'ai.designFirst.title1': 'Դիզայնը՝ Առաջին:',
+    'ai.designFirst.title2': 'Պարտավորությունները՝ Հետո:',
+    'ai.designFirst.desc': 'Օգտագործեք մեր AI գործիքները՝ հնարավորությունները ուսումնասիրելու համար:',
+    'ai.designFirst.tool1': 'Ոճի Քվիզ — բացահայտեք Ձեր դիզայնի ԴՆԹ-ն',
+    'ai.designFirst.tool2': 'AI Vision — տեսեք Ձեր սենյակի փոփոխությունը',
+    'ai.designFirst.tool3': 'Գնումների Ցուցակ — գտեք իրական ապրանքները',
+    'ai.designFirst.tool4': 'Սենյակի Աուդիտ, Դիզայն Բրիֆ և ավելին',
+    'ai.designFirst.footerDesc': 'Ապա զրուցեք Անահիտի հետ — մտեք արդեն գիտելով, թե ինչ եք սիրում:',
+    'ai.designFirst.freeConcepts': 'Անվճար կոնցեպտներ',
+    'ai.designFirst.designStyles': 'Դիզայնի ոճեր',
+    'ai.designFirst.genTime': 'Ստեղծման ժամանակ',
+    'ai.designFirst.toExplore': 'Ուսումնասիրելու',
+    'ai.designFirst.before': 'Մինչ',
     'ai.engine': 'AI Design Studio',
     'ai.heading': 'Դիզայնը՝ առաջինը: Պարտավորությունները՝ հետո:',
     'ai.desc': 'Վեց գործիք: Մեկ էջ: Անվճար սկիզբ:',
     'ai.uploadInsp': 'Վերբեռնել Ներշնչանք',
-    'btn.change': 'Change photo',
-    'btn.add': 'Add images',
-    'common.optional': 'optional',
-    'ai.uploadFloor': 'Upload Room Photo',
+    'btn.change': 'Փոխել լուսանկարը',
+    'btn.add': 'Ավելացնել նկարներ',
+    'common.optional': 'ըստ ցանկության',
+    'ai.uploadFloor': 'Բեռնել Սենյակի Լուսանկարը',
     'ai.styleQuiz': 'Ոճի Քվիզ',
     'ai.aiVision': 'AI Տեսլական',
     'ai.shoppingList': 'Գնումների Ցուցակ',
@@ -563,10 +612,18 @@ const translations = {
     'ai.style.artdeco': 'Art Deco',
     'ai.style.transitional': 'Transitional',
     'ai.style.art deco': 'Art Deco',
-    'common.processing': 'Processing',
-    'ai.shopThisLook': 'Shop This Look',
-    'ai.shopThisLookDesc': 'Find the real products from this concept.',
-    'ai.findTheseProducts': 'Find These Products',
+    'common.processing': 'Մշակվում է',
+    'ai.shopThisLook': 'Գնել Այս Ոճը',
+    'ai.shopThisLookDesc': 'Գտեք իրական ապրանքները այս կոնցեպտից:',
+    'ai.findTheseProducts': 'Գտնել Ապրանքները',
+    'ai.studio.desc': 'Ձեր անձնական ինտերիեր դիզայնի օգնականը: Փորձեք ոճեր, վիզուալիզացրեք փոփոխությունները:',
+    'ai.quiz.title': 'Ոճի Քվիզ',
+    'ai.quiz.desc': 'Բացահայտեք Ձեր դիզայնի ԴՆԹ-ն 60 վայրկյանում:',
+    'ai.vision.title': 'AI Տեսլական',
+    'ai.vision.desc': 'Տեսեք Ձեր սենյակի փոփոխությունը ցանկացած ոճով:',
+    'ai.shop.title': 'Գնումների Ցուցակ',
+    'ai.shop.desc': 'Գտեք իրական կահույք Ձեր սիրած կոնցեպտներից:',
+    'ai.quiz.applyStyleToRoom': 'Կիրառել {style}-ը իմ սենյակում',
     'ai.style.modern': 'Modern',
     'ai.style.midCentury': 'Mid-Century',
     'ai.style.midcentury': 'Mid-Century',
@@ -652,7 +709,7 @@ const translations = {
     // CTA Banner
     'cta.banner.title': 'Ձեր Տեսլականը, Մեր Ստորագրությունը:',
     'cta.banner.subtext': 'Միացեք տեսլական ունեցող տանտերերի և կառուցապատողների շարքին, ովքեր ընտրում են Դիզայնեյչրը իրենց ամենահավակնոտ նախագծերի համար:',
-    'cta.banner.btn': 'Ամրագրել զրույց մեր կողմից',
+    'cta.banner.btn': 'Սկսել Զրույց',
 
     // Footer
     'footer.studio': 'Ստուդիա',
@@ -675,7 +732,7 @@ const translations = {
 
     // Header Buttons
     'btn.bookCall': 'Ամրագրել զրույց',
-    'btn.firstConvo': 'Առաջին զրույցը մեր կողմից է',
+    'btn.firstConvo': 'Առաջին զրույցը անվճար է',
 
     // Studio Page
     'studio.heroTitle': 'Ստուդիա',
@@ -704,8 +761,81 @@ const translations = {
     'studio.formSuccess': 'Հաղորդագրությունը Հաջողությամբ Ուղարկվեց',
     'studio.formError': 'Սխալ հաղորդագրությունն ուղարկելիս',
 
+    'testimonials.label': 'Կարծիքներ',
+    'testimonials.title': 'Ինչ են Ասում Մեր Հաճախորդները',
+    'testimonials.desc': 'Հպարտ ենք կառուցելով երկարատև հարաբերություններ բացառիկ դիզայնի և նվիրված ծառայության միջոցով:',
+    'testimonials.feedback': 'Կիսվեք Ձեր կարծիքով',
+
+    // Blog
+    'blog.viewAll': 'Տեսնել Բոլոր Հոդվածները',
+
+    // Footer extras
+    'footer.follow': 'Հետևեք Մեզ',
+    'footer.contact': 'Կապ',
+    'footer.newsletter': 'Լրատվական',
+    'footer.newsletterDesc': 'Բաժանորդագրվեք՝ ստանալու մեր վերջին դիզայնային մտքերը:',
+    'footer.success': 'Բաժանորդագրվեցիք',
+
+    // Studio Page extras
+    'studio.hero.title': 'Ստուդիա',
+    'studio.hero.desc': 'Ճարտարապետների և դիզայներների կոլեկտիվ, նվիրված լավ ապրելու արվեստին:',
+    'studio.story.title': 'Մեր Պատմությունը և Փիլիսոփայությունը',
+    'studio.story.p1': 'Հիմնադրված 2021-ին, Դիզայնեյչրը ծնվել է մի պարզ համոզմունքից. որ մեր բնակած տարածքները խորապես ձևավորում են մեր կյանքի որակը:',
+    'studio.story.p2': 'Մենք չենք հավատում «ոճերին» որպես ամրագրված կանոնների: Մենք հավատում ենք ստորագրություններին — հաճախորդի անհատականության և կայքի ճարտարապետական ներուժի յուրահատուկ հատումին:',
+    'studio.story.p3': 'Մենք նախ դիզայն ենք անում մարդու համար — ունկնդրելով նախքան նկարելը, հասկանալով նախքան որոշելը: Արդյունքն այն տարածքներն են, որոնք այսօր խոր մտածված են թվում — և մի տասնամյակ հետո կմնան նույնը:',
+    'studio.contact.title': 'Կապ Հաստատել',
+    'studio.contact.hero': 'Ստեղծենք ինչ-որ հիշարժան',
+    'studio.contact.desc': 'Ունե՞ք նախագծի գաղափար: Կուրախանայինք լսել: Մեր թիմը պատրաստ է օգնել Ձեր տեսլականն իրականացնելու:',
+    'studio.contact.email': 'Էլ. Փոստ',
+    'studio.contact.phone': 'Հեռախոս',
+    'studio.contact.location': 'Ստուդիա',
+    'studio.contact.location.desc': 'Երևան, Հայաստան և Ամբողջ Աշխարհ',
+    'studio.contact.form.title': 'Ուղարկեք Հաղորդագրություն',
+    'studio.contact.form.name': 'Ձեր Անուն Ազգանունը',
+    'studio.contact.form.email': 'your@email.com',
+    'studio.contact.form.subject': 'Հյուրասենյակ Վերանախագծում · 120մ²',
+    'studio.contact.form.message': 'Պատմեք մեզ Ձեր նախագծի, ժամկետի, տեսլականի մասին…',
+    'studio.contact.form.success': 'Հաղորդագրությունը Հաջողությամբ Ուղարկվեց',
+    'studio.contact.form.error': 'Սխալ հաղորդագրությունն ուղարկելիս',
+    'studio.founder.label': 'Հիմնադիր և Գլխավոր Դիզայներ',
+    'studio.founder.role': 'Architect · Interior Designer',
+    'studio.founder.quote': 'Դիզայնը միայն այն չէ, թե ինչ տեսք ունի. այն այն է, թե ինչպես եք Ձեզ զգում, երբ ներս եք մտնում դռնից:',
+    'studio.founder.bio': 'Միջազգային ճարտարապետական ընկերություններում ավելի քան տասը տարվա փորձով Անահիտ Ղասաբյանը հիմնադրել է Դիզայնեյչրը՝ Հայաստանում և դրանից դուրս անհատականացված, բարձրակարգ դիզայնի նոր մակարդակ բերելու համար:',
+
+    // General buttons
+    'btn.generate': 'Ստեղծել Կոնցեպտ',
+    'btn.download': 'PDF Ներբեռնել',
+    'btn.book': 'Սկսել Զրույց',
+    'btn.back': 'Հետ',
+    'btn.next': 'Հաջորդ',
+    'btn.close': 'Փակել',
+    'btn.send': 'Ուղարկել',
+
+    // Pricing page
+    'pricing.backHome': 'Back to Home',
+    'pricing.eyebrow': 'Pricing',
+    'pricing.hero': 'Pricing.',
+    'pricing.subtitle': 'Free to start — no card required. Honest plans for those who design.',
+    'pricing.title': 'Clear, honest pricing.',
+    'pricing.free.badge': 'Free',
+    'pricing.free.forever': '/ forever',
+    'pricing.free.name': 'Explore',
+    'pricing.free.desc': 'Start your AI journey with no commitment.',
+    'pricing.aiTools': 'AI Tools',
+    'pricing.free.cta': 'Start Free',
+    'pricing.free.note': 'Concepts are not saved after session ends',
+    'pricing.popular': 'Most Popular',
+    'pricing.month': '/ month',
+    'pricing.design.name': 'Design',
+    'pricing.design.desc': 'For homeowners actively working on a project.',
+    'pricing.discount': 'Early Discount',
+    'pricing.studio.badge': 'Studio',
+    'pricing.studio.name': 'Studio',
+    'pricing.studio.desc': 'For designers or those with multiple projects.',
+    'pricing.notify': 'Notify Me When Live',
+
     // AI Vision Page
-    'ai.vision.hero': 'AI ՏԵՍԼԱԿԱՆ',
+    'ai.vision.hero': 'AI Տեսլական',
     'ai.vision.heroDesc': 'Մենք չենք օգտագործում AI-ն ճարտարապետին փոխարինելու համար: Մենք օգտագործում ենք այն մարդկային երևակայությունն ընդլայնելու և տեխնիկական խոչընդոտները վերացնելու համար:',
     'ai.vision.back': 'ՎԵՐԱԴԱՌՆԱԼ ԳԼԽԱՎՈՐ',
     'ai.vision.point1.title': 'Գեր-անհատականացում',
