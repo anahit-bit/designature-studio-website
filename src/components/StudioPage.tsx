@@ -36,7 +36,7 @@ const StudioPage: React.FC = () => {
       {/* ══════════════════════════════════════════
           SECTION 1 — HERO (unchanged, kept as-is)
           ══════════════════════════════════════════ */}
-      <section className="relative w-full h-[70vh] md:h-[85vh] overflow-hidden bg-black font-body">
+      <section className="relative w-full h-[85vh] md:h-screen overflow-hidden bg-black font-body">
         <div
           className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: `url(https://res.cloudinary.com/dys2k5muv/image/upload/v1771178204/memphis_1_bhkave.jpg)` }}
@@ -52,7 +52,7 @@ const StudioPage: React.FC = () => {
               <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
               {t('portfolio.backHome')}
             </button>
-            <h1 className="text-5xl md:text-7xl lg:text-[9vw] font-bold font-display text-white tracking-architectural leading-[0.85] uppercase mb-12 animate-in fade-in slide-in-from-bottom duration-1000">
+            <h1 className="text-3xl md:text-5xl lg:text-[5.5vw] font-bold font-display text-white tracking-architectural leading-[0.85] uppercase mb-12 animate-in fade-in slide-in-from-bottom duration-1000">
               {t('studio.heroTitle')}
             </h1>
             <div className="flex flex-col md:flex-row md:items-start gap-12 animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
@@ -69,13 +69,13 @@ const StudioPage: React.FC = () => {
         {/* ══════════════════════════════════════════
             SECTION 2 — FOUNDER: Photo + Name split
             ══════════════════════════════════════════ */}
-        <section className="grid lg:grid-cols-2 min-h-[90vh]">
+        <section className="grid lg:grid-cols-2 min-h-[90vh] mt-12 md:mt-20 border-t border-black/6">
           {/* Left — photo fills the column */}
           <div className="relative overflow-hidden bg-neutral-200" style={{ minHeight: '60vh' }}>
             <img
-              src="https://res.cloudinary.com/dys2k5muv/image/upload/v1771143071/founder_oatiib.jpg"
+              src="https://res.cloudinary.com/dys2k5muv/image/upload/v1775402047/20260124_090857_yj4blf.jpg"
               alt="Anahit Ghasabyan"
-              className="w-full h-full object-cover object-top"
+              className="w-full h-full object-cover object-center"
               style={{ position: 'absolute', inset: 0 }}
             />
             {/* Fade right edge into white */}
@@ -128,7 +128,7 @@ const StudioPage: React.FC = () => {
               <div className="flex gap-5">
                 <a href="https://www.instagram.com/designature_interior/" target="_blank" rel="noopener noreferrer" className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/30 hover:text-black transition-colors border-b border-black/10 hover:border-black pb-0.5">Instagram</a>
                 <a href="https://www.facebook.com/Designature.Design.Studio" target="_blank" rel="noopener noreferrer" className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/30 hover:text-black transition-colors border-b border-black/10 hover:border-black pb-0.5">Facebook</a>
-                <a href="mailto:hello@designature.studio" className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/30 hover:text-black transition-colors border-b border-black/10 hover:border-black pb-0.5">Email</a>
+                <a href="mailto:anahit@designature.studio" className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/30 hover:text-black transition-colors border-b border-black/10 hover:border-black pb-0.5">Email</a>
               </div>
             </div>
           </div>

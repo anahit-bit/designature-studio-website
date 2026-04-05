@@ -68,30 +68,29 @@ const MultimodalSearch: React.FC = () => {
                 {t('ai.engine')}
               </span>
             </div>
-            <h3 className="text-5xl md:text-6xl lg:text-7xl font-bold font-display tracking-tight leading-[0.9] uppercase mb-4">
-              {language === 'en'
-                ? <><span>Design First.</span><br /><span className="italic font-light text-white/45">Commit Later.</span></>
-                : <><span>Design First.</span><br /><span className="italic font-light text-white/45">Commit Later.</span></>}
+            <h3 className={`font-bold font-display tracking-tight leading-[0.9] uppercase mb-4 ${language === 'am' ? 'text-3xl md:text-4xl lg:text-5xl' : 'text-5xl md:text-6xl lg:text-7xl'}`}>
+              <span>{t('ai.designFirst.title1')}</span><br />
+              <span className="italic font-light text-white/45">{t('ai.designFirst.title2')}</span>
             </h3>
             <p className="text-[10px] text-white/30 uppercase tracking-[0.2em] mb-8">
               {t('ai.desc')}
             </p>
             {/* Tool list */}
-            <div className="flex flex-col gap-2.5 mb-8">
+            <div className="flex flex-col gap-3.5 mb-8">
               {[
-                { n: '01', label: language === 'en' ? 'Style Quiz — discover your design DNA' : 'Style Quiz', live: true },
-                { n: '02', label: language === 'en' ? 'AI Vision — see your room transformed' : 'AI Vision', live: true },
-                { n: '03', label: language === 'en' ? 'Shopping List — find the real products' : 'Shopping List', live: true },
-                { n: '04', label: language === 'en' ? 'Room Audit — score your space' : 'Room Audit', live: false },
-                { n: '05', label: language === 'en' ? 'Design Brief — build your brief' : 'Design Brief', live: false },
-                { n: '06', label: language === 'en' ? 'Cultural Advisor — blend global styles' : 'Cultural Advisor', live: false },
+                { n: '01', labelKey: 'ai.designFirst.tool1', live: true },
+                { n: '02', labelKey: 'ai.designFirst.tool2', live: true },
+                { n: '03', labelKey: 'ai.designFirst.tool3', live: true },
+                { n: '04', labelKey: 'ai.designFirst.tool4', live: false },
+                { n: '05', labelKey: 'ai.designFirst.tool5', live: false },
+                { n: '06', labelKey: 'ai.designFirst.tool6', live: false },
               ].map(tool => (
-                <div key={tool.n} className="flex items-center gap-3">
-                  <span className={`text-[8px] font-bold tracking-widest w-6 ${tool.live ? 'text-[#0047AB]' : 'text-white/20'}`}>{tool.n}</span>
-                  <span className={`text-[11px] tracking-wide ${tool.live ? 'text-white/60' : 'text-white/25'}`}>{tool.label}</span>
+                <div key={tool.n} className="flex items-center gap-4">
+                  <span className={`text-[11px] font-bold tracking-widest w-7 flex-shrink-0 ${tool.live ? 'text-[#0047AB]' : 'text-white/20'}`}>{tool.n}</span>
+                  <span className={`text-sm tracking-wide ${tool.live ? 'text-white/70' : 'text-white/25'}`}>{t(tool.labelKey)}</span>
                   {tool.live
-                    ? <span className="text-[7px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 bg-green-500/15 text-green-400">Live</span>
-                    : <span className="text-[7px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 bg-white/5 text-white/20">Soon</span>
+                    ? <span className="text-[7px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 bg-green-500/15 text-green-400 flex-shrink-0">Live</span>
+                    : <span className="text-[7px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 bg-white/5 text-white/20 flex-shrink-0">Soon</span>
                   }
                 </div>
               ))}
@@ -101,10 +100,8 @@ const MultimodalSearch: React.FC = () => {
 
           {/* Right — description */}
           <div className="md:max-w-xs md:text-right hidden md:block">
-            <p className="text-white/20 text-[10px] uppercase tracking-[0.2em] leading-[2.2]">
-              {language === 'en'
-                ? 'Then book a consultation with Anahit — and come in knowing exactly what you want.'
-                : 'Book a consultation'}
+            <p className="text-white/50 text-sm tracking-wide leading-relaxed">
+              {t('ai.designFirst.rightDesc')}
             </p>
           </div>
 
@@ -139,7 +136,7 @@ const MultimodalSearch: React.FC = () => {
                   loading="lazy"
                 />
                 <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm px-2 py-0.5">
-                  <span className="text-[7px] font-bold uppercase tracking-[0.25em] text-white/50">Before</span>
+                  <span className="text-[7px] font-bold uppercase tracking-[0.25em] text-white/50">{t('ai.designFirst.before')}</span>
                 </div>
               </div>
 
@@ -174,22 +171,22 @@ const MultimodalSearch: React.FC = () => {
           <div className="flex items-center gap-8 md:gap-12">
             <div>
               <div className="text-xl font-bold font-display tracking-tight">3</div>
-              <div className="text-[8px] uppercase tracking-[0.3em] text-white/30 mt-0.5">Free concepts</div>
+              <div className="text-[8px] uppercase tracking-[0.3em] text-white/30 mt-0.5">{t('ai.designFirst.freeConcepts')}</div>
             </div>
             <div className="w-px h-8 bg-white/10" />
             <div>
               <div className="text-xl font-bold font-display tracking-tight">12</div>
-              <div className="text-[8px] uppercase tracking-[0.3em] text-white/30 mt-0.5">Design styles</div>
+              <div className="text-[8px] uppercase tracking-[0.3em] text-white/30 mt-0.5">{t('ai.designFirst.designStyles')}</div>
             </div>
             <div className="w-px h-8 bg-white/10" />
             <div>
               <div className="text-xl font-bold font-display tracking-tight">20s</div>
-              <div className="text-[8px] uppercase tracking-[0.3em] text-white/30 mt-0.5">Generation time</div>
+              <div className="text-[8px] uppercase tracking-[0.3em] text-white/30 mt-0.5">{t('ai.designFirst.genTime')}</div>
             </div>
             <div className="w-px h-8 bg-white/10" />
             <div>
               <div className="text-xl font-bold font-display tracking-tight">Free</div>
-              <div className="text-[8px] uppercase tracking-[0.3em] text-white/30 mt-0.5">To explore</div>
+              <div className="text-[8px] uppercase tracking-[0.3em] text-white/30 mt-0.5">{t('ai.designFirst.toExplore')}</div>
             </div>
           </div>
 

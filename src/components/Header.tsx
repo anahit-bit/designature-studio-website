@@ -11,7 +11,7 @@ const Header: React.FC = () => {
 
   // On white-background pages without hero images, we need black text from the start.
   // Studio page now has a hero, so it starts transparent like Home.
-  const isDarkTextNeeded = isScrolled || currentPage === 'portfolio' || currentPage === 'project-detail' || currentPage === 'services' || currentPage === 'studio' || currentPage === 'pricing';
+  const isDarkTextNeeded = isScrolled || currentPage === 'portfolio' || currentPage === 'project-detail' || currentPage === 'services' || currentPage === 'studio' || currentPage === 'pricing' || currentPage === 'faq';
   const isAIConceptsPage = currentPage === 'ai-concepts';
   const useLightNav = isAIConceptsPage && !isScrolled;
 
@@ -30,11 +30,11 @@ const Header: React.FC = () => {
   }, [isMobileMenuOpen]);
 
   const navLinks = [
-    { name: t('nav.studio'), href: '#studio', action: () => navigateTo('studio') },
-    { name: t('nav.portfolio'), href: '#projects', action: () => navigateTo('portfolio') },
-    { name: t('nav.services'), href: '#services', action: () => navigateTo('services') },
-    { name: t('nav.pricing'), href: '#pricing', action: () => navigateTo('pricing') },
-    { name: t('nav.aiConcepts'), href: '#ai-concepts', action: () => navigateTo('ai-concepts'), isHighlight: true },
+    { name: t('nav.studio'), href: '#studio', page: 'studio', action: () => navigateTo('studio') },
+    { name: t('nav.portfolio'), href: '#projects', page: 'portfolio', action: () => navigateTo('portfolio') },
+    { name: t('nav.services'), href: '#services', page: 'services', action: () => navigateTo('services') },
+    { name: t('nav.pricing'), href: '#pricing', page: 'pricing', action: () => navigateTo('pricing') },
+    { name: t('nav.aiConcepts'), href: '#ai-concepts', page: 'ai-concepts', action: () => navigateTo('ai-concepts'), isHighlight: true },
   ];
 
   const LanguageSwitcher = () => (
@@ -90,18 +90,22 @@ const Header: React.FC = () => {
           </div>
 
           <nav className="hidden lg:flex items-center gap-8 mr-12">
-            {navLinks.map((link) => (
-              <a 
-                key={link.name} 
+            {navLinks.map((link) => {
+              const isActive = currentPage === link.page;
+              return (
+              <a
+                key={link.name}
                 href={link.href}
                 onClick={(e) => {
                   e.preventDefault();
                   link.action();
                 }}
-                className={`text-[11px] font-bold uppercase tracking-[0.2em] transition-colors duration-300 ${
-                  link.isHighlight 
-                    ? 'text-[#0047AB] hover:text-[#0047AB]/70' 
-                    : ((isDarkTextNeeded && !useLightNav) ? 'text-black hover:text-[#0047AB]' : 'text-white hover:text-white/40')
+                className={`relative text-[11px] font-bold uppercase tracking-[0.2em] transition-colors duration-300 group ${
+                  link.isHighlight
+                    ? 'text-[#0047AB] hover:text-[#0047AB]/70'
+                    : isActive
+                      ? ((isDarkTextNeeded && !useLightNav) ? 'text-black' : 'text-white')
+                      : ((isDarkTextNeeded && !useLightNav) ? 'text-black/40 hover:text-black' : 'text-white/40 hover:text-white')
                 }`}
                 style={link.isHighlight ? { animation: 'ai-pulse 2.5s ease-in-out infinite' } : {}}
               >
@@ -118,8 +122,12 @@ const Header: React.FC = () => {
                     animation: 'dot-pulse 2.5s ease-in-out infinite',
                   }} />
                 )}
+                {isActive && !link.isHighlight && (
+                  <span className={`absolute -bottom-1 left-0 w-full h-[1.5px] ${(isDarkTextNeeded && !useLightNav) ? 'bg-black' : 'bg-white'}`} />
+                )}
               </a>
-            ))}
+            );
+            })}
           </nav>
 
           <div className="hidden lg:flex items-center gap-8">

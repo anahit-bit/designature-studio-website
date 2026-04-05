@@ -49,7 +49,7 @@ const AIVisionPage: React.FC = () => {
             </button>
             
             <div className="grid lg:grid-cols-2 gap-20 items-end">
-              <h1 className="text-5xl md:text-7xl lg:text-[10vw] font-bold font-display tracking-architectural leading-[0.8] uppercase">
+              <h1 className="text-3xl md:text-5xl lg:text-[5.5vw] font-bold font-display tracking-architectural leading-[0.8] uppercase">
                 {t('ai.vision.hero')}
               </h1>
               <p className="text-white/60 text-lg md:text-2xl font-light leading-relaxed max-w-xl italic border-l border-white/10 pl-8">

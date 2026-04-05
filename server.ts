@@ -42,17 +42,24 @@ interface User {
 function normalizeUserForFreeTier(user: User): { user: User; changed: boolean } {
   let changed = false;
   const u = { ...user };
-  if (!isConceptTestAccountEmail(u.email) && u.generationsLeft > FREE_TIER_MAX_CONCEPTS) {
+  const isOwner = isConceptTestAccountEmail(u.email);
+  if (!isOwner && u.generationsLeft > FREE_TIER_MAX_CONCEPTS) {
     u.generationsLeft = FREE_TIER_MAX_CONCEPTS;
     changed = true;
   }
-  if (typeof u.shoppingListsLeft !== "number" || Number.isNaN(u.shoppingListsLeft)) {
-    u.shoppingListsLeft = FREE_TIER_MAX_SHOPPING_LISTS;
-    changed = true;
-  }
-  if (u.shoppingListsLeft > FREE_TIER_MAX_SHOPPING_LISTS) {
-    u.shoppingListsLeft = FREE_TIER_MAX_SHOPPING_LISTS;
-    changed = true;
+  if (isOwner) {
+    // Owner account gets unlimited everything — never clamp
+    if (u.generationsLeft !== 999) { u.generationsLeft = 999; changed = true; }
+    if (u.shoppingListsLeft !== 999) { u.shoppingListsLeft = 999; changed = true; }
+  } else {
+    if (typeof u.shoppingListsLeft !== "number" || Number.isNaN(u.shoppingListsLeft)) {
+      u.shoppingListsLeft = FREE_TIER_MAX_SHOPPING_LISTS;
+      changed = true;
+    }
+    if (u.shoppingListsLeft > FREE_TIER_MAX_SHOPPING_LISTS) {
+      u.shoppingListsLeft = FREE_TIER_MAX_SHOPPING_LISTS;
+      changed = true;
+    }
   }
   return { user: u, changed };
 }
@@ -408,6 +415,7 @@ async function startServer() {
         nowIso,
       }).catch((err) => console.error("Free-tier Google Sheets upsert error:", err));
 
+      const ownerLogin = isConceptTestAccountEmail(user.email);
       res.json({
         token,
         user: {
@@ -416,6 +424,8 @@ async function startServer() {
           picture: user.picture,
           generationsLeft: user.generationsLeft,
           shoppingListsLeft: user.shoppingListsLeft,
+          isPaid: ownerLogin ? true : false,
+          auditsLeft: ownerLogin ? 999 : 0,
         },
       });
     } catch (err) {
@@ -442,12 +452,15 @@ async function startServer() {
       writeDB(db);
     }
 
+    const ownerAccount = isConceptTestAccountEmail(user.email);
     res.json({
       email: user.email,
       name: user.name,
       picture: user.picture,
       generationsLeft: user.generationsLeft,
       shoppingListsLeft: user.shoppingListsLeft,
+      isPaid: ownerAccount ? true : false,
+      auditsLeft: ownerAccount ? 999 : 0,
     });
   });
 
@@ -673,6 +686,149 @@ async function startServer() {
     } catch (err: any) {
       console.error("Shopping search error:", err);
       res.status(500).json({ error: "Shopping search failed: " + (err.message || "unknown error") });
+    }
+  });
+
+  // ── POST /api/newsletter/subscribe — append email to newsletter sheet ──
+  app.post("/api/newsletter/subscribe", async (req, res) => {
+    const { email } = req.body || {};
+
+    if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      return res.status(400).json({ error: "Invalid email" });
+    }
+
+    const spreadsheetId = "1ADcawOqI2VElxwPSSuL-PGX3OjHehacod_ApDPRqFo4";
+    const serviceAccountJson = (process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON || "").trim();
+    const keyFile = (process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_KEYFILE || "").trim();
+
+    if (!serviceAccountJson && !keyFile) {
+      console.warn("Newsletter subscribe: missing service account credentials");
+      return res.status(503).json({ error: "Sheet integration not configured" });
+    }
+
+    try {
+      let credentials: any;
+      if (serviceAccountJson) {
+        credentials = JSON.parse(serviceAccountJson);
+        if (typeof credentials?.private_key === "string" && credentials.private_key.includes("\\n")) {
+          credentials.private_key = credentials.private_key.replace(/\\n/g, "\n");
+        }
+      } else {
+        credentials = JSON.parse(readFileSync(keyFile, "utf-8"));
+        if (typeof credentials?.private_key === "string" && credentials.private_key.includes("\\n")) {
+          credentials.private_key = credentials.private_key.replace(/\\n/g, "\n");
+        }
+      }
+
+      const jwtClient = new google.auth.JWT({
+        email: credentials.client_email,
+        key: credentials.private_key,
+        scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+      });
+
+      const sheetsApi = google.sheets({ version: "v4", auth: jwtClient });
+
+      const meta = await sheetsApi.spreadsheets.get({
+        spreadsheetId,
+        fields: "sheets(properties(title))",
+      });
+      const sheetTitle = meta.data.sheets?.[0]?.properties?.title;
+      if (!sheetTitle) throw new Error("Could not read sheet title");
+
+      // Detect country server-side from IP (accurate, not browser language)
+      let detectedCountry = '';
+      try {
+        const rawIp = (req.headers['x-forwarded-for'] as string || req.ip || '').split(',')[0].trim();
+        const isLocal = !rawIp || rawIp === '127.0.0.1' || rawIp === '::1' || rawIp.startsWith('192.168.') || rawIp.startsWith('10.');
+        if (!isLocal) {
+          const geoRes = await fetch(`https://ipapi.co/${rawIp}/country/`);
+          if (geoRes.ok) detectedCountry = (await geoRes.text()).trim();
+        }
+      } catch { /* non-fatal — country stays empty */ }
+
+      const now = new Date().toISOString();
+      await sheetsApi.spreadsheets.values.append({
+        spreadsheetId,
+        range: `${sheetTitle}!A:C`,
+        valueInputOption: "RAW",
+        insertDataOption: "INSERT_ROWS",
+        requestBody: {
+          values: [[
+            now,                         // created_at
+            email.trim().toLowerCase(),  // email
+            detectedCountry,             // country (from IP)
+          ]],
+        },
+      });
+
+      res.json({ ok: true });
+    } catch (err: any) {
+      console.error("Newsletter subscribe error:", err);
+      res.status(500).json({ error: "Failed to save subscription" });
+    }
+  });
+
+  // ── POST /api/pricing/notify — collect pricing launch notification emails ──
+  app.post("/api/pricing/notify", async (req, res) => {
+    const { email, plan } = req.body || {};
+
+    if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      return res.status(400).json({ error: "Invalid email" });
+    }
+
+    const spreadsheetId = "1Q-fEVKDy6ZlBGh_eGq-0DgcPxbQ5nyrEdQlxRaVkulg";
+    const serviceAccountJson = (process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON || "").trim();
+    const keyFile = (process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_KEYFILE || "").trim();
+
+    if (!serviceAccountJson && !keyFile) {
+      console.warn("Pricing notify: missing service account credentials");
+      return res.status(503).json({ error: "Sheet integration not configured" });
+    }
+
+    try {
+      let credentials: any;
+      if (serviceAccountJson) {
+        credentials = JSON.parse(serviceAccountJson);
+        if (typeof credentials?.private_key === "string" && credentials.private_key.includes("\\n")) {
+          credentials.private_key = credentials.private_key.replace(/\\n/g, "\n");
+        }
+      } else {
+        credentials = JSON.parse(readFileSync(keyFile, "utf-8"));
+        if (typeof credentials?.private_key === "string" && credentials.private_key.includes("\\n")) {
+          credentials.private_key = credentials.private_key.replace(/\\n/g, "\n");
+        }
+      }
+
+      const jwtClient = new google.auth.JWT({
+        email: credentials.client_email,
+        key: credentials.private_key,
+        scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+      });
+
+      const sheetsApi = google.sheets({ version: "v4", auth: jwtClient });
+
+      const meta = await sheetsApi.spreadsheets.get({
+        spreadsheetId,
+        fields: "sheets(properties(title))",
+      });
+      const sheetTitle = meta.data.sheets?.[0]?.properties?.title;
+      if (!sheetTitle) throw new Error("Could not read sheet title");
+
+      const now = new Date().toISOString();
+      await sheetsApi.spreadsheets.values.append({
+        spreadsheetId,
+        range: `${sheetTitle}!A:C`,
+        valueInputOption: "RAW",
+        insertDataOption: "INSERT_ROWS",
+        requestBody: {
+          values: [[now, email.trim().toLowerCase(), plan || ""]],
+        },
+      });
+
+      res.json({ ok: true });
+    } catch (err: any) {
+      console.error("Pricing notify error:", err);
+      res.status(500).json({ error: "Failed to save" });
     }
   });
 
