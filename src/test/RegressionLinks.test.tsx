@@ -33,7 +33,7 @@ describe('Regression: links and email flows', () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
     renderWithProvider(<Header />);
 
-    fireEvent.click(screen.getAllByText(/Book a Conversation/i)[0]);
+    fireEvent.click(screen.getAllByText(/Let's Talk/i)[0]);
 
     expect(openSpy).toHaveBeenCalledWith(
       'https://calendly.com/designature-studio-us/free_consultation',
@@ -58,7 +58,7 @@ describe('Regression: links and email flows', () => {
     ).toBeTruthy();
   });
 
-  it('newsletter subscribe posts to SheetBest endpoint', async () => {
+  it('newsletter subscribe posts to /api/newsletter/subscribe', async () => {
     renderWithProvider(<Footer />);
 
     fireEvent.change(screen.getByPlaceholderText(/Your Email Address/i), {
@@ -68,8 +68,11 @@ describe('Regression: links and email flows', () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        'https://api.sheetbest.com/sheets/95dd9d19-701f-44a3-aab9-58cffd572606',
-        expect.objectContaining({ method: 'POST' })
+        '/api/newsletter/subscribe',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ email: 'qa@example.com' }),
+        })
       );
     });
   });

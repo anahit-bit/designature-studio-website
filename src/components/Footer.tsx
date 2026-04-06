@@ -74,15 +74,12 @@ const Footer: React.FC = () => {
     setStatus('loading');
 
     try {
-      const response = await fetch('https://api.sheetbest.com/sheets/95dd9d19-701f-44a3-aab9-58cffd572606', {
+      const response = await fetch('/api/newsletter/subscribe', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          "Email": normalizedEmail,
-          "Date": new Date().toLocaleString(),
-        }),
+        body: JSON.stringify({ email: normalizedEmail }),
       });
 
       if (response.ok) {
@@ -113,7 +110,8 @@ const Footer: React.FC = () => {
     useful: [
       { name: t('footer.terms'), policy: 'terms' as const },
       { name: t('footer.privacy'), policy: 'privacy' as const },
-    ]
+    ],
+    faq: { name: 'FAQ', action: () => navigateTo('faq') },
   };
 
   const getButtonText = () => {
@@ -145,6 +143,13 @@ const Footer: React.FC = () => {
             <div className="space-y-8">
               <h4 className="text-xs font-bold uppercase tracking-[0.4em] text-white/30">{t('footer.usefulLinks')}</h4>
               <nav className="flex flex-col gap-4">
+                <button
+                  type="button"
+                  onClick={footerLinks.faq.action}
+                  className="text-left text-xs font-bold uppercase tracking-widest text-white/60 hover:text-[#0047AB] transition-colors duration-300"
+                >
+                  {footerLinks.faq.name}
+                </button>
                 {footerLinks.useful.map((link) => (
                   <button
                     key={link.name}
@@ -212,29 +217,29 @@ const Footer: React.FC = () => {
           </div>
 
           <div className="pt-10 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-8">
+            <div className="text-[9px] font-bold tracking-[0.3em] uppercase text-white/20">
+              {t('footer.rights')}
+            </div>
+
             <Logo invert={true} className="h-6 md:h-8" />
-            
+
             <div className="flex items-center gap-10">
-              <a 
-                href="https://www.facebook.com/Designature.Design.Studio" 
-                target="_blank" 
-                rel="noopener noreferrer" 
+              <a
+                href="https://www.facebook.com/Designature.Design.Studio"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-white hover:text-[#0047AB] transition-colors duration-300"
               >
                 <Facebook className="w-5 h-5" />
               </a>
-              <a 
-                href="https://www.instagram.com/designature_interior/" 
-                target="_blank" 
-                rel="noopener noreferrer" 
+              <a
+                href="https://www.instagram.com/designature_interior/"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-white hover:text-[#0047AB] transition-colors duration-300"
               >
                 <Instagram className="w-5 h-5" />
               </a>
-            </div>
-            
-            <div className="text-[9px] font-bold tracking-[0.3em] uppercase text-white/20 md:order-first">
-              {t('footer.rights')}
             </div>
           </div>
         </div>

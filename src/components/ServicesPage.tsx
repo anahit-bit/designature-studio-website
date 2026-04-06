@@ -118,7 +118,7 @@ const ServicesPage: React.FC = () => {
               {t('portfolio.backHome')}
             </button>
             
-            <h1 className="text-5xl md:text-7xl lg:text-[9vw] font-bold font-display text-white tracking-architectural leading-[0.85] uppercase mb-12 animate-in fade-in slide-in-from-bottom duration-1000">
+            <h1 className="text-3xl md:text-5xl lg:text-[5.5vw] font-bold font-display text-white tracking-architectural leading-[0.85] uppercase mb-12 animate-in fade-in slide-in-from-bottom duration-1000">
               {t('serv.pageHeroTitle')}
             </h1>
             
@@ -138,19 +138,15 @@ const ServicesPage: React.FC = () => {
         </button>
       </section>
       
-      <main id="services-grid" className="flex-grow pt-24 md:pt-40">
+      <main id="services-grid" className="flex-grow pt-16 md:pt-24">
         {/* Services Grid Section */}
         <div className="max-w-[1800px] mx-auto px-8 md:px-16 mb-0">
           
           {/* Section Header */}
-          <div className="flex flex-col items-center text-center mb-16 md:mb-20">
-            <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold font-display tracking-architectural leading-[1] uppercase mb-10">
+          <div className="flex flex-col items-center text-center mb-8 md:mb-10">
+            <h2 className="text-3xl md:text-5xl font-bold font-display tracking-architectural leading-[0.9] uppercase">
               {t('serv.title')}
             </h2>
-            <div className="w-24 h-[1px] bg-black/10 mx-auto mb-10" />
-            <p className="text-black/60 text-sm md:text-lg font-body font-light leading-relaxed max-w-2xl mx-auto">
-              {t('serv.subtext')}
-            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border-t border-black/5">

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ArrowLeft, Layout, Box, Palette, ArrowRight, CheckCircle2, X, Download, AlertCircle, RefreshCw, LogOut, FileDown } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { ArrowLeft, ArrowRight, CheckCircle2, X, Download, AlertCircle, RefreshCw, LogOut, FileDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleGenAI } from "@google/genai";
 import { useLanguage } from '../LanguageContext';
@@ -12,6 +12,7 @@ import {
 } from '../sessionClient';
 import Header from './Header';
 import Footer from './Footer';
+import RoomAudit from './RoomAudit';
 
 // ─── Google OAuth client ID ────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
@@ -30,8 +31,25 @@ const VISION_STYLES = [
   'Industrial', 'Coastal', 'Minimalist', 'Maximalist', 'Biophilic'
 ];
 
+const ROOM_TYPES = [
+  'Living Room', 'Dining Room', 'Bedroom', 'Kitchen',
+  'Bathroom', 'Home Office', 'Kids Room', 'Outdoor',
+];
+
 type QuizRoom = { url: string; credit: string };
 type QuizRooms = Record<string, QuizRoom[]>;
+
+// ─── Style education descriptions ────────────────────────────────────────────
+const STYLE_DESCRIPTIONS: Record<string, { summary: string; elements: string[] }> = {
+  'Japandi':     { summary: 'A fusion of Japanese wabi-sabi and Scandinavian hygge. Celebrates imperfection, natural materials, and quiet beauty — everything earns its place.', elements: ['Neutral tones', 'Natural textures', 'Low furniture', 'Negative space'] },
+  'Modern':      { summary: 'Clean geometry, minimal ornament, honest materials. Form follows function — every line is intentional, every surface purposeful.', elements: ['Clean lines', 'Open layout', 'Monochrome palette', 'Statement lighting'] },
+  'Mid-Century': { summary: 'Born in the 1950s–60s, it balances organic forms with geometric precision. Warm woods and bold accents meet sculptural furniture.', elements: ['Tapered legs', 'Warm wood', 'Pops of colour', 'Organic shapes'] },
+  'Bohemian':    { summary: 'Layered, personal, and free-spirited. A curated mix of textiles, cultures, and eras that feels lived-in and full of stories.', elements: ['Mixed textiles', 'Plants & greenery', 'Global artefacts', 'Rich colour'] },
+  'Rustic':      { summary: 'Rooted in nature and craftsmanship. Raw edges, weathered surfaces, and handmade quality bring warmth and authenticity.', elements: ['Reclaimed wood', 'Stone & brick', 'Earthy tones', 'Handmade details'] },
+  'Art Deco':    { summary: 'Glamour, geometry, and opulence from the 1920s. Bold symmetry, luxe materials, and rich contrast make every room feel like a statement.', elements: ['Gold accents', 'Geometric patterns', 'Velvet & marble', 'High contrast'] },
+  'Industrial':  { summary: 'Celebrates the beauty of raw, unfinished spaces. Exposed structure and utilitarian materials are the decoration.', elements: ['Exposed brick', 'Raw metal', 'Concrete', 'Edison bulbs'] },
+  'Coastal':     { summary: 'Light, airy, and unhurried. Inspired by shorelines — bleached woods, sandy tones, and ocean blues create effortless calm.', elements: ['Sandy neutrals', 'Ocean blues', 'Natural linen', 'Weathered wood'] },
+};
 
 const QUIZ_ROOMS_FALLBACK: QuizRooms = {
   'Art Deco': [
@@ -198,6 +216,8 @@ interface AuthUser {
   /** Free-tier shopping list runs remaining (from server) */
   shoppingListsLeft?: number;
   isPaid?: boolean;
+  /** Paid-tier audit quota (999 = unlimited) */
+  auditsLeft?: number;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -248,7 +268,17 @@ const AIConceptsPage: React.FC = () => {
   const [roomAspectRatio, setRoomAspectRatio] = useState<string>('3/4');
   const [apiAspectRatio, setApiAspectRatio] = useState<"1:1" | "3:4" | "4:3" | "9:16" | "16:9">("3:4");
   const [selectedStyle, setSelectedStyle] = useState<string>('');
+  const [selectedRoom, setSelectedRoom] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingPhase, setProcessingPhase] = useState(0);
+  const processingRef = useRef<HTMLDivElement>(null);
+  const PROCESSING_PHASES = [
+    'Analysing spatial structure…',
+    'Reading light and proportion…',
+    'Synthesising materials…',
+    'Composing the palette…',
+    'Rendering your concept…',
+  ];
   const [results, setResults] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -286,6 +316,10 @@ const AIConceptsPage: React.FC = () => {
   const [shoppingError, setShoppingError] = useState<string | null>(null);
   const [shoppingDone, setShoppingDone] = useState(false);
   const [standaloneShoppingImage, setStandaloneShoppingImage] = useState<string | null>(null);
+  const [forceStandaloneUpload, setForceStandaloneUpload] = useState(false);
+  const [searchSourceImage, setSearchSourceImage] = useState<string | null>(null);
+  const [searchSourceIsStandalone, setSearchSourceIsStandalone] = useState(false);
+  const [standaloneShoppingAspectRatio, setStandaloneShoppingAspectRatio] = useState<string>('3/4');
   const [shoppingCountry, setShoppingCountry] = useState<string>('us');
 
   // ── Style Quiz state ──
@@ -307,12 +341,25 @@ const AIConceptsPage: React.FC = () => {
   const [quizDone, setQuizDone] = useState<boolean>(false);
   const [quizResult, setQuizResult] = useState<{ style: string; pct: number }[]>([]);
   const [quizImageReady, setQuizImageReady] = useState<boolean>(false);
-  const [activeTool, setActiveTool] = useState<'quiz' | 'vision' | 'shopping'>('quiz');
+  const [quizHistory, setQuizHistory] = useState<{ style: string; pct: number }[][]>([]);
+  const [selectedPrevResult, setSelectedPrevResult] = useState<number | null>(null);
+  const [showQuizResults, setShowQuizResults] = useState(false);
+  const quizResultSavedRef = useRef(false);
+  const [activeTool, setActiveTool] = useState<'quiz' | 'vision' | 'shopping' | 'audit'>('quiz');
+  const [auditComplete, setAuditComplete] = useState(false);
+  const [auditProcessing, setAuditProcessing] = useState(false);
   const [quizRooms, setQuizRooms] = useState<QuizRooms>(QUIZ_ROOMS_FALLBACK);
   const [downloadCount, setDownloadCount] = useState<number>(() => {
     const saved = localStorage.getItem('ds_download_count');
     return saved ? parseInt(saved, 10) : 0;
   });
+
+  // ── Cycle processing phase text while generating ──
+  useEffect(() => {
+    if (!isProcessing) { setProcessingPhase(0); return; }
+    const id = setInterval(() => setProcessingPhase(p => (p + 1) % PROCESSING_PHASES.length), 4000);
+    return () => clearInterval(id);
+  }, [isProcessing]);
 
   // ── Load Quiz images automatically from Cloudinary ──
   useEffect(() => {
@@ -630,6 +677,7 @@ const AIConceptsPage: React.FC = () => {
       setShoppingResults([]);
       setShoppingItems([]);
       setShoppingDone(false);
+      setForceStandaloneUpload(false);
     } else {
       // Variation: keep shoppingItems so re-search CTA appears, but clear old results
       setShoppingResults([]);
@@ -662,6 +710,7 @@ const AIConceptsPage: React.FC = () => {
       const promptText = `You are an expert interior designer.
 The first ${inspirationImages.length} image(s) are inspiration references showing the desired style, colors, and materials.
 The last image is the actual room to redesign.
+${selectedRoom ? `This is a ${selectedRoom}. Choose furniture, layout, and decor appropriate for a ${selectedRoom}.` : 'Identify the room type from the photo and use appropriate furniture and layout.'}
 Generate a photorealistic interior design render of that room, redesigned in the exact style of the inspiration images.
 Style preference: ${selectedStyle || 'No specific style — use your best judgment based on the room'}.
 Keep the same room structure (windows, walls, ceiling). Apply the style, colors, furniture, lighting from the inspirations.
@@ -750,13 +799,12 @@ Output ONLY the redesigned room image. No text.`;
   };
 
   // ── Download ──
-  const handleDownload = (dataUrl: string) => {
-    const newCount = downloadCount + 1;
-    setDownloadCount(newCount);
-    localStorage.setItem('ds_download_count', newCount.toString());
+  const handleDownload = (dataUrl: string, conceptNumber?: number) => {
+    const num = conceptNumber ?? ((allSessionConcepts.indexOf(dataUrl) + 1) || 1);
+    const filename = `Designature_Studio_Generated_Concept_${num}.jpg`;
     const link = document.createElement('a');
     link.href = dataUrl;
-    link.download = `Designature_Studio_${newCount}.jpg`;
+    link.download = filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -908,6 +956,7 @@ Output ONLY the redesigned room image. No text.`;
     const style = quizSequence[quizStep];
     const newVotes = { ...quizVotes };
     if (vote === 'love') newVotes[style] = (newVotes[style] || 0) + 2;
+
     if (quizStep >= QUIZ_LENGTH - 1) {
       const total = Object.values(newVotes).reduce((a, b) => a + b, 0) || 1;
       const sorted = STYLES
@@ -925,6 +974,12 @@ Output ONLY the redesigned room image. No text.`;
   };
 
   const handleQuizReset = () => {
+    if (quizDone && quizResult.length > 0 && !quizResultSavedRef.current) {
+      setQuizHistory(prev => [quizResult, ...prev].slice(0, 3));
+    }
+    quizResultSavedRef.current = false;
+    setSelectedPrevResult(null);
+    setShowQuizResults(false);
     setQuizStep(0);
     setQuizVotes({});
     setQuizDone(false);
@@ -935,7 +990,13 @@ Output ONLY the redesigned room image. No text.`;
   };
 
   const handleApplyQuizStyle = () => {
-    if (quizResult.length > 0) setSelectedStyle(quizResult[0].style);
+    if (quizResult.length > 0) {
+      setSelectedStyle(quizResult[0].style);
+      if (!quizResultSavedRef.current) {
+        setQuizHistory(prev => [quizResult, ...prev].slice(0, 3));
+        quizResultSavedRef.current = true;
+      }
+    }
     setActiveTool('vision');
     setTimeout(() => {
       const el = document.getElementById('ai-concepts-tools');
@@ -943,8 +1004,10 @@ Output ONLY the redesigned room image. No text.`;
     }, 50);
   };
 
-  const handleShoppingSearch = async (overrideItems?: any[]) => {
-    const imageToAnalyse = allSessionConcepts[selectedConceptIndex] || standaloneShoppingImage;
+  const handleShoppingSearch = async (overrideItems?: any[], forceStandalone?: boolean) => {
+    const imageToAnalyse = forceStandalone
+      ? standaloneShoppingImage
+      : allSessionConcepts[selectedConceptIndex] || standaloneShoppingImage;
     if (!imageToAnalyse && !overrideItems) return;
     setShoppingLoading(true);
     setShoppingError(null);
@@ -1006,9 +1069,32 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
   /** Switch to Shopping tab + scroll to section (vision tab hides shopping-focused UI). */
   const focusShoppingTabAndRunSearch = () => {
+    setSearchSourceImage(allSessionConcepts[selectedConceptIndex] || standaloneShoppingImage || null);
+    setSearchSourceIsStandalone(false);
     setActiveTool('shopping');
     setTimeout(() => {
       void handleShoppingSearch();
+      const el = document.getElementById('shop-this-look');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  };
+
+  /** Called from AI Vision results — resets any standalone upload and shops the current AI concept. */
+  const shopCurrentConcept = () => {
+    setStandaloneShoppingImage(null);
+    setForceStandaloneUpload(false);
+    setSearchSourceImage(allSessionConcepts[selectedConceptIndex] || null);
+    setSearchSourceIsStandalone(false);
+    focusShoppingTabAndRunSearch();
+  };
+
+  /** Called from Option B — forces the standalone uploaded image, ignores AI concept. */
+  const focusShoppingTabAndRunStandaloneSearch = () => {
+    setSearchSourceImage(standaloneShoppingImage);
+    setSearchSourceIsStandalone(true);
+    setActiveTool('shopping');
+    setTimeout(() => {
+      void handleShoppingSearch(undefined, true);
       const el = document.getElementById('shop-this-look');
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 80);
@@ -1035,23 +1121,6 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
   const isGenerateDisabled = isProcessing || inspirationImages.length === 0 || !roomImage || !user || (user?.generationsLeft ?? 0) <= 0;
 
-  const features = [
-    {
-      icon: <Layout className="w-4 h-4" />,
-      title: t('ai.spatialLogic'),
-      desc: t('ai.spatialDesc'),
-    },
-    {
-      icon: <Palette className="w-4 h-4" />,
-      title: t('ai.materialSynthesis'),
-      desc: t('ai.materialDesc'),
-    },
-    {
-      icon: <Box className="w-4 h-4" />,
-      title: t('ai.volumeAnalysis'),
-      desc: t('ai.volumeDesc'),
-    },
-  ];
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -1086,6 +1155,8 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                   document.getElementById('style-quiz-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 } else if (activeTool === 'vision') {
                   document.getElementById('ai-vision-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else if (activeTool === 'audit') {
+                  document.getElementById('room-audit-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 } else {
                   document.getElementById('shop-this-look')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
@@ -1098,7 +1169,9 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                   ? `${t('ai.heroCtaQuiz')} →`
                   : activeTool === 'vision'
                     ? `${t('ai.heroCtaVision')} →`
-                    : `${t('ai.heroCtaShopping')} →`}
+                    : activeTool === 'audit'
+                      ? 'Score My Room →'
+                      : `${t('ai.heroCtaShopping')} →`}
             </button>
           </div>
           <div className="w-[240px] flex-shrink-0">
@@ -1155,8 +1228,8 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
             {/* Tool 1 — Style Quiz (LIVE) */}
             <div
-              onClick={() => setActiveTool('quiz')}
-              className={`group relative p-4 cursor-pointer border-r border-black/10 transition-all ${activeTool === 'quiz' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
+              onClick={() => { if (!isProcessing) setActiveTool('quiz'); }}
+              className={`group relative p-4 border-r border-black/10 transition-all ${isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${activeTool === 'quiz' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
               style={{ minHeight: '130px' }}
             >
               <div className={`text-[8px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'quiz' ? 'text-white/40' : 'text-black/25'}`}>01</div>
@@ -1202,8 +1275,8 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
             {/* Tool 3 — Shopping List (LIVE) */}
             <div
-              onClick={() => setActiveTool('shopping')}
-              className={`group relative p-4 cursor-pointer border-r border-black/10 transition-all ${activeTool === 'shopping' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
+              onClick={() => { if (!isProcessing) setActiveTool('shopping'); }}
+              className={`group relative p-4 border-r border-black/10 transition-all ${isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${activeTool === 'shopping' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
               style={{ minHeight: '130px' }}
             >
               <div className={`text-[8px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'shopping' ? 'text-white/40' : 'text-black/25'}`}>03</div>
@@ -1226,17 +1299,41 @@ Output ONLY valid JSON with no markdown fences, no explanation:
               </div>
             </div>
 
-            {/* Tool 4 — Room Audit (SOON) */}
-            <div className="group relative bg-[#f7f6f4] p-4 border-r border-black/8 cursor-default" style={{ minHeight: '130px' }}>
-              <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-black/20 mb-3">04</div>
-              <div className="font-display text-base font-bold leading-tight mb-1 text-black/30">{t('ai.roomAudit')}</div>
-              <div className="text-[9px] text-black/20 leading-relaxed uppercase tracking-wide">
-                {t('ai.scoreSpace')}
+            {/* Tool 4 — Room Audit (LIVE for paid/owner only, SOON for everyone else) */}
+            {user?.isPaid ? (
+              <div
+                onClick={() => { if (!(isProcessing || auditProcessing)) setActiveTool('audit'); }}
+                className={`group relative p-4 border-r border-black/10 transition-all ${
+                  (isProcessing || auditProcessing) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+                } ${activeTool === 'audit' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
+                style={{ minHeight: '130px' }}
+              >
+                <div className={`text-[8px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'audit' ? 'text-white/40' : 'text-black/25'}`}>04</div>
+                <div className={`font-display text-base font-bold leading-tight mb-1 ${activeTool === 'audit' ? 'text-white' : 'text-black'}`}>{t('ai.roomAudit')}</div>
+                <div className={`text-[9px] leading-relaxed uppercase tracking-wide ${activeTool === 'audit' ? 'text-white/50' : 'text-black/40'}`}>
+                  {t('ai.scoreSpace')}
+                  <span className={`block mt-1 font-bold ${activeTool === 'audit' ? 'text-white' : 'text-black'}`}>
+                    · {user.auditsLeft === 999 ? 'Unlimited' : user.auditsLeft} {t('ai.remaining')}
+                  </span>
+                </div>
+                <div className="absolute bottom-3 right-3">
+                  <span className={`text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'audit' ? 'text-blue-200 bg-blue-900/30' : 'text-green-600 bg-green-50'}`}>
+                    {t('ai.nowActive')}
+                  </span>
+                </div>
               </div>
-              <div className="absolute bottom-3 right-3">
-                <span className="text-[8px] font-bold uppercase tracking-wide text-black/20 bg-black/5 px-1.5 py-0.5">Soon</span>
+            ) : (
+              <div className="group relative bg-[#f7f6f4] p-4 border-r border-black/8 cursor-default" style={{ minHeight: '130px' }}>
+                <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-black/20 mb-3">04</div>
+                <div className="font-display text-base font-bold leading-tight mb-1 text-black/30">{t('ai.roomAudit')}</div>
+                <div className="text-[9px] text-black/20 leading-relaxed uppercase tracking-wide">
+                  {t('ai.scoreSpace')}
+                </div>
+                <div className="absolute bottom-3 right-3">
+                  <span className="text-[8px] font-bold uppercase tracking-wide text-black/20 bg-black/5 px-1.5 py-0.5">Soon</span>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Tool 5 — Design Brief (SOON) */}
             <div className="group relative bg-[#f7f6f4] p-4 border-r border-black/8 cursor-default" style={{ minHeight: '130px' }}>
@@ -1270,17 +1367,19 @@ Output ONLY valid JSON with no markdown fences, no explanation:
           <div className="bg-[#0047AB] flex items-center justify-between px-6 py-3">
             <div>
               <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-white/40 mb-0.5">
-                {activeTool === 'quiz' ? '01' : activeTool === 'vision' ? '02' : '03'} — {t('ai.nowActive')}
+                {activeTool === 'quiz' ? '01' : activeTool === 'vision' ? '02' : activeTool === 'shopping' ? '03' : '04'} — {t('ai.nowActive')}
               </div>
               <div className="text-[11px] font-bold text-white">
-                {activeTool === 'quiz' ? t('ai.styleQuiz') : activeTool === 'vision' ? t('ai.aiVision') : t('ai.shoppingList')}
+                {activeTool === 'quiz' ? t('ai.styleQuiz') : activeTool === 'vision' ? t('ai.aiVision') : activeTool === 'shopping' ? t('ai.shoppingList') : t('ai.roomAudit')}
               </div>
               <div className="text-[9px] text-white/45 mt-0.5">
                 {activeTool === 'quiz'
                   ? t('ai.quizDesc')
                   : activeTool === 'vision'
                   ? t('ai.visionDesc')
-                  : t('ai.shopDesc')}
+                  : activeTool === 'shopping'
+                  ? t('ai.shopDesc')
+                  : 'Get a scored report card for any room with actionable fixes'}
               </div>
             </div>
             <div className="text-[9px] font-bold uppercase tracking-[0.15em] text-white/40 hidden md:block">
@@ -1291,11 +1390,11 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       </div>
 
       {/* ── MAIN TWO-COLUMN ── */}
-      <div className="flex-grow flex flex-col">
+      <div className="flex-grow flex flex-col border-t border-black/10">
         <div className="max-w-[1600px] w-full mx-auto px-8 md:px-16 flex-grow flex flex-col lg:flex-row" style={{ minHeight: '75vh' }}>
 
         {/* ════ LEFT SIDEBAR ════ */}
-        <div id="ai-vision-panel" className={`w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 border-r border-black/8 flex flex-col${activeTool === 'shopping' || activeTool === 'quiz' ? ' hidden' : ''}`}>
+        <div id="ai-vision-panel" className={`w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 border-r border-black/8 flex flex-col${activeTool === 'shopping' || activeTool === 'quiz' || activeTool === 'audit' || (!user && activeTool === 'vision') ? ' hidden' : ''}`}>
           <div className="flex-grow p-8 flex flex-col gap-7 overflow-y-auto">
 
             {/* ── LOGGED OUT: Show placeholder ── */}
@@ -1396,10 +1495,43 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
                 <div className="h-px bg-black/6" />
 
-                {/* STEP 3: Style */}
+                {/* STEP 3: Room Type */}
                 <div>
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-5 h-5 bg-black/20 text-white text-[8px] flex items-center justify-center font-bold flex-shrink-0">3</div>
+                    <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/50">
+                      Room Type <span className="text-black/20 normal-case font-normal tracking-normal ml-1">({t('common.optional')})</span>
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      onClick={() => setSelectedRoom('')}
+                      className={`px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.12em] border transition-all rounded-[2px] ${
+                        selectedRoom === '' ? 'border-black bg-black text-white' : 'border-dashed border-black/20 text-black/30 hover:border-black/40 hover:text-black/50'
+                      }`}
+                    >
+                      Auto-detect
+                    </button>
+                    {ROOM_TYPES.map((room) => (
+                      <button
+                        key={room}
+                        onClick={() => setSelectedRoom(room)}
+                        className={`px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.12em] border transition-all rounded-[2px] ${
+                          selectedRoom === room ? 'border-black bg-black text-white' : 'border-black/15 text-black/40 hover:border-black/40 hover:text-black/70'
+                        }`}
+                      >
+                        {room}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="h-px bg-black/6" />
+
+                {/* STEP 4: Style */}
+                <div>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-5 h-5 bg-black/20 text-white text-[8px] flex items-center justify-center font-bold flex-shrink-0">4</div>
                     <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/50">
                       {t('ai.styleQuiz')} <span className="text-black/20 normal-case font-normal tracking-normal ml-1">({t('common.optional')})</span>
                     </span>
@@ -1450,24 +1582,36 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                 )}
 
                 {(user?.generationsLeft ?? 0) <= 0 && (
-                  <div className="text-center space-y-3">
-                    <p className="text-sm md:text-base font-bold uppercase tracking-widest text-red-500 leading-relaxed">
-                      {t('ai.usedAll')}
-                    </p>
-                    <a 
-                      href="https://calendly.com/designature-studio-us/free_consultation" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-sm md:text-base font-bold uppercase tracking-[0.3em] text-black border-b border-black pb-0.5 hover:text-black/60 flex items-center gap-2 mx-auto"
-                    >
-                      {t('ai.bookConversation')} <ArrowRight className="w-3 h-3" />
-                    </a>
+                  <div className="border border-black/10 p-5 space-y-4 bg-neutral-50">
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-black/40 mb-1">Free tier complete</p>
+                      <p className="text-sm font-bold text-black leading-snug">{t('ai.usedAll')}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => navigateTo('pricing')}
+                        className="px-6 py-3 bg-[#0047AB] text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-[#003d99] transition-all flex items-center gap-2"
+                      >
+                        ✦ Upgrade plan
+                      </button>
+                      <a
+                        href="https://calendly.com/designature-studio-us/free_consultation"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-6 py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all flex items-center gap-2"
+                      >
+                        {t('ai.bookConversation')} <ArrowRight className="w-3 h-3" />
+                      </a>
+                    </div>
                   </div>
                 )}
 
                 {/* Generate button */}
                 <button
-                  onClick={() => handleGenerate()}
+                  onClick={() => {
+                    handleGenerate();
+                    setTimeout(() => processingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80);
+                  }}
                   disabled={isGenerateDisabled}
                   className="w-full bg-black text-white py-5 text-sm md:text-base font-bold uppercase tracking-[0.4em] transition-all hover:bg-black/80 flex items-center justify-center gap-3 disabled:bg-black/20 disabled:cursor-not-allowed mt-auto"
                 >
@@ -1483,44 +1627,76 @@ Output ONLY valid JSON with no markdown fences, no explanation:
               </>
             )}
 
-            {/* Feature list — always visible */}
-            <div className="flex flex-col gap-4 pt-2 border-t border-black/6">
-              {features.map((f, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div className="w-6 h-6 border border-black/10 flex items-center justify-center text-black/30 flex-shrink-0 mt-0.5">{f.icon}</div>
-                  <div>
-                    <h4 className="text-sm md:text-base font-bold uppercase tracking-[0.2em] mb-0.5">{f.title}</h4>
-                    <p className="text-xs text-black/35 leading-relaxed">{f.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
 
           </div>
         </div>
 
         {/* ════ RIGHT CONTENT AREA ════ */}
-        <div className="flex-grow bg-neutral-50 flex flex-col">
+        <div className="flex-grow bg-white flex flex-col">
 
+          {/* ── 04 Room Audit ── paid/owner only ── */}
+          {activeTool === 'audit' && user?.isPaid && (
+            <div id="room-audit-panel" className="flex-grow flex flex-col bg-white min-h-[50vh]">
+              <RoomAudit
+                user={user ? { email: user.email, isPaid: user.isPaid, generationsLeft: user.generationsLeft } : null}
+                authLoading={authLoading}
+                t={t}
+                language={language}
+                onProcessingChange={setAuditProcessing}
+                onAuditComplete={async () => {
+                  setAuditComplete(true);
+                  try {
+                    const res = await apiFetch('/api/auth/me');
+                    if (res.ok) {
+                      const data = await res.json();
+                      setUser((prev) =>
+                        prev
+                          ? { ...prev, generationsLeft: data?.generationsLeft ?? prev.generationsLeft, shoppingListsLeft: data?.shoppingListsLeft ?? prev.shoppingListsLeft }
+                          : prev
+                      );
+                    }
+                  } catch {}
+                }}
+                onRequestLogin={triggerGoogleSignIn}
+              />
+            </div>
+          )}
 
           {/* Not logged in — right panel (vision only) */}
           {!authLoading && !user && activeTool === 'vision' && (
-            <div className="flex-grow flex flex-col items-center justify-center gap-6 p-16 text-center">
-              <div className="w-16 h-16 border border-black/8 flex items-center justify-center text-black/10 text-3xl">✦</div>
-              <h3 className="font-display text-3xl font-light text-black/30 tracking-tight">
-                {t('ai.unlockAll')}
+            <div className="flex-grow flex flex-col items-center justify-center gap-6 py-20 px-8 text-center bg-white">
+              <div className="w-16 h-16 border border-black/8 flex items-center justify-center text-black/10 text-3xl">◎</div>
+              <h3 className="font-display text-2xl font-light text-black/30 tracking-tight">
+                Transform your room
               </h3>
-              <p className="text-sm md:text-base uppercase tracking-[0.3em] text-black/20 leading-[2] text-center">
-                3 {t('ai.remaining')} · {t('ai.noCard')}
+              <p className="text-sm text-black/30 uppercase tracking-[0.2em] leading-[2]">
+                Free · 3 concepts · No card needed
               </p>
-                  <button
-                    onClick={() => {
-                  triggerGoogleSignIn();
-                    }}
-                    className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.25em] px-5 py-3 hover:bg-[#003d99] transition-colors"
-                  >
-                    {t('ai.signInVision')} →
-                  </button>
+              <button
+                onClick={() => triggerGoogleSignIn()}
+                className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.25em] px-5 py-3 hover:bg-[#003d99] transition-colors"
+              >
+                Transform your room →
+              </button>
+            </div>
+          )}
+
+          {/* Not logged in — shopping list */}
+          {!authLoading && !user && activeTool === 'shopping' && (
+            <div className="flex-grow flex flex-col items-center justify-center gap-6 py-20 px-8 text-center bg-white">
+              <div className="w-16 h-16 border border-black/8 flex items-center justify-center text-black/10 text-3xl">◎</div>
+              <h3 className="font-display text-2xl font-light text-black/30 tracking-tight">
+                Shop any interior
+              </h3>
+              <p className="text-sm text-black/30 uppercase tracking-[0.2em] leading-[2]">
+                Free · 3 shopping lists · PDF included
+              </p>
+              <button
+                onClick={() => triggerGoogleSignIn()}
+                className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.25em] px-5 py-3 hover:bg-[#003d99] transition-colors"
+              >
+                Shop any interior →
+              </button>
             </div>
           )}
 
@@ -1538,16 +1714,30 @@ Output ONLY valid JSON with no markdown fences, no explanation:
           )}
 
           {/* Processing state */}
-          {isProcessing && (
-            <div className="flex-grow flex flex-col items-center justify-center gap-6 bg-black p-16 text-center">
-              <div className="w-12 h-12 border-2 border-white/10 border-t-white/60 rounded-full animate-spin" />
-              <div className="space-y-3">
-                <p className="text-sm md:text-base font-bold uppercase tracking-[0.4em] text-white/50">
-                  {t('common.processing')}
-                </p>
-                <p className="text-[9px] text-white/20 uppercase tracking-widest">
-                  {t('ai.processingTime')}
-                </p>
+          {isProcessing && activeTool === 'vision' && (
+            <div ref={processingRef} className="p-8 flex items-start justify-center">
+              <div className="relative w-full max-w-[520px] overflow-hidden" style={{ aspectRatio: roomAspectRatio }}>
+                {/* Room photo underneath */}
+                {roomImage && (
+                  <img src={roomImage} className="w-full h-full object-cover" alt="Your room" />
+                )}
+                {/* Dark overlay */}
+                <div className="absolute inset-0 bg-black/70" />
+                {/* Centered content */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 text-center px-8">
+                  <div className="w-10 h-10 border-2 border-white/15 border-t-white/70 rounded-full animate-spin" />
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/40">
+                      Generating
+                    </p>
+                    <p key={processingPhase} className="text-sm font-light text-white/80 tracking-wide animate-pulse">
+                      {PROCESSING_PHASES[processingPhase]}
+                    </p>
+                  </div>
+                  <p className="text-[8px] text-white/20 uppercase tracking-widest">
+                    {t('ai.processingTime')}
+                  </p>
+                </div>
               </div>
             </div>
           )}
@@ -1566,11 +1756,11 @@ Output ONLY valid JSON with no markdown fences, no explanation:
           {/* Results state */}
           {(results.length > 0 ||
             sessionConceptArchive.length > 0 ||
-            activeTool === 'shopping' ||
+            (activeTool === 'shopping' && !!user) ||
             activeTool === 'quiz') &&
             !isProcessing && (
             <div className="flex-grow flex flex-col">
-              {(results.length > 0 || sessionConceptArchive.length > 0) && activeTool !== 'shopping' && (<>
+              {(results.length > 0 || sessionConceptArchive.length > 0) && activeTool !== 'shopping' && activeTool !== 'quiz' && (<>
               {results.length > 0 && (
               <div className="flex items-center justify-between px-8 py-4 bg-white border-b border-black/8">
                 <div className="flex items-center gap-2">
@@ -1597,13 +1787,13 @@ Output ONLY valid JSON with no markdown fences, no explanation:
               {results.length > 0 && roomImage && (
               <div className="grid grid-cols-2 border-b border-black/8" style={{ gap: '1px', background: 'rgba(0,0,0,0.08)' }}>
                 <div className="bg-white">
-                  <div className="px-5 py-2.5 border-b border-black/6">
+                  <div className="px-5 border-b border-black/6 flex items-center justify-between" style={{ height: 38 }}>
                     <span className="text-xs font-bold uppercase tracking-[0.3em] text-black/30">{t('ai.originalRoom')}</span>
                   </div>
                   <img src={roomImage} className="w-full object-cover" style={{ aspectRatio: roomAspectRatio }} alt="Original" />
                 </div>
                 <div className="bg-white">
-                  <div className="px-5 py-2.5 border-b border-black/6 flex items-center justify-between">
+                  <div className="px-5 border-b border-black/6 flex items-center justify-between" style={{ height: 38 }}>
                     <span className="text-xs font-bold uppercase tracking-[0.3em] text-black/30">{t('ai.genConcept')}</span>
                     <span className="text-[7px] text-black/20 uppercase tracking-widest">AI{selectedStyle ? ` · ${t(`ai.style.${selectedStyle.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}` : ''}</span>
                   </div>
@@ -1654,7 +1844,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                 <button
                   type="button"
                   disabled={!selectedConceptUrl}
-                  onClick={() => selectedConceptUrl && handleDownload(selectedConceptUrl)}
+                  onClick={() => selectedConceptUrl && handleDownload(selectedConceptUrl, selectedConceptIndex + 1)}
                   className="flex-1 py-3.5 bg-black text-white text-sm md:text-base font-bold uppercase tracking-[0.3em] flex items-center justify-center gap-2 hover:bg-black/80 transition-all disabled:opacity-40 disabled:pointer-events-none"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -1663,13 +1853,25 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                 {allSessionConcepts.length > 1 && (
                   <button
                     type="button"
-                    onClick={() => allSessionConcepts.forEach((img) => handleDownload(img))}
+                    onClick={() => allSessionConcepts.forEach((img, idx) => handleDownload(img, idx + 1))}
                     className="px-5 py-3.5 border border-black/15 text-sm md:text-base font-bold uppercase tracking-[0.2em] text-black/50 hover:border-black hover:text-black transition-all"
                   >
                     {t('btn.downloadAll')}
                   </button>
                 )}
               </div>
+              {/* Shop this concept */}
+              {selectedConceptUrl && (
+                <div className="px-8 pb-4">
+                  <button
+                    type="button"
+                    onClick={shopCurrentConcept}
+                    className="w-full py-3.5 border border-black/15 text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/60 flex items-center justify-center gap-2 hover:border-black hover:text-black transition-all"
+                  >
+                    🛒 {t('ai.findTheseProducts')}
+                  </button>
+                </div>
+              )}
               {/* Save notice — free tier */}
               {!user?.isPaid && allSessionConcepts.length > 0 && (
                 <div className="mx-8 mb-4 px-4 py-3 bg-amber-50 border border-amber-200/60 flex items-start gap-3">
@@ -1730,66 +1932,58 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                   </div>
                 )}
 
-                {!quizDone ? (
-                  <div className="flex flex-col lg:flex-row flex-grow">
-                    <div className="flex items-center justify-center bg-neutral-50 p-6">
-                      <div className="relative w-full max-w-[480px]">
-                        <img
-                          src={currentQuizImage.url}
-                          alt={currentQuizStyle}
-                          onLoad={() => setQuizImageReady(true)}
-                          onError={() => setQuizImageReady(true)}
-                          className="w-full object-cover"
-                          style={{ aspectRatio: '1/1', display: 'block' }}
-                        />
-                        <div className="absolute top-3 left-3 bg-white/90 px-3 py-1.5 border border-black/10">
-                          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/60">{t(`ai.style.${currentQuizStyle.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
+                {/* ── 3-col during quiz / 2-col on results ── */}
+                <div className="flex flex-col lg:flex-row flex-grow">
+
+                  {/* LEFT — room image (current during quiz, last loved when done) */}
+                  <div className="flex-shrink-0 flex items-start justify-start bg-neutral-50 p-4 w-full lg:w-[632px]">
+                    <div className="relative w-full max-w-[600px]">
+                      <img
+                        src={currentQuizImage.url}
+                        alt={currentQuizStyle}
+                        onLoad={() => { if (!quizDone) setQuizImageReady(true); }}
+                        onError={() => { if (!quizDone) setQuizImageReady(true); }}
+                        className="w-full object-cover"
+                        style={{ aspectRatio: '1/1', display: 'block' }}
+                      />
+                      <div className="absolute top-3 left-3 bg-white/90 px-3 py-1.5 border border-black/10">
+                        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/60">
+                          {t(`ai.style.${currentQuizStyle.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}
+                        </span>
+                      </div>
+                      {!quizDone && currentQuizImage.credit.includes('Designature') && (
+                        <div className="absolute bottom-3 left-3 bg-black/60 px-2 py-1">
+                          <span className="text-[8px] text-white/70 uppercase tracking-widest">{t('ai.quiz.fromPortfolio')}</span>
                         </div>
-                        {currentQuizImage.credit.includes('Designature') && (
-                          <div className="absolute bottom-3 left-3 bg-black/60 px-2 py-1">
-                            <span className="text-[8px] text-white/70 uppercase tracking-widest">{t('ai.quiz.fromPortfolio')}</span>
-                          </div>
-                        )}
-                        <div className="absolute bottom-3 right-3 bg-black/40 px-2 py-1">
-                          <span className="text-[7px] text-white/50 uppercase tracking-widest">AI · Gemini</span>
-                        </div>
+                      )}
+                      <div className="absolute bottom-3 right-3 bg-black/40 px-2 py-1">
+                        <span className="text-[7px] text-white/50 uppercase tracking-widest">AI · Gemini</span>
                       </div>
                     </div>
-                    <div className="w-full lg:w-[280px] flex-shrink-0 flex flex-col border-l border-black/8">
+                  </div>
+
+                  {/* MIDDLE — voting + taste bars (quiz only) */}
+                  {!quizDone && (
+                    <div className="w-full lg:w-[260px] flex-shrink-0 flex flex-col border-l border-black/8">
                       <div className="p-6 border-b border-black/8">
                         <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-black mb-5">
                           {t('ai.quiz.howFeel')}
                         </p>
                         <div className="flex flex-col gap-2">
-                          <button
-                            onClick={() => handleQuizVote('love')}
-                            disabled={!quizImageReady}
-                            className="w-full py-3.5 bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-black/80 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
+                          <button onClick={() => handleQuizVote('love')} disabled={!quizImageReady} className="w-full py-3.5 bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-black/80 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                             <span>✦</span> {t('ai.quiz.loveIt')}
                           </button>
-                          <button
-                            onClick={() => handleQuizVote('skip')}
-                            disabled={!quizImageReady}
-                            className="w-full py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/40 hover:border-black/40 hover:text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
+                          <button onClick={() => handleQuizVote('skip')} disabled={!quizImageReady} className="w-full py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/40 hover:border-black/40 hover:text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                             {t('ai.quiz.skip')}
                           </button>
-                          <button
-                            onClick={() => handleQuizVote('no')}
-                            disabled={!quizImageReady}
-                            className="w-full py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/40 hover:border-black/40 hover:text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
+                          <button onClick={() => handleQuizVote('no')} disabled={!quizImageReady} className="w-full py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/40 hover:border-black/40 hover:text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                             {t('ai.quiz.notMyStyle')}
                           </button>
                           {quizStep > 0 && (
                             <button
                               onClick={() => {
                                 const total = Object.values(quizVotes).reduce((a: number, b: number) => a + b, 0) || 1;
-                                const sorted = STYLES
-                                  .map(s => ({ style: s, pct: Math.round(((quizVotes[s] || 0) / total) * 100) }))
-                                  .filter(r => r.pct > 0)
-                                  .sort((a, b) => b.pct - a.pct);
+                                const sorted = STYLES.map(s => ({ style: s, pct: Math.round(((quizVotes[s] || 0) / total) * 100) })).filter(r => r.pct > 0).sort((a, b) => b.pct - a.pct);
                                 setQuizResult(sorted);
                                 setQuizDone(true);
                               }}
@@ -1800,83 +1994,174 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                           )}
                         </div>
                       </div>
-                      <div className="p-6 flex-grow overflow-y-auto">
-                        <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/30 mb-4">
-                          {t('ai.quiz.tasteSoFar')}
-                        </p>
+                      <div className="p-5 overflow-y-auto">
+                        <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/30 mb-4">{t('ai.quiz.tasteSoFar')}</p>
                         <div className="flex flex-col gap-2.5">
                           {(() => {
                             const total = Object.values(quizVotes).reduce((a: number, b: number) => a + b, 0) || 1;
-                            return STYLES
-                              .slice()
-                              .sort((a, b) => (quizVotes[b] || 0) - (quizVotes[a] || 0))
-                              .map(style => {
-                                const pct = Object.keys(quizVotes).length === 0 ? 0 : Math.round(((quizVotes[style] || 0) / total) * 100);
-                                const hasVotes = (quizVotes[style] || 0) > 0;
-                                return (
-                                  <div key={style}>
-                                    <div className="flex items-center justify-between mb-1">
-                                      <span className={`text-[8px] font-bold uppercase tracking-[0.08em] ${hasVotes ? 'text-black' : 'text-black/25'}`}>{t(`ai.style.${style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
-                                      <span className={`text-[8px] font-bold ${hasVotes ? 'text-[#0047AB]' : 'text-black/15'}`}>{pct}%</span>
-                                    </div>
-                                    <div className="h-0.5 bg-black/6">
-                                      <div className="h-0.5 bg-[#0047AB] transition-all duration-500" style={{ width: `${pct}%` }} />
-                                    </div>
+                            return STYLES.slice().sort((a, b) => (quizVotes[b] || 0) - (quizVotes[a] || 0)).map(style => {
+                              const pct = Object.keys(quizVotes).length === 0 ? 0 : Math.round(((quizVotes[style] || 0) / total) * 100);
+                              const hasVotes = (quizVotes[style] || 0) > 0;
+                              return (
+                                <div key={style}>
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className={`text-[8px] font-bold uppercase tracking-[0.08em] ${hasVotes ? 'text-black' : 'text-black/25'}`}>{t(`ai.style.${style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
+                                    <span className={`text-[8px] font-bold ${hasVotes ? 'text-[#0047AB]' : 'text-black/15'}`}>{pct}%</span>
                                   </div>
-                                );
-                              });
+                                  <div className="h-0.5 bg-black/6"><div className="h-0.5 bg-[#0047AB] transition-all duration-500" style={{ width: `${pct}%` }} /></div>
+                                </div>
+                              );
+                            });
                           })()}
                         </div>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="flex-grow p-8 md:p-12 max-w-[800px] mx-auto w-full">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-[#0047AB] mb-2">
-                      {t('ai.quiz.designDNA')}
-                    </p>
-                    <h2 className="font-display text-4xl font-bold tracking-tight mb-2">
-                      {t(`ai.style.${quizResult[0]?.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}
-                      {quizResult[1] && <span className="text-black/30"> · {t(`ai.style.${quizResult[1].style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>}
-                    </h2>
-                    <p className="text-sm text-black/40 uppercase tracking-[0.2em] mb-8">
-                      {t('ai.quiz.basedOnRatings')}
-                    </p>
-                    <div className="flex flex-col gap-4 mb-10">
-                      {quizResult.slice(0, 5).map((r, i) => (
-                        <div key={r.style}>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-black">{t(`ai.style.${r.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
-                            <span className="text-[11px] font-bold text-[#0047AB]">{r.pct}%</span>
+                  )}
+
+                  {/* RIGHT — history + education during quiz / full results when done */}
+                  <div className={`flex-grow flex flex-col border-l border-black/8 overflow-y-auto ${quizDone ? 'lg:max-w-[500px]' : ''}`}>
+                    {!quizDone ? (
+                      /* Previous quiz results */
+                      <div className="p-6 flex flex-col gap-4 flex-grow">
+                        {quizHistory.length === 0 ? (
+                          <div className="flex-grow flex flex-col items-center justify-center gap-3 text-center">
+                            <div className="w-10 h-10 border border-black/8 flex items-center justify-center text-black/10 text-xl">◎</div>
+                            <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/20">Previous quiz<br/>results appear here</p>
                           </div>
-                          <div className="h-1 bg-black/8">
-                            <div
-                              className="h-1 transition-all duration-700"
-                              style={{ width: `${r.pct}%`, background: i === 0 ? '#0047AB' : i === 1 ? '#4477CC' : '#8899BB' }}
-                            />
-                          </div>
+                        ) : (
+                          <>
+                            <div>
+                              <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/30 mb-1">Previous results</p>
+                              <p className="text-[8px] text-black/20 uppercase tracking-[0.15em]">Click a card to see the style</p>
+                            </div>
+                            <div className="flex flex-col gap-3">
+                              {quizHistory.map((result, idx) => {
+                                const isOpen = selectedPrevResult === idx;
+                                const topStyle = result[0]?.style;
+                                const desc = topStyle ? STYLE_DESCRIPTIONS[topStyle] : null;
+                                return (
+                                  <div key={idx}>
+                                    <button
+                                      onClick={() => setSelectedPrevResult(isOpen ? null : idx)}
+                                      className={`w-full text-left border p-4 transition-all ${isOpen ? 'border-[#0047AB] bg-white' : 'border-black/8 bg-neutral-50 hover:border-black/20'}`}
+                                    >
+                                      <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-black/30 mb-3">Quiz {quizHistory.length - idx}</p>
+                                      <div className="flex flex-col gap-2">
+                                        {result.slice(0, 3).map((r, i) => (
+                                          <div key={r.style}>
+                                            <div className="flex items-center justify-between mb-1">
+                                              <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-black/70">{t(`ai.style.${r.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
+                                              <span className="text-[9px] font-bold text-[#0047AB]">{r.pct}%</span>
+                                            </div>
+                                            <div className="h-0.5 bg-black/8">
+                                              <div className="h-0.5" style={{ width: `${r.pct}%`, background: i === 0 ? '#0047AB' : i === 1 ? '#4477CC' : '#8899BB' }} />
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </button>
+                                    {isOpen && desc && (
+                                      <div className="border border-t-0 border-[#0047AB]/30 p-4 bg-white">
+                                        <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#0047AB] mb-2">{topStyle}</p>
+                                        <p className="text-[10px] text-black/50 leading-relaxed mb-3">{desc.summary}</p>
+                                        <div className="flex flex-wrap gap-1">
+                                          {desc.elements.map(el => (
+                                            <span key={el} className="text-[7px] font-bold uppercase tracking-wide text-black/40 border border-black/10 px-2 py-0.5">{el}</span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <div className="mt-auto pt-4">
+                              <button
+                                disabled={selectedPrevResult === null}
+                                onClick={() => {
+                                  if (selectedPrevResult !== null && quizHistory[selectedPrevResult]?.[0]) {
+                                    setSelectedStyle(quizHistory[selectedPrevResult][0].style);
+                                    setActiveTool('vision');
+                                    setTimeout(() => {
+                                      const el = document.getElementById('ai-concepts-tools');
+                                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                                    }, 50);
+                                  }
+                                }}
+                                className="w-full py-4 bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-black/80 transition-all flex items-center justify-center gap-2 disabled:opacity-20 disabled:cursor-not-allowed"
+                              >
+                                ✦ Apply selected style
+                              </button>
+                              {selectedPrevResult === null && (
+                                <p className="text-[8px] text-black/25 uppercase tracking-widest text-center mt-2">Select a quiz to apply</p>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      /* Results panel */
+                      <div className="p-8 flex flex-col gap-5 flex-grow">
+                        <div>
+                          <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-[#0047AB] mb-2">{t('ai.quiz.designDNA')}</p>
+                          <h2 className="font-display text-3xl font-bold tracking-tight mb-1">
+                            {t(`ai.style.${quizResult[0]?.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}
+                            {quizResult[1] && <span className="text-black/30"> · {t(`ai.style.${quizResult[1].style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>}
+                          </h2>
+                          <p className="text-xs text-black/40 uppercase tracking-[0.2em]">{t('ai.quiz.basedOnRatings')}</p>
                         </div>
-                      ))}
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <button
-                        onClick={handleApplyQuizStyle}
-                        className="flex-1 py-4 bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-black/80 transition-all flex items-center justify-center gap-2"
-                      >
-                        ✦ {t('ai.quiz.applyStyle').replace('{style}', t(`ai.style.${quizResult[0]?.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`))}
-                      </button>
-                      <button
-                        onClick={handleQuizReset}
-                        className="py-4 px-6 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all"
-                      >
-                        {t('ai.quiz.retake')}
-                      </button>
-                    </div>
-                    <p className="text-[9px] text-black/20 uppercase tracking-widest mt-6 leading-relaxed">
-                      {t('ai.quiz.stylePreselected').replace('{style}', t(`ai.style.${quizResult[0]?.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`))}
-                    </p>
+
+                        <div className="flex flex-col gap-2">
+                          <button onClick={handleApplyQuizStyle} className="w-full py-4 bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-black/80 transition-all flex items-center justify-center gap-2">
+                            ✦ {t('ai.quiz.applyStyle').replace('{style}', t(`ai.style.${quizResult[0]?.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`))}
+                          </button>
+                          <button
+                            onClick={() => setShowQuizResults(v => !v)}
+                            className="w-full py-3.5 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all flex items-center justify-center gap-2"
+                          >
+                            {showQuizResults ? '↑ Hide results' : '↓ See quiz results'}
+                          </button>
+                          <button onClick={handleQuizReset} className="w-full py-3.5 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all">
+                            {t('ai.quiz.retake')}
+                          </button>
+                        </div>
+
+                        {showQuizResults && (
+                          <div className="flex flex-col gap-4 border-t border-black/8 pt-4">
+                            <div className="flex flex-col gap-3">
+                              {quizResult.slice(0, 5).map((r, i) => (
+                                <div key={r.style}>
+                                  <div className="flex items-center justify-between mb-1.5">
+                                    <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-black">{t(`ai.style.${r.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
+                                    <span className="text-[10px] font-bold text-[#0047AB]">{r.pct}%</span>
+                                  </div>
+                                  <div className="h-1 bg-black/8">
+                                    <div className="h-1 transition-all duration-700" style={{ width: `${r.pct}%`, background: i === 0 ? '#0047AB' : i === 1 ? '#4477CC' : '#8899BB' }} />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            {quizResult[0] && STYLE_DESCRIPTIONS[quizResult[0].style] && (() => {
+                              const desc = STYLE_DESCRIPTIONS[quizResult[0].style];
+                              return (
+                                <div className="border border-black/8 p-4 bg-neutral-50">
+                                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#0047AB] mb-2">{quizResult[0].style}</p>
+                                  <p className="text-[10px] text-black/50 leading-relaxed mb-3">{desc.summary}</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {desc.elements.map(el => (
+                                      <span key={el} className="text-[7px] font-bold uppercase tracking-wide text-black/40 border border-black/10 px-2 py-0.5">{el}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
+
+                </div>
 
                 </> )}
               </div>
@@ -1886,26 +2171,24 @@ Output ONLY valid JSON with no markdown fences, no explanation:
               {/* ══ SHOP THIS LOOK ══ */}
               <div
                 id="shop-this-look"
-                className={`scroll-mt-28 border-t-2 border-black/8${activeTool === 'quiz' ? ' hidden' : ''}`}
+                className={`scroll-mt-28 border-t-2 border-black/8${activeTool !== 'shopping' ? ' hidden' : ''}`}
               >
 
                 {/* Sign-in gate */}
                 {!authLoading && !user && (
-                  <div className="flex flex-col items-center justify-center gap-6 py-20 px-8 text-center bg-neutral-50">
-                    <div className="w-16 h-16 border border-black/8 flex items-center justify-center text-black/10 text-3xl">✦</div>
+                  <div className="flex flex-col items-center justify-center gap-6 py-20 px-8 text-center flex-grow bg-white">
+                    <div className="w-16 h-16 border border-black/8 flex items-center justify-center text-black/10 text-3xl">◎</div>
                     <h3 className="font-display text-2xl font-light text-black/30 tracking-tight">
-                      {t('ai.signInShopping')}
+                      Shop any interior
                     </h3>
                     <p className="text-sm text-black/30 uppercase tracking-[0.2em] leading-[2]">
-                      {t('ai.noCard')}
+                      Free · 3 shopping lists · PDF included
                     </p>
                     <button
-                      onClick={() => {
-                  triggerGoogleSignIn();
-                      }}
+                      onClick={() => triggerGoogleSignIn()}
                       className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.25em] px-5 py-3 hover:bg-[#003d99] transition-colors"
                     >
-                      {t('ai.signInShopping')} →
+                      Sign in to shop →
                     </button>
                   </div>
                 )}
@@ -1914,88 +2197,277 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                 {!authLoading && user && (
                   <>
 
-                {/* Country selector */}
-                <div className="px-8 pt-5 pb-4 border-b border-black/8 bg-white flex items-center gap-4">
-                  <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/40 flex-shrink-0">
-                    {t('ai.shop.shopIn')}
-                  </p>
-                  <div className="relative">
-                    <select
-                      value={shoppingCountry}
-                      onChange={e => setShoppingCountry(e.target.value)}
-                      className="appearance-none bg-white border border-black/20 text-[10px] font-bold uppercase tracking-[0.1em] text-black px-4 py-2 pr-8 cursor-pointer hover:border-black/50 transition-colors focus:outline-none focus:border-black"
-                      style={{ minWidth: '210px' }}
-                    >
-                      <option value="us">🇺🇸 United States</option>
-                      <option value="gb" disabled>🇬🇧 United Kingdom — coming soon</option>
-                      <option value="de" disabled>🇩🇪 Germany — coming soon</option>
-                      <option value="fr" disabled>🇫🇷 France — coming soon</option>
-                      <option value="am" disabled>🇦🇲 Armenia — coming soon</option>
-                      <option value="ae" disabled>🇦🇪 UAE — coming soon</option>
-                      <option value="ca" disabled>🇨🇦 Canada — coming soon</option>
-                      <option value="au" disabled>🇦🇺 Australia — coming soon</option>
-                      <option value="ch" disabled>🇨🇭 Switzerland — coming soon</option>
-                    </select>
-                    <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-black/40 text-[10px]">▾</div>
-                  </div>
-                </div>
-                {/* Initial CTA — first time or after clear */}
-                {!shoppingDone && !shoppingLoading && !shoppingError && shoppingItems.length === 0 && (
-                  <div className="px-8 py-6 bg-neutral-50">
-                    {/* AI concept exists — one-click CTA */}
-                    {selectedConceptUrl ? (
-                      <div className="flex items-center justify-between gap-6">
-                        <div>
-                          <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-black mb-1">
-                            {t('ai.shopThisLook')}
-                          </p>
-                          <p className="text-[10px] text-black/50 leading-relaxed max-w-xs">
-                            {t('ai.shopThisLookDesc')}
-                          </p>
-                        </div>
-                        <button
-                          onClick={focusShoppingTabAndRunSearch}
-                          className="flex-shrink-0 flex items-center gap-2 bg-[#0047AB] text-white text-[10px] font-bold uppercase tracking-[0.3em] px-6 py-4 hover:bg-[#003d99] transition-all whitespace-nowrap"
-                        >
-                          {t('ai.findTheseProducts')} →
-                        </button>
-                      </div>
-                    ) : (
-                      /* No AI concept — standalone upload */
+                {/* Shopping quota exhausted */}
+                {(user?.shoppingListsLeft ?? 1) <= 0 && !shoppingDone && (
+                  <div className="px-8 py-6">
+                    <div className="border border-black/10 p-5 space-y-4 bg-neutral-50">
                       <div>
-                        <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-black mb-1">
-                          {t('ai.shop.anyInterior')}
-                        </p>
-                        <p className="text-[10px] text-black/50 leading-relaxed mb-4">
-                          {t('ai.shop.anyInteriorDesc')}
-                        </p>
-                        {standaloneShoppingImage ? (
-                          <div className="flex items-center gap-4">
-                            <img src={standaloneShoppingImage} className="w-16 h-16 object-cover border border-black/10 flex-shrink-0" alt="Shopping source" />
-                            <div className="flex-1">
-                              <p className="text-[9px] text-black/40 uppercase tracking-widest mb-2">{t('ai.shop.imageReady')}</p>
-                              <div className="flex gap-2">
-                                <button onClick={focusShoppingTabAndRunSearch} className="flex items-center gap-2 bg-black text-white text-[10px] font-bold uppercase tracking-[0.25em] px-5 py-3 hover:bg-black/80 transition-all">
-                                  🛒 {t('ai.shop.findProducts')}
-                                </button>
-                                <button onClick={() => setStandaloneShoppingImage(null)} className="text-[9px] text-black/30 uppercase tracking-widest border border-black/10 px-3 py-3 hover:text-black hover:border-black/40 transition-all">
-                                  {t('ai.shop.change')}
-                                </button>
-                              </div>
-                            </div>
+                        <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-black/40 mb-1">Free tier complete</p>
+                        <p className="text-sm font-bold text-black leading-snug">You've used all 3 free shopping lists.</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => navigateTo('pricing')}
+                          className="px-6 py-3 bg-[#0047AB] text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-[#003d99] transition-all flex items-center gap-2"
+                        >
+                          ✦ Upgrade plan
+                        </button>
+                        <a
+                          href="https://calendly.com/designature-studio-us/free_consultation"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-6 py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all flex items-center gap-2"
+                        >
+                          {t('ai.bookConversation')} <ArrowRight className="w-3 h-3" />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Initial CTA — first time or after clear */}
+                {!shoppingDone && !shoppingLoading && !shoppingError && shoppingItems.length === 0 && (user?.shoppingListsLeft ?? 1) > 0 && (
+                  <div className="bg-white">
+
+                    {/* ── TWO-COLUMN: AI concept exists ── */}
+                    {selectedConceptUrl && results.length > 0 ? (
+                      <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-black/8">
+
+                        {/* Left — From AI concept */}
+                        <div className="flex-1 px-8 py-8 flex flex-col gap-4">
+                          <p className="text-[8px] font-bold uppercase tracking-[0.25em] text-black/30">Option A</p>
+                          <p className="text-sm font-bold uppercase tracking-[0.25em] text-black">Shop your AI concept</p>
+                          <p className="text-[10px] text-black/50 leading-relaxed">
+                            Find real products that match the generated design.
+                          </p>
+                          <div className="w-full aspect-[4/3] overflow-hidden border border-black/10">
+                            <img src={selectedConceptUrl} className="w-full h-full object-cover" alt="AI concept" />
                           </div>
-                        ) : (
-                          <label className="flex items-center gap-3 border border-dashed border-black/20 hover:border-black/50 bg-white px-5 py-4 cursor-pointer transition-colors w-fit">
-                            <input type="file" accept="image/*" className="hidden" onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              const reader = new FileReader();
-                              reader.onload = (ev) => setStandaloneShoppingImage(ev.target?.result as string);
-                              reader.readAsDataURL(file);
-                            }} />
-                            <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/50">+ {t('ai.shop.uploadPhoto')}</span>
+                          <div className="relative mt-auto">
+                            <select
+                              value={shoppingCountry}
+                              onChange={e => setShoppingCountry(e.target.value)}
+                              className="appearance-none w-full bg-white border border-black/20 text-[10px] font-bold uppercase tracking-[0.1em] text-black px-4 py-2.5 pr-8 cursor-pointer hover:border-black/50 transition-colors focus:outline-none focus:border-black"
+                            >
+                              <option value="us">🇺🇸 United States</option>
+                              <option value="gb" disabled>🇬🇧 United Kingdom — coming soon</option>
+                              <option value="de" disabled>🇩🇪 Germany — coming soon</option>
+                              <option value="fr" disabled>🇫🇷 France — coming soon</option>
+                              <option value="am" disabled>🇦🇲 Armenia — coming soon</option>
+                              <option value="ae" disabled>🇦🇪 UAE — coming soon</option>
+                              <option value="ca" disabled>🇨🇦 Canada — coming soon</option>
+                              <option value="au" disabled>🇦🇺 Australia — coming soon</option>
+                              <option value="ch" disabled>🇨🇭 Switzerland — coming soon</option>
+                            </select>
+                            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-black/40 text-[10px]">▾</div>
+                          </div>
+                          <button
+                            onClick={shopCurrentConcept}
+                            className="w-full flex items-center justify-center gap-2 bg-[#0047AB] text-white text-[10px] font-bold uppercase tracking-[0.25em] py-3.5 hover:bg-[#003d99] transition-all"
+                          >
+                            🛒 Find these products
+                          </button>
+                        </div>
+
+                        {/* Right — Upload your own */}
+                        <div className="flex-1 px-8 py-8 flex flex-col gap-4">
+                          <p className="text-[8px] font-bold uppercase tracking-[0.25em] text-black/30">Option B</p>
+                          <p className="text-sm font-bold uppercase tracking-[0.25em] text-black">Shop any interior</p>
+                          <p className="text-[10px] text-black/50 leading-relaxed">
+                            Upload any photo — a room you love, a saved image, anything.
+                          </p>
+                          <label htmlFor="standalone-shop-upload" className="block cursor-pointer">
+                            <input
+                              id="standalone-shop-upload"
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const reader = new FileReader();
+                                reader.onload = (ev) => {
+                                  const dataUrl = ev.target?.result as string;
+                                  setStandaloneShoppingImage(dataUrl);
+                                  const img = new Image();
+                                  img.onload = () => {
+                                    const ratio = img.width / img.height;
+                                    if (ratio > 1.4) setStandaloneShoppingAspectRatio('16/9');
+                                    else if (ratio > 1.1) setStandaloneShoppingAspectRatio('4/3');
+                                    else if (ratio > 0.85) setStandaloneShoppingAspectRatio('1/1');
+                                    else setStandaloneShoppingAspectRatio('3/4');
+                                  };
+                                  img.src = dataUrl;
+                                };
+                                reader.readAsDataURL(file);
+                                e.target.value = '';
+                              }}
+                            />
+                            <div
+                              className={`relative overflow-hidden border transition-colors ${standaloneShoppingImage ? 'border-black' : 'border-dashed border-black/20 hover:border-black/50'}`}
+                              style={{ aspectRatio: '4/3' }}
+                            >
+                              {standaloneShoppingImage ? (
+                                <>
+                                  <img src={standaloneShoppingImage} className="w-full h-full object-cover" alt="Shopping source" />
+                                  <div className="absolute bottom-0 inset-x-0 bg-black/60 py-2 px-3 text-[8px] font-bold uppercase tracking-widest text-white text-center">
+                                    {t('btn.change')}
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-50">
+                                  <div className="w-9 h-9 border border-black/15 flex items-center justify-center text-black/25 text-xl font-thin">⌂</div>
+                                  <span className="text-sm font-bold uppercase tracking-[0.25em] text-black/35">Upload a photo</span>
+                                  <span className="text-[8px] text-black/20 uppercase tracking-widest">JPG, PNG · max 10MB</span>
+                                </div>
+                              )}
+                            </div>
                           </label>
-                        )}
+                          {/* Country */}
+                          <div className="relative">
+                            <select
+                              value={shoppingCountry}
+                              onChange={e => setShoppingCountry(e.target.value)}
+                              className="appearance-none w-full bg-white border border-black/20 text-[10px] font-bold uppercase tracking-[0.1em] text-black px-4 py-2.5 pr-8 cursor-pointer hover:border-black/50 transition-colors focus:outline-none focus:border-black"
+                            >
+                              <option value="us">🇺🇸 United States</option>
+                              <option value="gb" disabled>🇬🇧 United Kingdom — coming soon</option>
+                              <option value="de" disabled>🇩🇪 Germany — coming soon</option>
+                              <option value="fr" disabled>🇫🇷 France — coming soon</option>
+                              <option value="am" disabled>🇦🇲 Armenia — coming soon</option>
+                              <option value="ae" disabled>🇦🇪 UAE — coming soon</option>
+                              <option value="ca" disabled>🇨🇦 Canada — coming soon</option>
+                              <option value="au" disabled>🇦🇺 Australia — coming soon</option>
+                              <option value="ch" disabled>🇨🇭 Switzerland — coming soon</option>
+                            </select>
+                            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-black/40 text-[10px]">▾</div>
+                          </div>
+                          <div className="flex gap-2 mt-auto">
+                            <button
+                              onClick={focusShoppingTabAndRunStandaloneSearch}
+                              disabled={!standaloneShoppingImage}
+                              className="flex-1 flex items-center justify-center gap-2 bg-black text-white text-[10px] font-bold uppercase tracking-[0.25em] py-3.5 hover:bg-black/80 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                              🛒 {t('ai.shop.findProducts')}
+                            </button>
+                            {standaloneShoppingImage && (
+                              <button onClick={() => setStandaloneShoppingImage(null)} className="text-[9px] text-black/30 uppercase tracking-widest border border-black/10 px-4 hover:text-black hover:border-black/40 transition-all">
+                                Reset
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                    ) : (
+                      /* ── SOLO: No AI concept — standalone upload only ── */
+                      <div className="px-8 py-6">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-5 h-5 bg-black text-white text-[8px] flex items-center justify-center font-bold flex-shrink-0">1</div>
+                          <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/50">
+                            {t('ai.shop.anyInterior')}
+                          </span>
+                        </div>
+                        <div className="w-[316px] xl:w-[356px]">
+                          <label htmlFor="standalone-shop-upload" className="block cursor-pointer">
+                            <input
+                              id="standalone-shop-upload"
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const reader = new FileReader();
+                                reader.onload = (ev) => {
+                                  const dataUrl = ev.target?.result as string;
+                                  setStandaloneShoppingImage(dataUrl);
+                                  const img = new Image();
+                                  img.onload = () => {
+                                    const ratio = img.width / img.height;
+                                    if (ratio > 1.4) setStandaloneShoppingAspectRatio('16/9');
+                                    else if (ratio > 1.1) setStandaloneShoppingAspectRatio('4/3');
+                                    else if (ratio > 0.85) setStandaloneShoppingAspectRatio('1/1');
+                                    else setStandaloneShoppingAspectRatio('3/4');
+                                  };
+                                  img.src = dataUrl;
+                                };
+                                reader.readAsDataURL(file);
+                                e.target.value = '';
+                              }}
+                            />
+                            <div
+                              className={`relative overflow-hidden border transition-colors ${standaloneShoppingImage ? 'border-black' : 'border-dashed border-black/20 hover:border-black/50'}`}
+                              style={{ aspectRatio: standaloneShoppingAspectRatio }}
+                            >
+                              {standaloneShoppingImage ? (
+                                <>
+                                  <img src={standaloneShoppingImage} className="w-full h-full object-cover" alt="Shopping source" />
+                                  <div className="absolute bottom-0 inset-x-0 bg-black/60 py-2 px-3 text-[8px] font-bold uppercase tracking-widest text-white text-center">
+                                    {t('btn.change')}
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-50">
+                                  <div className="w-9 h-9 border border-black/15 flex items-center justify-center text-black/25 text-xl font-thin">⌂</div>
+                                  <span className="text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/35">
+                                    Upload a photo
+                                  </span>
+                                  <span className="text-[8px] text-black/20 uppercase tracking-widest">JPG, PNG · max 10MB</span>
+                                </div>
+                              )}
+                            </div>
+                          </label>
+                        </div>
+
+                        {/* STEP 2: Country */}
+                        <div className="mt-6 w-[316px] xl:w-[356px]">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="w-5 h-5 bg-black text-white text-[8px] flex items-center justify-center font-bold flex-shrink-0">2</div>
+                            <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/50">
+                              {t('ai.shop.shopIn')}
+                            </span>
+                          </div>
+                          <div className="border border-dashed border-black/20 bg-neutral-50 flex flex-col items-center justify-center gap-3 py-5 px-4">
+                            <div className="relative w-full">
+                              <select
+                                value={shoppingCountry}
+                                onChange={e => setShoppingCountry(e.target.value)}
+                                className="appearance-none w-full bg-white border border-black/20 text-[10px] font-bold uppercase tracking-[0.1em] text-black px-4 py-2.5 pr-8 cursor-pointer hover:border-black/50 transition-colors focus:outline-none focus:border-black"
+                              >
+                                <option value="us">🇺🇸 United States</option>
+                                <option value="gb" disabled>🇬🇧 United Kingdom — coming soon</option>
+                                <option value="de" disabled>🇩🇪 Germany — coming soon</option>
+                                <option value="fr" disabled>🇫🇷 France — coming soon</option>
+                                <option value="am" disabled>🇦🇲 Armenia — coming soon</option>
+                                <option value="ae" disabled>🇦🇪 UAE — coming soon</option>
+                                <option value="ca" disabled>🇨🇦 Canada — coming soon</option>
+                                <option value="au" disabled>🇦🇺 Australia — coming soon</option>
+                                <option value="ch" disabled>🇨🇭 Switzerland — coming soon</option>
+                              </select>
+                              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-black/40 text-[10px]">▾</div>
+                            </div>
+                            <span className="text-[8px] text-black/20 uppercase tracking-widest">
+                              More countries coming soon
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* CTA — bottom */}
+                        <div className="mt-6 w-[316px] xl:w-[356px] flex gap-2">
+                          <button
+                            onClick={focusShoppingTabAndRunStandaloneSearch}
+                            disabled={!standaloneShoppingImage}
+                            className="flex-1 flex items-center justify-center gap-2 bg-black text-white text-[10px] font-bold uppercase tracking-[0.25em] py-3 hover:bg-black/80 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            🛒 {t('ai.shop.findProducts')}
+                          </button>
+                          {standaloneShoppingImage && (
+                            <button onClick={() => setStandaloneShoppingImage(null)} className="text-[9px] text-black/30 uppercase tracking-widest border border-black/10 px-4 hover:text-black hover:border-black/40 transition-all">
+                              Reset
+                            </button>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -2049,29 +2521,41 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                   <div className="bg-white">
 
                     {/* Source image banner */}
-                    {(selectedConceptUrl || standaloneShoppingImage) && (
+                    {searchSourceImage && (
                       <div className="border-b border-black/8 bg-white px-8 py-6 flex items-start gap-6">
                         <img
-                          src={selectedConceptUrl || standaloneShoppingImage || ''}
+                          src={searchSourceImage}
                           className="w-40 h-40 object-cover flex-shrink-0 border border-black/10"
                           alt="Source"
                         />
-                        <div className="pt-1">
+                        <div className="pt-1 flex-grow">
                           <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/30 mb-2">
-                            {selectedConceptUrl
-                              ? (language === 'en' ? 'Shopping from your AI concept' : 'Shopping from AI concept')
-                              : (language === 'en' ? 'Shopping from your uploaded photo' : 'Shopping from uploaded photo')}
+                            {searchSourceIsStandalone
+                              ? (language === 'en' ? 'Shopping from your uploaded photo' : 'Shopping from uploaded photo')
+                              : (language === 'en' ? 'Shopping from your AI concept' : 'Shopping from AI concept')}
                           </p>
-                          <p className="text-[11px] text-black/60 leading-relaxed">
+                          <p className="text-[11px] text-black/60 leading-relaxed mb-4">
                             {language === 'en' ? 'Products matched to the items identified in this interior.' : 'Products matched to this interior'}
                           </p>
+                          <button
+                            onClick={() => {
+                              setShoppingDone(false);
+                              setShoppingResults([]);
+                              setShoppingItems([]);
+                              setStandaloneShoppingImage(null);
+                              setForceStandaloneUpload(false);
+                            }}
+                            className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/40 border border-black/15 px-4 py-2 hover:border-black/40 hover:text-black transition-colors"
+                          >
+                            ← Start over
+                          </button>
                         </div>
                       </div>
                     )}
 
                     {/* Items found header */}
                     {shoppingItems.length > 0 && (
-                      <div className="px-8 py-4 border-b border-black/8 bg-neutral-50 flex items-center justify-between">
+                      <div className="mx-8 mt-6 py-4 border border-black/8 bg-neutral-50 flex items-center justify-between px-4">
                         <div className="flex items-center gap-3 flex-wrap">
                           <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/50">
                             {t('ai.shop.itemsIdentified').replace('{count}', shoppingItems.length.toString())}
@@ -2095,6 +2579,15 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                       <div className="px-8 py-8 text-center">
                         <p className="text-[10px] text-black/50 uppercase tracking-widest">
                           {t('ai.shop.noProducts')}
+                        </p>
+                      </div>
+                    )}
+
+                    {shoppingResults.length > 0 && (
+                      <div className="mx-8 mt-4 mb-2 pl-4 pr-4 py-3 border-l-2 border-amber-400 bg-amber-50 flex items-start gap-2.5">
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+                        <p className="text-[10px] text-amber-900/80 leading-relaxed">
+                          <strong className="font-bold text-amber-900">Before you buy</strong> — these are AI-matched suggestions, not guaranteed exact matches. Always verify dimensions, materials, and quality before purchasing.
                         </p>
                       </div>
                     )}
@@ -2201,6 +2694,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         </div>
       )}
 
+      <div className="border-t border-black/10" />
       <Footer />
 
       {/* ── LIGHTBOX ── */}
@@ -2208,7 +2702,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         {isLightboxOpen && selectedConceptUrl && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsLightboxOpen(false)} className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 md:p-12 cursor-zoom-out">
             <div className="absolute top-8 right-8 flex gap-4 z-[110]">
-              <button onClick={(e) => { e.stopPropagation(); handleDownload(selectedConceptUrl); }} className="flex items-center gap-2 px-4 py-2 bg-white text-black text-sm md:text-base font-bold uppercase tracking-widest hover:bg-white/90 transition-all">
+              <button onClick={(e) => { e.stopPropagation(); handleDownload(selectedConceptUrl, selectedConceptIndex + 1); }} className="flex items-center gap-2 px-4 py-2 bg-white text-black text-sm md:text-base font-bold uppercase tracking-widest hover:bg-white/90 transition-all">
                 <Download className="w-4 h-4" /> {t('btn.download')}
               </button>
               <button onClick={(e) => { e.stopPropagation(); setIsLightboxOpen(false); }} className="text-white/50 hover:text-white transition-colors">

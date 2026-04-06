@@ -15,6 +15,7 @@ import AIConceptsPage from './components/AIConceptsPage';
 import Testimonials from './components/Testimonials';
 import PricingSection from './components/PricingSection';
 import PricingPage from './components/PricingPage';
+import FAQPage from './components/FAQPage';
 import CTABanner from './components/CTABanner';
 import Footer from './components/Footer';
 import { LanguageProvider, useLanguage } from './LanguageContext';
@@ -58,6 +59,10 @@ const AppContent: React.FC = () => {
         <AIConceptsPage />
       </div>
     );
+  }
+
+  if (currentPage === 'faq') {
+    return <FAQPage />;
   }
 
   if (currentPage === 'pricing') {

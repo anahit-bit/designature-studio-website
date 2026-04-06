@@ -39,7 +39,7 @@ const PortfolioPage: React.FC = () => {
           
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-12">
             <div>
-              <h1 className="text-5xl md:text-7xl lg:text-[9vw] font-bold font-display tracking-architectural leading-[0.85] uppercase animate-in fade-in slide-in-from-bottom duration-1000">
+              <h1 className="text-3xl md:text-5xl lg:text-[5.5vw] font-bold font-display tracking-architectural leading-[0.85] uppercase animate-in fade-in slide-in-from-bottom duration-1000">
                 {t('portfolio.title')}
               </h1>
             </div>

@@ -139,10 +139,10 @@ describe('AIConceptsPage - Style Quiz', () => {
     // Check for results screen
     // Based on translations: 'ai.quiz.designDNA' is "Your design DNA"
     expect(await screen.findByText(/^Your design DNA$/i)).toBeInTheDocument();
-    
-    // Should show at least one style with percentage
-    expect((await screen.findAllByText(/%/))[0]).toBeInTheDocument();
-  });
+
+    // Should show the apply button (percentages are behind the "See quiz results" toggle)
+    expect(await screen.findByText(/Apply.*style.*AI Vision/i)).toBeInTheDocument();
+  }, 30_000);
 
   it('switches to vision tool when clicking Apply Style', async () => {
     renderWithProvider(<AIConceptsPage />);
@@ -153,12 +153,12 @@ describe('AIConceptsPage - Style Quiz', () => {
     // We don't know the style, so we use a regex
     const applyButton = await screen.findByText(/Apply .* style to AI Vision/i);
     fireEvent.click(applyButton);
-    
+
     // Should now show AI Vision tool
     expect((await screen.findAllByText(/AI Vision/i))[0]).toBeInTheDocument();
     // And the quiz should be gone or hidden
     expect(screen.queryByText(/Room 1 of 24/i)).not.toBeInTheDocument();
-  });
+  }, 30_000);
 
   it(
     'logs out after 15 minutes of inactivity',

@@ -48,7 +48,7 @@ const Hero: React.FC = () => {
               {t('hero.studio2021')}
             </p>
           </div>
-          <h1 className="text-4xl md:text-6xl lg:text-[8vw] font-bold font-display text-white tracking-architectural leading-[0.85] mb-12">
+          <h1 className={`font-bold font-display text-white tracking-architectural leading-[0.85] mb-12 ${language === 'am' ? 'text-3xl md:text-5xl lg:text-[5.5vw]' : 'text-4xl md:text-6xl lg:text-[8vw]'}`}>
             {slides[current].title.split(' ').map((word, i) => (
               <span key={i} className="inline-block mr-[0.2em] fade-in" style={{ animationDelay: `${i * 100}ms` }}>
                 {word}

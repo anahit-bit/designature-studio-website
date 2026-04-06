@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh auth:*)",
+      "Bash(gh repo:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -s -X POST http://localhost:3000/api/newsletter/subscribe -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"test@designature.studio\"\"}')",
+      "Bash(curl -s -w \"\\\\nHTTP_STATUS:%{http_code}\" -X POST http://localhost:3000/api/newsletter/subscribe -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"test@designature.studio\"\"}')",
+      "Bash(curl -s http://localhost:3000/api/admin/users)",
+      "Bash(netstat -ano)",
+      "Bash(wmic process:*)",
+      "Bash(taskkill /PID 4836 /F)",
+      "Bash(cmd.exe /c \"taskkill /PID 4836 /F\")",
+      "Bash(cmd.exe /c \"netstat -ano | findstr :3000\")",
+      "Bash(cmd.exe /c \"wmic process where \"\"processid!=0\"\" get processid,commandline 2>nul | findstr /i server.ts\")",
+      "Bash(cmd.exe /c \"wmic process where name=''node.exe'' get processid,commandline 2>nul\")",
+      "Bash(cmd.exe /c \"tasklist | findstr node\")",
+      "Bash(cmd.exe /c \"netstat -ano | findstr LISTENING\")",
+      "Bash(node -e \":*)",
+      "Bash(npm test:*)",
+      "Bash(npx vitest:*)",
+      "Bash(gh run:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(Get-Process -Name \"node\")",
+      "Bash(Select-Object Id, CommandLine)",
+      "Bash(findstr \":3000\")"
+    ]
+  }
+}
