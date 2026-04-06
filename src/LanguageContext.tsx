@@ -53,6 +53,7 @@ const translations = {
     'serv.heading': 'Everything You Need, Delivered',
     'serv.subtext': 'We bridge the gap between visionary design and technical precision.',
     'btn.example': 'View Example',
+    'btn.tryAgain': 'Try Again',
     'serv.packageIncludes': 'Package Includes',
     'serv.pageHeroTitle': 'Design Services',
     'serv.pageHeroSub': 'Tailored architectural and interior design solutions for visionary clients.',
