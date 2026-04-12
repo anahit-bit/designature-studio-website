@@ -16,11 +16,17 @@ dotenv.config();
 const FREE_TIER_MAX_CONCEPTS = 3;
 const FREE_TIER_MAX_SHOPPING_LISTS = 3;
 
-/** This account keeps a higher `generationsLeft` in DB for internal testing (not clamped to 3). */
-const CONCEPT_TEST_ACCOUNT_EMAIL = "anahit@designature.studio";
+/** Accounts that get unlimited quotas — never clamped or decremented. */
+const UNLIMITED_ACCOUNT_EMAILS = [
+  "anahit@designature.studio",
+  "anahit.ghasabyan@gmail.com",
+];
+
+/** @deprecated kept for call-sites that haven't been updated yet */
+const CONCEPT_TEST_ACCOUNT_EMAIL = UNLIMITED_ACCOUNT_EMAILS[0];
 
 function isConceptTestAccountEmail(email: string): boolean {
-  return email.trim().toLowerCase() === CONCEPT_TEST_ACCOUNT_EMAIL;
+  return UNLIMITED_ACCOUNT_EMAILS.includes(email.trim().toLowerCase());
 }
 
 // ─── Simple JSON "database" stored in users.json ───────────────────────────
@@ -35,6 +41,8 @@ interface User {
   generationsLeft: number;
   /** Remaining shopping-list runs (Serper searches) for free tier; optional in older `users.json` */
   shoppingListsLeft?: number;
+  isPaid?: boolean;
+  auditQuota?: number;
   createdAt: string;
   lastUsed: string;
 }
@@ -42,16 +50,26 @@ interface User {
 function normalizeUserForFreeTier(user: User): { user: User; changed: boolean } {
   let changed = false;
   const u = { ...user };
-  const isOwner = isConceptTestAccountEmail(u.email);
-  if (!isOwner && u.generationsLeft > FREE_TIER_MAX_CONCEPTS) {
-    u.generationsLeft = FREE_TIER_MAX_CONCEPTS;
-    changed = true;
-  }
-  if (isOwner) {
-    // Owner account gets unlimited everything — never clamp
+  const isUnlimited = isConceptTestAccountEmail(u.email);
+  const isPaidAccount = isUnlimited || u.isPaid === true;
+
+  if (isUnlimited) {
+    // Unlimited accounts — force 999, never clamp
     if (u.generationsLeft !== 999) { u.generationsLeft = 999; changed = true; }
     if (u.shoppingListsLeft !== 999) { u.shoppingListsLeft = 999; changed = true; }
+  } else if (isPaidAccount) {
+    // Paid accounts — don't cap, just migrate missing values
+    if (typeof u.shoppingListsLeft !== "number" || Number.isNaN(u.shoppingListsLeft)) {
+      u.shoppingListsLeft = 10;
+      changed = true;
+    }
+    if (u.generationsLeft > 999) { u.generationsLeft = 999; changed = true; }
   } else {
+    // Free tier — cap at FREE_TIER limits
+    if (u.generationsLeft > FREE_TIER_MAX_CONCEPTS) {
+      u.generationsLeft = FREE_TIER_MAX_CONCEPTS;
+      changed = true;
+    }
     if (typeof u.shoppingListsLeft !== "number" || Number.isNaN(u.shoppingListsLeft)) {
       u.shoppingListsLeft = FREE_TIER_MAX_SHOPPING_LISTS;
       changed = true;
@@ -453,14 +471,15 @@ async function startServer() {
     }
 
     const ownerAccount = isConceptTestAccountEmail(user.email);
+    const isPaidUser = ownerAccount || user.isPaid === true;
     res.json({
       email: user.email,
       name: user.name,
       picture: user.picture,
       generationsLeft: user.generationsLeft,
       shoppingListsLeft: user.shoppingListsLeft,
-      isPaid: ownerAccount ? true : false,
-      auditsLeft: ownerAccount ? 999 : 0,
+      isPaid: isPaidUser,
+      auditsLeft: isPaidUser ? 999 : 0,
     });
   });
 
@@ -490,7 +509,7 @@ async function startServer() {
       return res.status(403).json({ error: "No generations left", generationsLeft: user.generationsLeft });
     }
 
-    user.generationsLeft -= count;
+    if (user.generationsLeft < 999) user.generationsLeft -= count;
     user.lastUsed = new Date().toISOString();
     db.users[googleId] = user;
     writeDB(db);
@@ -519,6 +538,113 @@ async function startServer() {
     res.json({ generationsLeft: user.generationsLeft });
   });
 
+  // ── Testimonials cache ──────────────────────────────────────────────────────
+  let testimonialsCache: { data: any; expires: number } | null = null;
+  const TESTIMONIALS_CACHE_MS = 10 * 60 * 1000;
+
+  // ── GET /api/testimonials ────────────────────────────────────────────────────
+  app.get('/api/testimonials', async (_req, res) => {
+    try {
+      if (testimonialsCache && testimonialsCache.expires > Date.now()) {
+        return res.json(testimonialsCache.data);
+      }
+      const url = process.env.APPS_SCRIPT_URL;
+      if (!url) return res.status(500).json({ ok: false, error: 'apps script url not configured' });
+      const r = await fetch(url, { method: 'GET' });
+      const data = await r.json();
+      if (data.ok) {
+        testimonialsCache = { data, expires: Date.now() + TESTIMONIALS_CACHE_MS };
+      }
+      res.json(data);
+    } catch (err) {
+      res.status(500).json({ ok: false, error: String(err) });
+    }
+  });
+
+  // ── POST /api/feedback ───────────────────────────────────────────────────────
+  app.post('/api/feedback', async (req, res) => {
+    try {
+      const url = (process.env.APPS_SCRIPT_URL || '').trim();
+      const token = (process.env.APPS_SCRIPT_TOKEN || '').trim();
+      console.log(`[FEEDBACK] url present=${!!url} token present=${!!token}`);
+
+      if (!url || !token) return res.status(500).json({ ok: false, error: 'apps script not configured' });
+
+      const { name, country, email, type, message, rating, project_type } = req.body || {};
+      console.log(`[FEEDBACK] body:`, JSON.stringify({ name, country, email, type, message: message?.slice(0,40), rating, project_type }));
+
+      // Always required
+      if (!type || !['testimonial', 'bug', 'feature', 'general'].includes(type)) {
+        return res.status(400).json({ ok: false, error: 'Invalid type' });
+      }
+      if (!message || !message.trim()) {
+        return res.status(400).json({ ok: false, error: 'Message is required' });
+      }
+
+      // Conditionally required (testimonials only)
+      if (type === 'testimonial') {
+        if (!name || !name.trim()) {
+          return res.status(400).json({ ok: false, error: 'Name is required for testimonials' });
+        }
+        if (!email || !email.trim()) {
+          return res.status(400).json({ ok: false, error: 'Email is required for testimonials' });
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+          return res.status(400).json({ ok: false, error: 'Invalid email format' });
+        }
+        if (!rating || rating < 1 || rating > 5) {
+          return res.status(400).json({ ok: false, error: 'Rating is required for testimonials' });
+        }
+      }
+
+      // Optional field — validate if present
+      if (project_type && !['Residential', 'Commercial', 'Other'].includes(project_type)) {
+        return res.status(400).json({ ok: false, error: 'Invalid project type' });
+      }
+
+      const scriptBody = {
+        token,
+        name:         (name         || '').trim(),
+        country:      (country      || '').trim(),
+        email:        (email        || '').trim(),
+        type,
+        message:      (message      || '').trim(),
+        rating:       rating != null ? rating : '',
+        project_type: (project_type || '').trim(),
+      };
+      console.log(`[FEEDBACK] POST → ${url} body:`, JSON.stringify({ ...scriptBody, token: '[redacted]' }));
+
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(scriptBody),
+        redirect: 'follow',
+      });
+      const text = await r.text();
+      console.log(`[FEEDBACK] Apps Script status=${r.status} response:`, text.slice(0, 300));
+
+      let data: any;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        console.error(`[FEEDBACK] Apps Script returned non-JSON. Status=${r.status}. Body: ${text.slice(0, 200)}`);
+        return res.status(502).json({ ok: false, error: `Apps Script returned non-JSON (status ${r.status})` });
+      }
+
+      if (data.ok) {
+        console.log(`[FEEDBACK] Write confirmed — invalidating testimonials cache`);
+        testimonialsCache = null;
+      } else {
+        console.error(`[FEEDBACK] Apps Script returned ok=false:`, data.error);
+      }
+
+      res.json(data);
+    } catch (err) {
+      console.error(`[FEEDBACK] Unexpected error:`, err);
+      res.status(500).json({ ok: false, error: String(err) });
+    }
+  });
+
   // ── POST /api/shopping/search — Serper.dev Google Shopping API ──
   app.post("/api/shopping/search", async (req, res) => {
     try {
@@ -536,6 +662,7 @@ async function startServer() {
         dbShop.users[googleIdShopping] = shopUser;
         writeDB(dbShop);
       }
+      console.log(`[SHOP] ${shopUser.email} | isPaid=${shopUser.isPaid} | shoppingListsLeft=${shopUser.shoppingListsLeft}`);
       if (shopUser.shoppingListsLeft < 1) {
         return res.status(403).json({
           error: "No shopping list runs left",
@@ -551,132 +678,149 @@ async function startServer() {
       const SERPER_API_KEY = (process.env.SERPER_API_KEY || "").trim();
       if (!SERPER_API_KEY) return res.status(500).json({ error: "SERPER_API_KEY not set — add it in AI Studio Secrets" });
 
-      // ── Retailer filter ──────────────────────────────────────────────────────
-      // List the shops you want results from. Leave empty [] to search all shops.
-      // Serper searches Google Shopping — adding shop names biases results toward them.
-      // Tip: keep this list to 4-5 shops max for best diversity. Wayfair dominates
-      // if included alongside others, so it's intentionally excluded here.
-      const PREFERRED_SHOPS: string[] = [
-        "west elm",
-        "cb2",
-        "ikea",
-        "pottery barn",
-        "article",
-        "crate and barrel",
-        "room and board",
+      // ── Shared helper: extract best direct URL from a Serper result ──────────
+      const extractDirectLink = (r: any): string => {
+        if (r.productLink && !r.productLink.includes('google.com/url')) return r.productLink;
+        if (r.merchantLink && !r.merchantLink.includes('google.com/url')) return r.merchantLink;
+        if (r.link) {
+          try {
+            const urlObj = new URL(r.link);
+            const adUrl = urlObj.searchParams.get('adurl') || urlObj.searchParams.get('url') || urlObj.searchParams.get('q');
+            if (adUrl && adUrl.startsWith('http') && !adUrl.includes('google.com')) return adUrl;
+          } catch {
+            const m = r.link.match(/[?&](?:adurl|url|q)=([^&]+)/i);
+            if (m) {
+              const decoded = decodeURIComponent(m[1]);
+              if (decoded.startsWith('http') && !decoded.includes('google.com')) return decoded;
+            }
+          }
+        }
+        return (r.link && !r.link.includes('google.com/url')) ? r.link : (r.productLink || r.merchantLink || r.link || "#");
+      };
+
+      const cleanSource = (raw: string): string => {
+        let s = (raw || "")
+          .replace(/^https?:\/\//i, "").replace(/^www\./i, "")
+          .split(/[/?#]/)[0]
+          .replace(/\.(com|org|net|edu|gov|io|co|uk|ca|au|de|fr|am|ae)$/i, "")
+          .split(/[-_.]/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
+          .trim();
+        return s || "Shop";
+      };
+
+      const mapProduct = (r: any) => ({
+        title: r.title || "Product",
+        price: r.price || null,
+        source: cleanSource(r.source || ""),
+        link: extractDirectLink(r),
+        thumbnail: r.imageUrl || null,
+        rating: r.rating || null,
+        reviews: r.ratingCount || null,
+      });
+
+      const serperSearch = async (query: string, num = 8): Promise<any[]> => {
+        const res = await fetch("https://google.serper.dev/shopping", {
+          method: "POST",
+          headers: { "X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ q: query, gl, hl: "en", num }),
+        });
+        const data = await res.json();
+        if (!res.ok) { console.error(`Serper error "${query}":`, data.message); return []; }
+        return data.shopping || [];
+      };
+
+      // ── Shop catalogue with category tags ──────────────────────────────────────
+      // cats: keywords that must overlap with item.category for this shop to be
+      // included. Shops without an overlap are skipped so e.g. Desenio is never
+      // queried for a sofa search.
+      const ALL_SHOPS = [
+        { name: "West Elm",        domain: "westelm.com",        cats: ["furniture","sofa","chair","table","rug","lighting","lamp","sconce","decor","bed","storage","desk","nightstand","dresser","bookcase"] },
+        { name: "CB2",             domain: "cb2.com",            cats: ["furniture","sofa","chair","table","rug","lighting","lamp","decor","storage","desk","bed"] },
+        { name: "IKEA",            domain: "ikea.com",           cats: ["furniture","sofa","chair","table","rug","lighting","lamp","decor","bed","storage","desk","nightstand","dresser","bookcase","shelf"] },
+        { name: "Pottery Barn",    domain: "potterybarn.com",    cats: ["furniture","sofa","chair","table","rug","lighting","lamp","decor","bed","storage","nightstand","dresser"] },
+        { name: "Article",         domain: "article.com",        cats: ["furniture","sofa","chair","table","bed","storage","desk","nightstand","dresser","bookcase"] },
+        { name: "Crate & Barrel",  domain: "crateandbarrel.com", cats: ["furniture","sofa","chair","table","rug","lighting","lamp","decor","storage","kitchen","bed"] },
+        { name: "Room & Board",    domain: "roomandboard.com",   cats: ["furniture","sofa","chair","table","bed","storage","desk","nightstand","dresser","bookcase"] },
+        { name: "Blu Dot",         domain: "bludot.com",         cats: ["furniture","sofa","chair","table","bed","storage","desk","lighting","lamp","shelving"] },
+        { name: "AllModern",       domain: "allmodern.com",      cats: ["furniture","sofa","chair","table","rug","lighting","lamp","decor","bed","storage","desk"] },
+        { name: "Desenio",         domain: "desenio.com",        cats: ["art","poster","print","wall art","wall decor","painting","canvas"] },
+        { name: "AllPosters",      domain: "allposters.com",     cats: ["art","poster","print","wall art","painting","canvas","photography"] },
+        { name: "Wayfair",         domain: "wayfair.com",        cats: ["furniture","sofa","chair","table","rug","lighting","lamp","decor","bed","storage","desk","nightstand","dresser","bookcase","kitchen","outdoor"] },
       ];
 
-      // Build optional site filter — appended to query only if list is non-empty
-      const shopFilter = PREFERRED_SHOPS.length > 0
-        ? PREFERRED_SHOPS.map(s => `"${s}"`).join(" OR ")
-        : "";
+      // Returns shops whose cat list has at least one keyword present in the item category string.
+      const shopsForCategory = (itemCategory: string): typeof ALL_SHOPS => {
+        const ic = itemCategory.toLowerCase();
+        const matched = ALL_SHOPS.filter(shop =>
+          shop.cats.some(cat => ic.includes(cat) || cat.includes(ic.split(/[\s,]/)[0]))
+        );
+        // Fallback: exclude art-only shops if nothing matched (e.g. unknown category)
+        return matched.length >= 2 ? matched : ALL_SHOPS.filter(s => !["desenio","allposters"].includes(s.domain.split(".")[0]));
+      };
 
-      const searchResults = await Promise.all(
-        items.slice(0, 4).map(async (item: any) => {
-          try {
-            // Clean product query — no retailer names = more diverse natural results
-            // Shop filter is appended separately so Google matches it as a preference not a requirement
-            const query = shopFilter
-              ? `${item.search_query} furniture (${shopFilter})`
-              : `${item.search_query} furniture buy`;
-            console.log(`Serper shopping search: "${query}"`);
+      // ── PAID: per-retailer search (one retailer-name query per shop per item) ──
+      // NOTE: site: operator does not work with Google Shopping API — use retailer
+      // name as a keyword instead so results are scoped to that store.
+      const PER_RETAILER_SHOPS = ALL_SHOPS.filter(s => !["desenio.com","allposters.com","wayfair.com"].includes(s.domain));
 
-            const serperRes = await fetch("https://google.serper.dev/shopping", {
-              method: "POST",
-              headers: {
-                "X-API-KEY": SERPER_API_KEY,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                q: query,
-                gl: gl,
-                hl: "en",
-                num: 6,
-              }),
-            });
+      let searchResults: any[];
 
-            const serperData = await serperRes.json();
-
-            if (!serperRes.ok) {
-              console.error(`Serper error for "${item.search_query}":`, JSON.stringify(serperData));
-              return { item: { category: item.category, description: item.description }, products: [], error: serperData.message || "Search failed" };
+      if (shopUser.isPaid) {
+        // Paid tier: search each relevant retailer independently, all in parallel
+        searchResults = await Promise.all(
+          items.slice(0, 6).map(async (item: any) => {
+            const relevantShops = PER_RETAILER_SHOPS.filter(s =>
+              shopsForCategory(item.category).some(rs => rs.domain === s.domain)
+            );
+            const shopsToQuery = relevantShops.length >= 2 ? relevantShops : PER_RETAILER_SHOPS;
+            const retailerResults = await Promise.all(
+              shopsToQuery.map(async (shop) => {
+                try {
+                  const query = `${item.search_query} "${shop.name}"`;
+                  console.log(`[PAID] Serper: "${query}"`);
+                  const hits = await serperSearch(query, 6);
+                  const top = hits[0];
+                  return {
+                    retailer: shop.name,
+                    domain: shop.domain,
+                    product: top ? mapProduct(top) : null,
+                  };
+                } catch (err) {
+                  console.error(`Serper error for ${shop.name}:`, err);
+                  return { retailer: shop.name, domain: shop.domain, product: null };
+                }
+              })
+            );
+            return {
+              item: { category: item.category, description: item.description },
+              byRetailer: retailerResults,
+            };
+          })
+        );
+      } else {
+        // Free tier: one category-aware OR query per item, 3 results shown
+        searchResults = await Promise.all(
+          items.slice(0, 4).map(async (item: any) => {
+            try {
+              const relevantShops = shopsForCategory(item.category);
+              // Cap at 6 shops to keep query short and focused
+              const shopFilter = relevantShops.slice(0, 6).map(s => `"${s.name}"`).join(" OR ");
+              const query = `${item.search_query} (${shopFilter})`;
+              console.log(`[FREE] Serper: "${query}"`);
+              const hits = await serperSearch(query, 8);
+              return {
+                item: { category: item.category, description: item.description },
+                products: hits.slice(0, 3).map(mapProduct),
+              };
+            } catch (err) {
+              console.error("Serper search error for", item.category, err);
+              return { item: { category: item.category, description: item.description }, products: [] };
             }
+          })
+        );
+      }
 
-             const shoppingItems = serperData.shopping || [];
-             if (shoppingItems.length > 0) {
-               const s = shoppingItems[0];
-               console.log('SERPER RAW FIELDS:', JSON.stringify({
-                 link: s.link,
-                 productLink: s.productLink,
-                 merchantLink: s.merchantLink,
-                 source: s.source,
-                 allKeys: Object.keys(s),
-               }));
-             }
-
-             // Extract best direct URL from Serper result
-             const extractDirectLink = (r: any): string => {
-               // 1. If we have a direct productLink that isn't a google redirect, use it
-               if (r.productLink && !r.productLink.includes('google.com/url')) return r.productLink;
-               
-               // 2. If we have a merchantLink that isn't a google redirect, use it
-               if (r.merchantLink && !r.merchantLink.includes('google.com/url')) return r.merchantLink;
-               
-               // 3. Try decoding the 'adurl' or 'url' param from the Google redirect link
-               if (r.link) {
-                 try {
-                   const urlObj = new URL(r.link);
-                   const adUrl = urlObj.searchParams.get('adurl') || urlObj.searchParams.get('url') || urlObj.searchParams.get('q');
-                   if (adUrl && adUrl.startsWith('http') && !adUrl.includes('google.com')) {
-                     return adUrl;
-                   }
-                 } catch (e) {
-                   // Fallback to regex if URL parsing fails
-                   const m = r.link.match(/[?&](?:adurl|url|q)=([^&]+)/i);
-                   if (m) {
-                     const decoded = decodeURIComponent(m[1]);
-                     if (decoded.startsWith('http') && !decoded.includes('google.com')) return decoded;
-                   }
-                 }
-               }
-               
-               // 4. Final fallback: use the link as is if it's not a known redirect, otherwise return #
-               return (r.link && !r.link.includes('google.com/url')) ? r.link : (r.productLink || r.merchantLink || r.link || "#");
-             };
-
-             const products = shoppingItems.slice(0, 3).map((r: any) => {
-               // Clean source name (e.g. "wayfair.com" -> "Wayfair")
-               let source = (r.source || "")
-                 .replace(/^https?:\/\//i, "")
-                 .replace(/^www\./i, "")
-                 .split(/[/?#]/)[0] // Get domain only
-                 .replace(/\.(com|org|net|edu|gov|io|co|uk|ca|au|de|fr|am|ae)$/i, "") // Remove common TLDs
-                 .split(/[-_.]/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
-                 .trim();
-               
-               if (!source) source = "Shop";
-
-               return {
-                 title: r.title || "Product",
-                 price: r.price || null,
-                 source,
-                 link: extractDirectLink(r),
-                 thumbnail: r.imageUrl || null,
-                 rating: r.rating || null,
-                 reviews: r.ratingCount || null,
-               };
-             });
-
-            return { item: { category: item.category, description: item.description }, products };
-
-          } catch (err) {
-            console.error("Serper search error for", item.category, err);
-            return { item: { category: item.category, description: item.description }, products: [] };
-          }
-        })
-      );
-
-      shopUser.shoppingListsLeft -= 1;
+      if (shopUser.shoppingListsLeft < 999) shopUser.shoppingListsLeft -= 1;
       shopUser.lastUsed = new Date().toISOString();
       dbShop.users[googleIdShopping] = shopUser;
       writeDB(dbShop);
@@ -686,6 +830,43 @@ async function startServer() {
     } catch (err: any) {
       console.error("Shopping search error:", err);
       res.status(500).json({ error: "Shopping search failed: " + (err.message || "unknown error") });
+    }
+  });
+
+  // ── GET /api/pinterest/pin — extract og:image from a Pinterest pin URL ──
+  app.get("/api/pinterest/pin", async (req, res) => {
+    const { url } = req.query as { url?: string };
+    if (!url || typeof url !== "string") {
+      return res.status(400).json({ error: "Missing url parameter" });
+    }
+    // Accept pinterest.com/pin/... or pinterest.com/username/board/... or pin.it/...
+    if (!url.includes("pinterest.com") && !url.includes("pin.it")) {
+      return res.status(400).json({ error: "Not a Pinterest URL" });
+    }
+    try {
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.5",
+        },
+        redirect: "follow",
+      });
+      if (!response.ok) {
+        return res.status(502).json({ error: "Could not fetch Pinterest page" });
+      }
+      const html = await response.text();
+      // Extract og:image
+      const match = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+                 || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+      if (!match || !match[1]) {
+        return res.status(404).json({ error: "No image found on this Pinterest page" });
+      }
+      const imageUrl = match[1].replace(/&amp;/g, "&");
+      return res.json({ imageUrl });
+    } catch (err: any) {
+      console.error("Pinterest fetch error:", err);
+      return res.status(500).json({ error: "Failed to fetch Pinterest image" });
     }
   });
 
@@ -838,9 +1019,10 @@ async function startServer() {
     const db = readDB();
     const user = Object.values(db.users).find((u: User) => u.email === email);
     if (!user) return res.status(404).json({ error: "User not found" });
-    const cap = isConceptTestAccountEmail(user.email) ? 999 : FREE_TIER_MAX_CONCEPTS;
+    const isOwnerReset = isConceptTestAccountEmail(user.email);
+    const cap = isOwnerReset ? 999 : FREE_TIER_MAX_CONCEPTS;
     user.generationsLeft = Math.min(cap, Number(count) || FREE_TIER_MAX_CONCEPTS);
-    user.shoppingListsLeft = FREE_TIER_MAX_SHOPPING_LISTS;
+    user.shoppingListsLeft = isOwnerReset ? 999 : FREE_TIER_MAX_SHOPPING_LISTS;
     db.users[user.googleId] = user;
     writeDB(db);
     res.json({ ok: true, email: user.email, generationsLeft: user.generationsLeft });
@@ -909,6 +1091,7 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`✅ Shopping quota protection: ACTIVE (owner = ${CONCEPT_TEST_ACCOUNT_EMAIL})`);
   });
 }
 

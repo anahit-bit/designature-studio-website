@@ -84,33 +84,35 @@ describe('AIConceptsPage - Style Quiz', () => {
     Object.defineProperty(window, 'localStorage', { value: localStorageMock, writable: true });
   });
 
+  // Quiz length is 18 as of the current build
+  const QUIZ_LENGTH = 18;
+
   const voteMany = async (count: number) => {
     for (let i = 0; i < count; i++) {
       const loveButton = await screen.findByRole('button', { name: /Love it/i });
       await waitFor(() => expect(loveButton).not.toBeDisabled(), { timeout: 3000 });
       fireEvent.click(loveButton);
       if (i < count - 1) {
-        await screen.findByText(new RegExp(`Room ${i + 2} of 24`, 'i'));
+        await screen.findByText(new RegExp(`Room ${i + 2} of ${QUIZ_LENGTH}`, 'i'));
       }
     }
   };
 
   it('renders the quiz initial state', async () => {
     renderWithProvider(<AIConceptsPage />);
-    // By default activeTool is 'quiz'
-    // Use findAllByText and pick the first one as it might be in multiple places (e.g. title and tab)
     expect((await screen.findAllByText(/Style Quiz/i))[0]).toBeInTheDocument();
     expect(await screen.findByText(/Love it/i)).toBeInTheDocument();
     expect(await screen.findByText(/Skip/i)).toBeInTheDocument();
     expect(await screen.findByText(/Not my style/i)).toBeInTheDocument();
   });
 
+  it('shows correct quiz length (18 rooms)', async () => {
+    renderWithProvider(<AIConceptsPage />);
+    expect(await screen.findByText(new RegExp(`Room 1 of ${QUIZ_LENGTH}`, 'i'))).toBeInTheDocument();
+  });
+
   it('renders a quiz image from Cloudinary API when available', async () => {
     renderWithProvider(<AIConceptsPage />);
-
-    // Wait for the first quiz image to render and have a non-empty src.
-    // There are many images on the page (icons/logos), so we target the quiz hero image by looking
-    // for the large quiz container's <img> which uses object-cover class.
     const imgs = await screen.findAllByRole('img');
     await waitFor(() => {
       const quizImg = imgs.find((i) => (i as HTMLImageElement).className.includes('object-cover')) as HTMLImageElement | undefined;
@@ -121,43 +123,61 @@ describe('AIConceptsPage - Style Quiz', () => {
 
   it('progresses through the quiz when voting', async () => {
     renderWithProvider(<AIConceptsPage />);
-
-    // Initial step is 0
-    expect(await screen.findByText(/Room 1 of 24/i)).toBeInTheDocument();
-
+    expect(await screen.findByText(new RegExp(`Room 1 of ${QUIZ_LENGTH}`, 'i'))).toBeInTheDocument();
     await voteMany(1);
-
-    // Should progress to Room 2 of 24
-    expect(await screen.findByText(/Room 2 of 24/i)).toBeInTheDocument();
+    expect(await screen.findByText(new RegExp(`Room 2 of ${QUIZ_LENGTH}`, 'i'))).toBeInTheDocument();
   });
 
-  it('completes the quiz and shows results after 24 votes', async () => {
+  it('shows back button after first vote', async () => {
     renderWithProvider(<AIConceptsPage />);
+    // Back button hidden on room 1
+    expect(screen.queryByText(/Previous room/i)).not.toBeInTheDocument();
+    await voteMany(1);
+    // Back button appears on room 2
+    expect(await screen.findByText(/Previous room/i)).toBeInTheDocument();
+  });
 
-    await voteMany(24);
+  it('early-end link hidden before room 5, visible at room 5+', async () => {
+    renderWithProvider(<AIConceptsPage />);
+    // Not visible before 4 votes (quizStep 0-3 < 4)
+    await voteMany(3);
+    expect(screen.queryByText(/Have enough/i)).not.toBeInTheDocument();
+    // Appears at step 4 (room 5)
+    await voteMany(1);
+    expect(await screen.findByText(/Have enough/i)).toBeInTheDocument();
+  }, 30_000);
 
-    // Check for results screen
-    // Based on translations: 'ai.quiz.designDNA' is "Your design DNA"
-    expect(await screen.findByText(/^Your design DNA$/i)).toBeInTheDocument();
-
-    // Should show the apply button (percentages are behind the "See quiz results" toggle)
+  it('early-end produces result page immediately', async () => {
+    renderWithProvider(<AIConceptsPage />);
+    await voteMany(5); // reach room 6 (quizStep 5 >= 4)
+    const earlyEnd = await screen.findByText(/Have enough/i);
+    fireEvent.click(earlyEnd);
+    expect((await screen.findAllByText(/Your design DNA/i))[0]).toBeInTheDocument();
     expect(await screen.findByText(/Apply.*style.*AI Vision/i)).toBeInTheDocument();
+  }, 30_000);
+
+  it('completes the quiz and shows results after 18 votes', async () => {
+    renderWithProvider(<AIConceptsPage />);
+    await voteMany(QUIZ_LENGTH);
+    expect(await screen.findByText(/^Your design DNA$/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Apply.*style.*AI Vision/i)).toBeInTheDocument();
+  }, 30_000);
+
+  it('result page shows style breakdown with percentages', async () => {
+    renderWithProvider(<AIConceptsPage />);
+    await voteMany(QUIZ_LENGTH);
+    expect(await screen.findByText(/Your style breakdown/i)).toBeInTheDocument();
+    // At least one percentage value should be visible
+    expect((await screen.findAllByText(/\d+%/))[0]).toBeInTheDocument();
   }, 30_000);
 
   it('switches to vision tool when clicking Apply Style', async () => {
     renderWithProvider(<AIConceptsPage />);
-
-    await voteMany(24);
-
-    // 'ai.quiz.applyStyle' is "Apply {style} style to AI Vision"
-    // We don't know the style, so we use a regex
+    await voteMany(QUIZ_LENGTH);
     const applyButton = await screen.findByText(/Apply .* style to AI Vision/i);
     fireEvent.click(applyButton);
-
-    // Should now show AI Vision tool
     expect((await screen.findAllByText(/AI Vision/i))[0]).toBeInTheDocument();
-    // And the quiz should be gone or hidden
-    expect(screen.queryByText(/Room 1 of 24/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(new RegExp(`Room 1 of ${QUIZ_LENGTH}`, 'i'))).not.toBeInTheDocument();
   }, 30_000);
 
   it(

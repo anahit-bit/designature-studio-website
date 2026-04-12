@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle2, X, Download, AlertCircle, RefreshCw, LogOut, FileDown } from 'lucide-react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
+import { ArrowLeft, ArrowRight, CheckCircle2, X, Download, AlertCircle, RefreshCw, LogOut, FileDown, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleGenAI } from "@google/genai";
 import { useLanguage } from '../LanguageContext';
@@ -13,6 +13,9 @@ import {
 import Header from './Header';
 import Footer from './Footer';
 import RoomAudit from './RoomAudit';
+import FeedbackModal from './FeedbackModal';
+import AIVisionShowcase from './AIVisionShowcase';
+import { QUIZ_IMAGE_WEIGHTS, TIER_POINTS } from '../data/quizImageWeights';
 
 // ─── Google OAuth client ID ────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
@@ -53,17 +56,23 @@ const STYLE_DESCRIPTIONS: Record<string, { summary: string; elements: string[] }
 
 const QUIZ_ROOMS_FALLBACK: QuizRooms = {
   'Art Deco': [
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Art-Deco/1_kedomn.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Art-Deco/10_ng0u6i.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Art-Deco/9_byfcww.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Art-Deco/7_pgij4k.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Art-Deco/11_ibhacx.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Art-Deco/2_z7qn5f.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Art-Deco/8_ky76uo.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Art-Deco/6_slhnwf.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Art-Deco/4_nx2j48.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Art-Deco/5_uwjq3d.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Art-Deco/3_ozxssy.png', credit: 'Art Deco' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775713417/14_uwyjdr.png', credit: 'Art Deco' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775713416/19_eify7o.png', credit: 'Art Deco' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775713413/17_gmhspd.png', credit: 'Art Deco' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775713412/18_e1hgg2.png', credit: 'Art Deco' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775713411/16_udhqsu.png', credit: 'Art Deco' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775713411/15_udxfac.png', credit: 'Art Deco' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775713410/13_v9ewcf.png', credit: 'Art Deco' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775711587/12_jvapje.png', credit: 'Art Deco' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774939182/10_ng0u6i.png', credit: 'Art Deco' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774939181/9_byfcww.png', credit: 'Art Deco' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774939181/7_pgjj4k.png', credit: 'Art Deco' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774939181/11_ibhacx.png', credit: 'Art Deco' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774939180/8_ky76uo.png', credit: 'Art Deco' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774939179/6_slhnwf.png', credit: 'Art Deco' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774939178/4_nx2j48.png', credit: 'Art Deco' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774939178/5_uwjq3d.png', credit: 'Art Deco' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774939177/3_ozxssy.png', credit: 'Art Deco' },
   ],
   'Bohemian': [
     { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Bohemian/3_cx1pmd.jpg', credit: 'Bohemian' },
@@ -202,6 +211,24 @@ const QUIZ_ROOMS_FALLBACK: QuizRooms = {
   ],
 };
 
+/** Largest-remainder rounding so displayed percentages always sum to exactly 100.0.
+ *  @param values  Raw percentage values in the 0–100 range (need not sum to 100 before call).
+ *  @param decimals Number of decimal places (default 1).
+ */
+function roundPercentages(values: number[], decimals = 1): number[] {
+  const multiplier = Math.pow(10, decimals);
+  const target = 100 * multiplier;
+  const scaled = values.map(v => v * multiplier);
+  const floored = scaled.map(Math.floor);
+  const diff = target - floored.reduce((a, b) => a + b, 0);
+  const remainders = scaled.map((v, i) => ({ index: i, remainder: v - floored[i] }));
+  remainders.sort((a, b) => b.remainder - a.remainder);
+  for (let i = 0; i < diff; i++) {
+    floored[remainders[i % remainders.length].index]++;
+  }
+  return floored.map(v => v / multiplier);
+}
+
 function styleToCloudinaryFolderName(style: string): string {
   // Cloudinary folders in this project use hyphens for spaces (e.g. "Art-Deco")
   return style.trim().replace(/\s+/g, '-');
@@ -261,9 +288,25 @@ const AIConceptsPage: React.FC = () => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [googleScriptLoaded, setGoogleScriptLoaded] = useState(false);
+  const prevUserRef = useRef<AuthUser | null>(null);
+
+  // Scroll to top when session is restored on load (user goes null → authenticated)
+  useEffect(() => {
+    if (user && !prevUserRef.current) {
+      // Delay matches the showcase unmount / layout-settle time
+      setTimeout(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      }, 80);
+    }
+    prevUserRef.current = user;
+  }, [user]);
 
   // Generation state
   const [inspirationImages, setInspirationImages] = useState<string[]>([]);
+  const [pinterestUrl, setPinterestUrl] = useState('');
+  const [pinterestLoading, setPinterestLoading] = useState(false);
+  const [pinterestError, setPinterestError] = useState('');
+  const [pinterestOpen, setPinterestOpen] = useState(false);
   const [roomImage, setRoomImage] = useState<string | null>(null);
   const [roomAspectRatio, setRoomAspectRatio] = useState<string>('3/4');
   const [apiAspectRatio, setApiAspectRatio] = useState<"1:1" | "3:4" | "4:3" | "9:16" | "16:9">("3:4");
@@ -309,6 +352,12 @@ const AIConceptsPage: React.FC = () => {
   const selectedConceptUrl = allSessionConcepts[selectedConceptIndex] ?? null;
   const maxConceptSlots = user?.isPaid ? 30 : FREE_TIER_MAX_CONCEPT_SLOTS;
 
+  // ── Drag-over state for upload zones ──
+  const [roomDragOver, setRoomDragOver] = useState(false);
+  const [inspoDragOver, setInspoDragOver] = useState(false);
+  const [shopDragOver, setShopDragOver] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+
   // ── Shopping state ──
   const [shoppingResults, setShoppingResults] = useState<any[]>([]);
   const [shoppingItems, setShoppingItems] = useState<any[]>([]);
@@ -325,7 +374,7 @@ const AIConceptsPage: React.FC = () => {
   // ── Style Quiz state ──
   const [quizStep, setQuizStep] = useState<number>(0);
   const [quizSeed, setQuizSeed] = useState<number>(() => Math.floor(Math.random() * 100));
-  const QUIZ_LENGTH = 24;
+  const QUIZ_LENGTH = 18;
   const generateQuizSequence = () => {
     const seq: string[] = [];
     // Each style appears at least once, then fill to QUIZ_LENGTH randomly
@@ -345,6 +394,23 @@ const AIConceptsPage: React.FC = () => {
   const [selectedPrevResult, setSelectedPrevResult] = useState<number | null>(null);
   const [showQuizResults, setShowQuizResults] = useState(false);
   const quizResultSavedRef = useRef(false);
+  /** Tracks the last-seen user email so we can detect identity changes without firing on mount */
+  const prevUserEmailRef = useRef<string | undefined>(user?.email);
+  /** Per-step vote log — enables undo (back button) */
+  const [voteHistory, setVoteHistory] = useState<Array<{
+    step: number; vote: 'love'|'skip'|'no'; imageUrl: string;
+    styleChanges: Record<string, number>; // style → points added (multi-attribute)
+  }>>([]);
+  /** Loved rooms moodboard — only love votes */
+  const [lovedRooms, setLovedRooms] = useState<Array<{
+    step: number; imageUrl: string; styleChanges: Record<string, number>;
+  }>>([]);
+  /** Ref for moodboard scroll container — used for auto-scroll to newest card */
+  const moodboardRef = useRef<HTMLDivElement>(null);
+  /** URLs shown during this quiz session — excluded from result gallery */
+  const [seenQuizImages, setSeenQuizImages] = useState<Set<string>>(new Set());
+  /** Unseen images of the top result style — shown in result gallery */
+  const [resultGalleryImages, setResultGalleryImages] = useState<string[]>([]);
   const [activeTool, setActiveTool] = useState<'quiz' | 'vision' | 'shopping' | 'audit'>('quiz');
   const [auditComplete, setAuditComplete] = useState(false);
   const [auditProcessing, setAuditProcessing] = useState(false);
@@ -353,6 +419,94 @@ const AIConceptsPage: React.FC = () => {
     const saved = localStorage.getItem('ds_download_count');
     return saved ? parseInt(saved, 10) : 0;
   });
+
+  // ── Scroll to top before paint — defeats browser scroll-restoration ──
+  useLayoutEffect(() => {
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    window.scrollTo({ top: 0, left: 0 });
+  }, []);
+
+  // ── Reset all ephemeral tool state on every mount (fresh start on load / navigate) ──
+  useEffect(() => {
+    // Style Quiz
+    setQuizStep(0);
+    setQuizVotes({});
+    setQuizDone(false);
+    setQuizResult([]);
+    setQuizImageReady(false);
+    setQuizHistory([]);
+    setSelectedPrevResult(null);
+    setShowQuizResults(false);
+    setQuizSeed(Math.floor(Math.random() * 100));
+    setQuizSequence(generateQuizSequence());
+    quizResultSavedRef.current = false;
+
+    // AI Vision
+    setInspirationImages([]);
+    setRoomImage(null);
+    setSelectedStyle('');
+    setSelectedRoom('');
+    setResults([]);
+    setSelectedConceptIndex(0);
+    setSessionConceptArchive([]);
+    setError(null);
+    setValidationError(null);
+    setIsProcessing(false);
+    setIsLightboxOpen(false);
+
+    // Pinterest panel
+    setPinterestUrl('');
+    setPinterestOpen(false);
+    setPinterestError(null);
+
+    // Shopping List
+    setShoppingResults([]);
+    setShoppingItems([]);
+    setShoppingDone(false);
+    setShoppingError(null);
+    setStandaloneShoppingImage(null);
+    setForceStandaloneUpload(false);
+    setSearchSourceImage(null);
+    setSearchSourceIsStandalone(false);
+
+    // Room Audit
+    setAuditComplete(false);
+    setAuditProcessing(false);
+
+    // Quiz undo / seen-image tracking
+    setVoteHistory([]);
+    setLovedRooms([]);
+    setSeenQuizImages(new Set());
+    setResultGalleryImages([]);
+
+    // NOTE: user / authLoading / session token are intentionally NOT touched here.
+    // NOTE: downloadCount (ds_download_count) is intentionally NOT reset.
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Reset quiz state when the signed-in identity changes (sign-out / sign-in / account switch) ──
+  // The mount-time reset above handles initial page load. This effect covers the case where the
+  // component stays mounted but the user signs out and back in without a full page reload.
+  useEffect(() => {
+    const email = user?.email;
+    if (email === prevUserEmailRef.current) return; // no change, skip
+    prevUserEmailRef.current = email;
+
+    setQuizStep(0);
+    setQuizVotes({});
+    setQuizDone(false);
+    setQuizResult([]);
+    setQuizImageReady(false);
+    setQuizHistory([]);
+    setSelectedPrevResult(null);
+    setShowQuizResults(false);
+    setQuizSeed(Math.floor(Math.random() * 100));
+    setQuizSequence(generateQuizSequence());
+    quizResultSavedRef.current = false;
+    setVoteHistory([]);
+    setLovedRooms([]);
+    setSeenQuizImages(new Set());
+    setResultGalleryImages([]);
+  }, [user?.email]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Cycle processing phase text while generating ──
   useEffect(() => {
@@ -432,6 +586,30 @@ const AIConceptsPage: React.FC = () => {
     const unlockTimer = setTimeout(() => setQuizImageReady(true), QUIZ_VOTE_UNLOCK_MS);
     return () => clearTimeout(unlockTimer);
   }, [quizStep, quizSeed, quizSequence, currentQuizImage.url, quizDone]);
+
+  // ── Track seen quiz images (for result gallery exclusion) ──
+  useEffect(() => {
+    if (currentQuizImage.url && !quizDone) {
+      setSeenQuizImages(prev => new Set(prev).add(currentQuizImage.url));
+    }
+  }, [currentQuizImage.url, quizDone]);
+
+  // ── Fetch result gallery when quiz completes ──
+  useEffect(() => {
+    const topStyle = quizResult[0]?.style;
+    if (!quizDone || !topStyle) return;
+    const folderName = `Quiz/${styleToCloudinaryFolderName(topStyle)}`;
+    fetch(`/api/images?folder=${encodeURIComponent(folderName)}`)
+      .then(r => r.ok ? r.json() : [])
+      .then((data: any[]) => {
+        if (!Array.isArray(data)) return;
+        const allUrls = data.map((r: any) => String(r.secure_url || r.url || '')).filter(Boolean);
+        const unseen = allUrls.filter(url => !seenQuizImages.has(url));
+        const pool = unseen.length >= 4 ? unseen : allUrls;
+        setResultGalleryImages([...pool].sort(() => Math.random() - 0.5).slice(0, 6));
+      })
+      .catch(() => {});
+  }, [quizDone, quizResult[0]?.style]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Load Google script ──
   useEffect(() => {
@@ -616,9 +794,8 @@ const AIConceptsPage: React.FC = () => {
   }, []);
 
   // ── File handling ──
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'inspiration' | 'room') => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  const processFiles = (files: FileList | File[], type: 'inspiration' | 'room') => {
+    if (!files || (files as FileList).length === 0) return;
     setValidationError(null);
 
     const readFile = (file: File): Promise<string> =>
@@ -635,7 +812,7 @@ const AIConceptsPage: React.FC = () => {
         setInspirationImages(prev => [...prev, ...images]);
       });
     } else {
-      readFile(files[0]).then((dataUrl) => {
+      readFile(Array.from(files)[0]).then((dataUrl) => {
         setRoomImage(dataUrl);
         const img = new Image();
         img.onload = () => {
@@ -652,7 +829,46 @@ const AIConceptsPage: React.FC = () => {
         img.src = dataUrl;
       });
     }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'inspiration' | 'room') => {
+    if (e.target.files) processFiles(e.target.files, type);
     e.target.value = '';
+  };
+
+  const handleDrop = (e: React.DragEvent, type: 'inspiration' | 'room') => {
+    e.preventDefault();
+    e.stopPropagation();
+    setRoomDragOver(false);
+    setInspoDragOver(false);
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    if (files.length > 0) processFiles(files, type);
+  };
+
+  const processShoppingFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      setStandaloneShoppingImage(dataUrl);
+      const img = new Image();
+      img.onload = () => {
+        const ratio = img.width / img.height;
+        if (ratio > 1.4) setStandaloneShoppingAspectRatio('16/9');
+        else if (ratio > 1.1) setStandaloneShoppingAspectRatio('4/3');
+        else if (ratio > 0.85) setStandaloneShoppingAspectRatio('1/1');
+        else setStandaloneShoppingAspectRatio('3/4');
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleShopDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShopDragOver(false);
+    const file = Array.from(e.dataTransfer.files).find(f => f.type.startsWith('image/'));
+    if (file) processShoppingFile(file);
   };
 
   const removeInspirationImage = (index: number) => {
@@ -878,7 +1094,13 @@ Output ONLY the redesigned room image. No text.`;
 
     // ── Products ──
     for (const group of shoppingResults) {
-      if (!group.products || group.products.length === 0) continue;
+      // Normalise: paid uses byRetailer, free uses products
+      const products = group.products && group.products.length > 0
+        ? group.products
+        : group.byRetailer
+          ? group.byRetailer.filter((e: any) => e.product).map((e: any) => ({ ...e.product, source: e.retailer }))
+          : [];
+      if (products.length === 0) continue;
 
       // Category header
       doc.setFont('helvetica', 'bold');
@@ -891,7 +1113,7 @@ Output ONLY the redesigned room image. No text.`;
       doc.text('— ' + group.item.description, margin + doc.getTextWidth(group.item.category.toUpperCase()) + 3, y);
       y += 5;
 
-      for (const product of group.products) {
+      for (const product of products) {
         // Check page space
         if (y > 265) { doc.addPage(); y = margin; }
 
@@ -949,19 +1171,77 @@ Output ONLY the redesigned room image. No text.`;
     doc.save('Designature_Shopping_List.pdf');
   };
 
+  // Auto-scroll moodboard to top (newest card) whenever a room is loved
+  useEffect(() => {
+    const el = moodboardRef.current;
+    if (!el || lovedRooms.length === 0) return;
+    // scrollTo not available in jsdom — fall back to direct assignment
+    if (typeof el.scrollTo === 'function') {
+      el.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      el.scrollTop = 0;
+    }
+  }, [lovedRooms.length]);
+
+  // ── Style Quiz helpers ──
+
+  /** Strip Cloudinary host + transform params, return the Quiz/… path key */
+  const extractCloudinaryPath = (url: string): string => {
+    const match = url.match(/Quiz\/[^?]+/);
+    return match ? match[0] : '';
+  };
+
   // ── Style Quiz handlers ──
   const handleQuizVote = (vote: 'love' | 'skip' | 'no') => {
     if (!quizImageReady) return;
 
-    const style = quizSequence[quizStep];
     const newVotes = { ...quizVotes };
-    if (vote === 'love') newVotes[style] = (newVotes[style] || 0) + 2;
+    const styleChanges: Record<string, number> = {};
+
+    if (vote === 'love') {
+      const imagePath = extractCloudinaryPath(currentQuizImage.url);
+      const weights = QUIZ_IMAGE_WEIGHTS[imagePath];
+
+      if (weights) {
+        // Multi-attribute: distribute points across primary, strong, hint tiers
+        styleChanges[weights.primary] = (styleChanges[weights.primary] || 0) + TIER_POINTS.primary;
+        for (const s of weights.strong) {
+          styleChanges[s] = (styleChanges[s] || 0) + TIER_POINTS.strong;
+        }
+        for (const s of weights.hint) {
+          styleChanges[s] = (styleChanges[s] || 0) + TIER_POINTS.hint;
+        }
+      } else {
+        // Fallback: untagged image — award primary points to the folder style
+        const folderStyle = quizSequence[quizStep];
+        styleChanges[folderStyle] = TIER_POINTS.primary;
+        console.warn(`Quiz image not in weights file: ${imagePath}`);
+      }
+
+      // Apply all style changes to the vote tally
+      for (const [s, pts] of Object.entries(styleChanges)) {
+        newVotes[s] = (newVotes[s] || 0) + pts;
+      }
+    }
+
+    // Record for undo — store all style changes so back can reverse them exactly
+    setVoteHistory(prev => [...prev, {
+      step: quizStep, vote, imageUrl: currentQuizImage.url, styleChanges,
+    }]);
+
+    // Track loved rooms for moodboard (includes styleChanges for micro-stat)
+    if (vote === 'love') {
+      setLovedRooms(prev => [...prev, {
+        step: quizStep, imageUrl: currentQuizImage.url, styleChanges,
+      }]);
+    }
 
     if (quizStep >= QUIZ_LENGTH - 1) {
       const total = Object.values(newVotes).reduce((a, b) => a + b, 0) || 1;
-      const sorted = STYLES
-        .map(s => ({ style: s, pct: Math.round(((newVotes[s] || 0) / total) * 100) }))
-        .filter(r => r.pct > 0)
+      const stylesWithVotes = STYLES.filter(s => (newVotes[s] || 0) > 0);
+      const rounded = roundPercentages(stylesWithVotes.map(s => ((newVotes[s] || 0) / total) * 100));
+      const sorted = stylesWithVotes
+        .map((s, i) => ({ style: s, pct: rounded[i] }))
         .sort((a, b) => b.pct - a.pct);
       setQuizVotes(newVotes);
       setQuizResult(sorted);
@@ -971,6 +1251,40 @@ Output ONLY the redesigned room image. No text.`;
       setQuizVotes(newVotes);
       setQuizStep(prev => prev + 1);
     }
+  };
+
+  /** Undo the last vote and go back one room */
+  const handleQuizBack = () => {
+    if (voteHistory.length === 0) return;
+    const last = voteHistory[voteHistory.length - 1];
+    const newVotes = { ...quizVotes };
+
+    // Reverse all style changes from the last vote
+    for (const [s, pts] of Object.entries(last.styleChanges)) {
+      newVotes[s] = Math.max(0, (newVotes[s] || 0) - pts);
+      if (newVotes[s] === 0) delete newVotes[s];
+    }
+
+    setVoteHistory(prev => prev.slice(0, -1));
+    // If the undone vote was a love, pop it from the moodboard too
+    if (last.vote === 'love') {
+      setLovedRooms(prev => prev.slice(0, -1));
+    }
+    setQuizVotes(newVotes);
+    setQuizStep(last.step);
+    setQuizImageReady(false);
+  };
+
+  /** End quiz early (available from step 9 onward) */
+  const handleQuizEarlyEnd = () => {
+    const total = Object.values(quizVotes).reduce((a: number, b: number) => a + b, 0) || 1;
+    const stylesWithVotes = STYLES.filter(s => (quizVotes[s] || 0) > 0);
+    const rounded = roundPercentages(stylesWithVotes.map(s => ((quizVotes[s] || 0) / total) * 100));
+    const sorted = stylesWithVotes
+      .map((s, i) => ({ style: s, pct: rounded[i] }))
+      .sort((a, b) => b.pct - a.pct);
+    setQuizResult(sorted);
+    setQuizDone(true);
   };
 
   const handleQuizReset = () => {
@@ -987,6 +1301,10 @@ Output ONLY the redesigned room image. No text.`;
     setQuizImageReady(false);
     setQuizSeed(Math.floor(Math.random() * 100));
     setQuizSequence(generateQuizSequence());
+    setVoteHistory([]);
+    setLovedRooms([]);
+    setSeenQuizImages(new Set());
+    setResultGalleryImages([]);
   };
 
   const handleApplyQuizStyle = () => {
@@ -1119,6 +1437,27 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     }
   };
 
+  const handlePinterestPaste = async (url: string) => {
+    if (!url.trim() || inspirationImages.length >= 5) return;
+    if (!url.includes('pinterest.com') && !url.includes('pin.it')) {
+      setPinterestError('Please paste a Pinterest URL');
+      return;
+    }
+    setPinterestLoading(true);
+    setPinterestError('');
+    try {
+      const res = await apiFetch(`/api/pinterest/pin?url=${encodeURIComponent(url.trim())}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to fetch');
+      setInspirationImages(prev => [...prev, data.imageUrl].slice(0, 5));
+      setPinterestUrl('');
+    } catch (err: any) {
+      setPinterestError(err.message || 'Could not load image from that URL');
+    } finally {
+      setPinterestLoading(false);
+    }
+  };
+
   const isGenerateDisabled = isProcessing || inspirationImages.length === 0 || !roomImage || !user || (user?.generationsLeft ?? 0) <= 0;
 
 
@@ -1192,7 +1531,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                       </button>
                     </div>
                     <div className="text-[9px] text-white/70 uppercase tracking-[0.15em] text-right font-bold">
-                      {user.generationsLeft} {t('ai.remaining')}
+                      {user.generationsLeft >= 999 ? t('ai.unlimited') : `${user.generationsLeft} ${t('ai.remaining')}`}
                     </div>
                   </div>
                 )}
@@ -1259,7 +1598,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                 {t('ai.transformRoom')}
                 {user && (
                   <span className={`block mt-1 font-bold ${activeTool === 'vision' ? 'text-white' : 'text-black'}`}>
-                    · {user.generationsLeft} {t('ai.remaining')}
+                    · {user.generationsLeft >= 999 ? 'Unlimited' : `${user.generationsLeft} ${t('ai.remaining')}`}
                   </span>
                 )}
                 {!user && (
@@ -1285,7 +1624,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                 {t('ai.shopInterior')}
                 {user && (
                   <span className={`block mt-1 font-bold ${activeTool === 'shopping' ? 'text-white' : 'text-black'}`}>
-                    · {user.shoppingListsLeft ?? 3} {t('ai.remainingShopping')}
+                    · {(user.shoppingListsLeft ?? 3) >= 999 ? 'Unlimited' : `${user.shoppingListsLeft ?? 3} ${t('ai.remainingShopping')}`}
                   </span>
                 )}
                 {!user && (
@@ -1363,7 +1702,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         </div>
 
         {/* Active tool bar */}
-        <div className="max-w-[1600px] mx-auto px-8 md:px-16">
+        <div id="active-tool-bar" className="max-w-[1600px] mx-auto px-8 md:px-16">
           <div className="bg-[#0047AB] flex items-center justify-between px-6 py-3">
             <div>
               <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-white/40 mb-0.5">
@@ -1389,9 +1728,18 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         </div>
       </div>
 
-      {/* ── MAIN TWO-COLUMN ── */}
-      <div className="flex-grow flex flex-col border-t border-black/10">
-        <div className="max-w-[1600px] w-full mx-auto px-8 md:px-16 flex-grow flex flex-col lg:flex-row" style={{ minHeight: '75vh' }}>
+      {/* ── AI VISION SHOWCASE (logged-out) ── */}
+      {!authLoading && !user && activeTool === 'vision' && (
+        <AIVisionShowcase onRequestLogin={triggerGoogleSignIn} />
+      )}
+
+      {/* ── MAIN TWO-COLUMN ──
+           During the quiz RATING step, drop flex-grow and minHeight so the
+           working area sizes to its content and the feedback CTA sits close
+           below it. For ALL quiz steps (rating and result) drop the viewport
+           height chain — other tools keep flex-grow + minHeight:'75vh'. */}
+      <div className={`flex flex-col border-t border-black/10${!authLoading && !user && activeTool === 'vision' ? ' hidden' : ''}${activeTool !== 'quiz' ? ' flex-grow' : ''}`}>
+        <div className={`max-w-[1600px] w-full mx-auto px-8 md:px-16 flex flex-col lg:flex-row${activeTool !== 'quiz' ? ' flex-grow' : ''}`} style={activeTool !== 'quiz' ? { minHeight: '75vh' } : undefined}>
 
         {/* ════ LEFT SIDEBAR ════ */}
         <div id="ai-vision-panel" className={`w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 border-r border-black/8 flex flex-col${activeTool === 'shopping' || activeTool === 'quiz' || activeTool === 'audit' || (!user && activeTool === 'vision') ? ' hidden' : ''}`}>
@@ -1432,8 +1780,14 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                   </div>
                   <label htmlFor="room-upload" className="block cursor-pointer">
                     <input id="room-upload" type="file" className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, 'room')} />
-                    <div className={`relative overflow-hidden border transition-colors ${roomImage ? 'border-black' : 'border-dashed border-black/20 hover:border-black/50'}`}
-                      style={{ aspectRatio: roomAspectRatio }}>
+                    <div
+                      className={`relative overflow-hidden border transition-colors ${roomDragOver ? 'border-black bg-black/5' : roomImage ? 'border-black' : 'border-dashed border-black/20 hover:border-black/50'}`}
+                      style={{ aspectRatio: roomAspectRatio }}
+                      onDragOver={(e) => { e.preventDefault(); setRoomDragOver(true); }}
+                      onDragEnter={(e) => { e.preventDefault(); setRoomDragOver(true); }}
+                      onDragLeave={() => setRoomDragOver(false)}
+                      onDrop={(e) => handleDrop(e, 'room')}
+                    >
                       {roomImage ? (
                         <>
                           <img src={roomImage} className="w-full h-full object-cover" alt="Room" />
@@ -1445,7 +1799,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-50">
                           <div className="w-9 h-9 border border-black/15 flex items-center justify-center text-black/25 text-xl font-thin">⌂</div>
                           <span className="text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/35">
-                            {t('ai.uploadFloor')}
+                            {roomDragOver ? 'Drop to upload' : t('ai.uploadFloor')}
                           </span>
                           <span className="text-[8px] text-black/20 uppercase tracking-widest">JPG, PNG · max 10MB</span>
                         </div>
@@ -1465,18 +1819,71 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                     </span>
                   </div>
                   {inspirationImages.length < 5 && (
-                    <label htmlFor="insp-upload" className="block cursor-pointer mb-3">
-                      <input id="insp-upload" type="file" className="hidden" accept="image/*" multiple onChange={(e) => handleFileChange(e, 'inspiration')} />
-                      <div className="border border-dashed border-black/20 hover:border-black/50 transition-colors bg-neutral-50 flex flex-col items-center justify-center gap-2 py-5">
-                        <div className="w-7 h-7 border border-black/15 flex items-center justify-center text-black/30 text-base font-thin">+</div>
-                        <span className="text-sm md:text-base font-bold uppercase tracking-[0.2em] text-black/35">
-                          {t('btn.add')}
-                        </span>
-                        <span className="text-[8px] text-black/20 uppercase tracking-widest">
-                          {inspirationImages.length}/5 {t('ai.images')}
-                        </span>
+                    <div className="mb-3 flex flex-col gap-2">
+                      <label htmlFor="insp-upload" className="block cursor-pointer">
+                        <input id="insp-upload" type="file" className="hidden" accept="image/*" multiple onChange={(e) => handleFileChange(e, 'inspiration')} />
+                        <div
+                          className={`border border-dashed transition-colors bg-neutral-50 flex flex-col items-center justify-center gap-2 py-5 ${inspoDragOver ? 'border-black bg-black/5' : 'border-black/20 hover:border-black/50'}`}
+                          onDragOver={(e) => { e.preventDefault(); setInspoDragOver(true); }}
+                          onDragEnter={(e) => { e.preventDefault(); setInspoDragOver(true); }}
+                          onDragLeave={() => setInspoDragOver(false)}
+                          onDrop={(e) => handleDrop(e, 'inspiration')}
+                        >
+                          <div className="w-7 h-7 border border-black/15 flex items-center justify-center text-black/30 text-base font-thin">+</div>
+                          <span className="text-sm md:text-base font-bold uppercase tracking-[0.2em] text-black/35">
+                            {inspoDragOver ? 'Drop to upload' : t('btn.add')}
+                          </span>
+                          <span className="text-[8px] text-black/20 uppercase tracking-widest">
+                            {inspirationImages.length}/5 {t('ai.images')}
+                          </span>
+                        </div>
+                      </label>
+                      {/* Pinterest paste — optional, collapsible */}
+                      <div className="flex flex-col gap-1.5">
+                        <button
+                          onClick={() => { setPinterestOpen(o => !o); setPinterestError(''); }}
+                          className="flex items-center gap-2 group w-fit"
+                        >
+                          <svg className="w-3 h-3 flex-shrink-0" viewBox="0 0 24 24" fill="#E60023"><path d="M12 0C5.373 0 0 5.373 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738a.36.36 0 0 1 .083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.632-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/></svg>
+                          <span className="text-[9px] text-black/35 group-hover:text-black/60 transition-colors">
+                            {pinterestOpen ? 'Hide Pinterest import' : 'Have a Pinterest board? Add pins directly ↓'}
+                          </span>
+                        </button>
+                        {pinterestOpen && (
+                          <div className="flex flex-col gap-1">
+                            <div className="flex gap-1">
+                              <input
+                                type="url"
+                                value={pinterestUrl}
+                                autoFocus
+                                onChange={e => { setPinterestUrl(e.target.value); setPinterestError(''); }}
+                                onPaste={e => {
+                                  const pasted = e.clipboardData.getData('text');
+                                  if (pasted.includes('pinterest.com') || pasted.includes('pin.it')) {
+                                    e.preventDefault();
+                                    void handlePinterestPaste(pasted);
+                                  }
+                                }}
+                                onKeyDown={e => e.key === 'Enter' && void handlePinterestPaste(pinterestUrl)}
+                                placeholder="https://www.pinterest.com/pin/..."
+                                className="flex-1 border border-black/10 bg-white px-2 py-1.5 text-[10px] text-black/60 placeholder:text-black/20 focus:outline-none focus:border-[#E60023]/40"
+                                disabled={pinterestLoading}
+                              />
+                              <button
+                                onClick={() => void handlePinterestPaste(pinterestUrl)}
+                                disabled={pinterestLoading || !pinterestUrl.trim()}
+                                className="px-3 py-1.5 bg-[#E60023] text-white text-[9px] font-bold uppercase tracking-[0.1em] disabled:opacity-40 hover:bg-[#c4001e] transition-colors"
+                              >
+                                {pinterestLoading ? '...' : 'Add'}
+                              </button>
+                            </div>
+                            {pinterestError && (
+                              <span className="text-[9px] text-red-500">{pinterestError}</span>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    </label>
+                    </div>
                   )}
                   <div className="grid grid-cols-5 gap-1.5">
                     {inspirationImages.map((img, idx) => (
@@ -1888,30 +2295,66 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
               {/* ══ STYLE QUIZ ══ */}
               {activeTool === 'quiz' && (
-              <div id="style-quiz-section" className="flex-grow flex flex-col bg-white">
+              <div id="style-quiz-section" className="flex flex-col bg-white">
 
-                {/* Sign-in gate */}
+                {/* Style gallery — logged-out state */}
                 {!authLoading && !user && (
-                  <div className="flex flex-col items-center justify-center gap-6 py-20 px-8 text-center flex-grow">
-                    <div className="w-16 h-16 border border-black/8 flex items-center justify-center text-black/10 text-3xl">◎</div>
-                    <h3 className="font-display text-2xl font-light text-black/30 tracking-tight">
-                      {t('ai.signInQuiz')}
-                    </h3>
-                    <p className="text-sm text-black/30 uppercase tracking-[0.2em] leading-[2]">
-                      {language === 'en' ? 'Free · 12 rooms · 2 minutes' : 'Free'}
-                    </p>
-                    <button
-                      onClick={() => {
-                  triggerGoogleSignIn();
-                      }}
-                      className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.25em] px-5 py-3 hover:bg-[#003d99] transition-colors"
-                    >
-                      {t('ai.signInQuiz')} →
-                    </button>
+                  <div className="flex flex-col items-center px-8 md:px-12 py-10 gap-7 w-full max-w-2xl mx-auto">
+                    {/* Header */}
+                    <div className="text-center">
+                      <p className="text-[9px] font-bold uppercase tracking-[0.35em] text-black/25 mb-3">How It Works</p>
+                      <h3 className="font-display text-2xl md:text-3xl font-bold tracking-tight text-black mb-2">
+                        Which of these feels like home?
+                      </h3>
+                      <p className="text-sm text-black/45 leading-relaxed">
+                        Your taste has a name. We'll help you find it.
+                      </p>
+                    </div>
+
+                    {/* 3×3 style grid — curated one image per style */}
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {([
+                        { style: 'Japandi',      url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774954444/9_ti0qtx.png' },
+                        { style: 'Modern',       url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950422/3_2_be2ubi.jpg' },
+                        { style: 'Mid-Century',  url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg' },
+                        { style: 'Bohemian',     url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774949549/1_piprtp.png' },
+                        { style: 'Coastal',      url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950150/10_ezeifi.jpg' },
+                        { style: 'Industrial',   url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774954018/6_xibejv.png' },
+                        { style: 'Art Deco',     url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775713416/19_eify7o.png' },
+                        { style: 'Rustic',       url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950455/11_hjofyz.jpg' },
+                        { style: 'Transitional', url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774940230/1_jxbeef.png' },
+                      ] as const).map(({ style, url }) => (
+                        <button key={style} onClick={triggerGoogleSignIn} className="group focus:outline-none flex flex-col">
+                          <div style={{ aspectRatio: '1' }} className="overflow-hidden w-full">
+                            <img
+                              src={url}
+                              alt={style}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                          </div>
+                          <span className="mt-1.5 text-[8px] font-bold uppercase tracking-[0.2em] text-black/50 text-center w-full">{style}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* CTA */}
+                    <div className="flex flex-col items-center gap-3 w-full bg-black/[0.03] border-t border-black/[0.06] pt-6 pb-5 -mx-8 px-8" style={{ width: 'calc(100% + 4rem)' }}>
+                      <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/25">Ready to find your style?</p>
+                      <button
+                        onClick={triggerGoogleSignIn}
+                        className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.25em] px-7 py-4 hover:bg-[#003d99] transition-colors"
+                      >
+                        Sign in to start your quiz →
+                      </button>
+                      <p className="text-[9px] text-black/55 uppercase tracking-[0.2em]">Free · 18 rooms · 2 minutes · No card needed</p>
+                    </div>
                   </div>
                 )}
 
                 {!authLoading && user && (<>
+
+                {/* Centered max-width wrapper for all quiz content */}
+                <div className="w-full max-w-[1600px] mx-auto flex-grow flex flex-col min-h-0">
 
                 {/* Progress bar */}
                 {!quizDone && (
@@ -1920,44 +2363,44 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                       <div className="h-1 bg-[#0047AB] transition-all duration-300" style={{ width: `${(quizStep / QUIZ_LENGTH) * 100}%` }} />
                     </div>
                     <div className="flex items-center justify-between px-8 py-3 border-b border-black/8">
-                      <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/40">
-                        {t('ai.quiz.roomOf').replace('{current}', (quizStep + 1).toString()).replace('{total}', QUIZ_LENGTH.toString())}
-                      </p>
-                      <div className="flex items-center gap-3">
-                        <p className="text-[9px] text-black/30 uppercase tracking-widest">
-                          {t('ai.quiz.rateHonestly')}
+                      <div className="flex items-center gap-4">
+                        <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/40">
+                          {t('ai.quiz.roomOf').replace('{current}', (quizStep + 1).toString()).replace('{total}', QUIZ_LENGTH.toString())}
                         </p>
+                        {voteHistory.length > 0 && (
+                          <button
+                            onClick={handleQuizBack}
+                            className="text-[10px] uppercase tracking-[0.2em] text-black/55 hover:text-black/85 transition-colors flex items-center gap-1"
+                          >
+                            ← Previous room
+                          </button>
+                        )}
                       </div>
+                      <p className="text-[9px] text-black/30 uppercase tracking-widest">
+                        {t('ai.quiz.rateHonestly')}
+                      </p>
                     </div>
                   </div>
                 )}
 
                 {/* ── 3-col during quiz / 2-col on results ── */}
-                <div className="flex flex-col lg:flex-row flex-grow">
+                <div className="flex flex-col lg:flex-row lg:items-start flex-grow">
 
                   {/* LEFT — room image (current during quiz, last loved when done) */}
                   <div className="flex-shrink-0 flex items-start justify-start bg-neutral-50 p-4 w-full lg:w-[632px]">
-                    <div className="relative w-full max-w-[600px]">
+                    <div className="relative w-full max-w-[600px] overflow-hidden bg-neutral-100 aspect-square" style={{ maxHeight: '70vh' }}>
                       <img
                         src={currentQuizImage.url}
                         alt={currentQuizStyle}
                         onLoad={() => { if (!quizDone) setQuizImageReady(true); }}
                         onError={() => { if (!quizDone) setQuizImageReady(true); }}
-                        className="w-full object-cover"
-                        style={{ aspectRatio: '1/1', display: 'block' }}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        loading="eager"
                       />
                       <div className="absolute top-3 left-3 bg-white/90 px-3 py-1.5 border border-black/10">
                         <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/60">
                           {t(`ai.style.${currentQuizStyle.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}
                         </span>
-                      </div>
-                      {!quizDone && currentQuizImage.credit.includes('Designature') && (
-                        <div className="absolute bottom-3 left-3 bg-black/60 px-2 py-1">
-                          <span className="text-[8px] text-white/70 uppercase tracking-widest">{t('ai.quiz.fromPortfolio')}</span>
-                        </div>
-                      )}
-                      <div className="absolute bottom-3 right-3 bg-black/40 px-2 py-1">
-                        <span className="text-[7px] text-white/50 uppercase tracking-widest">AI · Gemini</span>
                       </div>
                     </div>
                   </div>
@@ -1973,135 +2416,147 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                           <button onClick={() => handleQuizVote('love')} disabled={!quizImageReady} className="w-full py-3.5 bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-black/80 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                             <span>✦</span> {t('ai.quiz.loveIt')}
                           </button>
-                          <button onClick={() => handleQuizVote('skip')} disabled={!quizImageReady} className="w-full py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/40 hover:border-black/40 hover:text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                          <button onClick={() => handleQuizVote('skip')} disabled={!quizImageReady} className="w-full py-3 border border-black/40 text-[10px] font-bold uppercase tracking-[0.25em] text-black/75 hover:bg-black/5 hover:border-black/60 hover:text-black/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                             {t('ai.quiz.skip')}
                           </button>
-                          <button onClick={() => handleQuizVote('no')} disabled={!quizImageReady} className="w-full py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/40 hover:border-black/40 hover:text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                          <button onClick={() => handleQuizVote('no')} disabled={!quizImageReady} className="w-full py-3 border border-black/40 text-[10px] font-bold uppercase tracking-[0.25em] text-black/75 hover:bg-black/5 hover:border-black/60 hover:text-black/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                             {t('ai.quiz.notMyStyle')}
                           </button>
-                          {quizStep > 0 && (
+                          {quizStep >= 4 && (
                             <button
-                              onClick={() => {
-                                const total = Object.values(quizVotes).reduce((a: number, b: number) => a + b, 0) || 1;
-                                const sorted = STYLES.map(s => ({ style: s, pct: Math.round(((quizVotes[s] || 0) / total) * 100) })).filter(r => r.pct > 0).sort((a, b) => b.pct - a.pct);
-                                setQuizResult(sorted);
-                                setQuizDone(true);
-                              }}
-                              className="w-full py-3 border border-black/20 text-[10px] font-bold uppercase tracking-[0.25em] text-black/60 hover:border-black/50 hover:text-black transition-all"
+                              onClick={handleQuizEarlyEnd}
+                              className="mt-4 w-full py-2.5 border border-[#0047AB] text-[#0047AB] text-[10px] font-bold uppercase tracking-[0.25em] hover:bg-[#0047AB]/8 transition-colors flex items-center justify-center gap-2"
                             >
-                              Stop &amp; see results
+                              Have enough? See my style →
                             </button>
                           )}
-                        </div>
-                      </div>
-                      <div className="p-5 overflow-y-auto">
-                        <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/30 mb-4">{t('ai.quiz.tasteSoFar')}</p>
-                        <div className="flex flex-col gap-2.5">
-                          {(() => {
-                            const total = Object.values(quizVotes).reduce((a: number, b: number) => a + b, 0) || 1;
-                            return STYLES.slice().sort((a, b) => (quizVotes[b] || 0) - (quizVotes[a] || 0)).map(style => {
-                              const pct = Object.keys(quizVotes).length === 0 ? 0 : Math.round(((quizVotes[style] || 0) / total) * 100);
-                              const hasVotes = (quizVotes[style] || 0) > 0;
-                              return (
-                                <div key={style}>
-                                  <div className="flex items-center justify-between mb-1">
-                                    <span className={`text-[8px] font-bold uppercase tracking-[0.08em] ${hasVotes ? 'text-black' : 'text-black/25'}`}>{t(`ai.style.${style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
-                                    <span className={`text-[8px] font-bold ${hasVotes ? 'text-[#0047AB]' : 'text-black/15'}`}>{pct}%</span>
-                                  </div>
-                                  <div className="h-0.5 bg-black/6"><div className="h-0.5 bg-[#0047AB] transition-all duration-500" style={{ width: `${pct}%` }} /></div>
-                                </div>
-                              );
-                            });
-                          })()}
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* RIGHT — history + education during quiz / full results when done */}
-                  <div className={`flex-grow flex flex-col border-l border-black/8 overflow-y-auto ${quizDone ? 'lg:max-w-[500px]' : ''}`}>
+                  {/* RIGHT — moodboard during quiz / results+gallery columns when done */}
+                  <div className={`flex-grow flex ${quizDone ? 'flex-col lg:flex-row' : 'flex-col'} border-l border-black/8`}>
                     {!quizDone ? (
-                      /* Previous quiz results */
-                      <div className="p-6 flex flex-col gap-4 flex-grow">
-                        {quizHistory.length === 0 ? (
-                          <div className="flex-grow flex flex-col items-center justify-center gap-3 text-center">
-                            <div className="w-10 h-10 border border-black/8 flex items-center justify-center text-black/10 text-xl">◎</div>
-                            <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/20">Previous quiz<br/>results appear here</p>
-                          </div>
-                        ) : (
-                          <>
-                            <div>
-                              <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/30 mb-1">Previous results</p>
-                              <p className="text-[8px] text-black/20 uppercase tracking-[0.15em]">Click a card to see the style</p>
-                            </div>
-                            <div className="flex flex-col gap-3">
-                              {quizHistory.map((result, idx) => {
-                                const isOpen = selectedPrevResult === idx;
-                                const topStyle = result[0]?.style;
-                                const desc = topStyle ? STYLE_DESCRIPTIONS[topStyle] : null;
-                                return (
-                                  <div key={idx}>
-                                    <button
-                                      onClick={() => setSelectedPrevResult(isOpen ? null : idx)}
-                                      className={`w-full text-left border p-4 transition-all ${isOpen ? 'border-[#0047AB] bg-white' : 'border-black/8 bg-neutral-50 hover:border-black/20'}`}
-                                    >
-                                      <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-black/30 mb-3">Quiz {quizHistory.length - idx}</p>
-                                      <div className="flex flex-col gap-2">
-                                        {result.slice(0, 3).map((r, i) => (
-                                          <div key={r.style}>
-                                            <div className="flex items-center justify-between mb-1">
-                                              <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-black/70">{t(`ai.style.${r.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
-                                              <span className="text-[9px] font-bold text-[#0047AB]">{r.pct}%</span>
-                                            </div>
-                                            <div className="h-0.5 bg-black/8">
-                                              <div className="h-0.5" style={{ width: `${r.pct}%`, background: i === 0 ? '#0047AB' : i === 1 ? '#4477CC' : '#8899BB' }} />
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </button>
-                                    {isOpen && desc && (
-                                      <div className="border border-t-0 border-[#0047AB]/30 p-4 bg-white">
-                                        <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#0047AB] mb-2">{topStyle}</p>
-                                        <p className="text-[10px] text-black/50 leading-relaxed mb-3">{desc.summary}</p>
-                                        <div className="flex flex-wrap gap-1">
-                                          {desc.elements.map(el => (
-                                            <span key={el} className="text-[7px] font-bold uppercase tracking-wide text-black/40 border border-black/10 px-2 py-0.5">{el}</span>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                            <div className="mt-auto pt-4">
-                              <button
-                                disabled={selectedPrevResult === null}
-                                onClick={() => {
-                                  if (selectedPrevResult !== null && quizHistory[selectedPrevResult]?.[0]) {
-                                    setSelectedStyle(quizHistory[selectedPrevResult][0].style);
-                                    setActiveTool('vision');
-                                    setTimeout(() => {
-                                      const el = document.getElementById('ai-concepts-tools');
-                                      if (el) el.scrollIntoView({ behavior: 'smooth' });
-                                    }, 50);
-                                  }
-                                }}
-                                className="w-full py-4 bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-black/80 transition-all flex items-center justify-center gap-2 disabled:opacity-20 disabled:cursor-not-allowed"
+                      /* Loved-rooms moodboard */
+                      <div className="p-5 flex flex-col gap-2">
+
+                        {/* Header row — always visible */}
+                        <div className="flex items-center justify-between flex-shrink-0">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/30">Your Favorites</p>
+                          <p className="text-[10px] text-black/40">{lovedRooms.length} of {voteHistory.length} loved</p>
+                        </div>
+
+                        {/* Counter line — always visible */}
+                        <p className="text-[10px] text-black/40 flex-shrink-0">
+                          You've loved {lovedRooms.length} room{lovedRooms.length !== 1 ? 's' : ''} so far
+                        </p>
+
+                        {/* Leading styles — pinned here at top, fades in after 3+ loves */}
+                        <AnimatePresence>
+                          {lovedRooms.length >= 3 && (
+                            <motion.div
+                              key="leading-styles"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="flex-shrink-0 border-t border-black/8 pt-2 pb-1"
+                            >
+                              <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/30 mb-1">Leading Styles</p>
+                              <p className="text-[11px] text-black/60 font-medium leading-relaxed">
+                                {(() => {
+                                  const total = Object.values(quizVotes).reduce((a: number, b: number) => a + b, 0) || 1;
+                                  return STYLES
+                                    .filter(s => (quizVotes[s] || 0) > 0)
+                                    .sort((a, b) => (quizVotes[b] || 0) - (quizVotes[a] || 0))
+                                    .slice(0, 3)
+                                    .map(s => `${t(`ai.style.${s.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)} ${(((quizVotes[s] || 0) / total) * 100).toFixed(1)}%`)
+                                    .join(' · ');
+                                })()}
+                              </p>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        {/* Card grid area — capped at 6 rows, scrolls internally */}
+                        <div className="relative">
+
+                          {/* Empty state */}
+                          <AnimatePresence>
+                            {lovedRooms.length === 0 && (
+                              <motion.div
+                                key="moodboard-empty"
+                                initial={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="flex flex-col items-center justify-center gap-2 text-center py-8 pointer-events-none"
                               >
-                                ✦ Apply selected style
-                              </button>
-                              {selectedPrevResult === null && (
-                                <p className="text-[8px] text-black/25 uppercase tracking-widest text-center mt-2">Select a quiz to apply</p>
-                              )}
+                                <Heart size={18} strokeWidth={1.5} className="text-black/20" />
+                                <p className="text-[10px] text-black/30 font-medium tracking-[0.05em]">
+                                  Love rooms to build your moodboard
+                                </p>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+
+                          {/* Card grid — newest first, scrollable once > 12 cards */}
+                          {lovedRooms.length > 0 && (
+                            <div
+                              ref={moodboardRef}
+                              className="overflow-y-auto max-h-[504px]"
+                              style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,0,0,0.12) transparent' }}
+                            >
+                              <div
+                                className="grid gap-2 pb-1"
+                                style={{ gridTemplateColumns: '1fr 1fr', gridAutoFlow: 'row' }}
+                              >
+                                {[...lovedRooms].reverse().map((room) => (
+                                  <motion.div
+                                    key={`loved-${room.step}`}
+                                    initial={{ opacity: 0, y: 8 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.25, ease: 'easeOut' }}
+                                    className="flex flex-row items-center gap-3 bg-white rounded-[4px] p-2 overflow-hidden"
+                                    style={{ border: '0.5px solid rgba(0,0,0,0.08)', minHeight: '76px' }}
+                                  >
+                                    {/* Thumbnail */}
+                                    <div className="flex-shrink-0 w-[60px] h-[60px] overflow-hidden rounded-[4px] bg-neutral-100">
+                                      <img src={room.imageUrl} alt="Loved room" className="w-full h-full object-cover" />
+                                    </div>
+                                    {/* Text */}
+                                    <div className="flex flex-col justify-center min-w-0 gap-0.5">
+                                      <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-black/70 leading-tight">
+                                        {Object.keys(room.styleChanges)[0] ?? ''}
+                                      </p>
+                                      <p className="text-[9px] text-black/40 font-medium leading-snug">
+                                        {Object.entries(room.styleChanges)
+                                          .sort(([, a], [, b]) => b - a)
+                                          .map(([s, pts]) => `+${Number.isInteger(pts) ? pts : pts.toFixed(1)} ${s}`)
+                                          .join(' · ')}
+                                      </p>
+                                    </div>
+                                  </motion.div>
+                                ))}
+                              </div>
                             </div>
-                          </>
-                        )}
+                          )}
+
+                          {/* Scroll-affordance gradients */}
+                          {lovedRooms.length > 0 && (
+                            <>
+                              <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-white to-transparent pointer-events-none" />
+                              <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+                            </>
+                          )}
+                        </div>
+
+
                       </div>
                     ) : (
-                      /* Results panel */
-                      <div className="p-8 flex flex-col gap-5 flex-grow">
+                      /* Results — MIDDLE column: DNA + CTAs + breakdown + description */
+                      <>
+                      <div className="p-8 flex flex-col gap-5 lg:max-w-[420px] flex-shrink-0">
                         <div>
                           <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-[#0047AB] mb-2">{t('ai.quiz.designDNA')}</p>
                           <h2 className="font-display text-3xl font-bold tracking-tight mb-1">
@@ -2115,53 +2570,80 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                           <button onClick={handleApplyQuizStyle} className="w-full py-4 bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-black/80 transition-all flex items-center justify-center gap-2">
                             ✦ {t('ai.quiz.applyStyle').replace('{style}', t(`ai.style.${quizResult[0]?.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`))}
                           </button>
-                          <button
-                            onClick={() => setShowQuizResults(v => !v)}
-                            className="w-full py-3.5 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all flex items-center justify-center gap-2"
-                          >
-                            {showQuizResults ? '↑ Hide results' : '↓ See quiz results'}
-                          </button>
                           <button onClick={handleQuizReset} className="w-full py-3.5 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all">
                             {t('ai.quiz.retake')}
                           </button>
                         </div>
 
-                        {showQuizResults && (
-                          <div className="flex flex-col gap-4 border-t border-black/8 pt-4">
-                            <div className="flex flex-col gap-3">
-                              {quizResult.slice(0, 5).map((r, i) => (
-                                <div key={r.style}>
-                                  <div className="flex items-center justify-between mb-1.5">
-                                    <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-black">{t(`ai.style.${r.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>
-                                    <span className="text-[10px] font-bold text-[#0047AB]">{r.pct}%</span>
+                        {/* Style breakdown */}
+                        {quizResult.filter(r => r.pct > 0).length > 0 && (
+                          <div className="border-t border-black/8 pt-4">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/30 mb-3">Your style breakdown</p>
+                            <div className="flex flex-col gap-2.5">
+                              {quizResult.filter(r => r.pct > 0).map((r) => (
+                                <div key={r.style} className="flex items-center gap-3">
+                                  <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-black/70 w-32 flex-shrink-0 truncate">
+                                    {t(`ai.style.${r.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}
+                                  </span>
+                                  <div className="flex-1 h-1 bg-black/15 rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full rounded-full transition-all duration-700 bg-[#0047AB]"
+                                      style={{ width: `${r.pct}%` }}
+                                    />
                                   </div>
-                                  <div className="h-1 bg-black/8">
-                                    <div className="h-1 transition-all duration-700" style={{ width: `${r.pct}%`, background: i === 0 ? '#0047AB' : i === 1 ? '#4477CC' : '#8899BB' }} />
-                                  </div>
+                                  <span className="text-[11px] font-medium text-black/60 w-10 text-right flex-shrink-0">
+                                    {r.pct.toFixed(1)}%
+                                  </span>
                                 </div>
                               ))}
                             </div>
-                            {quizResult[0] && STYLE_DESCRIPTIONS[quizResult[0].style] && (() => {
-                              const desc = STYLE_DESCRIPTIONS[quizResult[0].style];
-                              return (
-                                <div className="border border-black/8 p-4 bg-neutral-50">
-                                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#0047AB] mb-2">{quizResult[0].style}</p>
-                                  <p className="text-[10px] text-black/50 leading-relaxed mb-3">{desc.summary}</p>
-                                  <div className="flex flex-wrap gap-1">
-                                    {desc.elements.map(el => (
-                                      <span key={el} className="text-[7px] font-bold uppercase tracking-wide text-black/40 border border-black/10 px-2 py-0.5">{el}</span>
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            })()}
                           </div>
                         )}
+
+                        {/* Style description card */}
+                        {quizResult[0] && STYLE_DESCRIPTIONS[quizResult[0].style] && (() => {
+                          const desc = STYLE_DESCRIPTIONS[quizResult[0].style];
+                          return (
+                            <div className="border border-black/8 p-4 bg-neutral-50">
+                              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#0047AB] mb-2">{quizResult[0].style}</p>
+                              <p className="text-[10px] text-black/50 leading-relaxed mb-3">{desc.summary}</p>
+                              <div className="flex flex-wrap gap-1">
+                                {desc.elements.map(el => (
+                                  <span key={el} className="text-[7px] font-bold uppercase tracking-wide text-black/40 border border-black/10 px-2 py-0.5">{el}</span>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
+
+                      {/* Results — RIGHT column: gallery 2×3 */}
+                      {resultGalleryImages.length > 0 && quizResult[0] && (
+                        <div className="flex-grow border-t lg:border-t-0 lg:border-l border-black/8 p-5 flex flex-col gap-3">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-black/40">
+                            What {quizResult[0].style} Looks Like
+                          </p>
+                          <div className="grid grid-cols-2 gap-1">
+                            {resultGalleryImages.map((url, i) => (
+                              <div key={i} className="aspect-square overflow-hidden bg-neutral-100">
+                                <img
+                                  src={url}
+                                  alt={`${quizResult[0].style} ${i + 1}`}
+                                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                                  loading="lazy"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      </>
                     )}
                   </div>
 
                 </div>
+
+                </div>{/* end max-width centering wrapper */}
 
                 </> )}
               </div>
@@ -2282,30 +2764,15 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                               type="file"
                               accept="image/*"
                               className="hidden"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                const reader = new FileReader();
-                                reader.onload = (ev) => {
-                                  const dataUrl = ev.target?.result as string;
-                                  setStandaloneShoppingImage(dataUrl);
-                                  const img = new Image();
-                                  img.onload = () => {
-                                    const ratio = img.width / img.height;
-                                    if (ratio > 1.4) setStandaloneShoppingAspectRatio('16/9');
-                                    else if (ratio > 1.1) setStandaloneShoppingAspectRatio('4/3');
-                                    else if (ratio > 0.85) setStandaloneShoppingAspectRatio('1/1');
-                                    else setStandaloneShoppingAspectRatio('3/4');
-                                  };
-                                  img.src = dataUrl;
-                                };
-                                reader.readAsDataURL(file);
-                                e.target.value = '';
-                              }}
+                              onChange={(e) => { const f = e.target.files?.[0]; if (f) processShoppingFile(f); e.target.value = ''; }}
                             />
                             <div
-                              className={`relative overflow-hidden border transition-colors ${standaloneShoppingImage ? 'border-black' : 'border-dashed border-black/20 hover:border-black/50'}`}
+                              className={`relative overflow-hidden border transition-colors ${shopDragOver ? 'border-black bg-black/5' : standaloneShoppingImage ? 'border-black' : 'border-dashed border-black/20 hover:border-black/50'}`}
                               style={{ aspectRatio: '4/3' }}
+                              onDragOver={(e) => { e.preventDefault(); setShopDragOver(true); }}
+                              onDragEnter={(e) => { e.preventDefault(); setShopDragOver(true); }}
+                              onDragLeave={() => setShopDragOver(false)}
+                              onDrop={handleShopDrop}
                             >
                               {standaloneShoppingImage ? (
                                 <>
@@ -2317,7 +2784,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                               ) : (
                                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-50">
                                   <div className="w-9 h-9 border border-black/15 flex items-center justify-center text-black/25 text-xl font-thin">⌂</div>
-                                  <span className="text-sm font-bold uppercase tracking-[0.25em] text-black/35">Upload a photo</span>
+                                  <span className="text-sm font-bold uppercase tracking-[0.25em] text-black/35">{shopDragOver ? 'Drop to upload' : 'Upload a photo'}</span>
                                   <span className="text-[8px] text-black/20 uppercase tracking-widest">JPG, PNG · max 10MB</span>
                                 </div>
                               )}
@@ -2361,44 +2828,30 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
                     ) : (
                       /* ── SOLO: No AI concept — standalone upload only ── */
-                      <div className="px-8 py-6">
-                        <div className="flex items-center gap-3 mb-3">
+                      <div className="flex flex-col lg:flex-row" style={{ minHeight: '70vh' }}>
+                      <div className="w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 border-r border-black/8 px-8 py-6 flex flex-col gap-6">
+                        <div className="flex items-center gap-3">
                           <div className="w-5 h-5 bg-black text-white text-[8px] flex items-center justify-center font-bold flex-shrink-0">1</div>
                           <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/50">
                             {t('ai.shop.anyInterior')}
                           </span>
                         </div>
-                        <div className="w-[316px] xl:w-[356px]">
+                        <div className="w-full">
                           <label htmlFor="standalone-shop-upload" className="block cursor-pointer">
                             <input
                               id="standalone-shop-upload"
                               type="file"
                               accept="image/*"
                               className="hidden"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                const reader = new FileReader();
-                                reader.onload = (ev) => {
-                                  const dataUrl = ev.target?.result as string;
-                                  setStandaloneShoppingImage(dataUrl);
-                                  const img = new Image();
-                                  img.onload = () => {
-                                    const ratio = img.width / img.height;
-                                    if (ratio > 1.4) setStandaloneShoppingAspectRatio('16/9');
-                                    else if (ratio > 1.1) setStandaloneShoppingAspectRatio('4/3');
-                                    else if (ratio > 0.85) setStandaloneShoppingAspectRatio('1/1');
-                                    else setStandaloneShoppingAspectRatio('3/4');
-                                  };
-                                  img.src = dataUrl;
-                                };
-                                reader.readAsDataURL(file);
-                                e.target.value = '';
-                              }}
+                              onChange={(e) => { const f = e.target.files?.[0]; if (f) processShoppingFile(f); e.target.value = ''; }}
                             />
                             <div
-                              className={`relative overflow-hidden border transition-colors ${standaloneShoppingImage ? 'border-black' : 'border-dashed border-black/20 hover:border-black/50'}`}
+                              className={`relative overflow-hidden border transition-colors ${shopDragOver ? 'border-black bg-black/5' : standaloneShoppingImage ? 'border-black' : 'border-dashed border-black/20 hover:border-black/50'}`}
                               style={{ aspectRatio: standaloneShoppingAspectRatio }}
+                              onDragOver={(e) => { e.preventDefault(); setShopDragOver(true); }}
+                              onDragEnter={(e) => { e.preventDefault(); setShopDragOver(true); }}
+                              onDragLeave={() => setShopDragOver(false)}
+                              onDrop={handleShopDrop}
                             >
                               {standaloneShoppingImage ? (
                                 <>
@@ -2411,7 +2864,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-50">
                                   <div className="w-9 h-9 border border-black/15 flex items-center justify-center text-black/25 text-xl font-thin">⌂</div>
                                   <span className="text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/35">
-                                    Upload a photo
+                                    {shopDragOver ? 'Drop to upload' : 'Upload a photo'}
                                   </span>
                                   <span className="text-[8px] text-black/20 uppercase tracking-widest">JPG, PNG · max 10MB</span>
                                 </div>
@@ -2421,7 +2874,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                         </div>
 
                         {/* STEP 2: Country */}
-                        <div className="mt-6 w-[316px] xl:w-[356px]">
+                        <div>
                           <div className="flex items-center gap-3 mb-3">
                             <div className="w-5 h-5 bg-black text-white text-[8px] flex items-center justify-center font-bold flex-shrink-0">2</div>
                             <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/50">
@@ -2454,7 +2907,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                         </div>
 
                         {/* CTA — bottom */}
-                        <div className="mt-6 w-[316px] xl:w-[356px] flex gap-2">
+                        <div className="flex gap-2 mt-auto">
                           <button
                             onClick={focusShoppingTabAndRunStandaloneSearch}
                             disabled={!standaloneShoppingImage}
@@ -2468,6 +2921,8 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                             </button>
                           )}
                         </div>
+                      </div>
+                      <div className="flex-grow" />
                       </div>
                     )}
                   </div>
@@ -2595,15 +3050,44 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                     <div className="divide-y divide-black/5">
                       {shoppingResults.map((group: any, gIdx: number) => (
                         <div key={gIdx} className="px-8 py-6">
+                          {/* Item header */}
                           <div className="flex items-center gap-3 mb-4">
                             <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-black">{group.item.category}</span>
                             <span className="text-[9px] text-black/40">— {group.item.description}</span>
                           </div>
+
                           {group.error ? (
-                            <p className="text-[10px] text-red-500 italic">
-                              Error: {group.error}
-                            </p>
-                          ) : group.products.length > 0 ? (
+                            <p className="text-[10px] text-red-500 italic">Error: {group.error}</p>
+
+                          ) : group.byRetailer ? (
+                            /* ── PAID: per-retailer grid ── */
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                              {group.byRetailer.map((entry: any, rIdx: number) => (
+                                entry.product ? (
+                                  <a key={rIdx} href={entry.product.link} target="_blank" rel="noopener noreferrer"
+                                    className="group border border-black/10 bg-neutral-50 hover:border-black/30 hover:bg-white transition-all overflow-hidden flex flex-col">
+                                    <div className="aspect-square bg-neutral-100 overflow-hidden flex-shrink-0">
+                                      {entry.product.thumbnail
+                                        ? <img src={entry.product.thumbnail} alt={entry.product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                        : <div className="w-full h-full flex items-center justify-center text-2xl opacity-10">&#128715;</div>}
+                                    </div>
+                                    <div className="p-2.5 flex flex-col gap-0.5 flex-1">
+                                      <p className="text-[8px] font-bold uppercase tracking-[0.18em] text-[#0047AB]">{entry.retailer}</p>
+                                      <p className="text-[10px] font-medium text-black leading-snug line-clamp-2">{entry.product.title}</p>
+                                      <p className="text-[11px] font-bold text-black mt-auto pt-1">{entry.product.price || 'View →'}</p>
+                                    </div>
+                                  </a>
+                                ) : (
+                                  <div key={rIdx} className="border border-dashed border-black/10 bg-neutral-50/50 flex flex-col items-center justify-center gap-1 p-3 aspect-square">
+                                    <p className="text-[8px] font-bold uppercase tracking-[0.18em] text-black/25">{entry.retailer}</p>
+                                    <p className="text-[8px] text-black/20">Not found</p>
+                                  </div>
+                                )
+                              ))}
+                            </div>
+
+                          ) : group.products && group.products.length > 0 ? (
+                            /* ── FREE: mixed results grid ── */
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                               {group.products.map((product: any, pIdx: number) => (
                                 <a key={pIdx} href={product.link} target="_blank" rel="noopener noreferrer"
@@ -2611,25 +3095,22 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                                   <div className="aspect-square bg-neutral-100 overflow-hidden">
                                     {product.thumbnail
                                       ? <img src={product.thumbnail} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                                      : <div className="w-full h-full flex items-center justify-center text-3xl opacity-15">🛋</div>}
+                                      : <div className="w-full h-full flex items-center justify-center text-3xl opacity-15">&#128715;</div>}
                                   </div>
                                   <div className="p-3">
                                     <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-black/50 mb-1">{product.source}</p>
                                     <p className="text-[11px] font-medium text-black leading-snug line-clamp-2 mb-1">{product.title}</p>
                                     {product.rating && (
-                                      <p className="text-[9px] text-black/40 mb-1">{'★'.repeat(Math.round(product.rating))} {product.rating}{product.reviews ? ` (${product.reviews})` : ''}</p>
+                                      <p className="text-[9px] text-black/40 mb-1">{'&#9733;'.repeat(Math.round(product.rating))} {product.rating}{product.reviews ? ` (${product.reviews})` : ''}</p>
                                     )}
-                                    <div className="flex items-center justify-between">
-                                      <p className="text-[12px] font-bold text-black">{product.price || 'View price →'}</p>
-                                    </div>
+                                    <p className="text-[12px] font-bold text-black">{product.price || 'View price →'}</p>
                                   </div>
                                 </a>
                               ))}
                             </div>
+
                           ) : (
-                            <p className="text-[10px] text-black/40 italic">
-                              {t('ai.shop.noProductsForItem')}
-                            </p>
+                            <p className="text-[10px] text-black/40 italic">{t('ai.shop.noProductsForItem')}</p>
                           )}
                         </div>
                       ))}
@@ -2695,7 +3176,21 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       )}
 
       <div className="border-t border-black/10" />
+
+      {/* ── Feedback CTA ── */}
+      <div className="py-10 flex justify-center bg-white">
+        <button
+          onClick={() => setFeedbackOpen(true)}
+          className="inline-flex items-center gap-3 bg-[#0047AB] text-white text-[11px] font-bold uppercase tracking-[0.2em] px-8 py-4 hover:bg-[#003d99] transition-colors duration-200"
+        >
+          Share your feedback
+          <ArrowRight className="w-3.5 h-3.5 flex-shrink-0" />
+        </button>
+      </div>
+
       <Footer />
+
+      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
 
       {/* ── LIGHTBOX ── */}
       <AnimatePresence>

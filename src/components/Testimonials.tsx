@@ -1,18 +1,53 @@
-
 import React, { useState, useEffect } from 'react';
-import { Star } from 'lucide-react';
-import { testimonialsData } from '../testimonialsData';
+import { Star, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
-import { Testimonial } from '../types';
+import FeedbackModal from './FeedbackModal';
+
+interface Testimonial {
+  name: string;
+  country: string;
+  message: string;
+  rating: number;
+  project_type?: string;
+}
+
+const PAGE_SIZE = 4;
 
 const Testimonials: React.FC = () => {
-  const { language, t } = useLanguage();
-  const [selectedTestimonials, setSelectedTestimonials] = useState<Testimonial[]>([]);
+  const { t } = useLanguage();
+  const [all, setAll] = useState<Testimonial[]>([]);
+  const [page, setPage] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   useEffect(() => {
-    const shuffled = [...testimonialsData].sort(() => 0.5 - Math.random());
-    setSelectedTestimonials(shuffled.slice(0, 4));
+    fetch('/api/testimonials')
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok && Array.isArray(data.testimonials) && data.testimonials.length > 0) {
+          const shuffled = [...data.testimonials].sort(() => Math.random() - 0.5);
+          setAll(shuffled);
+          setPage(0);
+        } else {
+          setError(true);
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        setError(true);
+        setLoading(false);
+      });
   }, []);
+
+  if (error) return null;
+
+  const pageCount = Math.ceil(all.length / PAGE_SIZE);
+  const visible = all.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const showArrows = pageCount > 1;
+
+  const prev = () => setPage(p => (p - 1 + pageCount) % pageCount);
+  const next = () => setPage(p => (p + 1) % pageCount);
 
   return (
     <section id="testimonials" className="py-16 md:py-24 bg-white font-body">
@@ -29,48 +64,87 @@ const Testimonials: React.FC = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {selectedTestimonials.map((item) => (
-            <div 
-              key={item.id}
-              className="group relative bg-white p-6 lg:p-8 border border-neutral-100 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-[#0047AB] hover:-translate-y-1 hover:shadow-xl flex flex-col h-full"
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[0, 1, 2, 3].map(i => (
+              <div key={i} className="bg-neutral-50 border border-neutral-100 p-6 lg:p-8 h-64 animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {visible.map((item, idx) => (
+              <div
+                key={`${page}-${idx}`}
+                className="group relative bg-white p-6 lg:p-8 border border-neutral-100 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-[#0047AB] hover:-translate-y-1 hover:shadow-xl flex flex-col h-full"
+              >
+                <div className="flex gap-1 mb-6">
+                  {[...Array(5)].map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`w-3 h-3 transition-all duration-300 ${
+                        i < (item.rating || 5) ? 'fill-[#0047AB] text-[#0047AB]' : 'text-neutral-100'
+                      }`}
+                    />
+                  ))}
+                </div>
+
+                <blockquote className="mb-8 flex-1">
+                  <p className="text-lg lg:text-xl font-display font-medium text-black/90 leading-relaxed italic">
+                    "{item.message}"
+                  </p>
+                </blockquote>
+
+                <div className="flex flex-col items-start mt-auto">
+                  <span className="text-sm md:text-base font-bold font-body text-neutral-800 tracking-widest uppercase">
+                    {item.name}
+                  </span>
+                  <span className="text-[10px] font-bold font-body uppercase tracking-[0.3em] text-neutral-400 mt-2">
+                    {item.country}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Pagination arrows ── */}
+        {showArrows && !loading && (
+          <div className="mt-10 flex items-center justify-center gap-6">
+            <button
+              onClick={prev}
+              aria-label="Previous testimonials"
+              className="flex items-center justify-center w-10 h-10 border border-black/15 text-black/50 hover:border-black/50 hover:text-black transition-all duration-200"
             >
-              <div className="flex gap-1 mb-6">
-                {[...Array(5)].map((_, i) => (
-                  <Star 
-                    key={i} 
-                    className={`w-3 h-3 transition-all duration-300 ${i < item.stars ? 'fill-[#0047AB] text-[#0047AB]' : 'text-neutral-100'}`} 
-                  />
-                ))}
-              </div>
+              <ArrowLeft className="w-4 h-4" />
+            </button>
 
-              <blockquote className="mb-8 flex-1">
-                <p className={`text-lg lg:text-xl font-display font-medium text-black/90 leading-relaxed ${language === 'en' ? 'italic' : ''}`}>
-                  "{language === 'en' ? item.text_en : item.text_am}"
-                </p>
-              </blockquote>
+            <span className="hidden sm:block text-[11px] font-bold uppercase tracking-[0.2em] text-black/30 tabular-nums">
+              {page + 1} / {pageCount}
+            </span>
 
-              <div className="flex flex-col items-start mt-auto">
-                <span className="text-sm md:text-base font-bold font-body text-neutral-800 tracking-widest uppercase">
-                  {item.name}
-                </span>
-                <span className="text-[10px] font-bold font-body uppercase tracking-[0.3em] text-neutral-400 mt-2">
-                  {item.country}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+            <button
+              onClick={next}
+              aria-label="Next testimonials"
+              className="flex items-center justify-center w-10 h-10 border border-black/15 text-black/50 hover:border-black/50 hover:text-black transition-all duration-200"
+            >
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
-        <div className="mt-16 md:mt-24 text-center">
-          <a 
-            href="mailto:info@designature.studio" 
-            className="text-sm md:text-base font-bold uppercase tracking-[0.4em] text-black/40 hover:text-[#0047AB] transition-colors duration-300 border-b border-transparent hover:border-[#0047AB] pb-1"
+        {/* ── Feedback CTA ── */}
+        <div className="mt-14 md:mt-20 flex justify-center">
+          <button
+            onClick={() => setFeedbackOpen(true)}
+            className="inline-flex items-center gap-3 bg-[#0047AB] text-white text-[11px] font-bold uppercase tracking-[0.2em] px-8 py-4 hover:bg-[#003d99] transition-colors duration-200"
           >
-            {language === 'en' ? 'Share your feedback with us' : 'Կիսվեք Ձեր կարծիքով մեզ հետ'}
-          </a>
+            {t('testimonials.feedback')}
+            <ArrowRight className="w-3.5 h-3.5 flex-shrink-0" />
+          </button>
         </div>
       </div>
+
+      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </section>
   );
 };

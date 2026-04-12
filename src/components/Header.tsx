@@ -131,7 +131,7 @@ const Header: React.FC = () => {
           </nav>
 
           <div className="hidden lg:flex items-center gap-8">
-            <LanguageSwitcher />
+            {/* <LanguageSwitcher /> */}
             <CTAButton />
           </div>
 
@@ -179,7 +179,7 @@ const Header: React.FC = () => {
           </nav>
 
           <div className="px-8 pb-10 md:px-16 md:pb-16 flex flex-col items-center gap-6">
-            <LanguageSwitcher />
+            {/* <LanguageSwitcher /> */}
             <CTAButton className="w-full" />
           </div>
         </div>

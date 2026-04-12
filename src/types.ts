@@ -40,11 +40,3 @@ export interface BlogPost {
   imageUrl: string;
 }
 
-export interface Testimonial {
-  id: number;
-  name: string;
-  country: string;
-  stars: number;
-  text_en: string;
-  text_am: string;
-}
