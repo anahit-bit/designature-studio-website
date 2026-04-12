@@ -350,7 +350,9 @@ const AIConceptsPage: React.FC = () => {
   }, [results, sessionConceptArchive]);
 
   const selectedConceptUrl = allSessionConcepts[selectedConceptIndex] ?? null;
-  const maxConceptSlots = user?.isPaid ? 30 : FREE_TIER_MAX_CONCEPT_SLOTS;
+  // TODO(Design tier): Design-tier slot count not yet defined in tier config — confirm with product before shipping Design tier.
+  // Free: FREE_TIER_MAX_CONCEPT_SLOTS (3) | Studio (isPaid): unlimited — no fixed cap, grows as user generates.
+  const maxConceptSlots = user?.isPaid ? Infinity : FREE_TIER_MAX_CONCEPT_SLOTS;
 
   // ── Drag-over state for upload zones ──
   const [roomDragOver, setRoomDragOver] = useState(false);
@@ -889,6 +891,16 @@ const AIConceptsPage: React.FC = () => {
     setIsProcessing(true);
     setError(null);
     if (!isVariation) {
+      // Archive current results before starting fresh so thumbnails accumulate across generations
+      if (results.length > 0) {
+        setSessionConceptArchive(prev => {
+          const next = [...prev];
+          for (const r of results) {
+            if (!next.includes(r)) next.push(r);
+          }
+          return next;
+        });
+      }
       setResults([]);
       setShoppingResults([]);
       setShoppingItems([]);
@@ -1838,6 +1850,10 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                           </span>
                         </div>
                       </label>
+                      {/* Tip note — quiet advisory, no icon, no background */}
+                      <p className="text-[10px] text-black/40 leading-[1.4]">
+                        {t('aiVision.inspiration.tip.body')}
+                      </p>
                       {/* Pinterest paste — optional, collapsible */}
                       <div className="flex flex-col gap-1.5">
                         <button
@@ -1974,11 +1990,15 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                   <span className="text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/40">
                     {t('ai.remaining')}
                   </span>
-                  <div className="flex gap-1">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className={`w-5 h-1 ${i < (user?.generationsLeft ?? 0) ? 'bg-black' : 'bg-black/15'}`} />
-                    ))}
-                  </div>
+                  {maxConceptSlots === Infinity ? (
+                    <span className="text-sm font-bold text-black/40">{t('ai.unlimited')}</span>
+                  ) : (
+                    <div className="flex gap-1">
+                      {Array.from({ length: FREE_TIER_MAX_CONCEPT_SLOTS }).map((_, i) => (
+                        <div key={i} className={`w-5 h-1 ${i < (user?.generationsLeft ?? 0) ? 'bg-black' : 'bg-black/15'}`} />
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {validationError && (
@@ -2224,13 +2244,13 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                     {t('ai.sessionConceptsArchiveHint')}
                   </p>
                 )}
-                <div className="flex flex-wrap gap-2">
+                <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,0,0,0.12) transparent' }}>
                   {allSessionConcepts.map((img, idx) => (
                     <button
                       key={`concept-${idx}`}
                       type="button"
                       onClick={() => setSelectedConceptIndex(idx)}
-                      className={`relative overflow-hidden border-2 transition-all ${selectedConceptIndex === idx ? 'border-black' : 'border-transparent opacity-50 hover:opacity-75'}`}
+                      className={`relative overflow-hidden border-2 transition-all flex-shrink-0 ${selectedConceptIndex === idx ? 'border-black' : 'border-transparent opacity-50 hover:opacity-75'}`}
                       style={{ width: 72, height: 72 }}
                     >
                       <img src={img} className="w-full h-full object-cover" alt={`Variant ${idx + 1}`} />
@@ -2241,8 +2261,9 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                       )}
                     </button>
                   ))}
-                  {Array.from({ length: Math.max(0, maxConceptSlots - allSessionConcepts.length) }).map((_, idx) => (
-                    <div key={`locked-${idx}`} className="border border-dashed border-black/10 bg-neutral-50 flex items-center justify-center text-black/15 text-xs" style={{ width: 72, height: 72 }}>🔒</div>
+                  {/* Empty placeholder slots — only shown for Free/Design tier, not Studio (unlimited) */}
+                  {maxConceptSlots !== Infinity && Array.from({ length: Math.max(0, maxConceptSlots - allSessionConcepts.length) }).map((_, idx) => (
+                    <div key={`locked-${idx}`} className="border border-dashed border-black/10 bg-neutral-50 flex items-center justify-center text-black/15 text-xs flex-shrink-0" style={{ width: 72, height: 72 }}>🔒</div>
                   ))}
                 </div>
               </div>

@@ -30,16 +30,12 @@ describe('Header Component', () => {
     expect(screen.getAllByText(/Portfolio/i)[0]).toBeInTheDocument();
   });
 
-  it('toggles language when language switcher is clicked', () => {
+  // Language switcher is currently hidden (UI commented out) — re-enable this test when switcher is restored.
+  it.skip('toggles language when language switcher is clicked', () => {
     renderWithProvider(<Header />);
-    // Language switcher is rendered in both desktop and mobile views
     const switcher = screen.getAllByRole('button', { name: /AM/i })[0];
     expect(switcher).toBeInTheDocument();
-    
     fireEvent.click(switcher);
-    
-    // After clicking, it should show 'EN' (to switch back) 
-    // and the nav text should change to Armenian if translated
     expect(screen.getAllByText(/Ստուդիա/i)[0]).toBeInTheDocument();
     expect(screen.getAllByText(/EN/i)[0]).toBeInTheDocument();
   });
