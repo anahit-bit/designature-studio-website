@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import { ArrowLeft, ArrowRight, CheckCircle2, X, Download, AlertCircle, RefreshCw, LogOut, FileDown, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GoogleGenAI } from "@google/genai";
+// GoogleGenAI removed — AI Vision generation is now handled server-side.
 import { useLanguage } from '../LanguageContext';
 import {
   getStoredToken,
@@ -314,6 +314,10 @@ const AIConceptsPage: React.FC = () => {
   const [selectedRoom, setSelectedRoom] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingPhase, setProcessingPhase] = useState(0);
+  /** 'extract' shows "Analyzing references…", 'generate' shows cycling phases. */
+  const [processingStage, setProcessingStage] = useState<'extract' | 'generate'>('generate');
+  /** Increments each time "Generate Variation" is clicked; sent to server for prompt diversity. */
+  const variationSeedRef = useRef(0);
   const processingRef = useRef<HTMLDivElement>(null);
   const PROCESSING_PHASES = [
     'Analysing spatial structure…',
@@ -510,11 +514,34 @@ const AIConceptsPage: React.FC = () => {
     setResultGalleryImages([]);
   }, [user?.email]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Cycle processing phase text while generating ──
+  // ── Two-phase loading indicator ──
+  // Phase 1: "Analyzing references…" for ~4.5 s (only when there are reference images).
+  // Phase 2: cycle through PROCESSING_PHASES for the remainder of the generation.
   useEffect(() => {
-    if (!isProcessing) { setProcessingPhase(0); return; }
-    const id = setInterval(() => setProcessingPhase(p => (p + 1) % PROCESSING_PHASES.length), 4000);
-    return () => clearInterval(id);
+    if (!isProcessing) {
+      setProcessingPhase(0);
+      setProcessingStage('generate');
+      return;
+    }
+    if (inspirationImages.length > 0) {
+      setProcessingStage('extract');
+      const switchTimer = setTimeout(() => {
+        setProcessingStage('generate');
+      }, 4500);
+      const cycleId = setInterval(
+        () => setProcessingPhase(p => (p + 1) % PROCESSING_PHASES.length),
+        4000
+      );
+      return () => { clearTimeout(switchTimer); clearInterval(cycleId); };
+    } else {
+      setProcessingStage('generate');
+      const cycleId = setInterval(
+        () => setProcessingPhase(p => (p + 1) % PROCESSING_PHASES.length),
+        4000
+      );
+      return () => clearInterval(cycleId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isProcessing]);
 
   // ── Load Quiz images automatically from Cloudinary ──
@@ -877,21 +904,27 @@ const AIConceptsPage: React.FC = () => {
     setInspirationImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  // ── Generate ──
+  // ── Generate ── (two-step server-side pipeline)
   const handleGenerate = async (isVariation = false) => {
     if (!user) return;
-    if (inspirationImages.length === 0 || !roomImage) {
-      setValidationError(t('ai.uploadInspRoom'));
+
+    // Validate: room photo required
+    if (!roomImage) {
+      setValidationError(t('ai.uploadRoomImage'));
       return;
     }
-
-    // Always generate exactly 1 image per button press
+    // Validate: at least references OR a style preset
+    if (inspirationImages.length === 0 && !selectedStyle) {
+      setValidationError(t('ai.vision.noStyleNoRef'));
+      return;
+    }
     if ((user?.generationsLeft ?? 0) <= 0) return;
 
     setIsProcessing(true);
     setError(null);
+
     if (!isVariation) {
-      // Archive current results before starting fresh so thumbnails accumulate across generations
+      // Archive current results before starting fresh so thumbnails accumulate
       if (results.length > 0) {
         setSessionConceptArchive(prev => {
           const next = [...prev];
@@ -906,118 +939,63 @@ const AIConceptsPage: React.FC = () => {
       setShoppingItems([]);
       setShoppingDone(false);
       setForceStandaloneUpload(false);
+      variationSeedRef.current = 0;
     } else {
-      // Variation: keep shoppingItems so re-search CTA appears, but clear old results
+      variationSeedRef.current += 1;
+      // Variation: keep shoppingItems so re-search CTA appears
       setShoppingResults([]);
       setShoppingDone(false);
     }
 
-    // Consume exactly 1 generation on the server
-    const useRes = await apiFetch('/api/generation/use', { 
-      method: 'POST',
-      body: JSON.stringify({ count: 1 })
-    });
-    const useData = await useRes.json();
-    if (!useRes.ok) {
-      setError(t('ai.noGenerationsLeft'));
-      setIsProcessing(false);
-      return;
-    }
-    setUser(prev => prev ? { ...prev, generationsLeft: useData.generationsLeft } : null);
-
     try {
-      const toInlinePart = (dataUrl: string) => {
-        const matches = dataUrl.match(/^data:(image\/[\w+]+);base64,(.+)$/);
-        if (!matches) throw new Error('Invalid image format');
-        return { inlineData: { mimeType: matches[1], data: matches[2] } };
-      };
+      const res = await apiFetch('/api/ai-vision/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomPhoto: roomImage,
+          referenceImages: inspirationImages,
+          stylePreset: selectedStyle || undefined,
+          roomType: selectedRoom || undefined,
+          variationSeed: isVariation ? variationSeedRef.current : undefined,
+        }),
+      });
 
-      const inspirationParts = inspirationImages.map(toInlinePart);
-      const roomPart = toInlinePart(roomImage);
+      const data = await res.json();
 
-      const promptText = `You are an expert interior designer.
-The first ${inspirationImages.length} image(s) are inspiration references showing the desired style, colors, and materials.
-The last image is the actual room to redesign.
-${selectedRoom ? `This is a ${selectedRoom}. Choose furniture, layout, and decor appropriate for a ${selectedRoom}.` : 'Identify the room type from the photo and use appropriate furniture and layout.'}
-Generate a photorealistic interior design render of that room, redesigned in the exact style of the inspiration images.
-Style preference: ${selectedStyle || 'No specific style — use your best judgment based on the room'}.
-Keep the same room structure (windows, walls, ceiling). Apply the style, colors, furniture, lighting from the inspirations.
-${isVariation ? 'Provide a unique variation of the previous design while maintaining the same core style.' : ''}
-Output ONLY the redesigned room image. No text.`;
-
-      const generateOne = async (retryCount = 0): Promise<string | null> => {
-        try {
-          const apiKey = process.env.GEMINI_API_KEY || '';
-          const ai = new GoogleGenAI({ apiKey });
-          const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
-            contents: { parts: [...inspirationParts, roomPart, { text: promptText }] },
-            config: {
-              imageConfig: { aspectRatio: apiAspectRatio },
-            },
-          });
-          const parts = response?.candidates?.[0]?.content?.parts || [];
-          for (const part of parts) {
-            if (part.inlineData?.data) {
-              return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
-            }
-          }
-          return null;
-        } catch (err: any) {
-          if (err?.message?.toLowerCase().includes('quota') && retryCount < 2) {
-            await new Promise(resolve => setTimeout(resolve, 3000 * (retryCount + 1)));
-            return generateOne(retryCount + 1);
-          }
-          throw err;
+      if (!res.ok) {
+        if (res.status === 403) {
+          setUser(prev => prev ? { ...prev, generationsLeft: 0 } : null);
+          setError(t('ai.noGenerationsLeft'));
+          return;
         }
-      };
+        throw new Error(data?.error ?? 'Generation failed');
+      }
 
-      // Generate exactly 1 image
-      const generatedImage = await generateOne();
-      if (!generatedImage) throw new Error('No image generated');
-      const generatedImages = [generatedImage];
+      // Sync generationsLeft from server response
+      if (typeof data.generationsLeft === 'number') {
+        setUser(prev => prev ? { ...prev, generationsLeft: data.generationsLeft } : null);
+      }
+
+      const generatedImage: string = data.conceptUrl;
 
       if (isVariation) {
         setResults(prev => {
-          const newResults = [...prev, ...generatedImages];
+          const newResults = [...prev, generatedImage];
           setSelectedConceptIndex(newResults.length - 1);
           return newResults;
         });
       } else {
-        setResults(generatedImages);
+        setResults([generatedImage]);
         setSelectedConceptIndex(0);
       }
 
     } catch (err: any) {
-      console.error(err);
-      // Restore 1 generation on failure
-      const restoreRes = await apiFetch('/api/generation/restore', {
-        method: 'POST',
-        body: JSON.stringify({ count: 1 }),
-      });
-      let restoredGens: number | undefined;
-      if (restoreRes.ok) {
-        try {
-          const data = await restoreRes.json();
-          if (typeof data?.generationsLeft === 'number') restoredGens = data.generationsLeft;
-        } catch {
-          /* ignore */
-        }
-      }
-      setUser(prev =>
-        prev
-          ? {
-              ...prev,
-              generationsLeft:
-                restoredGens ?? Math.min(3, (prev.generationsLeft ?? 0) + 1),
-            }
-          : null
-      );
-
+      console.error('[AI Vision] handleGenerate error:', err);
       let errorMessage = t('ai.generationFailed');
-      if (err?.message?.includes('403') || err?.message?.toLowerCase().includes('permission')) {
+      const msg: string = err?.message?.toLowerCase() ?? '';
+      if (msg.includes('403') || msg.includes('permission') || msg.includes('api key')) {
         errorMessage = t('ai.apiKeyError');
-      } else if (err?.message?.toLowerCase().includes('quota')) {
+      } else if (msg.includes('quota') || msg.includes('rate')) {
         errorMessage = t('ai.quotaExceeded');
       }
       setError(errorMessage);
@@ -1057,6 +1035,7 @@ Output ONLY the redesigned room image. No text.`;
     setShoppingDone(false);
     setShoppingError(null);
     setStandaloneShoppingImage(null);
+    variationSeedRef.current = 0;
   };
 
   // ── Shopping search ──
@@ -1470,7 +1449,13 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     }
   };
 
-  const isGenerateDisabled = isProcessing || inspirationImages.length === 0 || !roomImage || !user || (user?.generationsLeft ?? 0) <= 0;
+  // Disabled when: processing, no room photo, no references AND no preset, no user, or quota exhausted
+  const isGenerateDisabled =
+    isProcessing ||
+    !roomImage ||
+    (inspirationImages.length === 0 && !selectedStyle) ||
+    !user ||
+    (user?.generationsLeft ?? 0) <= 0;
 
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -2051,6 +2036,12 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                     <>{t('ai.generateConcept')} <ArrowRight className="w-3.5 h-3.5" /></>
                   )}
                 </button>
+                {/* Helper note when only room is uploaded but no style/references yet */}
+                {roomImage && inspirationImages.length === 0 && !selectedStyle && !isProcessing && (
+                  <p className="text-[10px] text-black/40 text-center leading-[1.5]">
+                    {t('ai.vision.noStyleNoRef')}
+                  </p>
+                )}
               </>
             )}
 
@@ -2155,10 +2146,12 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                   <div className="w-10 h-10 border-2 border-white/15 border-t-white/70 rounded-full animate-spin" />
                   <div className="space-y-2">
                     <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/40">
-                      Generating
+                      {processingStage === 'extract' ? 'Step 1 / 2' : 'Generating'}
                     </p>
-                    <p key={processingPhase} className="text-sm font-light text-white/80 tracking-wide animate-pulse">
-                      {PROCESSING_PHASES[processingPhase]}
+                    <p key={`${processingStage}-${processingPhase}`} className="text-sm font-light text-white/80 tracking-wide animate-pulse">
+                      {processingStage === 'extract'
+                        ? t('ai.vision.analyzing')
+                        : PROCESSING_PHASES[processingPhase]}
                     </p>
                   </div>
                   <p className="text-[8px] text-white/20 uppercase tracking-widest">

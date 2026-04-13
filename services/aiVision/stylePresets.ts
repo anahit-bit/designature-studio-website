@@ -1,0 +1,201 @@
+/**
+ * Style preset definitions for AI Vision.
+ * 9 supported presets from the brief + 3 additional styles present in the UI
+ * (Minimalist, Maximalist, Biophilic).  Each brief follows the same 7-section
+ * structure that the style-extraction model produces, so they slot directly
+ * into the generation prompt template.
+ */
+
+export type StylePreset =
+  | "art_deco"
+  | "bohemian"
+  | "coastal"
+  | "industrial"
+  | "japandi"
+  | "mid_century"
+  | "modern"
+  | "rustic"
+  | "transitional"
+  | "minimalist"
+  | "maximalist"
+  | "biophilic";
+
+export type RoomType =
+  | "living_room"
+  | "dining_room"
+  | "bedroom"
+  | "kitchen"
+  | "bathroom"
+  | "home_office"
+  | "kids_room"
+  | "outdoor";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Hardcoded style briefs (skips the Gemini text-extraction call for presets)
+// ─────────────────────────────────────────────────────────────────────────────
+export const STYLE_BRIEFS: Record<StylePreset, string> = {
+
+  art_deco: `
+1. COLOR PALETTE: Deep Emerald #1F4E3D, Black Onyx #1A1A1A, Antique Gold #C9A062, Cream Ivory #F2E9D8, Burgundy #6B1F2A, Champagne #E8D5A8, Charcoal #2E2E2E.
+2. MATERIALS & FINISHES: high-gloss lacquered ebony and walnut, polished black marble with white veining, polished brass and gold-tone metal, mirrored glass surfaces, velvet upholstery in jewel tones, patterned inlays of mother-of-pearl or shagreen.
+3. FURNITURE CHARACTER: bold geometric silhouettes, stepped and fan-shaped forms, generous curves balanced with sharp angles, substantial proportions, symmetrical arrangements, rounded armchairs and curved sofas with brass detailing.
+4. LIGHTING: dramatic statement fixtures — sunburst chandeliers, frosted glass globe pendants, brass sconces with stepped detailing. Warm moody lighting with strong contrast. Layered table and floor lamps with silk shades.
+5. WALL & CEILING TREATMENT: high-gloss painted walls in rich tones, geometric wallpaper or panel insets, mirrored panels, stepped crown moldings, ceiling rosettes, gilded trim accents.
+6. DECOR & STYLING: gold-framed mirrors, geometric sculptures, crystal decanters and barware, fan-shaped or sunburst motifs, lacquered boxes, palm fronds in tall brass vases, framed period art.
+7. OVERALL MOOD: glamorous, opulent, theatrical. Confident symmetry and rich materials create a sense of polished luxury and 1920s sophistication.
+`.trim(),
+
+  bohemian: `
+1. COLOR PALETTE: Warm Terracotta #C66B3D, Cream #F4ECD8, Rust Red #A14D2A, Mustard #C99836, Forest Green #4A6B47, Deep Plum #5D3A4A, Warm White #EFE7D6.
+2. MATERIALS & FINISHES: rattan, wicker, jute, raw and reclaimed wood with visible grain, hand-loomed textiles, macrame, kilim and Persian rugs, terracotta and unglazed ceramics, brass and copper accents, woven leather.
+3. FURNITURE CHARACTER: low-slung, soft, lived-in forms. Mix-and-match pieces from different eras and origins. Curved rattan chairs, deep modular sofas with layered cushions, carved wood tables, floor cushions and poufs.
+4. LIGHTING: rattan pendant lights, paper lanterns, brass and macrame fixtures, layered floor and table lamps with woven shades. Warm ambient lighting, often layered with candles and fairy lights.
+5. WALL & CEILING TREATMENT: matte cream or warm white walls, occasional accent walls with tapestries or hand-painted murals, exposed wood beams where applicable, no formal moldings.
+6. DECOR & STYLING: abundant houseplants and trailing greenery, layered textiles and throws, vintage rugs over rugs, framed botanical or tribal art, woven baskets, candles, dried pampas grass and palm leaves, collected ceramics, vintage books.
+7. OVERALL MOOD: relaxed, eclectic, soulful. Layered textures and global influences create a warm, lived-in atmosphere that feels personal and unhurried.
+`.trim(),
+
+  coastal: `
+1. COLOR PALETTE: Soft White #F7F4EE, Sand Beige #DCCFB4, Driftwood Grey #B5AFA1, Ocean Blue #5B7E9C, Pale Aqua #C5DDD8, Weathered Navy #2E4357, Warm Cream #EDE5D3.
+2. MATERIALS & FINISHES: whitewashed and weathered oak, bleached pine, natural linen and cotton, jute and sisal rugs, rope detailing, distressed white-painted wood, sea glass, brushed nickel and aged brass.
+3. FURNITURE CHARACTER: relaxed slipcovered sofas and armchairs, light wooden frames, woven natural fiber chairs, simple farmhouse-style tables, breezy and informal proportions with rounded edges.
+4. LIGHTING: woven rope or rattan pendants, glass jar lanterns, white linen drum shades, brushed nickel sconces. Bright, airy daylight is the primary source — fixtures supplement rather than dominate.
+5. WALL & CEILING TREATMENT: matte white or pale sand walls, horizontal shiplap or beadboard accents, white-painted ceiling beams where present, simple white trim.
+6. DECOR & STYLING: linen throw pillows, woven baskets, framed botanical prints or seascape art, pottery in muted blues and whites, driftwood objects, simple greenery in glass vases, sheer linen curtains.
+7. OVERALL MOOD: light, airy, restorative. Soft natural materials and a breezy palette evoke a calm seaside cottage atmosphere.
+`.trim(),
+
+  industrial: `
+1. COLOR PALETTE: Charcoal Grey #3A3A3A, Rust Brown #7A4A2A, Concrete Grey #8C8680, Aged Black #1F1F1F, Warm Tan #B08862, Brushed Steel #A8A8A8, Cream White #EFEAE0.
+2. MATERIALS & FINISHES: exposed brick, raw concrete, blackened steel, reclaimed timber with visible saw marks, distressed leather, riveted metal, Edison bulb wiring, cast iron, weathered copper.
+3. FURNITURE CHARACTER: heavy, utilitarian, functional forms with visible construction. Steel-framed tables with reclaimed wood tops, riveted leather sofas, factory cart coffee tables, metal shelving, mechanic's stools.
+4. LIGHTING: exposed Edison bulbs, black metal cage pendants, articulated factory floor lamps, gooseneck wall lights. Warm filament glow against darker backdrops, with strong directional task lighting.
+5. WALL & CEILING TREATMENT: exposed brick walls, raw concrete or polished cement, exposed ductwork and pipes on ceilings where appropriate, metal beams left visible, no decorative moldings.
+6. DECOR & STYLING: vintage signage, framed blueprints or maps, industrial gears and tools as objects, leather-bound books, metal storage crates, succulents in concrete planters, large clocks with exposed mechanisms.
+7. OVERALL MOOD: raw, honest, masculine. Structural elements are celebrated rather than hidden, creating a grounded warehouse-loft atmosphere with warmth from leather and wood.
+`.trim(),
+
+  japandi: `
+1. COLOR PALETTE: Warm Off-White #F0EBE2, Soft Oatmeal #D9CFBE, Pale Oak #C9B594, Charcoal Black #2E2A26, Muted Sage #9CA88D, Soft Clay #B8927A, Warm Grey #8A8478.
+2. MATERIALS & FINISHES: pale oak and ash with visible straight grain, paper (washi) lampshades, raw linen and undyed cotton, smooth matte ceramics, blackened steel accents, woven rush or tatami, light bamboo.
+3. FURNITURE CHARACTER: low, grounded, restrained silhouettes with clean straight lines softened by gentle curves. Solid wood with exposed joinery, minimal upholstery, thoughtful negative space around each piece.
+4. LIGHTING: paper pendant lanterns, simple linen drum shades, slim black floor lamps, hidden warm LED accents. Soft diffused natural light is prioritized; fixtures are quiet and sculptural.
+5. WALL & CEILING TREATMENT: smooth matte off-white plaster walls, occasional natural wood paneling or shoji-style screens, simple flat ceilings, no heavy moldings or decorative trim.
+6. DECOR & STYLING: a single ceramic vessel, a branch arrangement (cherry blossom or olive), one or two framed minimalist prints, neatly stacked design books, woven baskets, one statement plant. Surfaces are mostly empty.
+7. OVERALL MOOD: calm, intentional, breathable. The fusion of Scandinavian warmth and Japanese restraint creates a meditative atmosphere where every object earns its place.
+`.trim(),
+
+  mid_century: `
+1. COLOR PALETTE: Walnut Brown #6B4226, Mustard Yellow #D4A437, Avocado Green #6B7A3F, Burnt Orange #C75D2B, Cream #EFE6D2, Teal Blue #2E5C6E, Warm White #F4EDDC.
+2. MATERIALS & FINISHES: rich walnut and teak with rounded edges, molded plywood, fiberglass, polished brass and chrome, full-grain leather, textured wool, geometric patterned fabrics.
+3. FURNITURE CHARACTER: clean tapered legs, organic curves, low-slung profiles, splayed bases. Iconic silhouettes — egg chairs, tulip tables, spindle backs. Functional, sculptural, and lifted off the floor for visual lightness.
+4. LIGHTING: starburst chandeliers, atomic-era pendants, arc floor lamps with marble bases, brass globe sconces. Warm and direct, often as design statements in their own right.
+5. WALL & CEILING TREATMENT: matte painted walls in warm neutrals, occasional accent walls in saturated period colors, wood paneling on one wall, flat clean ceilings.
+6. DECOR & STYLING: abstract geometric art, ceramic sculptures in earthy glazes, vintage atomic clocks, sculptural ceramics, monstera and rubber plants in ceramic pots, vinyl records, curated coffee table books.
+7. OVERALL MOOD: optimistic, sculptural, design-forward. The 1950s-60s era is celebrated through clean lines and warm materials that feel both retro and timeless.
+`.trim(),
+
+  modern: `
+1. COLOR PALETTE: Pure White #FFFFFF, Soft Grey #DDDDDD, Charcoal #333333, Warm Beige #C9BCA8, Black #0A0A0A, Cool White #F5F7F9, Muted Taupe #A89F92.
+2. MATERIALS & FINISHES: smooth matte and high-gloss lacquer, polished concrete, large-format porcelain, stainless steel, tempered and frosted glass, high-grade engineered wood, leather in neutral tones.
+3. FURNITURE CHARACTER: clean rectilinear silhouettes, low profiles, blocky proportions, hidden joinery, integrated handles. Sofas with crisp tailored cushions, slim metal frames, modular configurations.
+4. LIGHTING: linear LED fixtures, recessed downlights, slim track lighting, sculptural pendants in matte white or black. Cool-leaning neutral light with strong layering between ambient, task, and accent.
+5. WALL & CEILING TREATMENT: smooth matte-painted walls in white or neutral tones, no moldings or trim, flat ceilings with hidden cove lighting, occasional accent walls in concrete or large-format stone.
+6. DECOR & STYLING: minimal — a single sculpture, one large abstract artwork, neatly arranged design books, one architectural plant (fiddle leaf, snake plant). Surfaces are deliberately clear.
+7. OVERALL MOOD: clean, deliberate, uncluttered. Form follows function in a calm contemporary atmosphere that feels gallery-like and effortlessly composed.
+`.trim(),
+
+  rustic: `
+1. COLOR PALETTE: Warm Cream #EAE0CC, Aged Wood Brown #6E4F30, Stone Grey #968C7E, Forest Green #3E5238, Rust Orange #A85A2A, Deep Charcoal #2F2A24, Soft Wheat #C9B98E.
+2. MATERIALS & FINISHES: rough-hewn reclaimed wood with visible knots, natural stone, wrought iron, hand-forged metal, raw linen, wool throws, distressed leather, terracotta, hand-thrown ceramics.
+3. FURNITURE CHARACTER: substantial, heavy, handcrafted forms. Trestle tables, ladder-back chairs, deep upholstered sofas in linen or leather, log-frame benches, slab wood tables with natural live edges.
+4. LIGHTING: wrought iron chandeliers, lantern pendants, candle sconces, table lamps with linen or burlap shades. Warm amber lighting with a soft glow, layered with firelight where present.
+5. WALL & CEILING TREATMENT: exposed timber beams, stone or brick accent walls, rough plaster or whitewashed wood paneling, wide plank wood ceilings, no machined trim.
+6. DECOR & STYLING: vintage farmhouse tools, woven blankets, ceramic crockery, dried herbs and wildflowers in earthenware jugs, framed pastoral art, hand-thrown pottery, antlers or animal motifs, woven baskets.
+7. OVERALL MOOD: warm, grounded, handmade. Natural imperfections and weathered textures create an honest, comforting atmosphere that feels rooted in tradition.
+`.trim(),
+
+  transitional: `
+1. COLOR PALETTE: Warm White #F2EEE6, Soft Greige #C9C0B0, Taupe #A89684, Charcoal Grey #4A4541, Soft Cream #E8DFCB, Warm Brown #6B5544, Muted Sage #9DA68F.
+2. MATERIALS & FINISHES: rift-sawn oak, polished marble with subtle veining, brushed brass and matte black metal, linen and velvet upholstery, smooth ceramics, frosted glass, leather in neutral tones.
+3. FURNITURE CHARACTER: a balance of classic and contemporary — tailored sofas with clean lines but soft curves, upholstered dining chairs, wood pieces with simple traditional silhouettes, refined proportions without ornamentation.
+4. LIGHTING: drum-shade chandeliers, simple brass or matte black pendants, ceramic table lamps with linen shades, recessed accent lighting. Warm and even, neither dramatic nor flat.
+5. WALL & CEILING TREATMENT: smooth painted walls in warm neutrals, simple flat or subtly profiled trim, occasional shiplap or paneled accent walls, clean ceilings with restrained crown molding.
+6. DECOR & STYLING: framed neutral art, ceramic vases with simple branches, stacks of design books, woven trays, soft throws, one or two architectural plants in matte planters.
+7. OVERALL MOOD: balanced, timeless, comfortable. Neither overtly modern nor traditional — a refined middle ground that feels welcoming, polished, and quietly sophisticated.
+`.trim(),
+
+  minimalist: `
+1. COLOR PALETTE: Pure White #FFFFFF, Off-White #F5F3EE, Soft Warm Grey #E0DBD5, Light Concrete #C8C4BE, Warm Charcoal #4A4542, Black #1A1A1A, Pale Linen #EAE6E0.
+2. MATERIALS & FINISHES: seamless smooth matte plaster, honed concrete, Japanese white oak with minimal grain, raw-edge linen and undyed cotton, matte black stainless, tempered glass, monolithic stone slabs with no visible veining.
+3. FURNITURE CHARACTER: strictly reduced silhouettes with zero ornamentation, very low profiles, single-material construction, hidden fasteners and frames, floating appearances. Every piece has maximum negative space around it.
+4. LIGHTING: fully recessed LED strips in ceiling coves, a single sculptural pendant as the sole visible fixture, concealed wall-washing sources, flush matte switches. No decorative fixtures.
+5. WALL & CEILING TREATMENT: seamless plaster walls without visible joints, monolithic matte white or warm off-white, no trim, no moldings whatsoever, floor-to-ceiling continuity, smooth flat ceiling.
+6. DECOR & STYLING: one ceramic vessel, one branch. Every surface has at minimum 80% open space. No pattern, no collections, no clusters. Art is a single large piece, never grouped.
+7. OVERALL MOOD: serene, silent, absolute. The absence of elements creates presence — the room breathes and the eye rests completely.
+`.trim(),
+
+  maximalist: `
+1. COLOR PALETTE: Deep Peacock #1B4D6E, Dusty Rose #D4918C, Antique Gold #C9A062, Marigold #E8952C, Emerald #2A6B4A, Cream #F2E9D8, Soft Black #1C1C1C.
+2. MATERIALS & FINISHES: velvet and brocade upholstery, lacquered and gilded surfaces, antique brass and bronze hardware, patterned ceramic tiles, damask and jacquard fabrics, fringed textiles, mother-of-pearl inlays, tortoiseshell and bone accents.
+3. FURNITURE CHARACTER: ornate and layered, with carved wooden frames, button-tufted upholstery, fringed edges, curved silhouettes, and mixed eras. Substantial, theatrical, generously scaled. Pieces overlap visually rather than standing apart.
+4. LIGHTING: dramatic chandeliers with crystals or tiers, ornate brass sconces with fabric shades, table lamps with patterned bases and fringed shades. Layered and theatrical, warm and jewel-like.
+5. WALL & CEILING TREATMENT: richly patterned wallpaper or fabric-covered panels, bold saturated paint colors, decorative moldings and dadoes, painted or wallpapered ceilings, gallery walls edge-to-edge.
+6. DECOR & STYLING: dense gallery walls with mixed frames, collections of ceramics and books, sculptural objects layered on every surface, potted palms and trailing plants, decorative cushions stacked, antique mirrors and framed art in multiples.
+7. OVERALL MOOD: opulent, layered, celebratory. Every surface contributes — the room is a composition of accumulated beauty and personal narrative.
+`.trim(),
+
+  biophilic: `
+1. COLOR PALETTE: Leaf Green #6B8C5A, Bark Brown #7A5C3A, Stone Cream #E4DED5, Sky Blue #A8C4CE, Moss #4F6B47, Terracotta #B86E4A, Natural White #F0EBE2.
+2. MATERIALS & FINISHES: raw teak and bamboo, cork flooring, natural stone with visible texture, pressed botanicals under glass, woven rattan and seagrass, vertical moss panels on feature walls, jute rugs with natural dye, unglazed clay ceramics.
+3. FURNITURE CHARACTER: organic shapes inspired by natural forms — pebble-contoured sofas, branch-like shelving, leaf-shaped tables. Low, grounded, sinuous lines referencing geological and botanical shapes rather than geometric ones.
+4. LIGHTING: full-spectrum daylight maximized through all openings, supplemented by warm LED mimicking golden-hour light. Fixtures in natural materials (rattan, stone, wood). No cold-white light sources.
+5. WALL & CEILING TREATMENT: vertical plant panels or moss walls on one feature surface, raw plaster in earthy tones, exposed natural stone, timber slat ceiling panels, no synthetic-looking finishes.
+6. DECOR & STYLING: cascading pothos and philodendron, large leafy indoor trees (fiddle leaf, rubber plant, monstera), terracotta planters of all sizes, stone pebble bowls, pressed leaf art, water features where applicable, seed pods and natural specimens.
+7. OVERALL MOOD: restorative, alive, deeply connected to nature. The room breathes through its plants and materials, reducing stress and inviting quiet contemplation.
+`.trim(),
+
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Room type display labels used in the generation prompt
+// ─────────────────────────────────────────────────────────────────────────────
+export const ROOM_TYPE_LABELS: Record<RoomType, string> = {
+  living_room: "LIVING ROOM",
+  dining_room:  "DINING ROOM",
+  bedroom:      "BEDROOM",
+  kitchen:      "KITCHEN",
+  bathroom:     "BATHROOM",
+  home_office:  "HOME OFFICE",
+  kids_room:    "KIDS ROOM",
+  outdoor:      "OUTDOOR SPACE",
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mapping helpers (frontend display names -> canonical keys)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const STYLE_NAME_TO_PRESET: Record<string, StylePreset> = {
+  "Japandi":      "japandi",
+  "Modern":       "modern",
+  "Mid-Century":  "mid_century",
+  "Bohemian":     "bohemian",
+  "Rustic":       "rustic",
+  "Art Deco":     "art_deco",
+  "Industrial":   "industrial",
+  "Coastal":      "coastal",
+  "Minimalist":   "minimalist",
+  "Maximalist":   "maximalist",
+  "Biophilic":    "biophilic",
+};
+
+export const ROOM_NAME_TO_TYPE: Record<string, RoomType> = {
+  "Living Room": "living_room",
+  "Dining Room": "dining_room",
+  "Bedroom":     "bedroom",
+  "Kitchen":     "kitchen",
+  "Bathroom":    "bathroom",
+  "Home Office": "home_office",
+  "Kids Room":   "kids_room",
+  "Outdoor":     "outdoor",
+};

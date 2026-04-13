@@ -283,6 +283,9 @@ const translations = {
     'ai.quotaExceeded': 'Quota exceeded. Please wait a moment and try again.',
     'ai.uploadRoomImage': 'Please upload a room image first.',
     'ai.uploadInspRoom': 'Please upload at least 1 inspiration image and your room photo',
+    'ai.vision.noStyleNoRef': 'Add a reference image or pick a style to continue',
+    'ai.vision.analyzing': 'Analyzing your style references\u2026',
+    'ai.vision.generating': 'Generating your concept\u2026',
     'btn.tryAi': 'Start Free — No Card Needed',
     'ai.quiz.applyStyleToRoom': 'Apply {style} to my room',
 
@@ -767,6 +770,9 @@ const translations = {
     'ai.quotaExceeded': 'Քվոտան սպառված է:',
     'ai.uploadRoomImage': 'Բեռնեք լուսանկարը:',
     'ai.uploadInspRoom': 'Խնդրում ենք վերբեռնել առնվազն 1 ոգեշնչման լուսանկար և ձեր սենյակի լուսանկարը',
+    'ai.vision.noStyleNoRef': 'Ավելացրեք հղման լուսանկար կամ ընտրեք ոճ՝ շարունակելու համար',
+    'ai.vision.analyzing': 'Վերլուծում ենք ձեր ոճի հղումները\u2026',
+    'ai.vision.generating': 'Ստեղծում ենք ձեր կոնցեպտը\u2026',
     'btn.tryAi': 'Սկսել Անվճար',
 
     // Testimonials

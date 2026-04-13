@@ -10,6 +10,12 @@ import path from "path";
 import { google } from "googleapis";
 import * as net from "net";
 
+// ─── AI Vision pipeline services ──────────────────────────────────────────────
+import { extractStyleBrief } from "./services/aiVision/styleExtraction.js";
+import { generateConceptImage } from "./services/aiVision/imageGeneration.js";
+import { getCacheKey, getCachedBrief, setCachedBrief } from "./services/aiVision/styleCache.js";
+import { STYLE_NAME_TO_PRESET, ROOM_NAME_TO_TYPE } from "./services/aiVision/stylePresets.js";
+
 dotenv.config();
 
 /** Free tier caps (UI + API). Paid tier can be added later with an `isPaid` flag. */
@@ -121,7 +127,8 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json({ limit: "50mb" }));
+  // Raised to 100 MB to accommodate base64-encoded room + reference images in one request
+  app.use(express.json({ limit: "100mb" }));
 
   // ── Cloudinary Configuration ──
   cloudinary.config({
@@ -1026,6 +1033,159 @@ async function startServer() {
     db.users[user.googleId] = user;
     writeDB(db);
     res.json({ ok: true, email: user.email, generationsLeft: user.generationsLeft });
+  });
+
+  // ── POST /api/ai-vision/generate — two-step concept generation ──
+  //
+  // Step 1: extract style brief from reference images (or use hardcoded preset brief).
+  // Step 2: generate the concept image with gemini-2.5-flash-image.
+  //
+  // Body (JSON):
+  //   roomPhoto       string  — data URL of the room photo (required)
+  //   referenceImages string[] — data URLs of reference images (may be empty)
+  //   stylePreset     string  — frontend display name e.g. "Japandi" (optional)
+  //   roomType        string  — frontend display name e.g. "Living Room" (optional)
+  //   variationSeed   number  — increments per "Generate Variation" click (optional)
+  //
+  app.post("/api/ai-vision/generate", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+
+    const {
+      roomPhoto,
+      referenceImages = [],
+      stylePreset,
+      roomType,
+      variationSeed,
+    } = req.body ?? {};
+
+    // ── Validate inputs ────────────────────────────────────────────────────────
+    if (!roomPhoto || typeof roomPhoto !== "string") {
+      return res.status(400).json({ error: "Room photo is required." });
+    }
+    if (
+      (!Array.isArray(referenceImages) || referenceImages.length === 0) &&
+      !stylePreset
+    ) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "Please add a reference image or select a style to continue.",
+        });
+    }
+
+    // ── Quota check + decrement ────────────────────────────────────────────────
+    const db = readDB();
+    const user = db.users[googleId];
+    if (!user) return res.status(404).json({ error: "User not found." });
+
+    if (user.generationsLeft <= 0) {
+      return res
+        .status(403)
+        .json({ error: "No generations left.", generationsLeft: 0 });
+    }
+    if (user.generationsLeft < 999) {
+      user.generationsLeft -= 1;
+      user.lastUsed = new Date().toISOString();
+      db.users[googleId] = user;
+      writeDB(db);
+    }
+
+    // ── Helper: parse data URL → { data, mimeType } ───────────────────────────
+    function parseDataUrl(
+      dataUrl: string
+    ): { data: string; mimeType: string } | null {
+      const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/s);
+      if (!m) return null;
+      return { mimeType: m[1], data: m[2] };
+    }
+
+    try {
+      // ── Resolve preset key (if any) ──────────────────────────────────────────
+      const resolvedPreset = stylePreset
+        ? STYLE_NAME_TO_PRESET[stylePreset as string]
+        : undefined;
+
+      // ── Parse reference image data URLs ─────────────────────────────────────
+      const parsedRefs = (referenceImages as string[])
+        .map(parseDataUrl)
+        .filter((p): p is { data: string; mimeType: string } => p !== null);
+
+      // References win over preset; if no parseable refs use preset only
+      const hasRefs = parsedRefs.length > 0;
+
+      // ── Step 1: Style brief (cached) ────────────────────────────────────────
+      const cacheKey = getCacheKey({
+        referenceImageData: parsedRefs.map((r) => r.data),
+        preset: hasRefs ? undefined : resolvedPreset,
+      });
+
+      let styleBrief = getCachedBrief(cacheKey);
+
+      if (!styleBrief) {
+        styleBrief = await extractStyleBrief({
+          referenceImageData: hasRefs ? parsedRefs : [],
+          fallbackPreset: hasRefs ? undefined : resolvedPreset,
+        });
+        setCachedBrief(cacheKey, styleBrief);
+      }
+
+      // ── Step 2: Concept image ────────────────────────────────────────────────
+      const parsedRoom = parseDataUrl(roomPhoto as string);
+      if (!parsedRoom) {
+        throw new Error("Room photo could not be parsed as a data URL.");
+      }
+
+      const resolvedRoomType = roomType
+        ? ROOM_NAME_TO_TYPE[roomType as string]
+        : undefined;
+
+      const conceptDataUrl = await generateConceptImage({
+        roomPhoto: parsedRoom,
+        styleBrief,
+        roomType: resolvedRoomType,
+        variationSeed: typeof variationSeed === "number" ? variationSeed : undefined,
+      });
+
+      return res.json({
+        success: true,
+        conceptUrl: conceptDataUrl,
+        generationsLeft: user.generationsLeft,
+      });
+
+    } catch (err: any) {
+      console.error("[AI Vision] Generation failed:", err?.message ?? err);
+
+      // Restore quota on generation failure
+      try {
+        const dbRetry = readDB();
+        const u = dbRetry.users[googleId];
+        if (u && u.generationsLeft < 999) {
+          const cap = isConceptTestAccountEmail(u.email) ? 999 : FREE_TIER_MAX_CONCEPTS;
+          u.generationsLeft = Math.min(cap, u.generationsLeft + 1);
+          dbRetry.users[googleId] = u;
+          writeDB(dbRetry);
+        }
+      } catch (restoreErr) {
+        console.error("[AI Vision] Failed to restore quota after error:", restoreErr);
+      }
+
+      const msg: string = err?.message ?? "";
+      if (msg.includes("403") || msg.toLowerCase().includes("permission")) {
+        return res
+          .status(500)
+          .json({ error: "API key error. Please contact support." });
+      }
+      if (msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("rate")) {
+        return res
+          .status(429)
+          .json({ error: "Generation quota exceeded. Please try again shortly." });
+      }
+      return res
+        .status(500)
+        .json({ error: "Concept generation failed. Please try again." });
+    }
   });
 
   // ── GET /api/admin/users — simple admin view (no auth for now) ──
