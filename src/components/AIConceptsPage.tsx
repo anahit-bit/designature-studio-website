@@ -1941,7 +1941,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-5 h-5 bg-black/20 text-white text-[8px] flex items-center justify-center font-bold flex-shrink-0">4</div>
                     <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/50">
-                      {t('ai.styleQuiz')} <span className="text-black/20 normal-case font-normal tracking-normal ml-1">({t('common.optional')})</span>
+                      {t('aiVision.sidebar.sectionStyle')} <span className="text-black/20 normal-case font-normal tracking-normal ml-1">({t('common.optional')})</span>
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
@@ -2131,8 +2131,8 @@ Output ONLY valid JSON with no markdown fences, no explanation:
             </div>
           )}
 
-          {/* Processing state */}
-          {isProcessing && activeTool === 'vision' && (
+          {/* Processing state — first-ever generation only (no prior concepts to show) */}
+          {isProcessing && activeTool === 'vision' && results.length === 0 && sessionConceptArchive.length === 0 && (
             <div ref={processingRef} className="p-8 flex items-start justify-center">
               <div className="relative w-full max-w-[520px] overflow-hidden" style={{ aspectRatio: roomAspectRatio }}>
                 {/* Room photo underneath */}
@@ -2173,12 +2173,11 @@ Output ONLY valid JSON with no markdown fences, no explanation:
             </div>
           )}
 
-          {/* Results state */}
+          {/* Results state — stays visible during subsequent generations so thumbnails are always accessible */}
           {(results.length > 0 ||
             sessionConceptArchive.length > 0 ||
             (activeTool === 'shopping' && !!user) ||
-            activeTool === 'quiz') &&
-            !isProcessing && (
+            activeTool === 'quiz') && (
             <div className="flex-grow flex flex-col">
               {(results.length > 0 || sessionConceptArchive.length > 0) && activeTool !== 'shopping' && activeTool !== 'quiz' && (<>
               {results.length > 0 && (
@@ -2191,12 +2190,12 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                 </div>
                 <div className="flex gap-2">
                   {(user?.generationsLeft ?? 0) > 0 && (
-                    <button onClick={() => handleGenerate(true)} className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-white bg-black px-4 py-2 hover:bg-black/70 transition-all">
+                    <button onClick={() => handleGenerate(true)} disabled={isProcessing} className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-white bg-black px-4 py-2 hover:bg-black/70 transition-all disabled:opacity-40 disabled:pointer-events-none">
                       <RefreshCw className="w-3 h-3" />
                       {t('ai.genVariation')}
                     </button>
                   )}
-                  <button onClick={handleReset} className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-black/40 border border-black/12 px-3 py-2 hover:border-black/40 hover:text-black transition-all">
+                  <button onClick={handleReset} disabled={isProcessing} className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-black/40 border border-black/12 px-3 py-2 hover:border-black/40 hover:text-black transition-all disabled:opacity-40 disabled:pointer-events-none">
                     <X className="w-3 h-3" />
                     {t('btn.reset')}
                   </button>
@@ -2204,7 +2203,34 @@ Output ONLY valid JSON with no markdown fences, no explanation:
               </div>
               )}
 
-              {results.length > 0 && roomImage && (
+              {/* Loading overlay — shown inline when generating a subsequent concept/variation */}
+              {isProcessing && activeTool === 'vision' && roomImage && (
+              <div ref={processingRef} className="p-8 flex items-start justify-center border-b border-black/8">
+                <div className="relative w-full max-w-[520px] overflow-hidden" style={{ aspectRatio: roomAspectRatio }}>
+                  <img src={roomImage} className="w-full h-full object-cover" alt="Your room" />
+                  <div className="absolute inset-0 bg-black/70" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 text-center px-8">
+                    <div className="w-10 h-10 border-2 border-white/15 border-t-white/70 rounded-full animate-spin" />
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/40">
+                        {processingStage === 'extract' ? 'Step 1 / 2' : 'Generating'}
+                      </p>
+                      <p key={`${processingStage}-${processingPhase}`} className="text-sm font-light text-white/80 tracking-wide animate-pulse">
+                        {processingStage === 'extract'
+                          ? t('ai.vision.analyzing')
+                          : PROCESSING_PHASES[processingPhase]}
+                      </p>
+                    </div>
+                    <p className="text-[8px] text-white/20 uppercase tracking-widest">
+                      {t('ai.processingTime')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              )}
+
+              {/* Before / After comparison — hidden during generation */}
+              {!isProcessing && results.length > 0 && roomImage && (
               <div className="grid grid-cols-2 border-b border-black/8" style={{ gap: '1px', background: 'rgba(0,0,0,0.08)' }}>
                 <div className="bg-white">
                   <div className="px-5 border-b border-black/6 flex items-center justify-between" style={{ height: 38 }}>
@@ -2242,8 +2268,9 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                     <button
                       key={`concept-${idx}`}
                       type="button"
-                      onClick={() => setSelectedConceptIndex(idx)}
-                      className={`relative overflow-hidden border-2 transition-all flex-shrink-0 ${selectedConceptIndex === idx ? 'border-black' : 'border-transparent opacity-50 hover:opacity-75'}`}
+                      onClick={() => { if (!isProcessing) setSelectedConceptIndex(idx); }}
+                      disabled={isProcessing}
+                      className={`relative overflow-hidden border-2 transition-all flex-shrink-0 ${selectedConceptIndex === idx ? 'border-black' : 'border-transparent opacity-50 hover:opacity-75'} disabled:cursor-wait`}
                       style={{ width: 72, height: 72 }}
                     >
                       <img src={img} className="w-full h-full object-cover" alt={`Variant ${idx + 1}`} />
