@@ -765,67 +765,26 @@ async function startServer() {
         return matched.length >= 2 ? matched : ALL_SHOPS.filter(s => !["desenio","allposters"].includes(s.domain.split(".")[0]));
       };
 
-      // ── PAID: per-retailer search (one retailer-name query per shop per item) ──
-      // NOTE: site: operator does not work with Google Shopping API — use retailer
-      // name as a keyword instead so results are scoped to that store.
-      const PER_RETAILER_SHOPS = ALL_SHOPS.filter(s => !["desenio.com","allposters.com","wayfair.com"].includes(s.domain));
-
-      let searchResults: any[];
-
-      if (shopUser.isPaid) {
-        // Paid tier: search each relevant retailer independently, all in parallel
-        searchResults = await Promise.all(
-          items.slice(0, 6).map(async (item: any) => {
-            const relevantShops = PER_RETAILER_SHOPS.filter(s =>
-              shopsForCategory(item.category).some(rs => rs.domain === s.domain)
-            );
-            const shopsToQuery = relevantShops.length >= 2 ? relevantShops : PER_RETAILER_SHOPS;
-            const retailerResults = await Promise.all(
-              shopsToQuery.map(async (shop) => {
-                try {
-                  const query = `${item.search_query} "${shop.name}"`;
-                  console.log(`[PAID] Serper: "${query}"`);
-                  const hits = await serperSearch(query, 6);
-                  const top = hits[0];
-                  return {
-                    retailer: shop.name,
-                    domain: shop.domain,
-                    product: top ? mapProduct(top) : null,
-                  };
-                } catch (err) {
-                  console.error(`Serper error for ${shop.name}:`, err);
-                  return { retailer: shop.name, domain: shop.domain, product: null };
-                }
-              })
-            );
+      // ── One category-aware OR query per item, top 3 results ─────────────────
+      const searchResults = await Promise.all(
+        items.slice(0, 4).map(async (item: any) => {
+          try {
+            const relevantShops = shopsForCategory(item.category);
+            // Cap at 6 shops to keep query short and focused
+            const shopFilter = relevantShops.slice(0, 6).map(s => `"${s.name}"`).join(" OR ");
+            const query = `${item.search_query} (${shopFilter})`;
+            console.log(`[SHOP] Serper: "${query}"`);
+            const hits = await serperSearch(query, 8);
             return {
               item: { category: item.category, description: item.description },
-              byRetailer: retailerResults,
+              products: hits.slice(0, 3).map(mapProduct),
             };
-          })
-        );
-      } else {
-        // Free tier: one category-aware OR query per item, 3 results shown
-        searchResults = await Promise.all(
-          items.slice(0, 4).map(async (item: any) => {
-            try {
-              const relevantShops = shopsForCategory(item.category);
-              // Cap at 6 shops to keep query short and focused
-              const shopFilter = relevantShops.slice(0, 6).map(s => `"${s.name}"`).join(" OR ");
-              const query = `${item.search_query} (${shopFilter})`;
-              console.log(`[FREE] Serper: "${query}"`);
-              const hits = await serperSearch(query, 8);
-              return {
-                item: { category: item.category, description: item.description },
-                products: hits.slice(0, 3).map(mapProduct),
-              };
-            } catch (err) {
-              console.error("Serper search error for", item.category, err);
-              return { item: { category: item.category, description: item.description }, products: [] };
-            }
-          })
-        );
-      }
+          } catch (err) {
+            console.error("Serper search error for", item.category, err);
+            return { item: { category: item.category, description: item.description }, products: [] };
+          }
+        })
+      );
 
       if (shopUser.shoppingListsLeft < 999) shopUser.shoppingListsLeft -= 1;
       shopUser.lastUsed = new Date().toISOString();
