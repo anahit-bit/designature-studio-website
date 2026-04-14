@@ -54,12 +54,12 @@ export async function extractStyleBrief(
     },
     config: {
       temperature: 0.4,
-      maxOutputTokens: 800,
+      maxOutputTokens: 2000,
     } as any,
   });
 
-  // Extract text from the response
-  const text =
+  // Extract text — join ALL parts in case the SDK splits the response
+  const text: string =
     (response as any).text ??
     response?.candidates?.[0]?.content?.parts
       ?.map((p: any) => p.text ?? "")
@@ -71,5 +71,12 @@ export async function extractStyleBrief(
       "Style extraction returned an empty response from the model."
     );
   }
-  return text.trim();
+
+  const briefText = text.trim();
+
+  if (briefText.length < 500) {
+    console.error("[ai-vision] Style brief suspiciously short (%d chars) — extraction may have failed", briefText.length);
+  }
+
+  return briefText;
 }

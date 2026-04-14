@@ -7,6 +7,7 @@
  */
 
 import { GoogleGenAI } from "@google/genai";
+import sharp from "sharp";
 import type { RoomType } from "./stylePresets.js";
 import { buildGenerationPrompt } from "./promptTemplates.js";
 
@@ -41,6 +42,26 @@ export async function generateConceptImage(
     variationSeed: input.variationSeed,
   });
 
+  // ── Preprocess room photo: resize large images before sending to Gemini ──
+  let roomPhotoData = input.roomPhoto.data;
+  let roomPhotoMime = input.roomPhoto.mimeType;
+  {
+    const rawBuffer = Buffer.from(roomPhotoData, "base64");
+    if (rawBuffer.length > 1_500_000) {
+      const resized = await sharp(rawBuffer)
+        .rotate() // auto-apply EXIF orientation (portrait phone shots)
+        .resize({ width: 1536, height: 1536, fit: "inside", withoutEnlargement: true })
+        .jpeg({ quality: 85 })
+        .toBuffer();
+      console.log(`Room photo resized: ${rawBuffer.length} -> ${resized.length} bytes`);
+      roomPhotoData = resized.toString("base64");
+      roomPhotoMime = "image/jpeg";
+    } else {
+      console.log(`Room photo within limit (${rawBuffer.length} bytes), no resize needed`);
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   const generateOne = async (retryCount = 0): Promise<string> => {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-image",
@@ -48,8 +69,8 @@ export async function generateConceptImage(
         parts: [
           {
             inlineData: {
-              mimeType: input.roomPhoto.mimeType,
-              data: input.roomPhoto.data,
+              mimeType: roomPhotoMime,
+              data: roomPhotoData,
             },
           },
           { text: prompt },
