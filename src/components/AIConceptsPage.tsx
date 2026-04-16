@@ -15,6 +15,7 @@ import Footer from './Footer';
 import RoomAudit from './RoomAudit';
 import FeedbackModal from './FeedbackModal';
 import AIVisionShowcase from './AIVisionShowcase';
+import ShoppingListShowcase from './ShoppingListShowcase';
 import { QUIZ_IMAGE_WEIGHTS, TIER_POINTS } from '../data/quizImageWeights';
 
 // ─── Google OAuth client ID ────────────────────────────────────────────────
@@ -1834,12 +1835,17 @@ const AIConceptsPage: React.FC = () => {
         <AIVisionShowcase onRequestLogin={triggerGoogleSignIn} />
       )}
 
+      {/* ── SHOPPING LIST SHOWCASE (logged-out) ── */}
+      {!authLoading && !user && activeTool === 'shopping' && (
+        <ShoppingListShowcase onRequestLogin={triggerGoogleSignIn} />
+      )}
+
       {/* ── MAIN TWO-COLUMN ──
            During the quiz RATING step, drop flex-grow and minHeight so the
            working area sizes to its content and the feedback CTA sits close
            below it. For ALL quiz steps (rating and result) drop the viewport
            height chain — other tools keep flex-grow + minHeight:'75vh'. */}
-      <div className={`flex flex-col border-t border-black/10${!authLoading && !user && activeTool === 'vision' ? ' hidden' : ''}${activeTool !== 'quiz' ? ' flex-grow' : ''}`}>
+      <div className={`flex flex-col border-t border-black/10${!authLoading && !user && (activeTool === 'vision' || activeTool === 'shopping') ? ' hidden' : ''}${activeTool !== 'quiz' ? ' flex-grow' : ''}`}>
         <div className={`max-w-[1600px] w-full mx-auto px-8 md:px-16 flex flex-col lg:flex-row${activeTool !== 'quiz' ? ' flex-grow' : ''}`} style={activeTool !== 'quiz' ? { minHeight: '75vh' } : undefined}>
 
         {/* ════ LEFT SIDEBAR ════ */}
