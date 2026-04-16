@@ -2108,7 +2108,7 @@ const AIConceptsPage: React.FC = () => {
                 </div>
 
                 {validationError && (
-                  <p className="text-[10px] text-black/45 leading-relaxed">{validationError}</p>
+                  <p className="text-[12px] font-semibold text-red-500 leading-relaxed">{validationError}</p>
                 )}
 
                 {(user?.generationsLeft ?? 0) <= 0 && (
