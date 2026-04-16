@@ -34,6 +34,22 @@ const VISION_STYLES = [
   'Industrial', 'Coastal', 'Minimalist', 'Maximalist', 'Biophilic'
 ];
 
+// ── Sample room + inspiration gallery shown in the empty state ─────────────
+const INSPIRATION_GALLERY = {
+  roomPhotoUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776281427/photo_t1vo5h.png',
+  referenceUrls: [
+    'https://res.cloudinary.com/dys2k5muv/image/upload/v1776281424/ref1_q4mmiz.jpg',
+    'https://res.cloudinary.com/dys2k5muv/image/upload/v1776281424/ref2_xraman.jpg',
+    'https://res.cloudinary.com/dys2k5muv/image/upload/v1776281426/ref3_qg39ms.png',
+  ],
+  conceptUrls: [
+    'https://res.cloudinary.com/dys2k5muv/image/upload/v1776281424/Designature_Studio_Generated_Concept_1_un7zft.png',
+    'https://res.cloudinary.com/dys2k5muv/image/upload/v1776281425/Designature_Studio_Generated_Concept_2_mszdf4.png',
+    'https://res.cloudinary.com/dys2k5muv/image/upload/v1776281426/Designature_Studio_Generated_Concept_4_x6v5fw.png',
+  ],
+  roomType: 'Dining Room',
+};
+
 const ROOM_TYPES = [
   'Living Room', 'Dining Room', 'Bedroom', 'Kitchen',
   'Bathroom', 'Home Office', 'Kids Room', 'Outdoor',
@@ -319,6 +335,9 @@ const AIConceptsPage: React.FC = () => {
   /** Increments each time "Generate Variation" is clicked; sent to server for prompt diversity. */
   const variationSeedRef = useRef(0);
   const processingRef = useRef<HTMLDivElement>(null);
+  /** Set to true by handleTrySampleRoom; triggers handleGenerate once state settles */
+  const pendingGenerateRef = useRef(false);
+  const [isSampleLoading, setIsSampleLoading] = useState(false);
   const PROCESSING_PHASES = [
     'Analysing spatial structure…',
     'Reading light and proportion…',
@@ -902,6 +921,77 @@ const AIConceptsPage: React.FC = () => {
 
   const removeInspirationImage = (index: number) => {
     setInspirationImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // ── Sample room trigger: fires handleGenerate once state has settled ───────
+  // pendingGenerateRef is set by handleTrySampleRoom after populating roomImage
+  // and inspirationImages. This effect fires on the subsequent render.
+  useEffect(() => {
+    if (!pendingGenerateRef.current) return;
+    if (roomImage && inspirationImages.length > 0) {
+      pendingGenerateRef.current = false;
+      const id = setTimeout(() => handleGenerate(), 0);
+      return () => clearTimeout(id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomImage, inspirationImages.length]);
+
+  // ── Try sample room — fetches gallery images and runs a real generation ───
+  const handleTrySampleRoom = async () => {
+    if (!user) { triggerGoogleSignIn(); return; }
+    if (isProcessing || isSampleLoading) return;
+
+    setIsSampleLoading(true);
+    setValidationError(null);
+
+    const urlToDataUrl = async (url: string): Promise<string> => {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    };
+
+    try {
+      const [roomDataUrl, ...refDataUrls] = await Promise.all([
+        urlToDataUrl(INSPIRATION_GALLERY.roomPhotoUrl),
+        ...INSPIRATION_GALLERY.referenceUrls.map(urlToDataUrl),
+      ]);
+
+      // Detect aspect ratio for the preview UI
+      await new Promise<void>((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const ratio = img.width / img.height;
+          setRoomAspectRatio(`${img.width}/${img.height}`);
+          let ar: '1:1'|'3:4'|'4:3'|'9:16'|'16:9' = '1:1';
+          if (ratio > 1.5) ar = '16:9';
+          else if (ratio > 1.2) ar = '4:3';
+          else if (ratio > 0.8) ar = '1:1';
+          else if (ratio > 0.6) ar = '3:4';
+          else ar = '9:16';
+          setApiAspectRatio(ar);
+          resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = roomDataUrl;
+      });
+
+      // Populate form visibly — user sees the sample inputs being applied
+      setRoomImage(roomDataUrl);
+      setInspirationImages(refDataUrls);
+      setSelectedRoom(INSPIRATION_GALLERY.roomType);
+
+      // Signal the useEffect above to fire handleGenerate once state settles
+      pendingGenerateRef.current = true;
+    } catch (err) {
+      console.error('[Sample room] fetch error:', err);
+      setValidationError('Could not load sample images. Please try again.');
+    } finally {
+      setIsSampleLoading(false);
+    }
   };
 
   // ── Generate ── (two-step server-side pipeline)
@@ -1839,6 +1929,17 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                       <p className="text-[10px] text-black/40 leading-[1.4]">
                         {t('aiVision.inspiration.tip.body')}
                       </p>
+                      {/* Fallback hint — directs to style selector if no references */}
+                      <p className="text-[9px] text-black/30 leading-[1.4]">
+                        {t('aiVision.inspiration.noRefsFallback')}{' '}
+                        <button
+                          type="button"
+                          onClick={() => document.getElementById('style-quiz-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                          className="underline underline-offset-2 hover:text-black/55 transition-colors"
+                        >
+                          {t('aiVision.inspiration.noRefsFallback.link')}
+                        </button>
+                      </p>
                       {/* Pinterest paste — optional, collapsible */}
                       <div className="flex flex-col gap-1.5">
                         <button
@@ -2036,10 +2137,15 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                     <>{t('ai.generateConcept')} <ArrowRight className="w-3.5 h-3.5" /></>
                   )}
                 </button>
-                {/* Helper note when only room is uploaded but no style/references yet */}
-                {roomImage && inspirationImages.length === 0 && !selectedStyle && !isProcessing && (
+                {/* Helper text — explains why Generate is disabled */}
+                {!isProcessing && !roomImage && (
                   <p className="text-[10px] text-black/40 text-center leading-[1.5]">
-                    {t('ai.vision.noStyleNoRef')}
+                    {t('aiVision.generate.helper.needPhoto')}
+                  </p>
+                )}
+                {!isProcessing && roomImage && inspirationImages.length === 0 && !selectedStyle && (
+                  <p className="text-[10px] text-black/40 text-center leading-[1.5]">
+                    {t('aiVision.generate.helper.needInspiration')}
                   </p>
                 )}
               </>
@@ -2118,16 +2224,87 @@ Output ONLY valid JSON with no markdown fences, no explanation:
             </div>
           )}
 
-          {/* Empty state — vision only */}
-          {!authLoading && user && results.length === 0 && !isProcessing && !error && activeTool === 'vision' && (
-            <div className="flex-grow flex flex-col items-center justify-center gap-5 p-16 text-center">
-              <div className="w-16 h-16 border border-black/8 flex items-center justify-center text-black/10 text-3xl">✦</div>
-              <h3 className="font-display text-3xl font-light text-black/20 tracking-tight">
-                {t('ai.conceptAppear')}
-              </h3>
-              <p className="text-sm md:text-base uppercase tracking-[0.3em] text-black/20 leading-[2] text-center">
-                {t('ai.completeSteps')}
-              </p>
+          {/* Empty state — triangle gallery (Cases A & C: no concepts yet, not currently generating) */}
+          {!authLoading && user && allSessionConcepts.length === 0 && !isProcessing && !error && activeTool === 'vision' && (
+            <div className="flex-grow flex flex-col items-center justify-center py-10 px-6 overflow-y-auto">
+              {/* Heading */}
+              <div className="text-center mb-7">
+                <h3 className="font-display text-2xl font-medium text-[#0047AB] tracking-tight mb-1">
+                  {t('aiVision.gallery.title')}
+                </h3>
+                <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-black/30">
+                  {t('aiVision.gallery.subtitle')}
+                </p>
+              </div>
+
+              {/* Triangle tiers */}
+              <div className="flex flex-col items-center gap-5 w-full max-w-lg">
+
+                {/* Tier 1: YOUR ROOM */}
+                <div className="flex flex-col items-center gap-2">
+                  <p className="text-[8px] font-bold uppercase tracking-[0.32em] text-black/25">
+                    {t('aiVision.gallery.labelRoom')}
+                  </p>
+                  <img
+                    src={INSPIRATION_GALLERY.roomPhotoUrl}
+                    alt="Sample room"
+                    className="rounded-sm border border-black/8 object-cover"
+                    style={{ width: 140 }}
+                  />
+                </div>
+
+                {/* Tier 2: + 3 INSPIRATIONS */}
+                <div className="flex flex-col items-center gap-2">
+                  <p className="text-[8px] font-bold uppercase tracking-[0.32em] text-black/25">
+                    {t('aiVision.gallery.labelInspirations')}
+                  </p>
+                  <div className="flex gap-2.5">
+                    {INSPIRATION_GALLERY.referenceUrls.map((url, i) => (
+                      <img
+                        key={i}
+                        src={url}
+                        alt={`Reference ${i + 1}`}
+                        className="rounded-sm border border-black/8 object-cover flex-shrink-0"
+                        style={{ width: 80, height: 80 }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Arrow divider */}
+                <p className="text-lg text-black/20 leading-none select-none">&darr;</p>
+
+                {/* Tier 3: = 3 CONCEPTS */}
+                <div className="flex flex-col items-center gap-2">
+                  <p className="text-[8px] font-bold uppercase tracking-[0.32em] text-black/25">
+                    {t('aiVision.gallery.labelConcepts')}
+                  </p>
+                  <div className="flex gap-3 flex-wrap justify-center">
+                    {INSPIRATION_GALLERY.conceptUrls.map((url, i) => (
+                      <img
+                        key={i}
+                        src={url}
+                        alt={`Concept ${i + 1}`}
+                        className="rounded-sm border border-black/8 object-cover flex-shrink-0"
+                        style={{ width: 160 }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Try sample room CTA */}
+              <button
+                onClick={handleTrySampleRoom}
+                disabled={isProcessing || isSampleLoading || (user?.generationsLeft ?? 0) <= 0}
+                className="mt-8 bg-black text-white text-[9px] font-bold uppercase tracking-[0.3em] px-8 py-4 hover:bg-black/80 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isSampleLoading && (
+                  <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
+                )}
+                {t('aiVision.gallery.tryItButton')}
+              </button>
             </div>
           )}
 
