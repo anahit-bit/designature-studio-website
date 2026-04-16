@@ -42,7 +42,7 @@ export async function extractStyleBrief(
   const apiKey = process.env.GEMINI_API_KEY ?? "";
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set.");
 
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey, httpOptions: { timeout: 120000 } });
 
   // ── Aggressively downsize references for Step 1 style extraction ──────────
   // Step 1 only reads colors, materials, textures, and mood — 512px is plenty.
@@ -70,7 +70,11 @@ export async function extractStyleBrief(
     inlineData: { mimeType, data },
   }));
 
-  const generationConfig = { temperature: 0.4, maxOutputTokens: 8192 };
+  const generationConfig = {
+    temperature: 0.4,
+    maxOutputTokens: 8192,
+    thinkingConfig: { thinkingBudget: 1024 },
+  };
 
   const totalPayloadBytes = imageParts.reduce((sum, p) => sum + (p.inlineData?.data?.length ?? 0), 0);
   console.log("[ai-vision] Total Step 1 payload:", totalPayloadBytes, "base64 chars (~" + Math.round(totalPayloadBytes * 0.75 / 1024) + " KB decoded)");
