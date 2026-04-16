@@ -1016,7 +1016,13 @@ async function startServer() {
       stylePreset,
       roomType,
       variationSeed,
+      isSampleRun = false,
     } = req.body ?? {};
+
+    // ── TEMP DIAG — Fix 3: log incoming payload sizes ─────────────────────────
+    const roomB64Len = typeof roomPhoto === "string" ? (roomPhoto.split(",")[1]?.length ?? 0) : 0;
+    console.log(`[AI Vision] isSampleRun=${isSampleRun} | room ~${Math.round(roomB64Len * 0.75)} bytes | refs=${Array.isArray(referenceImages) ? referenceImages.length : 0}`);
+    // ─────────────────────────────────────────────────────────────────────────
 
     // ── Validate inputs ────────────────────────────────────────────────────────
     if (!roomPhoto || typeof roomPhoto !== "string") {
@@ -1039,16 +1045,18 @@ async function startServer() {
     const user = db.users[googleId];
     if (!user) return res.status(404).json({ error: "User not found." });
 
-    if (user.generationsLeft <= 0) {
+    if (user.generationsLeft <= 0 && !isSampleRun) {
       return res
         .status(403)
         .json({ error: "No generations left.", generationsLeft: 0 });
     }
-    if (user.generationsLeft < 999) {
+    if (!isSampleRun && user.generationsLeft < 999) {
       user.generationsLeft -= 1;
       user.lastUsed = new Date().toISOString();
       db.users[googleId] = user;
       writeDB(db);
+    } else if (isSampleRun) {
+      console.log(`[AI Vision] Sample run for ${user.email} — quota not decremented (${user.generationsLeft} remaining)`);
     }
 
     // ── Helper: parse data URL → { data, mimeType } ───────────────────────────

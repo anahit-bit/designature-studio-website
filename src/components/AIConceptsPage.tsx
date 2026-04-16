@@ -338,6 +338,8 @@ const AIConceptsPage: React.FC = () => {
   /** Set to true by handleTrySampleRoom; triggers handleGenerate once state settles */
   const pendingGenerateRef = useRef(false);
   const [isSampleLoading, setIsSampleLoading] = useState(false);
+  /** True once the sample room has been run this session — prevents repeat free runs */
+  const sampleRunUsedRef = useRef(false);
   const PROCESSING_PHASES = [
     'Analysing spatial structure…',
     'Reading light and proportion…',
@@ -930,7 +932,8 @@ const AIConceptsPage: React.FC = () => {
     if (!pendingGenerateRef.current) return;
     if (roomImage && inspirationImages.length > 0) {
       pendingGenerateRef.current = false;
-      const id = setTimeout(() => handleGenerate(), 0);
+      // isSampleRun=true so the backend skips the quota decrement
+      const id = setTimeout(() => handleGenerate(false, true), 0);
       return () => clearTimeout(id);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -940,24 +943,39 @@ const AIConceptsPage: React.FC = () => {
   const handleTrySampleRoom = async () => {
     if (!user) { triggerGoogleSignIn(); return; }
     if (isProcessing || isSampleLoading) return;
+    if (sampleRunUsedRef.current) {
+      setValidationError(t('aiVision.gallery.sampleAlreadyRun'));
+      return;
+    }
+    // Mark as used immediately so double-clicks don't slip through
+    sampleRunUsedRef.current = true;
 
     setIsSampleLoading(true);
     setValidationError(null);
 
-    const urlToDataUrl = async (url: string): Promise<string> => {
+    const urlToDataUrl = async (url: string, label: string): Promise<string> => {
       const res = await fetch(url);
       const blob = await res.blob();
+      // ── TEMP DIAG — Fix 3 ─────────────────────────────────────────────────
+      console.log(`[Sample fetch] ${label}: ${blob.size} bytes (type: ${blob.type})`);
+      // ─────────────────────────────────────────────────────────────────────
       return new Promise((resolve) => {
         const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
+        reader.onloadend = () => {
+          const dataUrl = reader.result as string;
+          const b64Len = dataUrl.split(',')[1]?.length ?? 0;
+          // base64 len * 0.75 ≈ decoded bytes
+          console.log(`[Sample b64]  ${label}: ~${Math.round(b64Len * 0.75)} decoded bytes`);
+          resolve(dataUrl);
+        };
         reader.readAsDataURL(blob);
       });
     };
 
     try {
       const [roomDataUrl, ...refDataUrls] = await Promise.all([
-        urlToDataUrl(INSPIRATION_GALLERY.roomPhotoUrl),
-        ...INSPIRATION_GALLERY.referenceUrls.map(urlToDataUrl),
+        urlToDataUrl(INSPIRATION_GALLERY.roomPhotoUrl, 'room'),
+        ...INSPIRATION_GALLERY.referenceUrls.map((url, i) => urlToDataUrl(url, `ref${i + 1}`)),
       ]);
 
       // Detect aspect ratio for the preview UI
@@ -989,13 +1007,14 @@ const AIConceptsPage: React.FC = () => {
     } catch (err) {
       console.error('[Sample room] fetch error:', err);
       setValidationError('Could not load sample images. Please try again.');
+      sampleRunUsedRef.current = false; // allow retry on network failure
     } finally {
       setIsSampleLoading(false);
     }
   };
 
   // ── Generate ── (two-step server-side pipeline)
-  const handleGenerate = async (isVariation = false) => {
+  const handleGenerate = async (isVariation = false, isSampleRun = false) => {
     if (!user) return;
 
     // Validate: room photo required
@@ -1008,7 +1027,8 @@ const AIConceptsPage: React.FC = () => {
       setValidationError(t('ai.vision.noStyleNoRef'));
       return;
     }
-    if ((user?.generationsLeft ?? 0) <= 0) return;
+    // Allow sample runs even if quota is 0 (server handles the bypass)
+    if (!isSampleRun && (user?.generationsLeft ?? 0) <= 0) return;
 
     setIsProcessing(true);
     setError(null);
@@ -1047,6 +1067,7 @@ const AIConceptsPage: React.FC = () => {
           stylePreset: selectedStyle || undefined,
           roomType: selectedRoom || undefined,
           variationSeed: isVariation ? variationSeedRef.current : undefined,
+          isSampleRun: isSampleRun || undefined,
         }),
       });
 
@@ -2237,10 +2258,10 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                 </p>
               </div>
 
-              {/* Triangle tiers */}
-              <div className="flex flex-col items-center gap-5 w-full max-w-lg">
+              {/* Triangle tiers — no max-width cap; fills the result column */}
+              <div className="flex flex-col items-center gap-6 w-full">
 
-                {/* Tier 1: YOUR ROOM */}
+                {/* Tier 1: YOUR ROOM — centred, moderate size */}
                 <div className="flex flex-col items-center gap-2">
                   <p className="text-[8px] font-bold uppercase tracking-[0.32em] text-black/25">
                     {t('aiVision.gallery.labelRoom')}
@@ -2249,7 +2270,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                     src={INSPIRATION_GALLERY.roomPhotoUrl}
                     alt="Sample room"
                     className="rounded-sm border border-black/8 object-cover"
-                    style={{ width: 140 }}
+                    style={{ width: 'min(200px, 55vw)' }}
                   />
                 </div>
 
@@ -2258,35 +2279,36 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                   <p className="text-[8px] font-bold uppercase tracking-[0.32em] text-black/25">
                     {t('aiVision.gallery.labelInspirations')}
                   </p>
-                  <div className="flex gap-2.5">
+                  <div className="flex gap-3">
                     {INSPIRATION_GALLERY.referenceUrls.map((url, i) => (
                       <img
                         key={i}
                         src={url}
                         alt={`Reference ${i + 1}`}
                         className="rounded-sm border border-black/8 object-cover flex-shrink-0"
-                        style={{ width: 80, height: 80 }}
+                        style={{ width: 'min(110px, 25vw)', height: 'min(110px, 25vw)' }}
                       />
                     ))}
                   </div>
                 </div>
 
                 {/* Arrow divider */}
-                <p className="text-lg text-black/20 leading-none select-none">&darr;</p>
+                <p className="text-xl text-black/20 leading-none select-none">&darr;</p>
 
-                {/* Tier 3: = 3 CONCEPTS */}
-                <div className="flex flex-col items-center gap-2">
+                {/* Tier 3: = 3 CONCEPTS — hero tier, fills available width */}
+                <div className="flex flex-col items-center gap-2 w-full">
                   <p className="text-[8px] font-bold uppercase tracking-[0.32em] text-black/25">
                     {t('aiVision.gallery.labelConcepts')}
                   </p>
-                  <div className="flex gap-3 flex-wrap justify-center">
+                  {/* flex-1 on each image + gap-3.5 fills the container width */}
+                  <div className="flex gap-3.5 w-full">
                     {INSPIRATION_GALLERY.conceptUrls.map((url, i) => (
                       <img
                         key={i}
                         src={url}
                         alt={`Concept ${i + 1}`}
-                        className="rounded-sm border border-black/8 object-cover flex-shrink-0"
-                        style={{ width: 160 }}
+                        className="rounded-sm border border-black/8 object-cover min-w-0"
+                        style={{ flex: '1 1 0', maxWidth: 280 }}
                       />
                     ))}
                   </div>
