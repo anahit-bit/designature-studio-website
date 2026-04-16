@@ -2320,6 +2320,15 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                 )}
                 {t('aiVision.gallery.tryItButton')}
               </button>
+
+              {/* Feedback CTA — lives here in the empty state, below the sample-room button */}
+              <button
+                onClick={() => setFeedbackOpen(true)}
+                className="mt-3 inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.3em] px-8 py-4 hover:bg-[#003d99] transition-colors duration-200"
+              >
+                Share your feedback
+                <ArrowRight className="w-3 h-3 flex-shrink-0" />
+              </button>
             </div>
           )}
 
@@ -3410,16 +3419,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
       <div className="border-t border-black/10" />
 
-      {/* ── Feedback CTA ── */}
-      <div className="py-10 flex justify-center bg-white">
-        <button
-          onClick={() => setFeedbackOpen(true)}
-          className="inline-flex items-center gap-3 bg-[#0047AB] text-white text-[11px] font-bold uppercase tracking-[0.2em] px-8 py-4 hover:bg-[#003d99] transition-colors duration-200"
-        >
-          Share your feedback
-          <ArrowRight className="w-3.5 h-3.5 flex-shrink-0" />
-        </button>
-      </div>
+
 
       <Footer />
 
