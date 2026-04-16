@@ -1019,11 +1019,6 @@ async function startServer() {
       isSampleRun = false,
     } = req.body ?? {};
 
-    // ── TEMP DIAG — Fix 3: log incoming payload sizes ─────────────────────────
-    const roomB64Len = typeof roomPhoto === "string" ? (roomPhoto.split(",")[1]?.length ?? 0) : 0;
-    console.log(`[AI Vision] isSampleRun=${isSampleRun} | room ~${Math.round(roomB64Len * 0.75)} bytes | refs=${Array.isArray(referenceImages) ? referenceImages.length : 0}`);
-    // ─────────────────────────────────────────────────────────────────────────
-
     // ── Validate inputs ────────────────────────────────────────────────────────
     if (!roomPhoto || typeof roomPhoto !== "string") {
       return res.status(400).json({ error: "Room photo is required." });

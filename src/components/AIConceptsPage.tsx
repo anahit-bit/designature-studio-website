@@ -956,17 +956,10 @@ const AIConceptsPage: React.FC = () => {
     const urlToDataUrl = async (url: string, label: string): Promise<string> => {
       const res = await fetch(url);
       const blob = await res.blob();
-      // ── TEMP DIAG — Fix 3 ─────────────────────────────────────────────────
-      console.log(`[Sample fetch] ${label}: ${blob.size} bytes (type: ${blob.type})`);
-      // ─────────────────────────────────────────────────────────────────────
       return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => {
-          const dataUrl = reader.result as string;
-          const b64Len = dataUrl.split(',')[1]?.length ?? 0;
-          // base64 len * 0.75 ≈ decoded bytes
-          console.log(`[Sample b64]  ${label}: ~${Math.round(b64Len * 0.75)} decoded bytes`);
-          resolve(dataUrl);
+          resolve(reader.result as string);
         };
         reader.readAsDataURL(blob);
       });
@@ -2250,7 +2243,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
             <div className="flex-grow flex flex-col items-center justify-center py-10 px-6 overflow-y-auto">
               {/* Heading */}
               <div className="text-center mb-7">
-                <h3 className="font-display text-2xl font-medium text-[#0047AB] tracking-tight mb-1">
+                <h3 className="font-display text-[30px] md:text-[42px] font-light italic text-[#0047AB] tracking-tight leading-tight mb-2">
                   {t('aiVision.gallery.title')}
                 </h3>
                 <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-black/30">
