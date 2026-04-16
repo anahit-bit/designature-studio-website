@@ -9,7 +9,7 @@ const SHOWCASE_PRODUCTS = [
     retailer: 'West Elm',
     price: '$879.20',
     category: 'Sofas',
-    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353568/1_y8s9uz.webp',
+    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353545/1_y95xdr.webp',
   },
   {
     id: 2,
@@ -17,7 +17,7 @@ const SHOWCASE_PRODUCTS = [
     retailer: 'Article',
     price: '$699.00',
     category: 'Sofas',
-    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353568/2_yfu5gn.webp',
+    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353556/2_yr0zgm.webp',
   },
   {
     id: 3,
@@ -25,7 +25,7 @@ const SHOWCASE_PRODUCTS = [
     retailer: 'Article',
     price: '$899.00',
     category: 'Sofas',
-    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353568/3_iaypn4.webp',
+    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353556/3_tavpm4.webp',
   },
   // COFFEE TABLES
   {
@@ -34,7 +34,7 @@ const SHOWCASE_PRODUCTS = [
     retailer: 'West Elm',
     price: '$599.00',
     category: 'Coffee Tables',
-    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353568/4_dwcanu.webp',
+    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353556/4_dwcwnu.webp',
   },
   {
     id: 5,
@@ -42,7 +42,7 @@ const SHOWCASE_PRODUCTS = [
     retailer: 'Article',
     price: '$599.00',
     category: 'Coffee Tables',
-    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353568/5_evdiicn.webp',
+    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353556/5_qxzwzs.webp',
   },
   {
     id: 6,
@@ -50,7 +50,7 @@ const SHOWCASE_PRODUCTS = [
     retailer: 'Pottery Barn',
     price: '$1,799.00',
     category: 'Coffee Tables',
-    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353568/6_g4xw75.webp',
+    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353556/6_evdscn.webp',
   },
   // ARMCHAIRS
   {
@@ -59,7 +59,7 @@ const SHOWCASE_PRODUCTS = [
     retailer: 'West Elm',
     price: '$1,099.00',
     category: 'Armchairs',
-    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353568/7_pqb0vf.webp',
+    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353555/7_pg0ovf.webp',
   },
   {
     id: 8,
@@ -67,7 +67,7 @@ const SHOWCASE_PRODUCTS = [
     retailer: 'Article',
     price: '$999.00',
     category: 'Armchairs',
-    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353568/8_qprwr5.webp',
+    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353567/8_u4fu7z.webp',
   },
   {
     id: 9,
@@ -84,7 +84,7 @@ const SHOWCASE_PRODUCTS = [
     retailer: 'CB2',
     price: '$229.00',
     category: 'Ottoman \u0026 Poufs',
-    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353568/10_jmhzep.webp',
+    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353567/10_jmhnrp.webp',
   },
   {
     id: 11,
@@ -92,7 +92,7 @@ const SHOWCASE_PRODUCTS = [
     retailer: 'CB2',
     price: '$229.00',
     category: 'Ottoman \u0026 Poufs',
-    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353568/11_avehw7.webp',
+    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353567/11_ewhuv7.jpg',
   },
   {
     id: 12,
@@ -100,11 +100,11 @@ const SHOWCASE_PRODUCTS = [
     retailer: 'Pottery Barn',
     price: '$399.00',
     category: 'Ottoman \u0026 Poufs',
-    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353568/1_y85uxf.webp',
+    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353568/9_k4gfiy.webp',
   },
 ];
 
-const HERO_IMAGE = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353568/photo_jpg_xfnu5u.jpg';
+const HERO_IMAGE = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776352832/photo.jpg_xfnuou.jpg';
 
 // ─── Animation ───────────────────────────────────────────────────────────────
 const fadeUp = {
