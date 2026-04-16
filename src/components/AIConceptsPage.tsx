@@ -337,6 +337,8 @@ const AIConceptsPage: React.FC = () => {
   const processingRef = useRef<HTMLDivElement>(null);
   /** Set to true by handleTrySampleRoom; triggers handleGenerate once state settles */
   const pendingGenerateRef = useRef(false);
+  /** True while the only concept(s) in results[] came from a sample run — cleared on first real generation */
+  const lastGenWasSampleRef = useRef(false);
   const [isSampleLoading, setIsSampleLoading] = useState(false);
   /** Returns the localStorage key scoped to the current user (or anonymous). */
   const sampleRoomStorageKey = useCallback(
@@ -1031,8 +1033,10 @@ const AIConceptsPage: React.FC = () => {
     setError(null);
 
     if (!isVariation) {
-      // Archive current results before starting fresh so thumbnails accumulate
-      if (results.length > 0) {
+      // Archive current results before starting fresh so thumbnails accumulate.
+      // Exception: sample-run results are silently discarded on the first real generation —
+      // they should never persist into the user's own concept strip.
+      if (results.length > 0 && !lastGenWasSampleRef.current) {
         setSessionConceptArchive(prev => {
           const next = [...prev];
           for (const r of results) {
@@ -1086,6 +1090,10 @@ const AIConceptsPage: React.FC = () => {
 
       const generatedImage: string = data.conceptUrl;
 
+      // Track whether this result came from a sample run so the archive
+      // logic above can skip it on the next real generation.
+      lastGenWasSampleRef.current = isSampleRun;
+
       if (isVariation) {
         setResults(prev => {
           const newResults = [...prev, generatedImage];
@@ -1125,13 +1133,17 @@ const AIConceptsPage: React.FC = () => {
   };
 
   const handleReset = () => {
-    setSessionConceptArchive((prev) => {
-      const next = [...prev];
-      for (const r of results) {
-        if (!next.includes(r)) next.push(r);
-      }
-      return next;
-    });
+    // Don't archive sample-run results — they shouldn't persist in the user's strip
+    if (!lastGenWasSampleRef.current) {
+      setSessionConceptArchive((prev) => {
+        const next = [...prev];
+        for (const r of results) {
+          if (!next.includes(r)) next.push(r);
+        }
+        return next;
+      });
+    }
+    lastGenWasSampleRef.current = false;
     setResults([]);
     setSelectedConceptIndex(0);
     setInspirationImages([]);

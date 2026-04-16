@@ -57,21 +57,15 @@ function normalizeUserForFreeTier(user: User): { user: User; changed: boolean } 
   let changed = false;
   const u = { ...user };
   const isUnlimited = isConceptTestAccountEmail(u.email);
-  const isPaidAccount = isUnlimited || u.isPaid === true;
 
   if (isUnlimited) {
-    // Unlimited accounts — force 999, never clamp
+    // Unlimited accounts (owner/demo) — force 999, never clamp
     if (u.generationsLeft !== 999) { u.generationsLeft = 999; changed = true; }
     if (u.shoppingListsLeft !== 999) { u.shoppingListsLeft = 999; changed = true; }
-  } else if (isPaidAccount) {
-    // Paid accounts — don't cap, just migrate missing values
-    if (typeof u.shoppingListsLeft !== "number" || Number.isNaN(u.shoppingListsLeft)) {
-      u.shoppingListsLeft = 10;
-      changed = true;
-    }
-    if (u.generationsLeft > 999) { u.generationsLeft = 999; changed = true; }
   } else {
-    // Free tier — cap at FREE_TIER limits
+    // Everyone else — enforce free-tier caps regardless of isPaid flag.
+    // (No paid tier exists yet; isPaid on the user record is only used for
+    //  audit access in the API response, not for quota bypass.)
     if (u.generationsLeft > FREE_TIER_MAX_CONCEPTS) {
       u.generationsLeft = FREE_TIER_MAX_CONCEPTS;
       changed = true;
