@@ -2227,20 +2227,56 @@ const AIConceptsPage: React.FC = () => {
 
           {/* Not logged in — shopping list */}
           {!authLoading && !user && activeTool === 'shopping' && (
-            <div className="flex-grow flex flex-col items-center justify-center gap-6 py-20 px-8 text-center bg-white">
-              <div className="w-16 h-16 border border-black/8 flex items-center justify-center text-black/10 text-3xl">◎</div>
-              <h3 className="font-display text-2xl font-light text-black/30 tracking-tight">
-                Shop any interior
-              </h3>
-              <p className="text-sm text-black/30 uppercase tracking-[0.2em] leading-[2]">
-                Free · 3 shopping lists · PDF included
-              </p>
+            <div className="flex-grow flex flex-col gap-5 py-8 px-8 bg-white overflow-y-auto">
+
+              {/* Benefits list */}
+              <div>
+                <p className="text-sm font-bold text-black mb-3">What you'll get:</p>
+                <ul className="flex flex-col gap-2.5">
+                  {[
+                    '4 key furniture pieces identified',
+                    '12 real products with live pricing',
+                    'Direct links to trusted retailers',
+                    'No affiliate fees or sponsored results',
+                  ].map((item) => (
+                    <li key={item} className="flex items-center gap-3">
+                      <span className="w-4 h-4 flex-shrink-0 flex items-center justify-center bg-[#22c55e] text-white text-[9px] font-bold rounded-full">✓</span>
+                      <span className="text-[13px] text-black/70 leading-snug">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Sample product grid */}
+              <div>
+                <p className="text-[11px] text-black/40 mb-3 text-center">Example result from our showcase:</p>
+                <div className="grid grid-cols-2 gap-3 w-full">
+                  {[
+                    { image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353545/1_y95xdr.webp', name: 'Eddy Sofa', retailer: 'West Elm' },
+                    { image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353556/4_dwcwnu.webp', name: 'Anton Coffee Table', retailer: 'West Elm' },
+                    { image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353555/7_pg0ovf.webp', name: 'Fillmore Chair', retailer: 'West Elm' },
+                    { image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353567/10_jmhnrp.webp', name: 'Square Brown Pouf', retailer: 'CB2' },
+                  ].map((p) => (
+                    <div key={p.name} className="bg-white text-center" style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: 10 }}>
+                      <div className="overflow-hidden w-full" style={{ aspectRatio: '4/3', borderRadius: 4, marginBottom: 8 }}>
+                        <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                      </div>
+                      <p className="text-[11px] font-medium text-black leading-tight truncate">{p.name}</p>
+                      <p className="text-[10px] text-black/40 mt-0.5">{p.retailer}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-2.5 text-[10px] text-black/30 text-center">Upload your room to get personalised results</p>
+              </div>
+
+              {/* CTA */}
               <button
                 onClick={() => triggerGoogleSignIn()}
-                className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.25em] px-5 py-3 hover:bg-[#003d99] transition-colors"
+                className="self-start inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.25em] px-6 py-3 hover:bg-[#003d99] transition-colors"
               >
-                Shop any interior →
+                Start for free — no card needed →
               </button>
+
             </div>
           )}
 
@@ -3170,7 +3206,50 @@ const AIConceptsPage: React.FC = () => {
                           )}
                         </div>
                       </div>
-                      <div className="flex-grow" />
+                      {/* Right panel — preview content */}
+                      <div className="flex-grow border-t border-black/8 lg:border-t-0 px-8 py-6 flex flex-col gap-5 bg-white">
+
+                        {/* Benefits */}
+                        <div>
+                          <p className="text-sm font-bold text-black mb-3">What you'll get:</p>
+                          <ul className="flex flex-col gap-2.5">
+                            {[
+                              '4 key furniture pieces identified',
+                              '12 real products with live pricing',
+                              'Direct links to trusted retailers',
+                              'No affiliate fees or sponsored results',
+                            ].map((item) => (
+                              <li key={item} className="flex items-center gap-3">
+                                <span className="w-4 h-4 flex-shrink-0 flex items-center justify-center bg-[#22c55e] text-white text-[9px] font-bold rounded-full">✓</span>
+                                <span className="text-[13px] text-black/70 leading-snug">{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        {/* Sample product grid */}
+                        <div>
+                          <p className="text-[11px] text-black/40 mb-3 text-center">Example result from our showcase:</p>
+                          <div className="grid grid-cols-2 gap-3 w-full">
+                            {[
+                              { image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353545/1_y95xdr.webp', name: 'Eddy Sofa', retailer: 'West Elm' },
+                              { image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353556/4_dwcwnu.webp', name: 'Anton Coffee Table', retailer: 'West Elm' },
+                              { image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353555/7_pg0ovf.webp', name: 'Fillmore Chair', retailer: 'West Elm' },
+                              { image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353567/10_jmhnrp.webp', name: 'Square Brown Pouf', retailer: 'CB2' },
+                            ].map((p) => (
+                              <div key={p.name} className="bg-white text-center" style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: 10 }}>
+                                <div className="overflow-hidden w-full" style={{ aspectRatio: '4/3', borderRadius: 4, marginBottom: 8 }}>
+                                  <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                                </div>
+                                <p className="text-[11px] font-medium text-black leading-tight truncate">{p.name}</p>
+                                <p className="text-[10px] text-black/40 mt-0.5">{p.retailer}</p>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="mt-2.5 text-[10px] text-black/30 text-center">Upload your room to get personalised results</p>
+                        </div>
+
+                      </div>
                       </div>
                     )}
                   </div>

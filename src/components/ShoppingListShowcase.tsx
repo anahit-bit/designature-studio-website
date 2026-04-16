@@ -143,9 +143,8 @@ export default function ShoppingListShowcase({ onRequestLogin }: Props) {
             From concept to cart
           </h2>
           <p className="text-sm text-black/45 leading-relaxed mx-auto max-w-xl">
-            Our AI analyzed this living room concept and identified 4 key furniture pieces.
-            We found real products from trusted retailers that match the style
-            &#8212; no affiliate fees, no sponsored placements.
+            Our AI identified 4 key pieces in this room and found matching products from trusted
+            retailers &#8212; no affiliate fees, just real products that fit the style.
           </p>
         </motion.div>
 
@@ -184,7 +183,7 @@ export default function ShoppingListShowcase({ onRequestLogin }: Props) {
         </motion.div>
 
         {/* ── Product grid ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 w-full">
           {SHOWCASE_PRODUCTS.map((product, i) => (
             <motion.div
               key={product.id}
@@ -242,7 +241,7 @@ export default function ShoppingListShowcase({ onRequestLogin }: Props) {
             onClick={onRequestLogin}
             className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.25em] px-7 py-4 hover:bg-[#003d99] transition-colors"
           >
-            Try this tool &#8212; no card needed &#8594;
+            Start for free &#8212; no card needed &#8594;
           </button>
           <p className="text-[9px] text-black/55 uppercase tracking-[0.2em]">
             Free &#183; 3 shopping lists &#183; PDF download
