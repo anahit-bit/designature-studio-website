@@ -70,7 +70,7 @@ export async function extractStyleBrief(
     inlineData: { mimeType, data },
   }));
 
-  const generationConfig = { temperature: 0.4, maxOutputTokens: 2000 };
+  const generationConfig = { temperature: 0.4, maxOutputTokens: 8192 };
 
   const totalPayloadBytes = imageParts.reduce((sum, p) => sum + (p.inlineData?.data?.length ?? 0), 0);
   console.log("[ai-vision] Total Step 1 payload:", totalPayloadBytes, "base64 chars (~" + Math.round(totalPayloadBytes * 0.75 / 1024) + " KB decoded)");
