@@ -44,29 +44,36 @@ export async function extractStyleBrief(
 
   const ai = new GoogleGenAI({ apiKey });
 
-  // ── Preprocess reference images: resize large files before sending to Gemini ──
+  // ── Aggressively downsize references for Step 1 style extraction ──────────
+  // Step 1 only reads colors, materials, textures, and mood — 512px is plenty.
+  // Smaller payload = faster Gemini response = full brief returned on Railway.
+  async function preprocessReferenceForExtraction(buf: Buffer): Promise<Buffer> {
+    const resized = await sharp(buf)
+      .rotate()
+      .resize({ width: 512, height: 512, fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 70 })
+      .toBuffer();
+    console.log("[ai-vision] Ref for extraction resized:", buf.length, "->", resized.length, "bytes");
+    return resized;
+  }
+
   const processedRefs = await Promise.all(
-    input.referenceImageData.map(async ({ data, mimeType }, idx) => {
+    input.referenceImageData.map(async ({ data }) => {
       const rawBuffer = Buffer.from(data, "base64");
-      if (rawBuffer.length <= 1_500_000) {
-        return { data, mimeType };
-      }
-      const resized = await sharp(rawBuffer)
-        .rotate()
-        .resize({ width: 1536, height: 1536, fit: "inside", withoutEnlargement: true })
-        .jpeg({ quality: 85 })
-        .toBuffer();
-      console.log(`Reference ${idx + 1} resized: ${rawBuffer.length} -> ${resized.length} bytes`);
+      const resized = await preprocessReferenceForExtraction(rawBuffer);
       return { data: resized.toString("base64"), mimeType: "image/jpeg" };
     })
   );
-  // ─────────────────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────────────
 
   const imageParts = processedRefs.map(({ data, mimeType }) => ({
     inlineData: { mimeType, data },
   }));
 
   const generationConfig = { temperature: 0.4, maxOutputTokens: 2000 };
+
+  const totalPayloadBytes = imageParts.reduce((sum, p) => sum + (p.inlineData?.data?.length ?? 0), 0);
+  console.log("[ai-vision] Total Step 1 payload:", totalPayloadBytes, "base64 chars (~" + Math.round(totalPayloadBytes * 0.75 / 1024) + " KB decoded)");
 
   console.log("[ai-vision-debug] About to call Gemini for style extraction");
   console.log("[ai-vision-debug] Model:", "gemini-2.5-flash");
