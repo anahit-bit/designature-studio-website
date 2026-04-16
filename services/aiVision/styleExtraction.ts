@@ -7,6 +7,7 @@
  */
 
 import { GoogleGenAI } from "@google/genai";
+import sharp from "sharp";
 import type { StylePreset } from "./stylePresets.js";
 import { STYLE_BRIEFS } from "./stylePresets.js";
 import { STYLE_EXTRACTION_PROMPT } from "./promptTemplates.js";
@@ -43,7 +44,25 @@ export async function extractStyleBrief(
 
   const ai = new GoogleGenAI({ apiKey });
 
-  const imageParts = input.referenceImageData.map(({ data, mimeType }) => ({
+  // ── Preprocess reference images: resize large files before sending to Gemini ──
+  const processedRefs = await Promise.all(
+    input.referenceImageData.map(async ({ data, mimeType }, idx) => {
+      const rawBuffer = Buffer.from(data, "base64");
+      if (rawBuffer.length <= 1_500_000) {
+        return { data, mimeType };
+      }
+      const resized = await sharp(rawBuffer)
+        .rotate()
+        .resize({ width: 1536, height: 1536, fit: "inside", withoutEnlargement: true })
+        .jpeg({ quality: 85 })
+        .toBuffer();
+      console.log(`Reference ${idx + 1} resized: ${rawBuffer.length} -> ${resized.length} bytes`);
+      return { data: resized.toString("base64"), mimeType: "image/jpeg" };
+    })
+  );
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const imageParts = processedRefs.map(({ data, mimeType }) => ({
     inlineData: { mimeType, data },
   }));
 

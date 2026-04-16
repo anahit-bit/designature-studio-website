@@ -2270,7 +2270,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                     src={INSPIRATION_GALLERY.roomPhotoUrl}
                     alt="Sample room"
                     className="rounded-sm border border-black/8 object-cover"
-                    style={{ width: 'min(200px, 55vw)' }}
+                    style={{ width: 'min(320px, 70vw)' }}
                   />
                 </div>
 
@@ -2286,7 +2286,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
                         src={url}
                         alt={`Reference ${i + 1}`}
                         className="rounded-sm border border-black/8 object-cover flex-shrink-0"
-                        style={{ width: 'min(110px, 25vw)', height: 'min(110px, 25vw)' }}
+                        style={{ width: 'min(180px, 38vw)', height: 'min(180px, 38vw)' }}
                       />
                     ))}
                   </div>
