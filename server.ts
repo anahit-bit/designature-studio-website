@@ -10,6 +10,9 @@ import path from "path";
 import { google } from "googleapis";
 import * as net from "net";
 
+// ─── Gemini SDK (used by shopping identify + room audit endpoints) ─────────────
+import { GoogleGenAI } from "@google/genai";
+
 // ─── AI Vision pipeline services ──────────────────────────────────────────────
 import { extractStyleBrief } from "./services/aiVision/styleExtraction.js";
 import { generateConceptImage } from "./services/aiVision/imageGeneration.js";
@@ -646,6 +649,58 @@ async function startServer() {
     }
   });
 
+  // ── POST /api/shopping/identify — identify furniture items from an image ──
+  app.post("/api/shopping/identify", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+
+    const { imageDataUrl } = req.body ?? {};
+    if (!imageDataUrl || typeof imageDataUrl !== "string") {
+      return res.status(400).json({ error: "imageDataUrl is required." });
+    }
+    const matches = imageDataUrl.match(/^data:(image\/[\w+]+);base64,(.+)$/);
+    if (!matches) return res.status(400).json({ error: "Invalid image format." });
+
+    try {
+      const apiKey = process.env.GEMINI_API_KEY ?? "";
+      if (!apiKey) throw new Error("GEMINI_API_KEY is not set.");
+      const ai = new GoogleGenAI({ apiKey });
+
+      const identifyPrompt = `You are a professional interior design sourcing assistant.
+Look at this interior design image and identify the 3-4 most prominent furniture pieces.
+For each piece write a specific retail search query to find it on sites like Wayfair, West Elm, CB2.
+Output ONLY valid JSON with no markdown fences, no explanation:
+{"items":[{"category":"Sofa","description":"Round pink velvet sofa modern","search_query":"round pink velvet sofa modern"},{"category":"Coffee Table","description":"Round marble coffee table","search_query":"round white marble coffee table"}]}`;
+
+      const geminiRes = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: {
+          parts: [
+            { inlineData: { mimeType: matches[1], data: matches[2] } },
+            { text: identifyPrompt },
+          ],
+        },
+      });
+
+      const rawText: string =
+        (geminiRes as any).text ??
+        geminiRes?.candidates?.[0]?.content?.parts
+          ?.map((p: any) => p.text ?? "")
+          .join("") ?? "";
+      const cleaned = rawText.replace(/```json|```/g, "").trim();
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        return res.status(422).json({ error: "Could not identify furniture items from the image." });
+      }
+      const identified = JSON.parse(jsonMatch[0]);
+      return res.json({ items: identified.items || [] });
+
+    } catch (err: any) {
+      console.error("[Shopping] identify error:", err?.message ?? err);
+      return res.status(500).json({ error: "Could not identify items. Please try again." });
+    }
+  });
+
   // ── POST /api/shopping/search — Serper.dev Google Shopping API ──
   app.post("/api/shopping/search", async (req, res) => {
     try {
@@ -1146,6 +1201,74 @@ async function startServer() {
       return res
         .status(500)
         .json({ error: "Concept generation failed. Please try again." });
+    }
+  });
+
+  // ── POST /api/room-audit/analyze — run Gemini room audit server-side ──
+  app.post("/api/room-audit/analyze", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+
+    const { imageDataUrl, goals = [] } = req.body ?? {};
+    if (!imageDataUrl || typeof imageDataUrl !== "string") {
+      return res.status(400).json({ error: "imageDataUrl is required." });
+    }
+    const matches = imageDataUrl.match(/^data:(image\/[\w+]+);base64,(.+)$/);
+    if (!matches) return res.status(400).json({ error: "Invalid image format." });
+
+    try {
+      const apiKey = process.env.GEMINI_API_KEY ?? "";
+      if (!apiKey) throw new Error("GEMINI_API_KEY is not set.");
+      const ai = new GoogleGenAI({ apiKey });
+
+      const goalContext = Array.isArray(goals) && goals.length > 0
+        ? `\nThe homeowner's goals: ${goals.join(", ")}.`
+        : "";
+
+      const prompt = `You are an expert interior designer performing a professional room audit.
+Analyze this room photo and produce a structured design audit.${goalContext}
+
+Score each of these 6 dimensions from 1-10 and write 1-2 sentences explaining the score:
+1. Layout & Flow — furniture arrangement, traffic paths, spatial balance
+2. Lighting — natural light use, layered lighting, ambiance
+3. Color Harmony — palette cohesion, contrast, mood
+4. Clutter & Organization — visual cleanliness, storage use
+5. Functionality — practical use of space, ergonomics
+6. Style Cohesion — consistency of design language, intentionality
+
+Then calculate an overall score from 1-100 (weighted average, not a simple mean — layout and functionality matter more).
+
+Finally, list exactly 3 "Fix Now" items — the highest-impact, most actionable improvements the homeowner can make immediately.
+
+Output ONLY valid JSON with no markdown fences, no explanation:
+{"overallScore":72,"dimensions":[{"label":"Layout & Flow","score":7,"verdict":"The sofa placement creates a clear conversation zone, but the dining table blocks the path to the balcony."},{"label":"Lighting","score":5,"verdict":"..."},{"label":"Color Harmony","score":8,"verdict":"..."},{"label":"Clutter & Organization","score":6,"verdict":"..."},{"label":"Functionality","score":7,"verdict":"..."},{"label":"Style Cohesion","score":6,"verdict":"..."}],"fixNow":["Move the dining table 30cm left to open the balcony path","Add a floor lamp in the dark corner by the bookshelf","Replace the mismatched throw pillows with a cohesive neutral set"]}`;
+
+      const geminiRes = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: {
+          parts: [
+            { inlineData: { mimeType: matches[1], data: matches[2] } },
+            { text: prompt },
+          ],
+        },
+      });
+
+      const rawText: string =
+        (geminiRes as any).text ??
+        geminiRes?.candidates?.[0]?.content?.parts
+          ?.map((p: any) => p.text ?? "")
+          .join("") ?? "";
+      const cleaned = rawText.replace(/```json|```/g, "").trim();
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        return res.status(422).json({ error: "Could not parse audit results." });
+      }
+      const parsed = JSON.parse(jsonMatch[0]);
+      return res.json({ result: parsed });
+
+    } catch (err: any) {
+      console.error("[Room Audit] analyze error:", err?.message ?? err);
+      return res.status(500).json({ error: "Audit failed. Please try again." });
     }
   });
 

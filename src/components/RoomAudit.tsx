@@ -1,7 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { AlertCircle, RefreshCw, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GoogleGenAI } from "@google/genai";
 import { getStoredToken } from '../sessionClient';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -159,51 +158,22 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
         quotaConsumed = true;
       }
 
-      const apiKey = process.env.GEMINI_API_KEY || '';
-      if (!apiKey) throw new Error('GEMINI_API_KEY not configured');
+      const token = getStoredToken();
+      if (!token) throw new Error('Not authenticated');
 
-      const ai = new GoogleGenAI({ apiKey });
-      const matches = roomImage.match(/^data:(image\/[\w+]+);base64,(.+)$/);
-      if (!matches) throw new Error('Invalid image format');
+      const resolvedGoals = selectedGoals
+        .map(id => AUDIT_GOALS.find(g => g.id === id)?.label)
+        .filter(Boolean) as string[];
 
-      const goalContext = selectedGoals.length > 0
-        ? `\nThe homeowner's goals: ${selectedGoals.map(id => AUDIT_GOALS.find(g => g.id === id)?.label).filter(Boolean).join(', ')}.`
-        : '';
-
-      const prompt = `You are an expert interior designer performing a professional room audit.
-Analyze this room photo and produce a structured design audit.${goalContext}
-
-Score each of these 6 dimensions from 1-10 and write 1-2 sentences explaining the score:
-1. Layout & Flow — furniture arrangement, traffic paths, spatial balance
-2. Lighting — natural light use, layered lighting, ambiance
-3. Color Harmony — palette cohesion, contrast, mood
-4. Clutter & Organization — visual cleanliness, storage use
-5. Functionality — practical use of space, ergonomics
-6. Style Cohesion — consistency of design language, intentionality
-
-Then calculate an overall score from 1-100 (weighted average, not a simple mean — layout and functionality matter more).
-
-Finally, list exactly 3 "Fix Now" items — the highest-impact, most actionable improvements the homeowner can make immediately.
-
-Output ONLY valid JSON with no markdown fences, no explanation:
-{"overallScore":72,"dimensions":[{"label":"Layout & Flow","score":7,"verdict":"The sofa placement creates a clear conversation zone, but the dining table blocks the path to the balcony."},{"label":"Lighting","score":5,"verdict":"..."},{"label":"Color Harmony","score":8,"verdict":"..."},{"label":"Clutter & Organization","score":6,"verdict":"..."},{"label":"Functionality","score":7,"verdict":"..."},{"label":"Style Cohesion","score":6,"verdict":"..."}],"fixNow":["Move the dining table 30cm left to open the balcony path","Add a floor lamp in the dark corner by the bookshelf","Replace the mismatched throw pillows with a cohesive neutral set"]}`;
-
-      const geminiRes = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: {
-          parts: [
-            { inlineData: { mimeType: matches[1], data: matches[2] } },
-            { text: prompt },
-          ],
-        },
+      const analyzeRes = await fetch('/api/room-audit/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-session-token': token },
+        body: JSON.stringify({ imageDataUrl: roomImage, goals: resolvedGoals }),
       });
+      const analyzeData = await analyzeRes.json().catch(() => ({}));
+      if (!analyzeRes.ok) throw new Error(analyzeData?.error || 'Audit failed');
 
-      const rawText = geminiRes?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      const cleaned = rawText.replace(/```json|```/g, '').trim();
-      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('Could not parse audit results');
-
-      const parsed: AuditResult = JSON.parse(jsonMatch[0]);
+      const parsed: AuditResult = analyzeData.result;
       if (
         typeof parsed.overallScore !== 'number' ||
         !Array.isArray(parsed.dimensions) ||

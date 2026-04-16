@@ -1450,30 +1450,14 @@ const AIConceptsPage: React.FC = () => {
       if (overrideItems) {
         itemsToSearch = overrideItems;
       } else {
-        const apiKey = process.env.GEMINI_API_KEY || '';
-        if (!apiKey) throw new Error('GEMINI_API_KEY not configured');
-        const ai = new GoogleGenAI({ apiKey });
-        const imageDataUrl = imageToAnalyse!;
-        const matches = imageDataUrl.match(/^data:(image\/[\w+]+);base64,(.+)$/);
-        if (!matches) throw new Error('Invalid image format');
-
-        const identifyPrompt = `You are a professional interior design sourcing assistant.
-Look at this interior design image and identify the 3-4 most prominent furniture pieces.
-For each piece write a specific retail search query to find it on sites like Wayfair, West Elm, CB2.
-Output ONLY valid JSON with no markdown fences, no explanation:
-{"items":[{"category":"Sofa","description":"Round pink velvet sofa modern","search_query":"round pink velvet sofa modern"},{"category":"Coffee Table","description":"Round marble coffee table","search_query":"round white marble coffee table"}]}`;
-
-        const geminiRes = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: { parts: [{ inlineData: { mimeType: matches[1], data: matches[2] } }, { text: identifyPrompt }] }
+        const identifyRes = await apiFetch('/api/shopping/identify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageDataUrl: imageToAnalyse }),
         });
-
-        const rawText = geminiRes?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-        const cleaned = rawText.replace(/```json|```/g, "").trim();
-        const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error("Could not identify furniture items");
-        const identified = JSON.parse(jsonMatch[0]);
-        itemsToSearch = identified.items || [];
+        const identifyData = await identifyRes.json();
+        if (!identifyRes.ok) throw new Error(identifyData?.error || 'Could not identify items');
+        itemsToSearch = identifyData.items || [];
         setShoppingItems(itemsToSearch);
       }
 
