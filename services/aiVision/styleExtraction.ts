@@ -93,8 +93,16 @@ export async function extractStyleBrief(
 
   const briefText = text.trim();
 
-  if (briefText.length < 500) {
-    console.error("[ai-vision] Style brief suspiciously short (%d chars) — extraction may have failed", briefText.length);
+  console.log("[ai-vision] Brief extracted, length:", briefText.length);
+
+  if (briefText.length < 800) {
+    console.error("[ai-vision] CRITICAL: Brief too short (" + briefText.length + " chars) — aborting to prevent weak Step 2 output");
+    console.error("[ai-vision] Full brief:", briefText);
+    throw new Error("Style extraction produced an incomplete brief. Please try again.");
+  }
+
+  if (briefText.length < 1500) {
+    console.warn("[ai-vision] WARNING: Brief shorter than expected (" + briefText.length + " chars). Output may be less specific than usual.");
   }
 
   return briefText;

@@ -1144,6 +1144,11 @@ async function startServer() {
           .status(429)
           .json({ error: "Generation quota exceeded. Please try again shortly." });
       }
+      if (msg.includes("incomplete brief")) {
+        return res
+          .status(503)
+          .json({ error: "We hit a snag generating your concept. Please try again." });
+      }
       return res
         .status(500)
         .json({ error: "Concept generation failed. Please try again." });
