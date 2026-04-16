@@ -1285,45 +1285,6 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     res.json({ total: users.length, users });
   });
 
-  // ── Diagnostic endpoint (temporary — remove after debugging) ──────────────
-  app.get("/api/debug/env", (req, res) => {
-    let googleGenaiVersion: string | null = null;
-    let googleGenaiNewVersion: string | null = null;
-    let sharpVersion: string | null = null;
-    try {
-      const pkg = JSON.parse(readFileSync("node_modules/@google/generative-ai/package.json", "utf-8"));
-      googleGenaiVersion = pkg.version ?? null;
-    } catch {}
-    try {
-      const pkg2 = JSON.parse(readFileSync("node_modules/@google/genai/package.json", "utf-8"));
-      googleGenaiNewVersion = pkg2.version ?? null;
-    } catch {}
-    try {
-      const pkg3 = JSON.parse(readFileSync("node_modules/sharp/package.json", "utf-8"));
-      sharpVersion = pkg3.version ?? null;
-    } catch {}
-
-    res.json({
-      nodeVersion: process.version,
-      platform: process.platform,
-      arch: process.arch,
-      memoryUsage: process.memoryUsage(),
-      env: {
-        NODE_ENV: process.env.NODE_ENV,
-        hasGeminiApiKey: !!process.env.GEMINI_API_KEY,
-        geminiApiKeyPrefix: process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.slice(0, 8) + "..." : null,
-        hasGoogleApiKey: !!process.env.GOOGLE_API_KEY,
-        googleApiKeyPrefix: process.env.GOOGLE_API_KEY ? process.env.GOOGLE_API_KEY.slice(0, 8) + "..." : null,
-      },
-      packages: {
-        "@google/generative-ai": googleGenaiVersion,
-        "@google/genai": googleGenaiNewVersion,
-        sharp: sharpVersion,
-      },
-    });
-  });
-  // ──────────────────────────────────────────────────────────────────────────
-
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     // Vite default HMR WebSocket port 24678 often conflicts.

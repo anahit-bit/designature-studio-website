@@ -76,16 +76,6 @@ export async function extractStyleBrief(
     thinkingConfig: { thinkingBudget: 1024 },
   };
 
-  const totalPayloadBytes = imageParts.reduce((sum, p) => sum + (p.inlineData?.data?.length ?? 0), 0);
-  console.log("[ai-vision] Total Step 1 payload:", totalPayloadBytes, "base64 chars (~" + Math.round(totalPayloadBytes * 0.75 / 1024) + " KB decoded)");
-
-  console.log("[ai-vision-debug] About to call Gemini for style extraction");
-  console.log("[ai-vision-debug] Model:", "gemini-2.5-flash");
-  console.log("[ai-vision-debug] Image parts count:", imageParts.length);
-  console.log("[ai-vision-debug] Image parts sizes:", imageParts.map(p => p.inlineData?.data?.length ?? 0));
-  console.log("[ai-vision-debug] generationConfig:", JSON.stringify(generationConfig));
-  console.log("[ai-vision-debug] Prompt length:", STYLE_EXTRACTION_PROMPT.length);
-
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
     contents: {
@@ -93,14 +83,6 @@ export async function extractStyleBrief(
     },
     config: generationConfig as any,
   });
-
-  console.log("[ai-vision-debug] Raw response type:", typeof response);
-  console.log("[ai-vision-debug] Has candidates:", !!response?.candidates);
-  console.log("[ai-vision-debug] Candidates count:", response?.candidates?.length ?? 0);
-  console.log("[ai-vision-debug] Parts count:", response?.candidates?.[0]?.content?.parts?.length ?? 0);
-  console.log("[ai-vision-debug] Parts texts:", response?.candidates?.[0]?.content?.parts?.map((p: any) => (p.text ?? "").length) ?? []);
-  console.log("[ai-vision-debug] response.text length:", (typeof (response as any).text === "string") ? (response as any).text.length : "not a string");
-  console.log("[ai-vision-debug] finishReason:", (response as any)?.candidates?.[0]?.finishReason ?? "unknown");
 
   // Extract text — join ALL parts in case the SDK splits the response
   const text: string =

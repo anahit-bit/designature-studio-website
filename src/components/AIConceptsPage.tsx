@@ -2108,10 +2108,7 @@ const AIConceptsPage: React.FC = () => {
                 </div>
 
                 {validationError && (
-                  <div className="flex items-start gap-2 text-red-500">
-                    <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm md:text-base font-bold uppercase tracking-widest leading-relaxed">{validationError}</p>
-                  </div>
+                  <p className="text-[10px] text-black/45 leading-relaxed">{validationError}</p>
                 )}
 
                 {(user?.generationsLeft ?? 0) <= 0 && (
@@ -2351,17 +2348,19 @@ const AIConceptsPage: React.FC = () => {
 
               </div>
 
-              {/* Try sample room CTA */}
-              <button
-                onClick={handleTrySampleRoom}
-                disabled={isProcessing || isSampleLoading || (user?.generationsLeft ?? 0) <= 0}
-                className="mt-8 bg-black text-white text-[9px] font-bold uppercase tracking-[0.3em] px-8 py-4 hover:bg-black/80 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {isSampleLoading && (
-                  <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
-                )}
-                {t('aiVision.gallery.tryItButton')}
-              </button>
+              {/* Try sample room CTA — hidden once user has already tried the sample */}
+              {!localStorage.getItem(sampleRoomStorageKey()) && (
+                <button
+                  onClick={handleTrySampleRoom}
+                  disabled={isProcessing || isSampleLoading || (user?.generationsLeft ?? 0) <= 0}
+                  className="mt-8 bg-black text-white text-[9px] font-bold uppercase tracking-[0.3em] px-8 py-4 hover:bg-black/80 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isSampleLoading && (
+                    <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
+                  )}
+                  {t('aiVision.gallery.tryItButton')}
+                </button>
+              )}
 
               {/* Feedback CTA — lives here in the empty state, below the sample-room button */}
               <button

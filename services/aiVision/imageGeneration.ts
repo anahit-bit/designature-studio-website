@@ -65,7 +65,6 @@ export async function generateConceptImage(
   const generateOne = async (retryCount = 0): Promise<string> => {
     let response: any;
     try {
-      console.log("[ai-vision] Step 2: calling gemini-2.5-flash-image for concept generation...");
       response = await ai.models.generateContent({
         model: "gemini-2.5-flash-image",
         contents: {
@@ -84,7 +83,6 @@ export async function generateConceptImage(
           responseModalities: ["IMAGE"],
         } as any,
       });
-      console.log("[ai-vision] Step 2: response received");
     } catch (err: any) {
       console.error("[ai-vision] Step 2 FAILED:", err?.message ?? err);
       console.error("[ai-vision] Step 2 error details:", JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
