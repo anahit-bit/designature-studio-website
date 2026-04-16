@@ -338,8 +338,11 @@ const AIConceptsPage: React.FC = () => {
   /** Set to true by handleTrySampleRoom; triggers handleGenerate once state settles */
   const pendingGenerateRef = useRef(false);
   const [isSampleLoading, setIsSampleLoading] = useState(false);
-  /** True once the sample room has been run this session — prevents repeat free runs */
-  const sampleRunUsedRef = useRef(false);
+  /** Returns the localStorage key scoped to the current user (or anonymous). */
+  const sampleRoomStorageKey = useCallback(
+    () => (user ? `sampleRoomUsed:${user.email}` : 'sampleRoomUsed:anonymous'),
+    [user]
+  );
   const PROCESSING_PHASES = [
     'Analysing spatial structure…',
     'Reading light and proportion…',
@@ -943,12 +946,13 @@ const AIConceptsPage: React.FC = () => {
   const handleTrySampleRoom = async () => {
     if (!user) { triggerGoogleSignIn(); return; }
     if (isProcessing || isSampleLoading) return;
-    if (sampleRunUsedRef.current) {
+    const storageKey = sampleRoomStorageKey();
+    if (localStorage.getItem(storageKey)) {
       setValidationError(t('aiVision.gallery.sampleAlreadyRun'));
       return;
     }
     // Mark as used immediately so double-clicks don't slip through
-    sampleRunUsedRef.current = true;
+    localStorage.setItem(storageKey, '1');
 
     setIsSampleLoading(true);
     setValidationError(null);
@@ -1000,7 +1004,7 @@ const AIConceptsPage: React.FC = () => {
     } catch (err) {
       console.error('[Sample room] fetch error:', err);
       setValidationError('Could not load sample images. Please try again.');
-      sampleRunUsedRef.current = false; // allow retry on network failure
+      localStorage.removeItem(storageKey); // allow retry on network failure
     } finally {
       setIsSampleLoading(false);
     }
