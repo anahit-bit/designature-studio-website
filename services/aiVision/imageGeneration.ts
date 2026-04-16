@@ -34,7 +34,7 @@ export async function generateConceptImage(
   const apiKey = process.env.GEMINI_API_KEY ?? "";
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set.");
 
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey, httpOptions: { timeout: 120000 } });
 
   const prompt = buildGenerationPrompt({
     styleBrief: input.styleBrief,
@@ -63,24 +63,33 @@ export async function generateConceptImage(
   // ─────────────────────────────────────────────────────────────────────────
 
   const generateOne = async (retryCount = 0): Promise<string> => {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-image",
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType: roomPhotoMime,
-              data: roomPhotoData,
+    let response: any;
+    try {
+      console.log("[ai-vision] Step 2: calling gemini-2.5-flash-image for concept generation...");
+      response = await ai.models.generateContent({
+        model: "gemini-2.5-flash-image",
+        contents: {
+          parts: [
+            {
+              inlineData: {
+                mimeType: roomPhotoMime,
+                data: roomPhotoData,
+              },
             },
-          },
-          { text: prompt },
-        ],
-      },
-      config: {
-        temperature: 0.4,
-        responseModalities: ["IMAGE"],
-      } as any,
-    });
+            { text: prompt },
+          ],
+        },
+        config: {
+          temperature: 0.4,
+          responseModalities: ["IMAGE"],
+        } as any,
+      });
+      console.log("[ai-vision] Step 2: response received");
+    } catch (err: any) {
+      console.error("[ai-vision] Step 2 FAILED:", err?.message ?? err);
+      console.error("[ai-vision] Step 2 error details:", JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
+      throw err;
+    }
 
     const parts: any[] =
       response?.candidates?.[0]?.content?.parts ?? [];
