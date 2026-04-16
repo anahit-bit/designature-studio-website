@@ -341,7 +341,7 @@ const AIConceptsPage: React.FC = () => {
   /** True while the only concept(s) in results[] came from a sample run — cleared on first real generation */
   const lastGenWasSampleRef = useRef(false);
   const [isSampleLoading, setIsSampleLoading] = useState(false);
-  /** Returns the localStorage key scoped to the current user (or anonymous). */
+  /** Returns the sessionStorage key scoped to the current user (or anonymous). */
   const sampleRoomStorageKey = useCallback(
     () => (user ? `sampleRoomUsed:${user.email}` : 'sampleRoomUsed:anonymous'),
     [user]
@@ -950,12 +950,12 @@ const AIConceptsPage: React.FC = () => {
     if (!user) { triggerGoogleSignIn(); return; }
     if (isProcessing || isSampleLoading) return;
     const storageKey = sampleRoomStorageKey();
-    if (localStorage.getItem(storageKey)) {
+    if (sessionStorage.getItem(storageKey)) {
       setValidationError(t('aiVision.gallery.sampleAlreadyRun'));
       return;
     }
     // Mark as used immediately so double-clicks don't slip through
-    localStorage.setItem(storageKey, '1');
+    sessionStorage.setItem(storageKey, '1');
 
     setIsSampleLoading(true);
     setValidationError(null);
@@ -1007,7 +1007,7 @@ const AIConceptsPage: React.FC = () => {
     } catch (err) {
       console.error('[Sample room] fetch error:', err);
       setValidationError('Could not load sample images. Please try again.');
-      localStorage.removeItem(storageKey); // allow retry on network failure
+      sessionStorage.removeItem(storageKey); // allow retry on network failure
     } finally {
       setIsSampleLoading(false);
     }
@@ -2349,7 +2349,7 @@ const AIConceptsPage: React.FC = () => {
               </div>
 
               {/* Try sample room CTA — hidden once user has already tried the sample */}
-              {!localStorage.getItem(sampleRoomStorageKey()) && (
+              {!sessionStorage.getItem(sampleRoomStorageKey()) && (
                 <button
                   onClick={handleTrySampleRoom}
                   disabled={isProcessing || isSampleLoading || (user?.generationsLeft ?? 0) <= 0}
