@@ -158,7 +158,7 @@ const PricingSection: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
             <div className="min-h-[420px]">
               <span className="text-[8px] font-bold uppercase tracking-[0.15em] px-2 py-1 bg-black/5 text-black/40 w-fit mb-5 block">Studio</span>
               <div className="mb-4">
-                <span className="text-[34px] font-bold tracking-tight leading-none text-[#0047AB]">$49</span>
+                <span className="text-[34px] font-bold tracking-tight leading-none text-[#0047AB]">$59</span>
                 <span className="text-[12px] text-black/40 ml-1">{t('pricing.month')}</span>
               </div>
               <div className="h-[22px] mb-3" />
@@ -181,7 +181,7 @@ const PricingSection: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
               </div>
             </div>
             <div className="pt-4 mt-4 border-t border-black/8">
-              <NotifyButton plan="Studio $49" />
+              <NotifyButton plan="Studio $59" />
             </div>
           </div>
 
