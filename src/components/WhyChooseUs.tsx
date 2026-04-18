@@ -59,10 +59,10 @@ const WhyChooseUs: React.FC = () => {
 
         {/* Header */}
         <div className="flex flex-col items-center text-center mb-8 md:mb-10">
-          <h2 className="text-sm md:text-base font-bold uppercase tracking-[1em] text-black/30 mb-8">
+          <h2 className="text-sm md:text-base font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/30 mb-8">
             {t('why.title')}
           </h2>
-          <h3 className="text-4xl md:text-6xl lg:text-7xl font-bold font-display tracking-architectural leading-[1] max-w-5xl mb-10">
+          <h3 className="text-4xl md:text-5xl lg:text-7xl font-bold font-display tracking-architectural leading-[1] max-w-5xl mb-10">
             {t('why.heading')}
           </h3>
           <p className="text-black/60 text-sm md:text-lg font-medium max-w-3xl leading-relaxed">

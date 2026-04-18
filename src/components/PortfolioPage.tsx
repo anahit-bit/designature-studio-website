@@ -45,16 +45,16 @@ const PortfolioPage: React.FC = () => {
             </div>
 
             {/* Filter Navigation */}
-            <div className="flex gap-10 border-b border-black/5 pb-4">
+            <div className="flex flex-wrap gap-x-6 gap-y-3 md:gap-10 border-b border-black/5 pb-4">
               {[
                 { key: 'All', label: t('port.all') },
                 { key: 'Residential', label: t('port.residential') },
                 { key: 'Commercial', label: t('port.commercial') }
               ].map((cat) => (
-                <button 
+                <button
                   key={cat.key}
                   onClick={() => handleFilterChange(cat.key as any)}
-                  className={`text-sm md:text-base font-bold uppercase tracking-[0.2em] transition-all relative ${
+                  className={`text-xs md:text-base font-bold uppercase tracking-[0.15em] md:tracking-[0.2em] transition-all relative ${
                     filter === cat.key ? 'text-black' : 'text-black/30 hover:text-black/60'
                   }`}
                 >

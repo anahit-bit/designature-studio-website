@@ -133,8 +133,8 @@ const FAQPage: React.FC = () => {
 
       <div className="max-w-[1800px] mx-auto px-8 md:px-16 pt-24 pb-20">
         <div className="max-w-3xl">
-          <p className="text-[10px] font-bold uppercase tracking-[1em] text-black/30 mb-6">FAQ</p>
-          <h1 className="text-4xl md:text-6xl font-bold font-display tracking-architectural leading-[1] mb-6">
+          <p className="text-[10px] font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/30 mb-6">FAQ</p>
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold font-display tracking-architectural leading-[1] mb-6">
             Questions &amp; answers.
           </h1>
           <p className="text-black/50 text-sm md:text-base font-light leading-relaxed">
@@ -144,13 +144,13 @@ const FAQPage: React.FC = () => {
       </div>
 
       <div className="max-w-[1800px] mx-auto px-8 md:px-16 pb-24">
-        <div className="max-w-3xl flex flex-col gap-16">
+        <div className="flex flex-col gap-16">
           {FAQS.map((section) => (
-            <div key={section.category}>
-              <p className="text-[9px] font-bold uppercase tracking-[0.35em] text-[#0047AB] mb-6">
+            <div key={section.category} className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6 lg:gap-20">
+              <p className="text-[9px] font-bold uppercase tracking-[0.35em] text-[#0047AB] lg:pt-5 lg:sticky lg:top-28 lg:self-start">
                 {section.category}
               </p>
-              <div className="flex flex-col divide-y divide-black/8">
+              <div className="flex flex-col divide-y divide-black/8 max-w-3xl">
                 {section.items.map((item, idx) => {
                   const key = `${section.category}-${idx}`;
                   const isOpen = !!openMap[key];

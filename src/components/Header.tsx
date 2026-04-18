@@ -77,11 +77,13 @@ const Header: React.FC = () => {
           50% { opacity: 0.4; transform: scale(0.6); }
         }
       `}</style>
-      <header 
+      <header
         className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-700 font-body ${
-          isScrolled 
-            ? 'bg-white/80 backdrop-blur-2xl border-b border-black/5 py-3' 
-            : 'bg-transparent py-8'
+          isScrolled
+            ? 'bg-white/80 backdrop-blur-2xl border-b border-black/5 py-3'
+            : (isDarkTextNeeded && !useLightNav)
+              ? 'bg-transparent py-8'
+              : 'bg-gradient-to-b from-black/40 via-black/15 to-transparent py-8'
         }`}
       >
         <div className="max-w-[1800px] mx-auto px-8 md:px-16 flex items-center">
@@ -135,9 +137,13 @@ const Header: React.FC = () => {
             <CTAButton />
           </div>
 
-          <button 
+          <button
             data-testid="mobile-menu-button"
-            className={`lg:hidden ml-6 transition-colors duration-300 ${(isDarkTextNeeded && !useLightNav) ? 'text-black' : 'text-white'}`} 
+            className={`lg:hidden ml-6 p-2 rounded-full transition-all duration-300 ${
+              (isDarkTextNeeded && !useLightNav)
+                ? 'text-black'
+                : 'text-white bg-black/30 backdrop-blur-md border border-white/20 hover:bg-black/40'
+            }`}
             onClick={() => setIsMobileMenuOpen(true)}
           >
             <Menu className="w-6 h-6" />
@@ -168,9 +174,9 @@ const Header: React.FC = () => {
                   link.action();
                   setIsMobileMenuOpen(false);
                 }}
-                className={`text-3xl md:text-5xl lg:text-6xl font-display tracking-architectural transition-all duration-700 ${
+                className={`text-base md:text-lg font-body font-bold uppercase tracking-[0.25em] transition-all duration-700 ${
                   isMobileMenuOpen ? 'translate-x-0 opacity-100' : 'translate-x-12 opacity-0'
-                } hover:translate-x-4 ${link.isHighlight ? 'text-[#0047AB]' : 'text-black hover:text-[#0047AB]'} ${language === 'en' ? 'italic' : ''}`}
+                } hover:translate-x-4 ${link.isHighlight ? 'text-[#0047AB]' : 'text-black hover:text-[#0047AB]'}`}
                 style={{ transitionDelay: `${i * 50}ms` }}
               >
                 {link.name}

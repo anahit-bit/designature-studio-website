@@ -233,7 +233,7 @@ const StudioPage: React.FC = () => {
 
                 <div className="border-b border-white/20 pb-3 focus-within:border-white/50 transition-colors mt-8">
                   <label className="block text-[7px] uppercase tracking-[0.4em] text-white/40 mb-2">{t('studio.formMessage')}</label>
-                  <textarea name="message" required rows={4} className="w-full bg-transparent text-white text-sm font-light outline-none resize-none placeholder-white/40" placeholder={t('studio.contact.form.message')} />
+                  <textarea name="message" required rows={6} className="w-full min-h-[140px] bg-transparent text-white text-sm font-light outline-none resize-none placeholder-white/40" placeholder={t('studio.contact.form.message')} />
                 </div>
 
                 {/* Submit row */}

@@ -68,7 +68,7 @@ const translations = {
     'serv.ren.list': 'Structural Updates|Interior Refresh|Art Curation|Color Consultation|Final Styling',
     'serv.cta.res': 'View Residential',
     'serv.cta.com': 'View Commercial',
-    'serv.cta.ren': 'View All Projects',
+    'serv.cta.ren': 'View Renovation',
     'serv.final.title': 'Ready to Start?',
     'serv.final.desc': 'Let\'s transform your vision into an architectural reality.',
     'serv.final.btn': "Let's Talk",

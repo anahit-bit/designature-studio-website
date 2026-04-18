@@ -202,7 +202,7 @@ const Services: React.FC = () => {
       <section id="services" className="pt-16 md:pt-24 pb-0 bg-white font-body">
         <div className="max-w-[1800px] mx-auto px-8 md:px-16">
           <div className="flex flex-col items-center text-center mb-10 md:mb-12">
-            <h2 className="text-sm md:text-base font-bold uppercase tracking-[1em] text-black/30 mb-8">{t('serv.title')}</h2>
+            <h2 className="text-sm md:text-base font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/30 mb-8">{t('serv.title')}</h2>
             <h3 className="text-4xl md:text-6xl lg:text-7xl font-bold font-display tracking-architectural leading-[1] max-w-4xl mb-10">{t('serv.heading')}</h3>
             <p className="text-black/60 text-sm md:text-lg font-medium max-w-2xl leading-relaxed">
               {language === 'en'
@@ -248,11 +248,12 @@ const Services: React.FC = () => {
                       <button
                         onClick={() => handleExample(service.id)}
                         disabled={isDownloading}
-                        className="text-[9px] font-bold uppercase tracking-[0.1em] text-[#0047AB] hover:text-black transition-colors duration-200 text-left disabled:opacity-50 disabled:cursor-wait w-fit flex items-center gap-1"
+                        className="text-[9px] font-bold uppercase tracking-[0.1em] text-[#0047AB] hover:text-black transition-colors duration-200 text-left disabled:opacity-50 disabled:cursor-wait w-fit flex items-center gap-1.5"
                       >
-                        {isDownloading ? t('services.downloading') : `${t('btn.example')} →`}
-                        {!isDownloading && asset?.action === 'pdf-download' && <Download className="w-2.5 h-2.5 opacity-50" />}
-                        {!isDownloading && asset?.action === 'video-popup' && <Play className="w-2.5 h-2.5 opacity-50" />}
+                        {isDownloading ? t('services.downloading') : t('btn.example')}
+                        {!isDownloading && asset?.action === 'pdf-download' && <Download className="w-3 h-3" />}
+                        {!isDownloading && asset?.action === 'video-popup' && <Play className="w-3 h-3" />}
+                        {!isDownloading && asset?.action !== 'pdf-download' && asset?.action !== 'video-popup' && <span>→</span>}
                       </button>
                     </div>
                   );

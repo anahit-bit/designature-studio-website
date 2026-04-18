@@ -82,7 +82,7 @@ const AIVisionPage: React.FC = () => {
             <div className="absolute inset-0 z-0">
               <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black z-10" />
               <img 
-                src="https://res.cloudinary.com/dys2k5muv/image/upload/v1771143071/ai_vision_bg_oatiib.jpg" 
+                src="https://res.cloudinary.com/dys2k5muv/image/upload/v1770984801/3_eigbly.jpg"
                 className="w-full h-full object-cover opacity-20 grayscale"
                 alt="Architectural Vision"
               />
@@ -92,14 +92,14 @@ const AIVisionPage: React.FC = () => {
               <h2 className="text-4xl md:text-6xl lg:text-8xl font-bold font-display tracking-architectural leading-tight uppercase mb-16">
                 {t('ai.vision.quote')}
               </h2>
-              <button 
+              <button
                 onClick={() => navigateTo('studio')}
-                className="group flex items-center gap-8 text-sm md:text-base font-bold uppercase tracking-[0.6em] text-white/60 hover:text-white transition-all"
+                className="group inline-flex items-center gap-3 md:gap-8 text-[11px] md:text-base font-bold uppercase tracking-[0.15em] md:tracking-[0.6em] text-white/60 hover:text-white transition-all"
               >
-                <span className="border-b border-white/20 pb-2 group-hover:border-white transition-all">
+                <span className="border-b border-white/20 pb-2 group-hover:border-white transition-all whitespace-nowrap">
                   {t('ai.vision.cta')}
                 </span>
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
+                <ArrowRight className="w-5 h-5 shrink-0 group-hover:translate-x-2 transition-transform" />
               </button>
             </div>
           </div>

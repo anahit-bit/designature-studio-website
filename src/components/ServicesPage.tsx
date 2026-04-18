@@ -149,12 +149,12 @@ const ServicesPage: React.FC = () => {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border-t border-black/5">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 border-t border-black/5">
             {serviceCategories.map((cat, idx) => (
-              <div 
-                key={cat.id} 
-                className={`pt-20 pb-12 md:px-12 flex flex-col h-full transition-all duration-700 border-b md:border-b-0 border-black/5 ${
-                  idx !== 0 ? 'md:border-l border-black/5' : ''
+              <div
+                key={cat.id}
+                className={`pt-20 pb-12 md:px-12 flex flex-col h-full transition-all duration-700 border-b lg:border-b-0 border-black/5 ${
+                  idx !== 0 ? 'lg:border-l border-black/5' : ''
                 }`}
               >
                 <h2 className="text-3xl md:text-4xl font-bold font-display tracking-architectural uppercase mb-8">
@@ -202,7 +202,7 @@ const ServicesPage: React.FC = () => {
             
             {/* Process Header */}
             <div className="text-center mb-16 md:mb-20">
-              <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold font-display tracking-architectural leading-[1] uppercase mb-10">
+              <h2 className="text-4xl md:text-5xl lg:text-7xl font-bold font-display tracking-architectural leading-[1] uppercase mb-10">
                 {t('proc.title')}
               </h2>
               <div className="w-24 h-[1px] bg-black/10 mx-auto mb-10" />
@@ -320,7 +320,7 @@ const ServicesPage: React.FC = () => {
               viewport={{ once: true }}
               className="max-w-4xl"
             >
-              <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold font-display tracking-architectural leading-tight mb-10 uppercase">
+              <h2 className="text-4xl md:text-5xl lg:text-7xl font-bold font-display tracking-architectural leading-tight mb-10 uppercase">
                 {t('serv.final.title')}
               </h2>
               <p className="text-white/60 text-base md:text-xl font-light leading-relaxed max-w-3xl mx-auto mb-16">

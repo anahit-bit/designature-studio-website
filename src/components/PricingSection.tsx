@@ -81,8 +81,8 @@ const PricingSection: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
 
         {!hideHeader && (
           <div className="flex flex-col items-center text-center mb-8">
-            <h2 className="text-sm font-bold uppercase tracking-[1em] text-black/30 mb-8">{t('pricing.eyebrow')}</h2>
-            <h3 className="text-4xl md:text-6xl lg:text-7xl font-bold font-display tracking-architectural leading-[1] max-w-4xl mb-4">
+            <h2 className="text-sm font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/30 mb-8">{t('pricing.eyebrow')}</h2>
+            <h3 className="text-4xl md:text-5xl lg:text-7xl font-bold font-display tracking-architectural leading-[1] max-w-4xl mb-4">
               {t('pricing.title')}
             </h3>
             <p className="text-black/50 text-sm md:text-base font-light leading-relaxed whitespace-pre-line">
@@ -95,7 +95,7 @@ const PricingSection: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
 
           {/* FREE */}
           <div className="border border-black/8 p-8 flex flex-col">
-            <div className="min-h-[420px]">
+            <div className="md:min-h-[420px]">
               <span className="text-[8px] font-bold uppercase tracking-[0.15em] px-2 py-1 bg-black/5 text-black/40 w-fit mb-5 block">{t('pricing.free.badge')}</span>
               <div className="mb-4">
                 <span className="text-[34px] font-bold tracking-tight leading-none text-black">$0</span>
@@ -124,7 +124,7 @@ const PricingSection: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
 
           {/* DESIGN */}
           <div className="bg-[#0a0a0a] p-8 flex flex-col">
-            <div className="min-h-[420px]">
+            <div className="md:min-h-[420px]">
               <span className="text-[8px] font-bold uppercase tracking-[0.15em] px-2 py-1 bg-[#0047AB] text-white w-fit mb-5 block">{t('pricing.popular')}</span>
               <div className="mb-4">
                 <span className="text-[34px] font-bold tracking-tight leading-none text-white">$19</span>
@@ -155,7 +155,7 @@ const PricingSection: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
 
           {/* STUDIO */}
           <div className="border border-black/8 p-8 flex flex-col">
-            <div className="min-h-[420px]">
+            <div className="md:min-h-[420px]">
               <span className="text-[8px] font-bold uppercase tracking-[0.15em] px-2 py-1 bg-black/5 text-black/40 w-fit mb-5 block">Studio</span>
               <div className="mb-4">
                 <span className="text-[34px] font-bold tracking-tight leading-none text-[#0047AB]">$59</span>

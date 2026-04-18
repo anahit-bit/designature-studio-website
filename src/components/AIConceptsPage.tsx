@@ -1570,22 +1570,22 @@ const AIConceptsPage: React.FC = () => {
 
       {/* ── PAGE HERO ── */}
       <div className="pt-24 bg-[#0a0a0a]">
-        <div className="max-w-[1600px] mx-auto px-8 md:px-16 py-12 flex items-start justify-between gap-12">
+        <div className="max-w-[1600px] mx-auto px-8 md:px-16 py-12 flex flex-col md:flex-row items-start justify-between gap-12">
           <div className="flex-1">
             <button
               onClick={() => navigateTo('home')}
-              className="text-[9px] font-bold uppercase tracking-[0.35em] text-white/20 hover:text-white/50 transition-colors flex items-center gap-2 group mb-10"
+              className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/50 hover:text-white transition-colors flex items-center gap-2 group mb-10"
             >
               <ArrowLeft className="w-3 h-3 transition-transform group-hover:-translate-x-1" />
               {t('nav.backToHome')}
             </button>
-            <p className="text-[9px] font-bold uppercase tracking-[0.35em] text-white/30 mb-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/60 mb-4">
               {t('ai.engine')}
             </p>
             <h1 className="font-display text-6xl md:text-8xl font-bold tracking-tight leading-[0.88] uppercase text-white mb-6">
               <span>AI {t('ai.design')}</span><br /><span className="italic font-light text-white/50">{t('ai.studio')}</span>
             </h1>
-            <p className="text-[11px] text-white/35 uppercase tracking-[0.18em] leading-[2.2] max-w-md mb-8">
+            <p className="text-[11px] text-white/60 uppercase tracking-[0.18em] leading-[2.2] max-w-md mb-8">
               {t('ai.desc')}
             </p>
             <button
@@ -1615,7 +1615,7 @@ const AIConceptsPage: React.FC = () => {
                       : `${t('ai.heroCtaShopping')} →`}
             </button>
           </div>
-          <div className="w-[240px] flex-shrink-0">
+          <div className="w-full md:w-[240px] flex-shrink-0">
             {authLoading ? (
               <div className="w-full h-[100px]" />
             ) : (
@@ -1638,11 +1638,11 @@ const AIConceptsPage: React.FC = () => {
                   </div>
                 )}
                 <div className={user ? 'hidden' : 'block'}>
-                  <p className="text-[8px] text-white/20 uppercase tracking-[0.2em] text-right mb-2">
+                  <p className="text-[10px] text-white/60 uppercase tracking-[0.2em] text-right mb-2">
                     {t('ai.unlockAll')}
                   </p>
                   <div id="google-signin-btn" className="w-full min-h-[42px]" />
-                  <p className="text-[8px] text-white/10 uppercase tracking-[0.15em] text-right mt-2">
+                  <p className="text-[10px] text-white/40 uppercase tracking-[0.15em] text-right mt-2">
                     {t('ai.noCard')}
                   </p>
                 </div>
@@ -1651,11 +1651,11 @@ const AIConceptsPage: React.FC = () => {
             <div className="flex gap-0 mt-8 pt-6 border-t border-white/8">
               <div className="flex-1 pr-5 border-r border-white/8">
                 <div className="text-3xl font-bold text-white tracking-tight">Free</div>
-                <div className="text-[8px] text-white/20 uppercase tracking-[0.18em] mt-1">{t('ai.toExplore')}</div>
+                <div className="text-[10px] text-white/50 uppercase tracking-[0.18em] mt-1">{t('ai.toExplore')}</div>
               </div>
               <div className="flex-1 pl-5 text-right">
                 <div className="text-3xl font-bold text-white tracking-tight">3</div>
-                <div className="text-[8px] text-white/20 uppercase tracking-[0.18em] mt-1">{t('ai.liveTools')}</div>
+                <div className="text-[10px] text-white/50 uppercase tracking-[0.18em] mt-1">{t('ai.liveTools')}</div>
               </div>
             </div>
           </div>

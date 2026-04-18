@@ -75,7 +75,7 @@ const Hero: React.FC = () => {
       </div>
 
       {/* Social Media Sidebar Overlay */}
-      <div className="absolute right-6 md:right-10 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-10 text-white/60">
+      <div className="hidden md:flex absolute right-6 md:right-10 top-1/2 -translate-y-1/2 z-30 flex-col gap-10 text-white/60">
         <a href="https://www.instagram.com/designature_interior/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-all duration-300 transform hover:scale-110"><Instagram className="w-5 h-5" /></a>
         <a href="https://www.facebook.com/Designature.Design.Studio" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-all duration-300 transform hover:scale-110"><Facebook className="w-5 h-5" /></a>
       </div>
