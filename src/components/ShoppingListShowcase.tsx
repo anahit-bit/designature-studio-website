@@ -75,7 +75,7 @@ const SHOWCASE_PRODUCTS = [
     retailer: 'Wayfair',
     price: '$429.99',
     category: 'Armchairs',
-    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353568/12_hji3il.webp',
+    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353568/9_k4gfiy.webp',
   },
   // OTTOMAN & POUFS
   {
@@ -100,7 +100,7 @@ const SHOWCASE_PRODUCTS = [
     retailer: 'Pottery Barn',
     price: '$399.00',
     category: 'Ottoman \u0026 Poufs',
-    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353568/9_k4gfiy.webp',
+    image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353568/12_hji3il.webp',
   },
 ];
 
