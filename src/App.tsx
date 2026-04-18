@@ -20,6 +20,7 @@ import CTABanner from './components/CTABanner';
 import Footer from './components/Footer';
 import { LanguageProvider, useLanguage } from './LanguageContext';
 import SessionInactivityGuard from './components/SessionInactivityGuard';
+import StyleQuizPopup from './components/StyleQuizPopup';
 
 const AppContent: React.FC = () => {
   const { currentPage } = useLanguage();
@@ -120,6 +121,7 @@ const App: React.FC = () => (
   <LanguageProvider>
     <SessionInactivityGuard />
     <AppContent />
+    <StyleQuizPopup />
   </LanguageProvider>
 );
 
