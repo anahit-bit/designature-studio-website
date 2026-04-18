@@ -25,7 +25,7 @@ const PricingPage: React.FC = () => {
           <div className="max-w-4xl pt-20">
             <button
               onClick={() => navigateTo('home')}
-              className="text-[9px] font-bold uppercase tracking-[0.35em] text-white/40 mb-10 hover:text-white transition-colors flex items-center gap-2 group w-fit"
+              className="text-[9px] font-bold uppercase tracking-[0.35em] text-white/55 mb-10 hover:text-white transition-colors flex items-center gap-2 group w-fit"
             >
               <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
               {t('pricing.backHome')}

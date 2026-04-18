@@ -11,13 +11,13 @@ const CTABanner: React.FC = () => {
 
         {/* Left — message */}
         <div className="flex flex-col gap-3 md:max-w-2xl">
-          <p className="text-[9px] font-bold uppercase tracking-[0.4em] text-white/25">
+          <p className="text-[9px] font-bold uppercase tracking-[0.4em] text-white/40">
             {language === 'en' ? 'Free — no commitment needed' : 'Free — no commitment needed'}
           </p>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold font-display tracking-tight leading-[0.95] text-white">
             {t('cta.banner.title')}
           </h2>
-          <p className="text-white/40 text-sm md:text-base font-light leading-relaxed mt-1">
+          <p className="text-white/55 text-sm md:text-base font-light leading-relaxed mt-1">
             {t('cta.banner.subtext')}
           </p>
         </div>

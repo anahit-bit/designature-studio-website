@@ -202,7 +202,7 @@ const Services: React.FC = () => {
       <section id="services" className="pt-16 md:pt-24 pb-0 bg-white font-body">
         <div className="max-w-[1800px] mx-auto px-8 md:px-16">
           <div className="flex flex-col items-center text-center mb-10 md:mb-12">
-            <h2 className="text-sm md:text-base font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/30 mb-8">{t('serv.title')}</h2>
+            <h2 className="text-sm md:text-base font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/45 mb-8">{t('serv.title')}</h2>
             <h3 className="text-4xl md:text-6xl lg:text-7xl font-bold font-display tracking-architectural leading-[1] max-w-4xl mb-10">{t('serv.heading')}</h3>
             <p className="text-black/60 text-sm md:text-lg font-medium max-w-2xl leading-relaxed">
               {language === 'en'
@@ -233,7 +233,7 @@ const Services: React.FC = () => {
                       key={service.id}
                       className="group p-6 md:p-8 flex flex-col gap-3 hover:bg-neutral-50 transition-colors duration-200 cursor-default"
                     >
-                      <div className="text-[8px] font-bold uppercase tracking-[0.2em] text-black/30">
+                      <div className="text-[8px] font-bold uppercase tracking-[0.2em] text-black/45">
                         {String(serviceIdx).padStart(2, '0')}
                       </div>
                       <div className="text-black group-hover:text-[#0047AB] transition-colors duration-200">

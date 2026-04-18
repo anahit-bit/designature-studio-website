@@ -42,7 +42,7 @@ const AIVisionPage: React.FC = () => {
           <div className="flex flex-col mb-24 md:mb-40">
             <button 
               onClick={() => navigateTo('home')}
-              className="text-sm md:text-base font-bold uppercase tracking-widest text-white/40 mb-16 hover:text-white transition-colors flex items-center gap-2 group w-fit"
+              className="text-sm md:text-base font-bold uppercase tracking-widest text-white/55 mb-16 hover:text-white transition-colors flex items-center gap-2 group w-fit"
             >
               <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" /> 
               {t('ai.vision.back')}
@@ -69,7 +69,7 @@ const AIVisionPage: React.FC = () => {
                   <h3 className="text-2xl md:text-4xl font-bold font-display tracking-architectural uppercase">
                     {point.title}
                   </h3>
-                  <p className="text-white/40 text-base md:text-lg font-light leading-relaxed group-hover:text-white/70 transition-colors">
+                  <p className="text-white/55 text-base md:text-lg font-light leading-relaxed group-hover:text-white/70 transition-colors">
                     {point.desc}
                   </p>
                 </div>

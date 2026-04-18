@@ -53,7 +53,7 @@ const Testimonials: React.FC = () => {
     <section id="testimonials" className="py-16 md:py-24 bg-white font-body">
       <div className="max-w-[1800px] mx-auto px-8 md:px-16">
         <div className="flex flex-col items-center text-center mb-10 md:mb-12">
-          <h2 className="text-sm md:text-base font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/30 mb-8">
+          <h2 className="text-sm md:text-base font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/45 mb-8">
             {t('test.title')}
           </h2>
           <h3 className="text-4xl md:text-5xl lg:text-7xl font-bold font-display tracking-architectural leading-[1] max-w-4xl mb-10">
@@ -118,7 +118,7 @@ const Testimonials: React.FC = () => {
               <ArrowLeft className="w-4 h-4" />
             </button>
 
-            <span className="hidden sm:block text-[11px] font-bold uppercase tracking-[0.2em] text-black/30 tabular-nums">
+            <span className="hidden sm:block text-[11px] font-bold uppercase tracking-[0.2em] text-black/45 tabular-nums">
               {page + 1} / {pageCount}
             </span>
 

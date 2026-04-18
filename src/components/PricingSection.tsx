@@ -65,7 +65,7 @@ const NotifyButton: React.FC<{ dark?: boolean; plan: string }> = ({ dark, plan }
   return (
     <button
       onClick={() => setOpen(true)}
-      className={`w-full py-3 text-[9px] font-bold uppercase tracking-[0.15em] border transition-colors ${dark ? 'bg-transparent text-white/40 border-white/15 hover:border-white/30 hover:text-white/60' : 'bg-transparent text-black/40 border-black/15 hover:border-black/30 hover:text-black/60'}`}
+      className={`w-full py-3 text-[9px] font-bold uppercase tracking-[0.15em] border transition-colors ${dark ? 'bg-transparent text-white/55 border-white/15 hover:border-white/30 hover:text-white/60' : 'bg-transparent text-black/55 border-black/15 hover:border-black/30 hover:text-black/60'}`}
     >
       {t('pricing.notify')}
     </button>
@@ -81,7 +81,7 @@ const PricingSection: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
 
         {!hideHeader && (
           <div className="flex flex-col items-center text-center mb-8">
-            <h2 className="text-sm font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/30 mb-8">{t('pricing.eyebrow')}</h2>
+            <h2 className="text-sm font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/45 mb-8">{t('pricing.eyebrow')}</h2>
             <h3 className="text-4xl md:text-5xl lg:text-7xl font-bold font-display tracking-architectural leading-[1] max-w-4xl mb-4">
               {t('pricing.title')}
             </h3>
@@ -96,29 +96,29 @@ const PricingSection: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
           {/* FREE */}
           <div className="border border-black/8 p-8 flex flex-col">
             <div className="md:min-h-[420px]">
-              <span className="text-[8px] font-bold uppercase tracking-[0.15em] px-2 py-1 bg-black/5 text-black/40 w-fit mb-5 block">{t('pricing.free.badge')}</span>
+              <span className="text-[8px] font-bold uppercase tracking-[0.15em] px-2 py-1 bg-black/5 text-black/55 w-fit mb-5 block">{t('pricing.free.badge')}</span>
               <div className="mb-4">
                 <span className="text-[34px] font-bold tracking-tight leading-none text-black">$0</span>
-                <span className="text-[12px] text-black/40 ml-1">{t('pricing.free.forever')}</span>
+                <span className="text-[12px] text-black/55 ml-1">{t('pricing.free.forever')}</span>
               </div>
               <div className="h-[22px] mb-3" />
               <div className="text-[13px] font-medium text-black mb-1">Explore</div>
               <div className="text-[10px] text-black/50 leading-relaxed mb-5 pb-5 border-b border-black/8">
                 {t('pricing.free.desc')}
               </div>
-              <div className="text-[8px] font-bold uppercase tracking-[0.15em] text-black/30 mb-3 mt-2">{t('pricing.aiTools')}</div>
+              <div className="text-[8px] font-bold uppercase tracking-[0.15em] text-black/45 mb-3 mt-2">{t('pricing.aiTools')}</div>
               <div className="flex flex-col gap-2">
                 <div className="flex items-start gap-2"><CHECK /><span className="text-[10px] text-black/60 leading-relaxed"><strong className="text-black font-medium">Style Quiz</strong> — {t('pricing.unlimited')}</span></div>
                 <div className="flex items-start gap-2"><CHECK /><span className="text-[10px] text-black/60 leading-relaxed"><strong className="text-black font-medium">AI Vision</strong> — {t('pricing.3concepts')}</span></div>
                 <div className="flex items-start gap-2"><CHECK /><span className="text-[10px] text-black/60 leading-relaxed"><strong className="text-black font-medium">Shopping List</strong> — {t('pricing.perConceptPDF')}</span></div>
-                <div className="flex items-start gap-2"><CROSS /><span className="text-[10px] text-black/30 leading-relaxed">Room Audit · Design Brief · Cultural Advisor</span></div>
+                <div className="flex items-start gap-2"><CROSS /><span className="text-[10px] text-black/45 leading-relaxed">Room Audit · Design Brief · Cultural Advisor</span></div>
               </div>
             </div>
             <div className="pt-4 mt-4 border-t border-black/8">
               <button onClick={() => navigateTo('ai-concepts')} className="w-full py-3 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.15em] hover:bg-[#003d99] transition-colors">
                 {t('pricing.free.ctaFull')}
               </button>
-              <p className="text-[8px] text-black/30 text-center mt-2 tracking-[0.08em]">{t('pricing.free.note')}</p>
+              <p className="text-[8px] text-black/45 text-center mt-2 tracking-[0.08em]">{t('pricing.free.note')}</p>
             </div>
           </div>
 
@@ -128,24 +128,24 @@ const PricingSection: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
               <span className="text-[8px] font-bold uppercase tracking-[0.15em] px-2 py-1 bg-[#0047AB] text-white w-fit mb-5 block">{t('pricing.popular')}</span>
               <div className="mb-4">
                 <span className="text-[34px] font-bold tracking-tight leading-none text-white">$19</span>
-                <span className="text-[12px] text-white/30 ml-1">{t('pricing.month')}</span>
+                <span className="text-[12px] text-white/45 ml-1">{t('pricing.month')}</span>
               </div>
               <div className="h-[22px] mb-3" />
               <div className="text-[13px] font-medium text-white mb-1">Design</div>
               <div className="text-[10px] text-white/35 leading-relaxed mb-5 pb-5 border-b border-white/8">
                 {t('pricing.design.desc')}
               </div>
-              <div className="text-[8px] font-bold uppercase tracking-[0.15em] text-white/20 mb-3 mt-2">{t('pricing.aiTools')}</div>
+              <div className="text-[8px] font-bold uppercase tracking-[0.15em] text-white/35 mb-3 mt-2">{t('pricing.aiTools')}</div>
               <div className="flex flex-col gap-2 mb-4">
-                <div className="flex items-start gap-2"><CHECK_W /><span className="text-[10px] text-white/45 leading-relaxed">{t('pricing.everything.free')}</span></div>
-                <div className="flex items-start gap-2"><CHECK_W /><span className="text-[10px] text-white/45 leading-relaxed"><strong className="text-white/80 font-medium">AI Vision</strong> — {t('pricing.30credits')}</span></div>
-                <div className="flex items-start gap-2"><CHECK_W /><span className="text-[10px] text-white/45 leading-relaxed"><strong className="text-white/80 font-medium">Shopping Lists</strong> — {t('pricing.20month')} <span className="text-white/25">· {t('pricing.budgetFilter')}</span></span></div>
-                <div className="flex items-start gap-2"><CHECK_W /><span className="text-[10px] text-white/45 leading-relaxed"><strong className="text-white/80 font-medium">Room Audit</strong> — {t('pricing.3month')}</span></div>
-                <div className="flex items-start gap-2"><CHECK_W /><span className="text-[10px] text-white/45 leading-relaxed"><strong className="text-white/80 font-medium">Design Brief</strong> — {t('pricing.1month')}</span></div>
+                <div className="flex items-start gap-2"><CHECK_W /><span className="text-[10px] text-white/60 leading-relaxed">{t('pricing.everything.free')}</span></div>
+                <div className="flex items-start gap-2"><CHECK_W /><span className="text-[10px] text-white/60 leading-relaxed"><strong className="text-white/80 font-medium">AI Vision</strong> — {t('pricing.30credits')}</span></div>
+                <div className="flex items-start gap-2"><CHECK_W /><span className="text-[10px] text-white/60 leading-relaxed"><strong className="text-white/80 font-medium">Shopping Lists</strong> — {t('pricing.20month')} <span className="text-white/40">· {t('pricing.budgetFilter')}</span></span></div>
+                <div className="flex items-start gap-2"><CHECK_W /><span className="text-[10px] text-white/60 leading-relaxed"><strong className="text-white/80 font-medium">Room Audit</strong> — {t('pricing.3month')}</span></div>
+                <div className="flex items-start gap-2"><CHECK_W /><span className="text-[10px] text-white/60 leading-relaxed"><strong className="text-white/80 font-medium">Design Brief</strong> — {t('pricing.1month')}</span></div>
               </div>
-              <div className="text-[8px] font-bold uppercase tracking-[0.15em] text-white/20 mb-3">{t('pricing.projectDiscount')}</div>
+              <div className="text-[8px] font-bold uppercase tracking-[0.15em] text-white/35 mb-3">{t('pricing.projectDiscount')}</div>
               <div className="flex flex-col gap-2">
-                <div className="flex items-start gap-2"><CHECK_W /><span className="text-[10px] text-white/45 leading-relaxed">{t('pricing.10off')}</span></div>
+                <div className="flex items-start gap-2"><CHECK_W /><span className="text-[10px] text-white/60 leading-relaxed">{t('pricing.10off')}</span></div>
               </div>
             </div>
             <div className="pt-4 mt-4 border-t border-white/8">
@@ -156,17 +156,17 @@ const PricingSection: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
           {/* STUDIO */}
           <div className="border border-black/8 p-8 flex flex-col">
             <div className="md:min-h-[420px]">
-              <span className="text-[8px] font-bold uppercase tracking-[0.15em] px-2 py-1 bg-black/5 text-black/40 w-fit mb-5 block">Studio</span>
+              <span className="text-[8px] font-bold uppercase tracking-[0.15em] px-2 py-1 bg-black/5 text-black/55 w-fit mb-5 block">Studio</span>
               <div className="mb-4">
                 <span className="text-[34px] font-bold tracking-tight leading-none text-[#0047AB]">$59</span>
-                <span className="text-[12px] text-black/40 ml-1">{t('pricing.month')}</span>
+                <span className="text-[12px] text-black/55 ml-1">{t('pricing.month')}</span>
               </div>
               <div className="h-[22px] mb-3" />
               <div className="text-[13px] font-medium text-black mb-1">Studio</div>
               <div className="text-[10px] text-black/50 leading-relaxed mb-5 pb-5 border-b border-black/8">
                 {t('pricing.studio.desc')}
               </div>
-              <div className="text-[8px] font-bold uppercase tracking-[0.15em] text-black/30 mb-3 mt-2">{t('pricing.aiTools')}</div>
+              <div className="text-[8px] font-bold uppercase tracking-[0.15em] text-black/45 mb-3 mt-2">{t('pricing.aiTools')}</div>
               <div className="flex flex-col gap-2 mb-4">
                 <div className="flex items-start gap-2"><CHECK /><span className="text-[10px] text-black/60 leading-relaxed">{t('pricing.everything.design')}</span></div>
                 <div className="flex items-start gap-2"><CHECK /><span className="text-[10px] text-black/60 leading-relaxed"><strong className="text-black font-medium">AI Vision</strong> — {t('pricing.unlimited')}</span></div>
@@ -175,7 +175,7 @@ const PricingSection: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
                 <div className="flex items-start gap-2"><CHECK /><span className="text-[10px] text-black/60 leading-relaxed"><strong className="text-black font-medium">All 6 AI tools</strong> {t('pricing.inclCultural')}</span></div>
                 <div className="flex items-start gap-2"><CHECK /><span className="text-[10px] text-black/60 leading-relaxed"><strong className="text-black font-medium">{t('pricing.projectFolders')}</strong> — {t('pricing.saveConcepts')}</span></div>
               </div>
-              <div className="text-[8px] font-bold uppercase tracking-[0.15em] text-black/30 mb-3">{t('pricing.projectDiscount')}</div>
+              <div className="text-[8px] font-bold uppercase tracking-[0.15em] text-black/45 mb-3">{t('pricing.projectDiscount')}</div>
               <div className="flex flex-col gap-2">
                 <div className="flex items-start gap-2"><CHECK /><span className="text-[10px] text-black/60 leading-relaxed">{t('pricing.20off')}</span></div>
               </div>

@@ -131,7 +131,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
               <h2 className="text-2xl font-display font-bold">{t('feedback.title')}</h2>
               <button
                 onClick={onClose}
-                className="text-black/30 hover:text-black/70 text-2xl leading-none transition-colors ml-4 flex-shrink-0"
+                className="text-black/45 hover:text-black/70 text-2xl leading-none transition-colors ml-4 flex-shrink-0"
                 aria-label="Close"
               >
                 ×
@@ -141,7 +141,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
             <div className="space-y-5">
               {/* Type */}
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/40 block mb-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/55 block mb-1.5">
                   {t('feedback.type')}
                 </label>
                 <select
@@ -158,7 +158,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
 
               {/* Name */}
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/40 block mb-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/55 block mb-1.5">
                   {lbl('Name', isTestimonial)}
                 </label>
                 <input
@@ -172,7 +172,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
 
               {/* Country — always optional */}
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/40 block mb-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/55 block mb-1.5">
                   {lbl('Country', false)}
                 </label>
                 <input
@@ -185,7 +185,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
 
               {/* Email */}
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/40 block mb-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/55 block mb-1.5">
                   {lbl('Email', isTestimonial)}
                 </label>
                 <input
@@ -201,7 +201,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
               {isTestimonial && (
                 <>
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/40 block mb-2">
+                    <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/55 block mb-2">
                       {t('feedback.rating')} *
                     </label>
                     <div className="flex gap-1.5">
@@ -211,7 +211,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
                           type="button"
                           onClick={() => setRating(n)}
                           className={`text-2xl transition-colors leading-none ${
-                            n <= rating ? 'text-[#0047AB]' : 'text-black/10'
+                            n <= rating ? 'text-[#0047AB]' : 'text-black/25'
                           }`}
                         >
                           ★
@@ -220,7 +220,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
                     </div>
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/40 block mb-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/55 block mb-1.5">
                       {lbl('Project type', false)}
                     </label>
                     <select
@@ -239,7 +239,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
 
               {/* Message — always required */}
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/40 block mb-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/55 block mb-1.5">
                   {lbl('Message', true)}
                 </label>
                 <textarea
@@ -267,7 +267,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
               </button>
 
               {isTestimonial && (
-                <p className="text-[10px] text-black/30 text-center leading-relaxed">
+                <p className="text-[10px] text-black/45 text-center leading-relaxed">
                   {t('feedback.review')}
                 </p>
               )}

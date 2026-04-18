@@ -59,7 +59,7 @@ const WhyChooseUs: React.FC = () => {
 
         {/* Header */}
         <div className="flex flex-col items-center text-center mb-8 md:mb-10">
-          <h2 className="text-sm md:text-base font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/30 mb-8">
+          <h2 className="text-sm md:text-base font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/45 mb-8">
             {t('why.title')}
           </h2>
           <h3 className="text-4xl md:text-5xl lg:text-7xl font-bold font-display tracking-architectural leading-[1] max-w-5xl mb-10">
@@ -99,11 +99,11 @@ const WhyChooseUs: React.FC = () => {
             </div>
             <h4 className="font-display text-4xl md:text-5xl font-bold text-white leading-[0.92] tracking-tight uppercase">
               AI {language === 'en' ? <>helps you<br />explore.</> : <>{t('why.aiExplore')}</>}<br />
-              <span className="italic font-light text-white/40">
+              <span className="italic font-light text-white/55">
                 {language === 'en' ? <>We make it<br />extraordinary.</> : t('why.weMakeExtraordinary')}
               </span>
             </h4>
-            <p className="text-[11px] text-white/40 leading-[1.9] max-w-sm">
+            <p className="text-[11px] text-white/55 leading-[1.9] max-w-sm">
               {language === 'en'
                 ? <>Our tools let you visualise and discover — but the <span className="text-white/75 font-medium">design decisions that make a space uniquely yours</span> come from a trained eye, years of engineering knowledge, and genuine creative instinct. That&apos;s the part AI can&apos;t replicate.</>
                 : t('why.aiDesc')}

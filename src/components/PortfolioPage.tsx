@@ -31,7 +31,7 @@ const PortfolioPage: React.FC = () => {
         <div className="flex flex-col mb-24 md:mb-32">
           <button 
             onClick={() => navigateTo('home')}
-            className="text-[9px] font-bold uppercase tracking-[0.35em] text-black/30 mb-10 hover:text-black transition-colors flex items-center gap-2 group w-fit"
+            className="text-[9px] font-bold uppercase tracking-[0.35em] text-black/45 mb-10 hover:text-black transition-colors flex items-center gap-2 group w-fit"
           >
             <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" /> 
             {t('portfolio.backHome')}
@@ -55,7 +55,7 @@ const PortfolioPage: React.FC = () => {
                   key={cat.key}
                   onClick={() => handleFilterChange(cat.key as any)}
                   className={`text-xs md:text-base font-bold uppercase tracking-[0.15em] md:tracking-[0.2em] transition-all relative ${
-                    filter === cat.key ? 'text-black' : 'text-black/30 hover:text-black/60'
+                    filter === cat.key ? 'text-black' : 'text-black/45 hover:text-black/60'
                   }`}
                 >
                   {cat.label}

@@ -85,7 +85,7 @@ const StudioPage: React.FC = () => {
           {/* Right — name, quote, stats */}
           <div className="flex flex-col justify-between px-12 md:px-20 py-20 bg-white">
             <div>
-              <p className="text-[8px] font-bold uppercase tracking-[0.5em] text-black/30 mb-6">
+              <p className="text-[8px] font-bold uppercase tracking-[0.5em] text-black/45 mb-6">
                 {t('studio.founderTitle')}
               </p>
               <h2 className="font-display text-4xl md:text-5xl lg:text-[4.5vw] font-bold tracking-architectural leading-[0.88] uppercase mb-3">
@@ -94,7 +94,7 @@ const StudioPage: React.FC = () => {
               <h2 className="font-display text-4xl md:text-5xl lg:text-[4.5vw] font-bold tracking-architectural leading-[0.88] uppercase italic font-light mb-6">
                 Ghasabyan
               </h2>
-              <p className="text-[9px] font-bold uppercase tracking-[0.4em] text-black/30 mb-12">
+              <p className="text-[9px] font-bold uppercase tracking-[0.4em] text-black/45 mb-12">
                 {t('studio.founderRole')} · Designature Studio · Est. 2021
               </p>
 
@@ -112,23 +112,23 @@ const StudioPage: React.FC = () => {
               <div className="flex gap-12 pt-10 border-t border-black/6 mb-8">
                 <div>
                   <span className="font-display text-3xl font-bold text-black block mb-1">100+</span>
-                  <span className="text-[8px] uppercase tracking-[0.3em] text-black/30">{t('studio.projects')}</span>
+                  <span className="text-[8px] uppercase tracking-[0.3em] text-black/45">{t('studio.projects')}</span>
                 </div>
                 <div>
                   <span className="font-display text-3xl font-bold text-black block mb-1">2021</span>
-                  <span className="text-[8px] uppercase tracking-[0.3em] text-black/30">{t('studio.founded')}</span>
+                  <span className="text-[8px] uppercase tracking-[0.3em] text-black/45">{t('studio.founded')}</span>
                 </div>
                 <div>
                   <span className="font-display text-3xl font-bold text-black block mb-1">9</span>
-                  <span className="text-[8px] uppercase tracking-[0.3em] text-black/30">{language === 'en' ? 'Countries' : 'Երկրներ'}</span>
+                  <span className="text-[8px] uppercase tracking-[0.3em] text-black/45">{language === 'en' ? 'Countries' : 'Երկրներ'}</span>
                 </div>
               </div>
 
               {/* Social */}
               <div className="flex gap-5">
-                <a href="https://www.instagram.com/designature_interior/" target="_blank" rel="noopener noreferrer" className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/30 hover:text-black transition-colors border-b border-black/10 hover:border-black pb-0.5">Instagram</a>
-                <a href="https://www.facebook.com/Designature.Design.Studio" target="_blank" rel="noopener noreferrer" className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/30 hover:text-black transition-colors border-b border-black/10 hover:border-black pb-0.5">Facebook</a>
-                <a href="mailto:anahit@designature.studio" className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/30 hover:text-black transition-colors border-b border-black/10 hover:border-black pb-0.5">Email</a>
+                <a href="https://www.instagram.com/designature_interior/" target="_blank" rel="noopener noreferrer" className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/45 hover:text-black transition-colors border-b border-black/10 hover:border-black pb-0.5">Instagram</a>
+                <a href="https://www.facebook.com/Designature.Design.Studio" target="_blank" rel="noopener noreferrer" className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/45 hover:text-black transition-colors border-b border-black/10 hover:border-black pb-0.5">Facebook</a>
+                <a href="mailto:anahit@designature.studio" className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/45 hover:text-black transition-colors border-b border-black/10 hover:border-black pb-0.5">Email</a>
               </div>
             </div>
           </div>
@@ -143,7 +143,7 @@ const StudioPage: React.FC = () => {
 
               {/* Sticky label */}
               <div className="lg:sticky lg:top-32 lg:self-start">
-                <p className="text-[8px] font-bold uppercase tracking-[0.5em] text-black/30 mb-4">{t('studio.aboutTitle')}</p>
+                <p className="text-[8px] font-bold uppercase tracking-[0.5em] text-black/45 mb-4">{t('studio.aboutTitle')}</p>
                 <h3 className="font-display text-3xl md:text-4xl font-light leading-tight">
                   {language === 'en' ? <>Crafting spaces<br />with <em>purpose</em></> : t('studio.aboutHeading')}
                 </h3>
@@ -192,7 +192,7 @@ const StudioPage: React.FC = () => {
                   { label: t('studio.contact.location'), values: [t('studio.contact.location.desc')], href: null },
                 ].map((item, i) => (
                   <div key={i} className="flex gap-8 py-5 border-t border-white/15">
-                    <span className="text-[8px] uppercase tracking-[0.35em] text-white/40 w-14 flex-shrink-0 pt-0.5">{item.label}</span>
+                    <span className="text-[8px] uppercase tracking-[0.35em] text-white/55 w-14 flex-shrink-0 pt-0.5">{item.label}</span>
                     <div className="flex flex-col gap-1">
                       {item.values.map((v, j) => (
                         item.href ? (
@@ -217,22 +217,22 @@ const StudioPage: React.FC = () => {
                 {/* Name + Email row */}
                 <div className="grid md:grid-cols-2 gap-8">
                   <div className="border-b border-white/20 pb-3 focus-within:border-white/50 transition-colors">
-                    <label className="block text-[7px] uppercase tracking-[0.4em] text-white/40 mb-2">{t('studio.formName')}</label>
+                    <label className="block text-[7px] uppercase tracking-[0.4em] text-white/55 mb-2">{t('studio.formName')}</label>
                     <input type="text" name="user_name" required className="w-full bg-transparent text-white text-sm font-light outline-none placeholder-white/40" placeholder={t('studio.contact.form.name')} />
                   </div>
                   <div className="border-b border-white/20 pb-3 focus-within:border-white/50 transition-colors">
-                    <label className="block text-[7px] uppercase tracking-[0.4em] text-white/40 mb-2">{t('studio.formEmail')}</label>
+                    <label className="block text-[7px] uppercase tracking-[0.4em] text-white/55 mb-2">{t('studio.formEmail')}</label>
                     <input type="email" name="user_email" required className="w-full bg-transparent text-white text-sm font-light outline-none placeholder-white/40" placeholder={t('studio.contact.form.email')} />
                   </div>
                 </div>
 
                 <div className="border-b border-white/20 pb-3 focus-within:border-white/50 transition-colors mt-8">
-                  <label className="block text-[7px] uppercase tracking-[0.4em] text-white/40 mb-2">{t('studio.formSubject')}</label>
+                  <label className="block text-[7px] uppercase tracking-[0.4em] text-white/55 mb-2">{t('studio.formSubject')}</label>
                   <input type="text" name="subject" required className="w-full bg-transparent text-white text-sm font-light outline-none placeholder-white/40" placeholder={t('studio.contact.form.subject')} />
                 </div>
 
                 <div className="border-b border-white/20 pb-3 focus-within:border-white/50 transition-colors mt-8">
-                  <label className="block text-[7px] uppercase tracking-[0.4em] text-white/40 mb-2">{t('studio.formMessage')}</label>
+                  <label className="block text-[7px] uppercase tracking-[0.4em] text-white/55 mb-2">{t('studio.formMessage')}</label>
                   <textarea name="message" required rows={6} className="w-full min-h-[140px] bg-transparent text-white text-sm font-light outline-none resize-none placeholder-white/40" placeholder={t('studio.contact.form.message')} />
                 </div>
 

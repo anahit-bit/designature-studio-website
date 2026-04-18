@@ -41,7 +41,7 @@ const Header: React.FC = () => {
     <button 
       onClick={() => setLanguage(language === 'en' ? 'am' : 'en')}
       className={`text-[10px] font-bold uppercase tracking-[0.25em] transition-all duration-300 px-2 ${
-        (isDarkTextNeeded && !useLightNav) ? 'text-black hover:text-black/40' : 'text-white hover:text-white/40'
+        (isDarkTextNeeded && !useLightNav) ? 'text-black hover:text-black/55' : 'text-white hover:text-white/55'
       }`}
     >
       {language === 'en' ? 'AM' : 'EN'}
@@ -107,7 +107,7 @@ const Header: React.FC = () => {
                     ? 'text-[#0047AB] hover:text-[#0047AB]/70'
                     : isActive
                       ? ((isDarkTextNeeded && !useLightNav) ? 'text-black' : 'text-white')
-                      : ((isDarkTextNeeded && !useLightNav) ? 'text-black/40 hover:text-black' : 'text-white/40 hover:text-white')
+                      : ((isDarkTextNeeded && !useLightNav) ? 'text-black/55 hover:text-black' : 'text-white/55 hover:text-white')
                 }`}
                 style={link.isHighlight ? { animation: 'ai-pulse 2.5s ease-in-out infinite' } : {}}
               >

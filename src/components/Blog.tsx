@@ -13,7 +13,7 @@ const Blog: React.FC = () => {
       <div className="max-w-[1800px] mx-auto px-8 md:px-16">
         <div className="grid lg:grid-cols-12 gap-12 items-end mb-16 md:mb-24">
           <div className="lg:col-span-8">
-            <h2 className="text-sm md:text-base font-bold uppercase tracking-[0.6em] text-black/30 mb-8">{t('blog.title')}</h2>
+            <h2 className="text-sm md:text-base font-bold uppercase tracking-[0.6em] text-black/45 mb-8">{t('blog.title')}</h2>
             <h3 className="text-4xl md:text-6xl lg:text-7xl font-bold font-display tracking-architectural leading-[0.95]">
               {t('blog.heading')}
             </h3>
@@ -39,7 +39,7 @@ const Blog: React.FC = () => {
                   {post.category}
                 </div>
               </div>
-              <p className="text-sm md:text-base font-bold uppercase tracking-[0.3em] text-black/40 mb-4">{post.date}</p>
+              <p className="text-sm md:text-base font-bold uppercase tracking-[0.3em] text-black/55 mb-4">{post.date}</p>
               <h4 className="text-xl md:text-2xl font-bold font-display tracking-tight mb-6 group-hover:text-neutral-500 transition-colors">
                 {post.title}
               </h4>

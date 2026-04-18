@@ -16,7 +16,7 @@ const ProjectSection: React.FC = () => {
       <div className="max-w-[1800px] mx-auto px-8 md:px-16">
         {/* Centered Section Header */}
         <div className="flex flex-col items-center text-center mb-10 md:mb-12">
-          <h2 className="text-sm md:text-base font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/30 mb-8">{t('pro.title')}</h2>
+          <h2 className="text-sm md:text-base font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/45 mb-8">{t('pro.title')}</h2>
           <h3 className="text-4xl md:text-5xl lg:text-7xl font-bold font-display tracking-architectural leading-[1] max-w-4xl mb-10">
             {t('pro.heading')}
           </h3>
@@ -47,7 +47,7 @@ const ProjectSection: React.FC = () => {
               </div>
               
               <div className="space-y-2 px-1">
-                <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-black/40">
+                <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-black/55">
                   {language === 'en' ? project.categoryEN : project.categoryAM}
                 </p>
                 <h4 className="text-xl md:text-2xl font-bold font-display tracking-tight uppercase transition-transform duration-700 group-hover:translate-x-2">

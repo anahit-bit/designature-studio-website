@@ -112,7 +112,7 @@ const ServicesPage: React.FC = () => {
           <div className="max-w-4xl pt-20">
              <button 
               onClick={() => navigateTo('home')}
-              className="text-[9px] font-bold uppercase tracking-[0.35em] text-white/40 mb-10 hover:text-white transition-colors flex items-center gap-2 group w-fit"
+              className="text-[9px] font-bold uppercase tracking-[0.35em] text-white/55 mb-10 hover:text-white transition-colors flex items-center gap-2 group w-fit"
             >
               <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" /> 
               {t('portfolio.backHome')}
@@ -132,7 +132,7 @@ const ServicesPage: React.FC = () => {
 
         <button 
           onClick={scrollToContent}
-          className="absolute bottom-12 left-1/2 -translate-x-1/2 z-20 text-white/40 hover:text-white transition-all animate-bounce"
+          className="absolute bottom-12 left-1/2 -translate-x-1/2 z-20 text-white/55 hover:text-white transition-all animate-bounce"
         >
           <ChevronDown className="w-8 h-8" />
         </button>
@@ -164,7 +164,7 @@ const ServicesPage: React.FC = () => {
                   {cat.intro}
                 </p>
                 <div className="flex-grow space-y-8 mb-16">
-                  <h3 className="text-sm md:text-base font-bold uppercase tracking-[0.4em] text-black/30">
+                  <h3 className="text-sm md:text-base font-bold uppercase tracking-[0.4em] text-black/45">
                     {t('serv.packageIncludes')}
                   </h3>
                   <ul className="space-y-4">
