@@ -9,3 +9,6 @@ coverage/
 
 # Local JSON "database" (runtime data)
 users.json
+
+# Claude Code worktrees (nested git repos, local-only)
+.claude/worktrees/

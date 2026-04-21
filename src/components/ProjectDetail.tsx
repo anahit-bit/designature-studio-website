@@ -158,19 +158,21 @@ const ProjectDetail: React.FC = () => {
             />
           </div>
 
-          {/* Photos 10+11 — Final portrait pair (4:5) */}
-          <div className="grid grid-cols-2 gap-5">
-            <ImageOrPlaceholder 
-              src={project.gallery[9]} 
-              aspect="aspect-[4/5]" 
-              labelKey="portfolio.atmosphere1" 
-            />
-            <ImageOrPlaceholder 
-              src={project.gallery[10]} 
-              aspect="aspect-[4/5]" 
-              labelKey="portfolio.atmosphere2" 
-            />
-          </div>
+          {/* Photos 10+11 — Final portrait pair (4:5). Skipped entirely when both are missing. */}
+          {(project.gallery[9] || project.gallery[10]) && (
+            <div className="grid grid-cols-2 gap-5">
+              <ImageOrPlaceholder
+                src={project.gallery[9]}
+                aspect="aspect-[4/5]"
+                labelKey="portfolio.atmosphere1"
+              />
+              <ImageOrPlaceholder
+                src={project.gallery[10]}
+                aspect="aspect-[4/5]"
+                labelKey="portfolio.atmosphere2"
+              />
+            </div>
+          )}
 
           {/* 4. ADDITIONAL IMAGES (Infinite Pattern: Pair 4:5 -> Trio Square) */}
           {project.gallery.length > 11 && (

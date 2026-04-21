@@ -315,6 +315,51 @@ export const PROJECTS_LIST: ProjectData[] = [
   },
 
   // ════════════════════════════════════════════════
+  // PROJECT — A Living Room Refreshed (#17)
+  // ════════════════════════════════════════════════
+  {
+    id: '17',
+    titleEN: 'A Living Room Refreshed',
+    titleAM: 'A Living Room Refreshed',
+
+    categoryEN: 'Residential',
+    categoryAM: 'Բնակելի',
+
+    // ── Cover photo (4:5)
+    imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776750295/Portfolio/17/17-cover.jpg',
+
+    descriptionEN: 'A gentle refresh of an everyday living room — lighter surfaces, a brighter palette, and more air through every corner.',
+    descriptionAM: 'A gentle refresh of an everyday living room — lighter surfaces, a brighter palette, and more air through every corner.',
+
+    area:       '45 m²',
+    date:       '2024',
+    locationEN: 'Yerevan, Armenia',
+    locationAM: 'Երևան, Հայաստան',
+
+    gallery: [
+      // SLOT 1 — WIDE 16:9 — hero render
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776750296/Portfolio/17/17-g0.jpg',
+      // SLOT 2 — TALL 4:5 — portrait pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776750297/Portfolio/17/17-g1.jpg',
+      // SLOT 3 — TALL 4:5 — portrait pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776750298/Portfolio/17/17-g2.jpg',
+      // SLOT 4 — WIDE 16:9 — second wide render
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776750298/Portfolio/17/17-g3.jpg',
+      // SLOT 5 — MID 4:3 — landscape pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776750299/Portfolio/17/17-g4.jpg',
+      // SLOT 6 — MID 4:3 — landscape pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776750300/Portfolio/17/17-g5.jpg',
+      // SLOT 7 — SQUARE 1:1 — trio LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776750301/Portfolio/17/17-g6.jpg',
+      // SLOT 8 — SQUARE 1:1 — trio CENTER
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776750302/Portfolio/17/17-g7.jpg',
+      // SLOT 9 — SQUARE 1:1 — trio RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776750302/Portfolio/17/17-g8.jpg',
+      // Slots 10+11 (final portrait pair) intentionally omitted — ProjectDetail skips the block when both are missing.
+    ],
+  },
+
+  // ════════════════════════════════════════════════
   // ADD YOUR NEXT PROJECT HERE
   // Copy the block below, paste it above this comment,
   // increment the id, and fill in your details.
