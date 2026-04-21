@@ -14,8 +14,9 @@ const PortfolioPage: React.FC = () => {
   }, [portfolioFilter]);
 
   const filteredProjects = useMemo(() => {
-    if (filter === 'All') return PROJECTS_LIST;
-    return PROJECTS_LIST.filter(p => p.categoryEN === filter);
+    const sorted = [...PROJECTS_LIST].sort((a, b) => Number(b.id) - Number(a.id));
+    if (filter === 'All') return sorted;
+    return sorted.filter(p => p.categoryEN === filter);
   }, [filter]);
 
   const handleFilterChange = (newFilter: 'All' | 'Residential' | 'Commercial') => {
