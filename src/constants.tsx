@@ -447,8 +447,6 @@ export const PROJECTS_LIST: ProjectData[] = [
       'https://res.cloudinary.com/dys2k5muv/image/upload/v1776764397/Portfolio/33/33-g9.jpg',
       // SLOT 11 — TALL 4:5 — final pair RIGHT (source is 4:3, slight center-crop)
       'https://res.cloudinary.com/dys2k5muv/image/upload/v1776764398/Portfolio/33/33-g10.jpg',
-      // overflow — 2-col grid at bottom (source is 1:1, will crop top/bottom)
-      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776764399/Portfolio/33/33-g11.jpg',
     ],
   },
 
