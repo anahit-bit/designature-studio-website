@@ -404,6 +404,55 @@ export const PROJECTS_LIST: ProjectData[] = [
   },
 
   // ════════════════════════════════════════════════
+  // PROJECT — It Girl (#33)
+  // ════════════════════════════════════════════════
+  {
+    id: '33',
+    titleEN: 'It Girl',
+    titleAM: 'It Girl',
+
+    categoryEN: 'Residential',
+    categoryAM: 'Բնակելի',
+
+    imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776764389/Portfolio/33/33-cover.jpg',
+
+    descriptionEN: 'A 58 m² abode for an it girl — unafraid of color, texture, or the occasional risk.',
+    descriptionAM: 'A 58 m² abode for an it girl — unafraid of color, texture, or the occasional risk.',
+
+    area:       '58 m²',
+    date:       '2026',
+    locationEN: 'Yerevan, Armenia',
+    locationAM: 'Երևան, Հայաստան',
+
+    gallery: [
+      // SLOT 1 — WIDE 16:9 — hero render
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776764389/Portfolio/33/33-g0.jpg',
+      // SLOT 2 — TALL 4:5 — portrait pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776764390/Portfolio/33/33-g1.jpg',
+      // SLOT 3 — TALL 4:5 — portrait pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776764392/Portfolio/33/33-g2.jpg',
+      // SLOT 4 — WIDE 16:9 — second wide render
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776764392/Portfolio/33/33-g3.jpg',
+      // SLOT 5 — MID 4:3 — landscape pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776764393/Portfolio/33/33-g4.jpg',
+      // SLOT 6 — MID 4:3 — landscape pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776764394/Portfolio/33/33-g5.jpg',
+      // SLOT 7 — SQUARE 1:1 — trio LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776764395/Portfolio/33/33-g6.jpg',
+      // SLOT 8 — SQUARE 1:1 — trio CENTER
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776764396/Portfolio/33/33-g7.jpg',
+      // SLOT 9 — SQUARE 1:1 — trio RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776764397/Portfolio/33/33-g8.jpg',
+      // SLOT 10 — TALL 4:5 — final pair LEFT (source is 4:3, slight center-crop)
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776764397/Portfolio/33/33-g9.jpg',
+      // SLOT 11 — TALL 4:5 — final pair RIGHT (source is 4:3, slight center-crop)
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776764398/Portfolio/33/33-g10.jpg',
+      // overflow — 2-col grid at bottom (source is 1:1, will crop top/bottom)
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776764399/Portfolio/33/33-g11.jpg',
+    ],
+  },
+
+  // ════════════════════════════════════════════════
   // ADD YOUR NEXT PROJECT HERE
   // Copy the block below, paste it above this comment,
   // increment the id, and fill in your details.
