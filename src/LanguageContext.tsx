@@ -12,8 +12,15 @@ const STORAGE_KEYS = {
 function getInitialPage(): Page {
   const raw = localStorage.getItem(STORAGE_KEYS.currentPage);
   if (!raw) return 'home';
+
+  // 'project-detail' depends on selectedProjectId (non-persisted ephemeral state).
+  // On a fresh reload, restoring it would render an empty page (Header + Footer with
+  // a null ProjectDetail between). Fall back to 'home' — matches what the user
+  // expects when they land on the root URL.
+  if (raw === 'project-detail') return 'home';
+
   // Only allow known pages (guards against stale/invalid values)
-  const allowed: Page[] = ['home', 'portfolio', 'project-detail', 'services', 'studio', 'ai-concepts', 'ai-vision', 'pricing', 'faq'];
+  const allowed: Page[] = ['home', 'portfolio', 'services', 'studio', 'ai-concepts', 'ai-vision', 'pricing', 'faq'];
   return (allowed as string[]).includes(raw) ? (raw as Page) : 'home';
 }
 

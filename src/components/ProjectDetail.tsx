@@ -8,6 +8,15 @@ const ProjectDetail: React.FC = () => {
   const { language, t, navigateTo, selectedProjectId } = useLanguage();
   const [project, setProject] = useState<ProjectData | null>(null);
 
+  // Safety net: if we ever land on this page without a selectedProjectId
+  // (e.g. stale state from a previous session, direct URL), bounce to the
+  // home page instead of rendering a blank page between Header and Footer.
+  useEffect(() => {
+    if (!selectedProjectId) {
+      navigateTo('home');
+    }
+  }, [selectedProjectId, navigateTo]);
+
   useEffect(() => {
     if (selectedProjectId) {
       const found = PROJECTS_LIST.find(p => p.id === selectedProjectId);
