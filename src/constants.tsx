@@ -360,6 +360,50 @@ export const PROJECTS_LIST: ProjectData[] = [
   },
 
   // ════════════════════════════════════════════════
+  // PROJECT — Tacconelli (#21)
+  // ════════════════════════════════════════════════
+  {
+    id: '21',
+    titleEN: 'Tacconelli',
+    titleAM: 'Tacconelli',
+
+    categoryEN: 'Commercial',
+    categoryAM: 'Կոմերցիոն',
+
+    imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776760986/Portfolio/21/21-cover.jpg',
+
+    descriptionEN: 'A cocktail lounge tuned for dim evenings and live music — wallpaper, tile, bar architecture, lighting, and seating specified end-to-end.',
+    descriptionAM: 'A cocktail lounge tuned for dim evenings and live music — wallpaper, tile, bar architecture, lighting, and seating specified end-to-end.',
+
+    area:       '115 m²',
+    date:       '2025',
+    locationEN: 'Yerevan, Armenia',
+    locationAM: 'Երևան, Հայաստան',
+
+    gallery: [
+      // SLOT 1 — WIDE 16:9 — hero render
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776760987/Portfolio/21/21-g0.jpg',
+      // SLOT 2 — TALL 4:5 — portrait pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776760988/Portfolio/21/21-g1.jpg',
+      // SLOT 3 — TALL 4:5 — portrait pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776760989/Portfolio/21/21-g2.jpg',
+      // SLOT 4 — WIDE 16:9 — second wide render
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776760990/Portfolio/21/21-g3.jpg',
+      // SLOT 5 — MID 4:3 — landscape pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776760991/Portfolio/21/21-g4.jpg',
+      // SLOT 6 — MID 4:3 — landscape pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776760992/Portfolio/21/21-g5.jpg',
+      // SLOT 7 — SQUARE 1:1 — trio LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776760993/Portfolio/21/21-g6.jpg',
+      // SLOT 8 — SQUARE 1:1 — trio CENTER
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776760994/Portfolio/21/21-g7.jpg',
+      // SLOT 9 — SQUARE 1:1 — trio RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776760994/Portfolio/21/21-g8.jpg',
+      // Slots 10+11 (final pair) intentionally omitted — 9 gallery images on this item.
+    ],
+  },
+
+  // ════════════════════════════════════════════════
   // ADD YOUR NEXT PROJECT HERE
   // Copy the block below, paste it above this comment,
   // increment the id, and fill in your details.
