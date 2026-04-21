@@ -490,6 +490,132 @@ export const PROJECTS_LIST: ProjectData[] = [
   },
 
   // ════════════════════════════════════════════════
+  // PROJECT — Favorite Color is Orange (#26)
+  // ════════════════════════════════════════════════
+  {
+    id: '26',
+    titleEN: 'Favorite Color is Orange',
+    titleAM: 'Favorite Color is Orange',
+
+    categoryEN: 'Residential',
+    categoryAM: 'Բնակելի',
+
+    imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776778981/Portfolio/26/26-cover.jpg',
+
+    descriptionEN: "A bedroom built around the client's favorite orange — warm and saturated without ever going loud.",
+    descriptionAM: "A bedroom built around the client's favorite orange — warm and saturated without ever going loud.",
+
+    area:       '27 m²',
+    date:       '2025',
+    locationEN: 'Yerevan, Armenia',
+    locationAM: 'Երևան, Հայաստան',
+
+    gallery: [
+      // SLOT 1 — WIDE 16:9 — hero render
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776778982/Portfolio/26/26-g0.jpg',
+      // SLOT 2 — TALL 4:5 — portrait pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776778983/Portfolio/26/26-g1.jpg',
+      // SLOT 3 — TALL 4:5 — portrait pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776778984/Portfolio/26/26-g2.jpg',
+      // SLOT 4 — WIDE 16:9 — second wide render
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776778985/Portfolio/26/26-g3.jpg',
+      // SLOT 5 — MID 4:3 — landscape pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776778986/Portfolio/26/26-g4.jpg',
+      // SLOT 6 — MID 4:3 — landscape pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776778988/Portfolio/26/26-g5.jpg',
+      // Slots 7–11 (trio + final pair) intentionally omitted.
+    ],
+  },
+
+  // ════════════════════════════════════════════════
+  // PROJECT — Green Stripes (#30)
+  // ════════════════════════════════════════════════
+  {
+    id: '30',
+    titleEN: 'Green Stripes',
+    titleAM: 'Green Stripes',
+
+    categoryEN: 'Residential',
+    categoryAM: 'Բնակելի',
+
+    imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776778989/Portfolio/30/30-cover.jpg',
+
+    descriptionEN: 'The green-striped wallpaper set the tone — color, texture, and line followed where it led.',
+    descriptionAM: 'The green-striped wallpaper set the tone — color, texture, and line followed where it led.',
+
+    area:       '45 m²',
+    date:       '2025',
+    locationEN: 'Yerevan, Armenia',
+    locationAM: 'Երևան, Հայաստան',
+
+    gallery: [
+      // SLOT 1 — WIDE 16:9 — hero render
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776778990/Portfolio/30/30-g0.jpg',
+      // SLOT 2 — TALL 4:5 — portrait pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776778991/Portfolio/30/30-g1.jpg',
+      // SLOT 3 — TALL 4:5 — portrait pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776778992/Portfolio/30/30-g2.jpg',
+      // SLOT 4 — WIDE 16:9 — second wide render
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776778993/Portfolio/30/30-g3.jpg',
+      // SLOT 5 — MID 4:3 — landscape pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776778994/Portfolio/30/30-g4.jpg',
+      // SLOT 6 — MID 4:3 — landscape pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776778995/Portfolio/30/30-g5.jpg',
+      // Slots 7–11 (trio + final pair) intentionally omitted.
+    ],
+  },
+
+  // ════════════════════════════════════════════════
+  // PROJECT — The Calm Abode (#34)
+  // ════════════════════════════════════════════════
+  {
+    id: '34',
+    titleEN: 'The Calm Abode',
+    titleAM: 'The Calm Abode',
+
+    categoryEN: 'Residential',
+    categoryAM: 'Բնակելի',
+
+    imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776778997/Portfolio/34/34-cover.jpg',
+
+    descriptionEN: 'A small house for a mother and daughter — soft, warm, and unapologetically theirs.',
+    descriptionAM: 'A small house for a mother and daughter — soft, warm, and unapologetically theirs.',
+
+    area:       '58 m²',
+    date:       '2026',
+    locationEN: 'Yerevan, Armenia',
+    locationAM: 'Երևան, Հայաստան',
+
+    gallery: [
+      // SLOT 1 — WIDE 16:9 — hero render (source ratio 1.62, slight top/bottom crop)
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776778998/Portfolio/34/34-g0.jpg',
+      // SLOT 2 — TALL 4:5 — portrait pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776778999/Portfolio/34/34-g1.jpg',
+      // SLOT 3 — TALL 4:5 — portrait pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779000/Portfolio/34/34-g2.jpg',
+      // SLOT 4 — WIDE 16:9 — second wide render
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779001/Portfolio/34/34-g3.jpg',
+      // SLOT 5 — MID 4:3 — landscape pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779001/Portfolio/34/34-g4.jpg',
+      // SLOT 6 — MID 4:3 — landscape pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779003/Portfolio/34/34-g5.jpg',
+      // SLOT 7 — SQUARE 1:1 — trio LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779004/Portfolio/34/34-g6.jpg',
+      // SLOT 8 — SQUARE 1:1 — trio CENTER
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779006/Portfolio/34/34-g7.jpg',
+      // SLOT 9 — SQUARE 1:1 — trio RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779007/Portfolio/34/34-g8.jpg',
+      // SLOT 10 — TALL 4:5 — final pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779008/Portfolio/34/34-g9.jpg',
+      // SLOT 11 — TALL 4:5 — final pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779009/Portfolio/34/34-g10.jpg',
+      // overflow — 2-col grid at bottom
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779010/Portfolio/34/34-g11.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779011/Portfolio/34/34-g12.jpg',
+    ],
+  },
+
+  // ════════════════════════════════════════════════
   // ADD YOUR NEXT PROJECT HERE
   // Copy the block below, paste it above this comment,
   // increment the id, and fill in your details.
