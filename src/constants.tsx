@@ -663,6 +663,58 @@ export const PROJECTS_LIST: ProjectData[] = [
   },
 
   // ════════════════════════════════════════════════
+  // PROJECT — Two Floors, One Mood (#36)
+  // ════════════════════════════════════════════════
+  {
+    id: '36',
+    titleEN: 'Two Floors, One Mood',
+    titleAM: 'Two Floors, One Mood',
+
+    categoryEN: 'Residential',
+    categoryAM: 'Բնակելի',
+
+    imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776781095/Portfolio/36/36-cover.jpg',
+
+    descriptionEN: 'A two-story house for a family of four — a calm, relaxed atmosphere carried cohesively from floor to floor.',
+    descriptionAM: 'A two-story house for a family of four — a calm, relaxed atmosphere carried cohesively from floor to floor.',
+
+    area:       '140 m²',
+    date:       '2026',
+    locationEN: 'Yerevan, Armenia',
+    locationAM: 'Երևան, Հայաստան',
+
+    gallery: [
+      // SLOT 1 — WIDE 16:9 — hero render
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776781096/Portfolio/36/36-g0.jpg',
+      // SLOT 2 — TALL 4:5 — portrait pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776781097/Portfolio/36/36-g1.jpg',
+      // SLOT 3 — TALL 4:5 — portrait pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776781098/Portfolio/36/36-g2.jpg',
+      // SLOT 4 — WIDE 16:9 — second wide render
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776781099/Portfolio/36/36-g3.jpg',
+      // SLOT 5 — MID 4:3 — landscape pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776781100/Portfolio/36/36-g4.jpg',
+      // SLOT 6 — MID 4:3 — landscape pair RIGHT (kitchen with figure, 6.2)
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776781101/Portfolio/36/36-g5.jpg',
+      // SLOT 7 — SQUARE 1:1 — trio LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776781102/Portfolio/36/36-g6.jpg',
+      // SLOT 8 — SQUARE 1:1 — trio CENTER
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776781103/Portfolio/36/36-g7.jpg',
+      // SLOT 9 — SQUARE 1:1 — trio RIGHT (source is 4:5, slight top/bottom crop)
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776781104/Portfolio/36/36-g8.jpg',
+      // SLOT 10 — TALL 4:5 — final pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776781105/Portfolio/36/36-g9.jpg',
+      // SLOT 11 — TALL 4:5 — final pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776781106/Portfolio/36/36-g10.jpg',
+      // overflow — 2-col grid at bottom
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776781107/Portfolio/36/36-g11.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776781108/Portfolio/36/36-g12.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776781109/Portfolio/36/36-g13.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776781110/Portfolio/36/36-g14.jpg',
+    ],
+  },
+
+  // ════════════════════════════════════════════════
   // ADD YOUR NEXT PROJECT HERE
   // Copy the block below, paste it above this comment,
   // increment the id, and fill in your details.
