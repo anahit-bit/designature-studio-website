@@ -118,12 +118,14 @@ const ProjectDetail: React.FC = () => {
             />
           </div>
 
-          {/* Photo 4 — Full width landscape (16:9) */}
-          <ImageOrPlaceholder 
-            src={project.gallery[3]} 
-            aspect="aspect-video" 
-            labelKey="portfolio.widePerspective" 
-          />
+          {/* Photo 4 — Full width landscape (16:9). Skipped when empty. */}
+          {project.gallery[3] && (
+            <ImageOrPlaceholder
+              src={project.gallery[3]}
+              aspect="aspect-video"
+              labelKey="portfolio.widePerspective"
+            />
+          )}
 
           {/* Photos 5+6 — Landscape pair (4:3) */}
           <div className="grid grid-cols-2 gap-5">
