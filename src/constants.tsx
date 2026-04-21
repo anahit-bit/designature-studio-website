@@ -451,6 +451,45 @@ export const PROJECTS_LIST: ProjectData[] = [
   },
 
   // ════════════════════════════════════════════════
+  // PROJECT — Where It Starts (#27)
+  // ════════════════════════════════════════════════
+  {
+    id: '27',
+    titleEN: 'Where It Starts',
+    titleAM: 'Where It Starts',
+
+    categoryEN: 'Residential',
+    categoryAM: 'Բնակելի',
+
+    imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776768539/Portfolio/27/27-cover.jpg',
+
+    descriptionEN: 'A small apartment that earned its layout — thirteen floorplans in, every client detail in its place.',
+    descriptionAM: 'A small apartment that earned its layout — thirteen floorplans in, every client detail in its place.',
+
+    area:       '61 m²',
+    date:       '2025',
+    locationEN: 'Yerevan, Armenia',
+    locationAM: 'Երևան, Հայաստան',
+
+    gallery: [
+      // SLOT 1 — WIDE 16:9 — hero render
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776768540/Portfolio/27/27-g0.jpg',
+      // SLOT 2 — TALL 4:5 — portrait pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776768541/Portfolio/27/27-g1.jpg',
+      // SLOT 3 — TALL 4:5 — portrait pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776768542/Portfolio/27/27-g2.jpg',
+      // SLOT 4 — WIDE 16:9 — second wide render
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776768542/Portfolio/27/27-g3.jpg',
+      // SLOT 5 — MID 4:3 — landscape pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776768543/Portfolio/27/27-g4.jpg',
+      // SLOT 6 — MID 4:3 — landscape pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776768544/Portfolio/27/27-g5.jpg',
+      // Slots 7–11 (trio + final pair) intentionally omitted — gallery of 6 images on this item.
+      // ProjectDetail now skips both the trio and final-pair blocks when their slots are empty.
+    ],
+  },
+
+  // ════════════════════════════════════════════════
   // ADD YOUR NEXT PROJECT HERE
   // Copy the block below, paste it above this comment,
   // increment the id, and fill in your details.

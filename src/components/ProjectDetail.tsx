@@ -139,24 +139,26 @@ const ProjectDetail: React.FC = () => {
             />
           </div>
 
-          {/* Photos 7+8+9 — Trio (Square) */}
-          <div className="grid grid-cols-3 gap-5">
-            <ImageOrPlaceholder 
-              src={project.gallery[6]} 
-              aspect="aspect-square" 
-              labelKey="portfolio.closeup1" 
-            />
-            <ImageOrPlaceholder 
-              src={project.gallery[7]} 
-              aspect="aspect-square" 
-              labelKey="portfolio.closeup2" 
-            />
-            <ImageOrPlaceholder 
-              src={project.gallery[8]} 
-              aspect="aspect-square" 
-              labelKey="portfolio.closeup3" 
-            />
-          </div>
+          {/* Photos 7+8+9 — Trio (Square). Skipped when all three are missing. */}
+          {(project.gallery[6] || project.gallery[7] || project.gallery[8]) && (
+            <div className="grid grid-cols-3 gap-5">
+              <ImageOrPlaceholder
+                src={project.gallery[6]}
+                aspect="aspect-square"
+                labelKey="portfolio.closeup1"
+              />
+              <ImageOrPlaceholder
+                src={project.gallery[7]}
+                aspect="aspect-square"
+                labelKey="portfolio.closeup2"
+              />
+              <ImageOrPlaceholder
+                src={project.gallery[8]}
+                aspect="aspect-square"
+                labelKey="portfolio.closeup3"
+              />
+            </div>
+          )}
 
           {/* Photos 10+11 — Final portrait pair (4:5). Skipped entirely when both are missing. */}
           {(project.gallery[9] || project.gallery[10]) && (
