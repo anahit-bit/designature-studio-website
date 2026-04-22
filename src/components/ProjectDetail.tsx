@@ -1,11 +1,13 @@
 
 import React, { useEffect, useState } from 'react';
 import { useLanguage } from '../LanguageContext';
-import { PROJECTS_LIST, ProjectData } from '../constants';
+import { useProjects } from '../ProjectsContext';
+import { ProjectData } from '../constants';
 import { ArrowLeft } from 'lucide-react';
 
 const ProjectDetail: React.FC = () => {
   const { language, t, navigateTo, selectedProjectId } = useLanguage();
+  const { projects } = useProjects();
   const [project, setProject] = useState<ProjectData | null>(null);
 
   // Safety net: if we ever land on this page without a selectedProjectId
@@ -19,10 +21,10 @@ const ProjectDetail: React.FC = () => {
 
   useEffect(() => {
     if (selectedProjectId) {
-      const found = PROJECTS_LIST.find(p => p.id === selectedProjectId);
+      const found = projects.find(p => p.id === selectedProjectId);
       if (found) setProject(found);
     }
-  }, [selectedProjectId]);
+  }, [selectedProjectId, projects]);
 
   if (!project) return null;
 

@@ -1,11 +1,12 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { PROJECTS_LIST } from '../constants';
 import { useLanguage } from '../LanguageContext';
+import { useProjects } from '../ProjectsContext';
 import { ArrowLeft } from 'lucide-react';
 
 const PortfolioPage: React.FC = () => {
   const { language, t, navigateTo, portfolioFilter, setPortfolioFilter, setSelectedProjectId } = useLanguage();
+  const { projects } = useProjects();
   const [filter, setFilter] = useState<'All' | 'Residential' | 'Commercial'>(portfolioFilter);
 
   // Synchronize internal filter state with context filter if it changes externally
@@ -14,10 +15,10 @@ const PortfolioPage: React.FC = () => {
   }, [portfolioFilter]);
 
   const filteredProjects = useMemo(() => {
-    const sorted = [...PROJECTS_LIST].sort((a, b) => Number(b.id) - Number(a.id));
+    const sorted = [...projects].sort((a, b) => Number(b.id) - Number(a.id));
     if (filter === 'All') return sorted;
     return sorted.filter(p => p.categoryEN === filter);
-  }, [filter]);
+  }, [filter, projects]);
 
   const handleFilterChange = (newFilter: 'All' | 'Residential' | 'Commercial') => {
     setFilter(newFilter);

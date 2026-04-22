@@ -15,6 +15,7 @@
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
     "@google/genai": "^1.41.0",
+    "@sanity/client": "^7.21.0",
     "cloudinary": "^1.41.3",
     "dotenv": "^16.6.1",
     "express": "^5.2.1",
@@ -31,7 +32,6 @@
     "tsx": "^4.21.0"
   },
   "devDependencies": {
-    "@sanity/client": "^7.21.0",
     "@tailwindcss/vite": "^4.2.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",

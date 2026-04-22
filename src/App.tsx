@@ -19,6 +19,7 @@ import FAQPage from './components/FAQPage';
 import CTABanner from './components/CTABanner';
 import Footer from './components/Footer';
 import { LanguageProvider, useLanguage } from './LanguageContext';
+import { ProjectsProvider } from './ProjectsContext';
 import SessionInactivityGuard from './components/SessionInactivityGuard';
 
 const AppContent: React.FC = () => {
@@ -118,8 +119,10 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => (
   <LanguageProvider>
-    <SessionInactivityGuard />
-    <AppContent />
+    <ProjectsProvider>
+      <SessionInactivityGuard />
+      <AppContent />
+    </ProjectsProvider>
   </LanguageProvider>
 );
 

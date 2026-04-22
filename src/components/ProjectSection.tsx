@@ -1,13 +1,14 @@
 
 import React from 'react';
-import { PROJECTS_LIST } from '../constants';
 import { useLanguage } from '../LanguageContext';
+import { useProjects } from '../ProjectsContext';
 
 const ProjectSection: React.FC = () => {
   const { language, t, navigateTo, setSelectedProjectId } = useLanguage();
-  
+  const { projects } = useProjects();
+
   // Sort by numeric ID descending — highest ID = most recent, take top 4
-  const featuredProjects = [...PROJECTS_LIST]
+  const featuredProjects = [...projects]
     .sort((a, b) => Number(b.id) - Number(a.id))
     .slice(0, 4);
 
