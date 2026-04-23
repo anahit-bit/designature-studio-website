@@ -270,8 +270,8 @@ export const PROJECTS_LIST: ProjectData[] = [
   // ════════════════════════════════════════════════
   {
     id: '5',
-    titleEN:  'Ark Coworking',
-    titleAM:  'Արկ Քոուորքինգ',
+    titleEN:  'Arc Coworking',
+    titleAM:  'Arc Coworking',
 
     categoryEN: 'Commercial',
     categoryAM: 'Կոմերցիոն',
@@ -279,10 +279,10 @@ export const PROJECTS_LIST: ProjectData[] = [
     // ── Cover photo shown on portfolio grid card (ratio 4:5, e.g. 1200×1500px)
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1773255682/0_sp0nvi.jpg',
 
-    descriptionEN: 'Atmospheric coworking space with curated lighting',
-    descriptionAM: 'Մթնոլորտային քոուորքինգ՝ խնամքով ընտրված լուսավորությամբ',
+    descriptionEN: 'A coworking space all about shapes — arched entrances, rounded walls, and curved lights.',
+    descriptionAM: 'A coworking space all about shapes — arched entrances, rounded walls, and curved lights.',
 
-    area:       '120 m²',
+    area:       '200 m²',
     date:       '2025',
     locationEN: 'Yerevan, Armenia',
     locationAM: 'Երևան, Հայաստան',
@@ -612,53 +612,6 @@ export const PROJECTS_LIST: ProjectData[] = [
       // overflow — 2-col grid at bottom
       'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779010/Portfolio/34/34-g11.jpg',
       'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779011/Portfolio/34/34-g12.jpg',
-    ],
-  },
-
-  // ════════════════════════════════════════════════
-  // PROJECT — Arc Coworking (#29)
-  // ════════════════════════════════════════════════
-  {
-    id: '29',
-    titleEN: 'Arc Coworking',
-    titleAM: 'Arc Coworking',
-
-    categoryEN: 'Commercial',
-    categoryAM: 'Կոմերցիոն',
-
-    imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779671/Portfolio/29/29-cover.jpg',
-
-    descriptionEN: 'A coworking space all about shapes — arched entrances, rounded walls, and curved lights.',
-    descriptionAM: 'A coworking space all about shapes — arched entrances, rounded walls, and curved lights.',
-
-    area:       '200 m²',
-    date:       '2025',
-    locationEN: 'Yerevan, Armenia',
-    locationAM: 'Երևան, Հայաստան',
-
-    gallery: [
-      // SLOT 1 — WIDE 16:9 — hero render
-      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779671/Portfolio/29/29-g0.jpg',
-      // SLOT 2 — TALL 4:5 — portrait pair LEFT
-      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779672/Portfolio/29/29-g1.jpg',
-      // SLOT 3 — TALL 4:5 — portrait pair RIGHT
-      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779673/Portfolio/29/29-g2.jpg',
-      // SLOT 4 — WIDE 16:9 — intentionally skipped (source 4.1.jpeg was a 3.4:1 panoramic)
-      '',
-      // SLOT 5 — MID 4:3 — landscape pair LEFT
-      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779674/Portfolio/29/29-g4.jpg',
-      // SLOT 6 — MID 4:3 — landscape pair RIGHT
-      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779675/Portfolio/29/29-g5.jpg',
-      // SLOT 7 — SQUARE 1:1 — trio LEFT
-      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779676/Portfolio/29/29-g6.jpg',
-      // SLOT 8 — SQUARE 1:1 — trio CENTER
-      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779677/Portfolio/29/29-g7.jpg',
-      // SLOT 9 — SQUARE 1:1 — trio RIGHT
-      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779678/Portfolio/29/29-g8.jpg',
-      // SLOT 10 — TALL 4:5 — final pair LEFT (source 4:3, slight center-crop)
-      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779678/Portfolio/29/29-g9.jpg',
-      // SLOT 11 — TALL 4:5 — final pair RIGHT (source 4:3, slight center-crop)
-      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776779679/Portfolio/29/29-g10.jpg',
     ],
   },
 
