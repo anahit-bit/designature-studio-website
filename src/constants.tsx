@@ -629,7 +629,7 @@ export const PROJECTS_LIST: ProjectData[] = [
     categoryEN: 'Commercial',
     categoryAM: 'Կոմերցիոն',
 
-    imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1773255682/Portfolio/29/29-cover.jpg',
+    imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776917882/Portfolio/29/29-cover.jpg',
 
     descriptionEN: 'A coworking space all about shapes — arched entrances, rounded walls, and curved lights.',
     descriptionAM: 'A coworking space all about shapes — arched entrances, rounded walls, and curved lights.',
@@ -640,28 +640,28 @@ export const PROJECTS_LIST: ProjectData[] = [
     locationAM: 'Երևան, Հայաստան',
 
     gallery: [
-      // SLOT 1 — WIDE 16:9 — hero render (2400×1350)
-      'https://res.cloudinary.com/dys2k5muv/image/upload/v1773255687/Portfolio/29/29-g0.jpg',
+      // SLOT 1 — WIDE 16:9 — hero render (AI-enhanced photoreal)
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776917883/Portfolio/29/29-g0.jpg',
       // SLOT 2 — TALL 4:5 — portrait pair LEFT
-      'https://res.cloudinary.com/dys2k5muv/image/upload/v1773255683/Portfolio/29/29-g1.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776917884/Portfolio/29/29-g1.jpg',
       // SLOT 3 — TALL 4:5 — portrait pair RIGHT
-      'https://res.cloudinary.com/dys2k5muv/image/upload/v1773255684/Portfolio/29/29-g2.jpg',
-      // SLOT 4 — WIDE 16:9 — intentionally skipped (panoramic source 4_y1ynfa was 3.4:1)
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776917885/Portfolio/29/29-g2.jpg',
+      // SLOT 4 — WIDE 16:9 — intentionally skipped (panoramic 4.1.jpeg was 3.4:1)
       '',
       // SLOT 5 — MID 4:3 — landscape pair LEFT
-      'https://res.cloudinary.com/dys2k5muv/image/upload/v1773255684/Portfolio/29/29-g4.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776917885/Portfolio/29/29-g4.jpg',
       // SLOT 6 — MID 4:3 — landscape pair RIGHT
-      'https://res.cloudinary.com/dys2k5muv/image/upload/v1773255688/Portfolio/29/29-g5.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776917887/Portfolio/29/29-g5.jpg',
       // SLOT 7 — SQUARE 1:1 — trio LEFT
-      'https://res.cloudinary.com/dys2k5muv/image/upload/v1773255685/Portfolio/29/29-g6.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776917888/Portfolio/29/29-g6.jpg',
       // SLOT 8 — SQUARE 1:1 — trio CENTER
-      'https://res.cloudinary.com/dys2k5muv/image/upload/v1773255684/Portfolio/29/29-g7.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776917889/Portfolio/29/29-g7.jpg',
       // SLOT 9 — SQUARE 1:1 — trio RIGHT
-      'https://res.cloudinary.com/dys2k5muv/image/upload/v1773255684/Portfolio/29/29-g8.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776917890/Portfolio/29/29-g8.jpg',
       // SLOT 10 — TALL 4:5 — final pair LEFT (source is 4:3, slight center-crop)
-      'https://res.cloudinary.com/dys2k5muv/image/upload/v1773255686/Portfolio/29/29-g9.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776917891/Portfolio/29/29-g9.jpg',
       // SLOT 11 — TALL 4:5 — final pair RIGHT (source is 4:3, slight center-crop)
-      'https://res.cloudinary.com/dys2k5muv/image/upload/v1773255685/Portfolio/29/29-g10.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1776917892/Portfolio/29/29-g10.jpg',
     ],
   },
 
