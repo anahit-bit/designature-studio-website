@@ -5,7 +5,7 @@ import { useLanguage } from '../LanguageContext';
 
 const Portfolio: React.FC = () => {
   const [filter, setFilter] = useState<'All' | 'Residential' | 'Commercial'>('All');
-  const { language, t, navigateTo, setSelectedProjectId } = useLanguage();
+  const { language, t, navigateTo } = useLanguage();
   const projects = getProjects(language);
 
   // Filter projects by matching the localized category string correctly across languages
@@ -51,10 +51,7 @@ const Portfolio: React.FC = () => {
           {filteredProjects.map((project) => (
             <div 
               key={project.id}
-              onClick={() => {
-                setSelectedProjectId(project.id);
-                navigateTo('project-detail');
-              }}
+              onClick={() => navigateTo('project-detail', project.id)}
               className="group cursor-pointer"
             >
               <div className="relative aspect-[4/5] overflow-hidden bg-neutral-100 mb-6">

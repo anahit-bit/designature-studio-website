@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import AIConceptsPage from '../components/AIConceptsPage';
 import SessionInactivityGuard from '../components/SessionInactivityGuard';
 import { LanguageProvider } from '../LanguageContext';
@@ -23,10 +24,12 @@ vi.mock('../components/Footer', () => ({
 
 const renderWithProvider = (ui: React.ReactElement) => {
   return render(
-    <LanguageProvider>
-      <SessionInactivityGuard />
-      {ui}
-    </LanguageProvider>
+    <MemoryRouter>
+      <LanguageProvider>
+        <SessionInactivityGuard />
+        {ui}
+      </LanguageProvider>
+    </MemoryRouter>
   );
 };
 

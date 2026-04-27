@@ -10,21 +10,21 @@ const ProjectDetail: React.FC = () => {
   const { projects } = useProjects();
   const [project, setProject] = useState<ProjectData | null>(null);
 
-  // Safety net: if we ever land on this page without a selectedProjectId
-  // (e.g. stale state from a previous session, direct URL), bounce to the
-  // home page instead of rendering a blank page between Header and Footer.
+  // If the URL points at a project that doesn't exist (e.g. someone typed
+  // /portfolio/9999), bounce back to the portfolio index instead of leaving
+  // a blank page between Header and Footer. Wait until projects are loaded
+  // before deciding — otherwise we'd redirect during the initial empty state.
   useEffect(() => {
     if (!selectedProjectId) {
       navigateTo('home');
+      return;
     }
-  }, [selectedProjectId, navigateTo]);
-
-  useEffect(() => {
-    if (selectedProjectId) {
+    if (projects.length > 0) {
       const found = projects.find(p => p.id === selectedProjectId);
       if (found) setProject(found);
+      else navigateTo('portfolio');
     }
-  }, [selectedProjectId, projects]);
+  }, [selectedProjectId, projects, navigateTo]);
 
   if (!project) return null;
 

@@ -5,7 +5,7 @@ import { useProjects } from '../ProjectsContext';
 import { ArrowLeft } from 'lucide-react';
 
 const PortfolioPage: React.FC = () => {
-  const { language, t, navigateTo, portfolioFilter, setPortfolioFilter, setSelectedProjectId } = useLanguage();
+  const { language, t, navigateTo, portfolioFilter, setPortfolioFilter } = useLanguage();
   const { projects } = useProjects();
   const [filter, setFilter] = useState<'All' | 'Residential' | 'Commercial'>(portfolioFilter);
 
@@ -75,10 +75,7 @@ const PortfolioPage: React.FC = () => {
           {filteredProjects.map((project) => (
             <div 
               key={project.id} 
-              onClick={() => {
-                setSelectedProjectId(project.id);
-                navigateTo('project-detail');
-              }}
+              onClick={() => navigateTo('project-detail', project.id)}
               className="group relative aspect-[4/5] bg-neutral-100 overflow-hidden cursor-pointer"
             >
               <img 

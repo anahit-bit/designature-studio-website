@@ -1,27 +1,48 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export type Language = 'en' | 'am';
 export type Page = 'home' | 'portfolio' | 'project-detail' | 'services' | 'studio' | 'ai-concepts' | 'ai-vision' | 'pricing' | 'faq';
 export type PortfolioFilter = 'All' | 'Residential' | 'Commercial';
 
-const STORAGE_KEYS = {
-  currentPage: 'ds_current_page',
-} as const;
+// URL ⇄ page-state mapping. URL is the source of truth; localStorage persistence
+// has been removed since the browser address bar now records which page you're on.
+function pathToPageState(pathname: string): { page: Page; projectId: string | null } {
+  if (pathname === '/' || pathname === '') return { page: 'home', projectId: null };
+  if (pathname === '/portfolio') return { page: 'portfolio', projectId: null };
+  const projectMatch = pathname.match(/^\/portfolio\/([^/]+)\/?$/);
+  if (projectMatch) return { page: 'project-detail', projectId: decodeURIComponent(projectMatch[1]) };
+  if (pathname === '/services') return { page: 'services', projectId: null };
+  if (pathname === '/studio') return { page: 'studio', projectId: null };
+  if (pathname === '/ai-concepts') return { page: 'ai-concepts', projectId: null };
+  if (pathname === '/ai-vision') return { page: 'ai-vision', projectId: null };
+  if (pathname === '/pricing') return { page: 'pricing', projectId: null };
+  if (pathname === '/faq') return { page: 'faq', projectId: null };
+  return { page: 'home', projectId: null };
+}
 
-function getInitialPage(): Page {
-  const raw = localStorage.getItem(STORAGE_KEYS.currentPage);
-  if (!raw) return 'home';
-
-  // 'project-detail' depends on selectedProjectId (non-persisted ephemeral state).
-  // On a fresh reload, restoring it would render an empty page (Header + Footer with
-  // a null ProjectDetail between). Fall back to 'home' — matches what the user
-  // expects when they land on the root URL.
-  if (raw === 'project-detail') return 'home';
-
-  // Only allow known pages (guards against stale/invalid values)
-  const allowed: Page[] = ['home', 'portfolio', 'services', 'studio', 'ai-concepts', 'ai-vision', 'pricing', 'faq'];
-  return (allowed as string[]).includes(raw) ? (raw as Page) : 'home';
+function pageToPath(page: Page, projectId?: string | null, filter?: PortfolioFilter): string {
+  switch (page) {
+    case 'home':
+      return '/';
+    case 'portfolio':
+      return filter && filter !== 'All' ? `/portfolio?filter=${filter}` : '/portfolio';
+    case 'project-detail':
+      return projectId ? `/portfolio/${encodeURIComponent(projectId)}` : '/portfolio';
+    case 'services':
+      return '/services';
+    case 'studio':
+      return '/studio';
+    case 'ai-concepts':
+      return '/ai-concepts';
+    case 'ai-vision':
+      return '/ai-vision';
+    case 'pricing':
+      return '/pricing';
+    case 'faq':
+      return '/faq';
+  }
 }
 
 interface LanguageContextType {
@@ -1012,39 +1033,51 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [language, setLanguage] = useState<Language>('en');
-  const [currentPage, setCurrentPage] = useState<Page>(() => getInitialPage());
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [portfolioFilter, setPortfolioFilter] = useState<PortfolioFilter>('All');
+  const location = useLocation();
+  const navigate = useNavigate();
 
+  const { page: currentPage, projectId: urlProjectId } = pathToPageState(location.pathname);
+
+  const queryFilter = new URLSearchParams(location.search).get('filter');
+  const portfolioFilter: PortfolioFilter =
+    queryFilter === 'Residential' || queryFilter === 'Commercial' ? queryFilter : 'All';
+
+  // Scroll to top on every route change (matches the old setCurrentPage behavior).
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [currentPage]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.currentPage, currentPage);
-  }, [currentPage]);
+  }, [location.pathname]);
 
   const t = (key: string) => {
     return translations[language][key as keyof typeof translations['en']] || key;
   };
 
   const navigateTo = (page: Page, projectId?: string, filter?: PortfolioFilter) => {
-    if (projectId) setSelectedProjectId(projectId);
-    if (filter) setPortfolioFilter(filter);
-    setCurrentPage(page);
+    navigate(pageToPath(page, projectId, filter));
+  };
+
+  // Backwards-compat shims: existing call sites do `setSelectedProjectId(id)` then
+  // `navigateTo('project-detail')`. We make `setSelectedProjectId` navigate
+  // straight to /portfolio/:id so the second call becomes a no-op (same URL).
+  const setSelectedProjectId = (id: string | null) => {
+    if (id) navigate(pageToPath('project-detail', id));
+    else if (currentPage === 'project-detail') navigate(pageToPath('portfolio'));
+  };
+
+  const setPortfolioFilter = (filter: PortfolioFilter) => {
+    navigate(pageToPath('portfolio', undefined, filter));
   };
 
   return (
-    <LanguageContext.Provider value={{ 
-      language, 
-      setLanguage, 
-      t, 
-      currentPage, 
-      selectedProjectId, 
+    <LanguageContext.Provider value={{
+      language,
+      setLanguage,
+      t,
+      currentPage,
+      selectedProjectId: urlProjectId,
       setSelectedProjectId,
       portfolioFilter,
       setPortfolioFilter,
-      navigateTo 
+      navigateTo,
     }}>
       {children}
     </LanguageContext.Provider>

@@ -1,12 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import StudioPage from '../components/StudioPage';
 import { LanguageProvider } from '../LanguageContext';
 
 const renderWithProvider = (ui: React.ReactElement) => {
-  return render(<LanguageProvider>{ui}</LanguageProvider>);
+  return render(
+    <MemoryRouter>
+      <LanguageProvider>{ui}</LanguageProvider>
+    </MemoryRouter>
+  );
 };
 
 vi.mock('../components/Logo', () => ({

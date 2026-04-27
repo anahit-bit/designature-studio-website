@@ -4,7 +4,7 @@ import { useLanguage } from '../LanguageContext';
 import { useProjects } from '../ProjectsContext';
 
 const ProjectSection: React.FC = () => {
-  const { language, t, navigateTo, setSelectedProjectId } = useLanguage();
+  const { language, t, navigateTo } = useLanguage();
   const { projects } = useProjects();
 
   // Sort by numeric ID descending — highest ID = most recent, take top 4
@@ -31,10 +31,7 @@ const ProjectSection: React.FC = () => {
           {featuredProjects.map((project) => (
             <div 
               key={project.id} 
-              onClick={() => {
-                setSelectedProjectId(project.id);
-                navigateTo('project-detail');
-              }}
+              onClick={() => navigateTo('project-detail', project.id)}
               className="group cursor-pointer transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-4"
             >
               <div className="aspect-[4/5] overflow-hidden bg-neutral-100 mb-4 relative shadow-sm group-hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.12)] transition-all duration-700">

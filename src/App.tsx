@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import Services from './components/Services';
@@ -18,112 +19,83 @@ import PricingPage from './components/PricingPage';
 import FAQPage from './components/FAQPage';
 import CTABanner from './components/CTABanner';
 import Footer from './components/Footer';
-import { LanguageProvider, useLanguage } from './LanguageContext';
+import { LanguageProvider } from './LanguageContext';
 import { ProjectsProvider } from './ProjectsContext';
 import SessionInactivityGuard from './components/SessionInactivityGuard';
 
-const AppContent: React.FC = () => {
-  const { currentPage } = useLanguage();
+const HomePage: React.FC = () => (
+  <div className="min-h-screen bg-white font-body">
+    <Header />
+    <main>
+      <Hero />
+      <Services />
+      <MultimodalSearch />
+      <ProjectSection />
+      <WhyChooseUs />
+      <PricingSection />
+      <Testimonials />
+      <CTABanner />
+    </main>
+    <Footer />
+  </div>
+);
 
-  if (currentPage === 'portfolio') {
-    return (
-      <div className="min-h-screen bg-white font-body">
-        <Header />
-        <PortfolioPage />
-        <Footer />
-      </div>
-    );
-  }
+const PortfolioRoute: React.FC = () => (
+  <div className="min-h-screen bg-white font-body">
+    <Header />
+    <PortfolioPage />
+    <Footer />
+  </div>
+);
 
-  if (currentPage === 'project-detail') {
-    return (
-      <div className="min-h-screen bg-white font-body">
-        <Header />
-        <ProjectDetail />
-        <Footer />
-      </div>
-    );
-  }
+const ProjectDetailRoute: React.FC = () => (
+  <div className="min-h-screen bg-white font-body">
+    <Header />
+    <ProjectDetail />
+    <Footer />
+  </div>
+);
 
-  if (currentPage === 'services') {
-    return <ServicesPage />;
-  }
+const AIConceptsRoute: React.FC = () => (
+  <div className="min-h-screen bg-black font-body">
+    <Header />
+    <AIConceptsPage />
+  </div>
+);
 
-  if (currentPage === 'studio') {
-    return <StudioPage />;
-  }
+const PricingRoute: React.FC = () => (
+  <div className="min-h-screen bg-white font-body">
+    <PricingPage />
+  </div>
+);
 
-  if (currentPage === 'ai-concepts') {
-    return (
-      <div className="min-h-screen bg-black font-body">
-        <Header />
-        <AIConceptsPage />
-      </div>
-    );
-  }
-
-  if (currentPage === 'faq') {
-    return <FAQPage />;
-  }
-
-  if (currentPage === 'pricing') {
-    return (
-      <div className="min-h-screen bg-white font-body">
-        <PricingPage />
-      </div>
-    );
-  }
-
-  if (currentPage === 'ai-vision') {
-    return (
-      <div className="min-h-screen bg-black font-body">
-        <Header />
-        <AIVisionPage />
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-white font-body">
-      <Header />
-      
-      <main>
-        <Hero />
-
-        {/* 2. Services Section */}
-        <Services />
-
-        {/* 3. AI Vision Engine Section (Teaser) */}
-        <MultimodalSearch />
-
-        {/* 4. Projects Section - Landing Page Grid (4 items) */}
-        <ProjectSection />
-
-        {/* 5. Why Choose Us Section */}
-        <WhyChooseUs />
-
-        {/* 6. Pricing Section */}
-        <PricingSection />
-
-        {/* 7. Testimonials Section */}
-        <Testimonials />
-
-        {/* 7. CTA Banner Section */}
-        <CTABanner />
-      </main>
-
-      <Footer />
-    </div>
-  );
-};
+const AIVisionRoute: React.FC = () => (
+  <div className="min-h-screen bg-black font-body">
+    <Header />
+    <AIVisionPage />
+  </div>
+);
 
 const App: React.FC = () => (
-  <LanguageProvider>
-    <ProjectsProvider>
-      <SessionInactivityGuard />
-      <AppContent />
-    </ProjectsProvider>
-  </LanguageProvider>
+  <BrowserRouter>
+    <LanguageProvider>
+      <ProjectsProvider>
+        <SessionInactivityGuard />
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/portfolio" element={<PortfolioRoute />} />
+          <Route path="/portfolio/:id" element={<ProjectDetailRoute />} />
+          <Route path="/services" element={<ServicesPage />} />
+          <Route path="/studio" element={<StudioPage />} />
+          <Route path="/ai-concepts" element={<AIConceptsRoute />} />
+          <Route path="/ai-vision" element={<AIVisionRoute />} />
+          <Route path="/pricing" element={<PricingRoute />} />
+          <Route path="/faq" element={<FAQPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </ProjectsProvider>
+    </LanguageProvider>
+  </BrowserRouter>
 );
 
 export default App;

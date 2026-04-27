@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import Header from '../components/Header';
 import { LanguageProvider } from '../LanguageContext';
 
@@ -10,9 +11,11 @@ vi.mock('../components/Logo', () => ({
 
 const renderWithProvider = (ui: React.ReactElement) => {
   return render(
-    <LanguageProvider>
-      {ui}
-    </LanguageProvider>
+    <MemoryRouter>
+      <LanguageProvider>
+        {ui}
+      </LanguageProvider>
+    </MemoryRouter>
   );
 };
 
