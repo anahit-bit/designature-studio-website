@@ -1,0 +1,67 @@
+{
+  "_comment": "Mock Serper shopping results for offline dev. Activated when MOCK_SERPER=true. Bucket keys are matched against the search query (case-insensitive substring) — first match wins. Fields mirror the real Serper /shopping response shape. The 'default' bucket fires when no key matches.",
+
+  "sofa": [
+    { "title": "Andes Curved Velvet Sofa - Navy", "price": "$2,499.00", "source": "westelm.com", "link": "https://www.westelm.com/products/andes-curved-sofa-mock", "imageUrl": "https://placehold.co/400x400/2a3850/fff?text=Sofa+1", "rating": 4.6, "ratingCount": 412 },
+    { "title": "Curved Track Arm Velvet Sofa", "price": "$1,799.00", "source": "cb2.com", "link": "https://www.cb2.com/curved-velvet-sofa-mock", "imageUrl": "https://placehold.co/400x400/3a4860/fff?text=Sofa+2", "rating": 4.4, "ratingCount": 189 },
+    { "title": "Mid-Century Modern Velvet Sofa", "price": "$1,299.00", "source": "article.com", "link": "https://www.article.com/sofa-mock", "imageUrl": "https://placehold.co/400x400/1a2840/fff?text=Sofa+3", "rating": 4.7, "ratingCount": 833 }
+  ],
+
+  "rug": [
+    { "title": "Cream Wool Geometric Area Rug 8x10", "price": "$849.00", "source": "westelm.com", "link": "https://www.westelm.com/rug-mock-1", "imageUrl": "https://placehold.co/400x400/e8dcc8/333?text=Rug+1", "rating": 4.5, "ratingCount": 256 },
+    { "title": "Hand-Knotted Wool Area Rug, Ivory", "price": "$1,299.00", "source": "cb2.com", "link": "https://www.cb2.com/rug-mock-2", "imageUrl": "https://placehold.co/400x400/d8ccb8/333?text=Rug+2", "rating": 4.6, "ratingCount": 142 },
+    { "title": "Modern Geometric Wool Rug", "price": "$429.00", "source": "allmodern.com", "link": "https://www.allmodern.com/rug-mock-3", "imageUrl": "https://placehold.co/400x400/e0d4c0/333?text=Rug+3", "rating": 4.3, "ratingCount": 98 }
+  ],
+
+  "lamp": [
+    { "title": "Brass Pendant Light, Globe Glass", "price": "$329.00", "source": "westelm.com", "link": "https://www.westelm.com/lamp-mock-1", "imageUrl": "https://placehold.co/400x400/c9a04a/fff?text=Lamp+1", "rating": 4.5, "ratingCount": 201 },
+    { "title": "Industrial Floor Lamp, Matte Black", "price": "$189.00", "source": "cb2.com", "link": "https://www.cb2.com/lamp-mock-2", "imageUrl": "https://placehold.co/400x400/2a2a2a/fff?text=Lamp+2", "rating": 4.4, "ratingCount": 167 },
+    { "title": "Linen Drum Table Lamp", "price": "$149.00", "source": "potterybarn.com", "link": "https://www.potterybarn.com/lamp-mock-3", "imageUrl": "https://placehold.co/400x400/d8c9a8/333?text=Lamp+3", "rating": 4.7, "ratingCount": 412 }
+  ],
+
+  "lighting": [
+    { "title": "Sculptural Chandelier - Brass", "price": "$899.00", "source": "westelm.com", "link": "https://www.westelm.com/chandelier-mock", "imageUrl": "https://placehold.co/400x400/c9a04a/fff?text=Chandelier", "rating": 4.6, "ratingCount": 88 },
+    { "title": "Modern Pendant Light, 3-Bulb Cluster", "price": "$549.00", "source": "cb2.com", "link": "https://www.cb2.com/pendant-mock", "imageUrl": "https://placehold.co/400x400/d4b88c/fff?text=Pendant", "rating": 4.4, "ratingCount": 134 },
+    { "title": "Brass Wall Sconce, Adjustable Arm", "price": "$129.00", "source": "potterybarn.com", "link": "https://www.potterybarn.com/sconce-mock", "imageUrl": "https://placehold.co/400x400/b88c4a/fff?text=Sconce", "rating": 4.3, "ratingCount": 76 }
+  ],
+
+  "art": [
+    { "title": "Abstract Mid-Century Print, 50x70cm", "price": "$45.00", "source": "desenio.com", "link": "https://desenio.com/art-mock-1", "imageUrl": "https://placehold.co/400x500/e8d4a0/333?text=Art+Print+1", "rating": 4.6, "ratingCount": 521 },
+    { "title": "Botanical Line Drawing, Set of 3", "price": "$78.00", "source": "desenio.com", "link": "https://desenio.com/art-mock-2", "imageUrl": "https://placehold.co/400x500/d4e0c8/333?text=Botanical+Set", "rating": 4.7, "ratingCount": 312 },
+    { "title": "Modern Abstract Canvas Wall Art", "price": "$62.00", "source": "society6.com", "link": "https://society6.com/art-mock-3", "imageUrl": "https://placehold.co/400x500/b8a890/fff?text=Canvas+Art", "rating": 4.4, "ratingCount": 188 }
+  ],
+
+  "poster": [
+    { "title": "Minimalist Line Art Poster", "price": "$29.00", "source": "desenio.com", "link": "https://desenio.com/poster-mock-1", "imageUrl": "https://placehold.co/400x500/f0e8d8/333?text=Poster+1", "rating": 4.5, "ratingCount": 401 },
+    { "title": "Vintage Travel Poster Set", "price": "$54.00", "source": "society6.com", "link": "https://society6.com/poster-mock-2", "imageUrl": "https://placehold.co/400x500/c9b890/333?text=Poster+2", "rating": 4.6, "ratingCount": 278 }
+  ],
+
+  "table": [
+    { "title": "Round Marble Coffee Table", "price": "$799.00", "source": "westelm.com", "link": "https://www.westelm.com/table-mock-1", "imageUrl": "https://placehold.co/400x400/e8e4d8/333?text=Table+1", "rating": 4.5, "ratingCount": 198 },
+    { "title": "Solid Oak Dining Table, 6-Seat", "price": "$1,299.00", "source": "article.com", "link": "https://www.article.com/table-mock-2", "imageUrl": "https://placehold.co/400x400/c9a878/333?text=Table+2", "rating": 4.7, "ratingCount": 412 },
+    { "title": "Black Oval Coffee Table, Steel Base", "price": "$549.00", "source": "cb2.com", "link": "https://www.cb2.com/table-mock-3", "imageUrl": "https://placehold.co/400x400/1a1a1a/fff?text=Table+3", "rating": 4.4, "ratingCount": 87 }
+  ],
+
+  "chair": [
+    { "title": "Boucle Accent Chair, Cream", "price": "$649.00", "source": "westelm.com", "link": "https://www.westelm.com/chair-mock-1", "imageUrl": "https://placehold.co/400x400/f0e8d4/333?text=Chair+1", "rating": 4.4, "ratingCount": 156 },
+    { "title": "Mid-Century Lounge Chair, Walnut + Leather", "price": "$899.00", "source": "article.com", "link": "https://www.article.com/chair-mock-2", "imageUrl": "https://placehold.co/400x400/8a5a3a/fff?text=Chair+2", "rating": 4.8, "ratingCount": 612 },
+    { "title": "Velvet Swivel Chair, Emerald", "price": "$549.00", "source": "cb2.com", "link": "https://www.cb2.com/chair-mock-3", "imageUrl": "https://placehold.co/400x400/2a5a4a/fff?text=Chair+3", "rating": 4.5, "ratingCount": 201 }
+  ],
+
+  "vase": [
+    { "title": "Sculptural Ceramic Vase, Cream", "price": "$78.00", "source": "westelm.com", "link": "https://www.westelm.com/vase-mock-1", "imageUrl": "https://placehold.co/400x400/f0e8d8/333?text=Vase+1", "rating": 4.4, "ratingCount": 89 },
+    { "title": "Hand-Thrown Stoneware Vase", "price": "$54.00", "source": "cb2.com", "link": "https://www.cb2.com/vase-mock-2", "imageUrl": "https://placehold.co/400x400/d4c8b8/333?text=Vase+2", "rating": 4.5, "ratingCount": 124 }
+  ],
+
+  "decor": [
+    { "title": "Decorative Wood Bowl, Mango Wood", "price": "$45.00", "source": "westelm.com", "link": "https://www.westelm.com/decor-mock-1", "imageUrl": "https://placehold.co/400x400/a87c5a/fff?text=Bowl", "rating": 4.5, "ratingCount": 201 },
+    { "title": "Round Wall Mirror, Brass Frame", "price": "$249.00", "source": "cb2.com", "link": "https://www.cb2.com/mirror-mock", "imageUrl": "https://placehold.co/400x400/c9a04a/fff?text=Mirror", "rating": 4.6, "ratingCount": 312 },
+    { "title": "Set of 3 Ceramic Candle Holders", "price": "$68.00", "source": "potterybarn.com", "link": "https://www.potterybarn.com/decor-mock-3", "imageUrl": "https://placehold.co/400x400/e8d8c0/333?text=Candle+Set", "rating": 4.4, "ratingCount": 98 }
+  ],
+
+  "default": [
+    { "title": "Sample Product 1", "price": "$199.00", "source": "westelm.com", "link": "https://example.com/mock-1", "imageUrl": "https://placehold.co/400x400/cccccc/333?text=Mock+1", "rating": 4.3, "ratingCount": 50 },
+    { "title": "Sample Product 2", "price": "$249.00", "source": "cb2.com", "link": "https://example.com/mock-2", "imageUrl": "https://placehold.co/400x400/bbbbbb/333?text=Mock+2", "rating": 4.5, "ratingCount": 75 },
+    { "title": "Sample Product 3", "price": "$329.00", "source": "wayfair.com", "link": "https://example.com/mock-3", "imageUrl": "https://placehold.co/400x400/aaaaaa/333?text=Mock+3", "rating": 4.4, "ratingCount": 40 }
+  ]
+}

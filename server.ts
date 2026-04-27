@@ -649,7 +649,7 @@ async function startServer() {
     }
   });
 
-  // ── POST /api/shopping/identify — identify furniture items from an image ──
+  // ── POST /api/shopping/identify — identify shoppable items from an image ──
   app.post("/api/shopping/identify", async (req, res) => {
     const googleId = requireAuth(req, res);
     if (!googleId) return;
@@ -666,11 +666,35 @@ async function startServer() {
       if (!apiKey) throw new Error("GEMINI_API_KEY is not set.");
       const ai = new GoogleGenAI({ apiKey });
 
+      // Free-tier: identify 4–6 prominent shoppable elements distributed across
+      // categories (furniture, rugs, lighting, wall art, decor) — not furniture only.
+      // Skip a category if it's clearly not visible in the image; never fabricate.
+      // Return richer attributes so search queries can match color/material/style.
       const identifyPrompt = `You are a professional interior design sourcing assistant.
-Look at this interior design image and identify the 3-4 most prominent furniture pieces.
-For each piece write a specific retail search query to find it on sites like Wayfair, West Elm, CB2.
-Output ONLY valid JSON with no markdown fences, no explanation:
-{"items":[{"category":"Sofa","description":"Round pink velvet sofa modern","search_query":"round pink velvet sofa modern"},{"category":"Coffee Table","description":"Round marble coffee table","search_query":"round white marble coffee table"}]}`;
+
+Identify 4 to 6 of the most prominent SHOPPABLE elements in this room photo, distributed across categories — not just furniture.
+
+Try to include a mix when visible:
+- 1–2 furniture pieces (sofa, armchair, bed, coffee/dining/side table, storage, desk, etc.)
+- 1 rug or floor covering, if visible
+- 1 lighting piece (pendant, chandelier, floor/table lamp, sconce), if visible
+- 1 wall art / poster / framed print, if visible
+- 1 wallpaper or distinctive wall covering, if a clearly patterned/textured wall treatment is present
+- 1 decorative accent (vase, sculptural object, large mirror, throw pillows as a set), if visible
+
+If a category is clearly absent from the image, skip it — do not fabricate items that aren't there. Total must be between 4 and 6 items.
+
+For each item return:
+- category: short type label, e.g. "Sofa", "Area Rug", "Pendant Light", "Wall Art", "Wallpaper", "Decorative Vase"
+- description: one short phrase describing the item (used as a subtitle, max ~8 words)
+- color: dominant color(s)
+- material: primary material if identifiable (e.g. "velvet", "wool", "brass", "ceramic", "oak", "vinyl", "non-woven paper" for wallpaper); use "unknown" if unclear
+- shape: silhouette or pattern descriptor (e.g. "rounded", "linear", "geometric", "abstract", "tufted", "vertical stripe", "floral repeat")
+- style: design era/style label (e.g. "mid-century modern", "boho", "contemporary", "scandinavian", "art deco")
+- search_query: 5–10 word retail search query optimized for Google Shopping, baking in color + material + style + key shape/pattern
+
+Output ONLY valid JSON with no markdown fences and no explanation:
+{"items":[{"category":"Sofa","description":"Curved navy velvet sofa","color":"navy blue","material":"velvet","shape":"low curved","style":"mid-century modern","search_query":"navy velvet curved sofa mid century modern"},{"category":"Wallpaper","description":"Green vertical stripe wallpaper","color":"sage green and cream","material":"non-woven paper","shape":"vertical stripe","style":"contemporary","search_query":"sage green vertical stripe wallpaper non-woven contemporary"}]}`;
 
       const geminiRes = await ai.models.generateContent({
         model: "gemini-2.5-flash",
@@ -690,7 +714,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       const cleaned = rawText.replace(/```json|```/g, "").trim();
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        return res.status(422).json({ error: "Could not identify furniture items from the image." });
+        return res.status(422).json({ error: "Could not identify items from the image." });
       }
       const identified = JSON.parse(jsonMatch[0]);
       return res.json({ items: identified.items || [] });
@@ -731,8 +755,11 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       if (!items || !Array.isArray(items)) return res.status(400).json({ error: "Missing or invalid items list" });
 
       // Serper.dev API key — set SERPER_API_KEY in AI Studio Secrets
+      // MOCK_SERPER=true bypasses Serper entirely (returns canned products from
+      // mocks/serper-shopping-mock.json) so dev iteration doesn't burn credits.
+      const MOCK_SERPER = (process.env.MOCK_SERPER || "").toLowerCase() === "true";
       const SERPER_API_KEY = (process.env.SERPER_API_KEY || "").trim();
-      if (!SERPER_API_KEY) return res.status(500).json({ error: "SERPER_API_KEY not set — add it in AI Studio Secrets" });
+      if (!MOCK_SERPER && !SERPER_API_KEY) return res.status(500).json({ error: "SERPER_API_KEY not set — add it in AI Studio Secrets" });
 
       // ── Shared helper: extract best direct URL from a Serper result ──────────
       const extractDirectLink = (r: any): string => {
@@ -775,6 +802,21 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       });
 
       const serperSearch = async (query: string, num = 8): Promise<any[]> => {
+        if (MOCK_SERPER) {
+          console.log(`[SHOP][MOCK] would search: "${query}"`);
+          try {
+            const mockPath = path.resolve(process.cwd(), "mocks/serper-shopping-mock.json");
+            const mock = JSON.parse(readFileSync(mockPath, "utf-8"));
+            // Pick the bucket whose key appears in the query (lowercased), else fallback
+            const lowerQ = query.toLowerCase();
+            const bucketKey = Object.keys(mock).find(k => lowerQ.includes(k.toLowerCase())) || "default";
+            const bucket: any[] = mock[bucketKey] || mock.default || [];
+            return bucket.slice(0, num);
+          } catch (e: any) {
+            console.error("[SHOP][MOCK] failed to load mocks/serper-shopping-mock.json:", e?.message);
+            return [];
+          }
+        }
         const res = await fetch("https://google.serper.dev/shopping", {
           method: "POST",
           headers: { "X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json" },
