@@ -1629,24 +1629,24 @@ const AIConceptsPage: React.FC = () => {
                     <div className="flex items-center gap-3 p-3 bg-white/5 border border-white/10">
                       {user.picture && <img src={user.picture} alt={user.name} className="w-8 h-8 rounded-full" />}
                       <div className="flex-1 min-w-0">
-                        <div className="text-[11px] font-bold text-white/70 truncate">{user.name}</div>
-                        <div className="text-[9px] text-white/45 truncate">{user.email}</div>
+                        <div className="text-[12px] font-bold text-white truncate">{user.name}</div>
+                        <div className="text-[11px] text-white/65 truncate">{user.email}</div>
                       </div>
                       <button type="button" onClick={handleLogout}>
-                        <LogOut className="w-3.5 h-3.5 text-white/35 hover:text-white/50 transition-colors" />
+                        <LogOut className="w-3.5 h-3.5 text-white/65 hover:text-white transition-colors" />
                       </button>
                     </div>
-                    <div className="text-[9px] text-white/70 uppercase tracking-[0.15em] text-right font-bold">
+                    <div className="text-[11px] text-white/85 uppercase tracking-[0.15em] text-right font-bold">
                       {user.generationsLeft >= 999 ? t('ai.unlimited') : `${user.generationsLeft} ${t('ai.remaining')}`}
                     </div>
                   </div>
                 )}
                 <div className={user ? 'hidden' : 'block'}>
-                  <p className="text-[10px] text-white/60 uppercase tracking-[0.2em] text-right mb-2">
+                  <p className="text-[11px] text-white/80 uppercase tracking-[0.2em] text-right mb-2">
                     {t('ai.unlockAll')}
                   </p>
                   <div id="google-signin-btn" className="w-full min-h-[42px]" />
-                  <p className="text-[10px] text-white/55 uppercase tracking-[0.15em] text-right mt-2">
+                  <p className="text-[11px] text-white/75 uppercase tracking-[0.15em] text-right mt-2">
                     {t('ai.noCard')}
                   </p>
                 </div>
@@ -1655,11 +1655,11 @@ const AIConceptsPage: React.FC = () => {
             <div className="flex gap-0 mt-8 pt-6 border-t border-white/8">
               <div className="flex-1 pr-5 border-r border-white/8">
                 <div className="text-3xl font-bold text-white tracking-tight">Free</div>
-                <div className="text-[10px] text-white/50 uppercase tracking-[0.18em] mt-1">{t('ai.toExplore')}</div>
+                <div className="text-[11px] text-white/70 uppercase tracking-[0.18em] mt-1">{t('ai.toExplore')}</div>
               </div>
               <div className="flex-1 pl-5 text-right">
                 <div className="text-3xl font-bold text-white tracking-tight">3</div>
-                <div className="text-[10px] text-white/50 uppercase tracking-[0.18em] mt-1">{t('ai.liveTools')}</div>
+                <div className="text-[11px] text-white/70 uppercase tracking-[0.18em] mt-1">{t('ai.liveTools')}</div>
               </div>
             </div>
           </div>
@@ -1677,9 +1677,9 @@ const AIConceptsPage: React.FC = () => {
               className={`group relative p-4 border-r border-black/10 transition-all ${isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${activeTool === 'quiz' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
               style={{ minHeight: '130px' }}
             >
-              <div className={`text-[8px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'quiz' ? 'text-white/55' : 'text-black/40'}`}>01</div>
+              <div className={`text-[10px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'quiz' ? 'text-white/75' : 'text-black/55'}`}>01</div>
               <div className={`font-display text-base font-bold leading-tight mb-1 ${activeTool === 'quiz' ? 'text-white' : 'text-black'}`}>{t('ai.styleQuiz')}</div>
-              <div className={`text-[9px] leading-relaxed uppercase tracking-wide ${activeTool === 'quiz' ? 'text-white/50' : 'text-black/55'}`}>
+              <div className={`text-[11px] leading-relaxed uppercase tracking-wide ${activeTool === 'quiz' ? 'text-white/85' : 'text-black/70'}`}>
                 {t('ai.discoverDNA')}
                 {user && (
                   <span className={`block mt-1 font-bold ${activeTool === 'quiz' ? 'text-white' : 'text-black'}`}>
@@ -1688,7 +1688,7 @@ const AIConceptsPage: React.FC = () => {
                 )}
               </div>
               <div className="absolute bottom-3 right-3">
-                <span className={`text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'quiz' ? 'text-blue-200 bg-blue-900/30' : 'text-green-600 bg-green-50'}`}>{t('ai.nowActive')}</span>
+                <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'quiz' ? 'text-blue-100 bg-blue-900/40' : 'text-green-700 bg-green-50'}`}>{t('ai.nowActive')}</span>
               </div>
             </div>
 
@@ -1698,9 +1698,9 @@ const AIConceptsPage: React.FC = () => {
               className={`group relative p-4 cursor-pointer border-r border-black/10 transition-all ${activeTool === 'vision' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
               style={{ minHeight: '130px' }}
             >
-              <div className={`text-[8px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'vision' ? 'text-white/55' : 'text-black/40'}`}>02</div>
+              <div className={`text-[10px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'vision' ? 'text-white/75' : 'text-black/55'}`}>02</div>
               <div className={`font-display text-base font-bold leading-tight mb-1 ${activeTool === 'vision' ? 'text-white' : 'text-black'}`}>{t('ai.aiVision')}</div>
-              <div className={`text-[9px] leading-relaxed uppercase tracking-wide ${activeTool === 'vision' ? 'text-white/50' : 'text-black/55'}`}>
+              <div className={`text-[11px] leading-relaxed uppercase tracking-wide ${activeTool === 'vision' ? 'text-white/85' : 'text-black/70'}`}>
                 {t('ai.transformRoom')}
                 {user && (
                   <span className={`block mt-1 font-bold ${activeTool === 'vision' ? 'text-white' : 'text-black'}`}>
@@ -1714,7 +1714,7 @@ const AIConceptsPage: React.FC = () => {
                 )}
               </div>
               <div className="absolute bottom-3 right-3">
-                <span className={`text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'vision' ? 'text-blue-200 bg-blue-900/30' : 'text-green-600 bg-green-50'}`}>{t('ai.nowActive')}</span>
+                <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'vision' ? 'text-blue-100 bg-blue-900/40' : 'text-green-700 bg-green-50'}`}>{t('ai.nowActive')}</span>
               </div>
             </div>
 
@@ -1724,9 +1724,9 @@ const AIConceptsPage: React.FC = () => {
               className={`group relative p-4 border-r border-black/10 transition-all ${isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${activeTool === 'shopping' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
               style={{ minHeight: '130px' }}
             >
-              <div className={`text-[8px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'shopping' ? 'text-white/55' : 'text-black/40'}`}>03</div>
+              <div className={`text-[10px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'shopping' ? 'text-white/75' : 'text-black/55'}`}>03</div>
               <div className={`font-display text-base font-bold leading-tight mb-1 ${activeTool === 'shopping' ? 'text-white' : 'text-black'}`}>{t('ai.shoppingList')}</div>
-              <div className={`text-[9px] leading-relaxed uppercase tracking-wide ${activeTool === 'shopping' ? 'text-white/50' : 'text-black/55'}`}>
+              <div className={`text-[11px] leading-relaxed uppercase tracking-wide ${activeTool === 'shopping' ? 'text-white/85' : 'text-black/70'}`}>
                 {t('ai.shopInterior')}
                 {user && (
                   <span className={`block mt-1 font-bold ${activeTool === 'shopping' ? 'text-white' : 'text-black'}`}>
@@ -1740,7 +1740,7 @@ const AIConceptsPage: React.FC = () => {
                 )}
               </div>
               <div className="absolute bottom-3 right-3">
-                <span className={`text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'shopping' ? 'text-blue-200 bg-blue-900/30' : 'text-green-600 bg-green-50'}`}>{t('ai.nowActive')}</span>
+                <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'shopping' ? 'text-blue-100 bg-blue-900/40' : 'text-green-700 bg-green-50'}`}>{t('ai.nowActive')}</span>
               </div>
             </div>
 
@@ -1753,54 +1753,54 @@ const AIConceptsPage: React.FC = () => {
                 } ${activeTool === 'audit' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
                 style={{ minHeight: '130px' }}
               >
-                <div className={`text-[8px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'audit' ? 'text-white/55' : 'text-black/40'}`}>04</div>
+                <div className={`text-[10px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'audit' ? 'text-white/75' : 'text-black/55'}`}>04</div>
                 <div className={`font-display text-base font-bold leading-tight mb-1 ${activeTool === 'audit' ? 'text-white' : 'text-black'}`}>{t('ai.roomAudit')}</div>
-                <div className={`text-[9px] leading-relaxed uppercase tracking-wide ${activeTool === 'audit' ? 'text-white/50' : 'text-black/55'}`}>
+                <div className={`text-[11px] leading-relaxed uppercase tracking-wide ${activeTool === 'audit' ? 'text-white/85' : 'text-black/70'}`}>
                   {t('ai.scoreSpace')}
                   <span className={`block mt-1 font-bold ${activeTool === 'audit' ? 'text-white' : 'text-black'}`}>
                     · {user.auditsLeft === 999 ? 'Unlimited' : user.auditsLeft} {t('ai.remaining')}
                   </span>
                 </div>
                 <div className="absolute bottom-3 right-3">
-                  <span className={`text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'audit' ? 'text-blue-200 bg-blue-900/30' : 'text-green-600 bg-green-50'}`}>
+                  <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'audit' ? 'text-blue-100 bg-blue-900/40' : 'text-green-700 bg-green-50'}`}>
                     {t('ai.nowActive')}
                   </span>
                 </div>
               </div>
             ) : (
               <div className="group relative bg-[#f7f6f4] p-4 border-r border-black/8 cursor-default" style={{ minHeight: '130px' }}>
-                <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-black/35 mb-3">04</div>
-                <div className="font-display text-base font-bold leading-tight mb-1 text-black/45">{t('ai.roomAudit')}</div>
-                <div className="text-[9px] text-black/35 leading-relaxed uppercase tracking-wide">
+                <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/55 mb-3">04</div>
+                <div className="font-display text-base font-bold leading-tight mb-1 text-black/65">{t('ai.roomAudit')}</div>
+                <div className="text-[11px] text-black/60 leading-relaxed uppercase tracking-wide">
                   {t('ai.scoreSpace')}
                 </div>
                 <div className="absolute bottom-3 right-3">
-                  <span className="text-[8px] font-bold uppercase tracking-wide text-black/35 bg-black/5 px-1.5 py-0.5">Soon</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-black/65 bg-black/5 px-1.5 py-0.5">Soon</span>
                 </div>
               </div>
             )}
 
             {/* Tool 5 — Design Brief (SOON) */}
             <div className="group relative bg-[#f7f6f4] p-4 border-r border-black/8 cursor-default" style={{ minHeight: '130px' }}>
-              <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-black/35 mb-3">05</div>
-              <div className="font-display text-base font-bold leading-tight mb-1 text-black/45">{t('ai.designBrief')}</div>
-              <div className="text-[9px] text-black/35 leading-relaxed uppercase tracking-wide">
+              <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/55 mb-3">05</div>
+              <div className="font-display text-base font-bold leading-tight mb-1 text-black/65">{t('ai.designBrief')}</div>
+              <div className="text-[11px] text-black/60 leading-relaxed uppercase tracking-wide">
                 {t('ai.buildBrief')}
               </div>
               <div className="absolute bottom-3 right-3">
-                <span className="text-[8px] font-bold uppercase tracking-wide text-black/35 bg-black/5 px-1.5 py-0.5">Soon</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-black/65 bg-black/5 px-1.5 py-0.5">Soon</span>
               </div>
             </div>
 
             {/* Tool 6 — Cultural Advisor (SOON) */}
             <div className="group relative bg-[#f7f6f4] p-4 cursor-default" style={{ minHeight: '130px' }}>
-              <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-black/35 mb-3">06</div>
-              <div className="font-display text-base font-bold leading-tight mb-1 text-black/45">{t('ai.culturalAdvisor')}</div>
-              <div className="text-[9px] text-black/35 leading-relaxed uppercase tracking-wide">
+              <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/55 mb-3">06</div>
+              <div className="font-display text-base font-bold leading-tight mb-1 text-black/65">{t('ai.culturalAdvisor')}</div>
+              <div className="text-[11px] text-black/60 leading-relaxed uppercase tracking-wide">
                 {t('ai.blendStyles')}
               </div>
               <div className="absolute bottom-3 right-3">
-                <span className="text-[8px] font-bold uppercase tracking-wide text-black/35 bg-black/5 px-1.5 py-0.5">Soon</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-black/65 bg-black/5 px-1.5 py-0.5">Soon</span>
               </div>
             </div>
 
@@ -1811,13 +1811,13 @@ const AIConceptsPage: React.FC = () => {
         <div id="active-tool-bar" className="max-w-[1600px] mx-auto px-8 md:px-16">
           <div className="bg-[#0047AB] flex items-center justify-between px-6 py-3">
             <div>
-              <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-white/55 mb-0.5">
+              <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/75 mb-0.5">
                 {activeTool === 'quiz' ? '01' : activeTool === 'vision' ? '02' : activeTool === 'shopping' ? '03' : '04'} — {t('ai.nowActive')}
               </div>
-              <div className="text-[11px] font-bold text-white">
+              <div className="text-[13px] font-bold text-white">
                 {activeTool === 'quiz' ? t('ai.styleQuiz') : activeTool === 'vision' ? t('ai.aiVision') : activeTool === 'shopping' ? t('ai.shoppingList') : t('ai.roomAudit')}
               </div>
-              <div className="text-[9px] text-white/60 mt-0.5">
+              <div className="text-[12px] text-white/85 mt-0.5">
                 {activeTool === 'quiz'
                   ? t('ai.quizDesc')
                   : activeTool === 'vision'
@@ -1827,7 +1827,7 @@ const AIConceptsPage: React.FC = () => {
                   : 'Get a scored report card for any room with actionable fixes'}
               </div>
             </div>
-            <div className="text-[9px] font-bold uppercase tracking-[0.15em] text-white/55 hidden md:block">
+            <div className="text-[11px] font-bold uppercase tracking-[0.15em] text-white/75 hidden md:block">
               {t('ai.jumpToTool')} ↑
             </div>
           </div>
@@ -1859,7 +1859,7 @@ const AIConceptsPage: React.FC = () => {
             {/* ── LOGGED OUT: Show placeholder ── */}
             {!authLoading && !user && (
               <div className="flex flex-col gap-6 py-12 text-center">
-                <div className="w-12 h-12 bg-black/5 text-black/35 flex items-center justify-center text-2xl mx-auto rounded-full">✦</div>
+                <div className="w-12 h-12 bg-black/5 text-black/55 flex items-center justify-center text-2xl mx-auto rounded-full">✦</div>
                 <div>
                   <h3 className="font-display text-xl font-bold tracking-tight mb-2">
                     {t('ai.aiVision')}
@@ -1885,7 +1885,7 @@ const AIConceptsPage: React.FC = () => {
                 <div>
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-5 h-5 bg-black text-white text-[8px] flex items-center justify-center font-bold flex-shrink-0">1</div>
-                    <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/50">
+                    <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/70">
                       {t('ai.uploadFloor')}
                     </span>
                   </div>
@@ -1908,11 +1908,11 @@ const AIConceptsPage: React.FC = () => {
                         </>
                       ) : (
                         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-50">
-                          <div className="w-9 h-9 border border-black/15 flex items-center justify-center text-black/40 text-xl font-thin">⌂</div>
-                          <span className="text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/35">
+                          <div className="w-9 h-9 border border-black/15 flex items-center justify-center text-black/65 text-xl font-thin">⌂</div>
+                          <span className="text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/70">
                             {roomDragOver ? 'Drop to upload' : t('ai.uploadFloor')}
                           </span>
-                          <span className="text-[8px] text-black/35 uppercase tracking-widest">JPG, PNG · max 10MB</span>
+                          <span className="text-[11px] text-black/65 uppercase tracking-widest">JPG, PNG · max 10MB</span>
                         </div>
                       )}
                     </div>
@@ -1925,7 +1925,7 @@ const AIConceptsPage: React.FC = () => {
                 <div>
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-5 h-5 bg-black text-white text-[8px] flex items-center justify-center font-bold flex-shrink-0">2</div>
-                    <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/50">
+                    <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/70">
                       {t('ai.uploadInsp')}
                     </span>
                   </div>
@@ -1940,26 +1940,26 @@ const AIConceptsPage: React.FC = () => {
                           onDragLeave={() => setInspoDragOver(false)}
                           onDrop={(e) => handleDrop(e, 'inspiration')}
                         >
-                          <div className="w-7 h-7 border border-black/15 flex items-center justify-center text-black/45 text-base font-thin">+</div>
-                          <span className="text-sm md:text-base font-bold uppercase tracking-[0.2em] text-black/35">
+                          <div className="w-7 h-7 border border-black/15 flex items-center justify-center text-black/65 text-base font-thin">+</div>
+                          <span className="text-sm md:text-base font-bold uppercase tracking-[0.2em] text-black/65">
                             {inspoDragOver ? 'Drop to upload' : t('btn.add')}
                           </span>
-                          <span className="text-[8px] text-black/35 uppercase tracking-widest">
+                          <span className="text-[11px] text-black/65 uppercase tracking-widest">
                             {inspirationImages.length}/5 {t('ai.images')}
                           </span>
                         </div>
                       </label>
                       {/* Tip note — quiet advisory, no icon, no background */}
-                      <p className="text-[10px] text-black/55 leading-[1.4]">
+                      <p className="text-[12px] text-black/70 leading-[1.5]">
                         {t('aiVision.inspiration.tip.body')}
                       </p>
                       {/* Fallback hint — directs to style selector if no references */}
-                      <p className="text-[9px] text-black/45 leading-[1.4]">
+                      <p className="text-[12px] text-black/70 leading-[1.5]">
                         {t('aiVision.inspiration.noRefsFallback')}{' '}
                         <button
                           type="button"
                           onClick={() => document.getElementById('style-quiz-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                          className="underline underline-offset-2 hover:text-black/55 transition-colors"
+                          className="underline underline-offset-2 hover:text-black transition-colors"
                         >
                           {t('aiVision.inspiration.noRefsFallback.link')}
                         </button>
@@ -1971,7 +1971,7 @@ const AIConceptsPage: React.FC = () => {
                           className="flex items-center gap-2 group w-fit"
                         >
                           <svg className="w-3 h-3 flex-shrink-0" viewBox="0 0 24 24" fill="#E60023"><path d="M12 0C5.373 0 0 5.373 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738a.36.36 0 0 1 .083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.632-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/></svg>
-                          <span className="text-[9px] text-black/35 group-hover:text-black/60 transition-colors">
+                          <span className="text-[11px] text-black/65 group-hover:text-black transition-colors">
                             {pinterestOpen ? 'Hide Pinterest import' : 'Have a Pinterest board? Add pins directly ↓'}
                           </span>
                         </button>
@@ -1992,7 +1992,7 @@ const AIConceptsPage: React.FC = () => {
                                 }}
                                 onKeyDown={e => e.key === 'Enter' && void handlePinterestPaste(pinterestUrl)}
                                 placeholder="https://www.pinterest.com/pin/..."
-                                className="flex-1 border border-black/10 bg-white px-2 py-1.5 text-[10px] text-black/60 placeholder:text-black/35 focus:outline-none focus:border-[#E60023]/40"
+                                className="flex-1 border border-black/15 bg-white px-2 py-1.5 text-[12px] text-black/80 placeholder:text-black/55 focus:outline-none focus:border-[#E60023]/55"
                                 disabled={pinterestLoading}
                               />
                               <button
@@ -2032,8 +2032,8 @@ const AIConceptsPage: React.FC = () => {
                 <div>
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-5 h-5 bg-black/20 text-white text-[8px] flex items-center justify-center font-bold flex-shrink-0">3</div>
-                    <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/50">
-                      Room Type <span className="text-black/35 normal-case font-normal tracking-normal ml-1">({t('common.optional')})</span>
+                    <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/70">
+                      Room Type <span className="text-black/55 normal-case font-normal tracking-normal ml-1">({t('common.optional')})</span>
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
@@ -2065,8 +2065,8 @@ const AIConceptsPage: React.FC = () => {
                 <div>
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-5 h-5 bg-black/20 text-white text-[8px] flex items-center justify-center font-bold flex-shrink-0">4</div>
-                    <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/50">
-                      {t('aiVision.sidebar.sectionStyle')} <span className="text-black/35 normal-case font-normal tracking-normal ml-1">({t('common.optional')})</span>
+                    <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/70">
+                      {t('aiVision.sidebar.sectionStyle')} <span className="text-black/55 normal-case font-normal tracking-normal ml-1">({t('common.optional')})</span>
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
@@ -2210,16 +2210,16 @@ const AIConceptsPage: React.FC = () => {
           {/* Not logged in — right panel (vision only) */}
           {!authLoading && !user && activeTool === 'vision' && (
             <div className="flex-grow flex flex-col items-center justify-center gap-6 py-20 px-8 text-center bg-white">
-              <div className="w-16 h-16 border border-black/8 flex items-center justify-center text-black/25 text-3xl">◎</div>
-              <h3 className="font-display text-2xl font-light text-black/45 tracking-tight">
+              <div className="w-16 h-16 border border-black/15 flex items-center justify-center text-black/55 text-3xl">◎</div>
+              <h3 className="font-display text-2xl font-light text-black/75 tracking-tight">
                 Transform your room
               </h3>
-              <p className="text-sm text-black/45 uppercase tracking-[0.2em] leading-[2]">
+              <p className="text-[13px] text-black/70 uppercase tracking-[0.2em] leading-[2]">
                 Free · 3 concepts · No card needed
               </p>
               <button
                 onClick={() => triggerGoogleSignIn()}
-                className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.25em] px-5 py-3 hover:bg-[#003d99] transition-colors"
+                className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[11px] font-bold uppercase tracking-[0.25em] px-6 py-3.5 hover:bg-[#003d99] transition-colors"
               >
                 Transform your room →
               </button>
@@ -2250,7 +2250,7 @@ const AIConceptsPage: React.FC = () => {
 
               {/* Sample product grid */}
               <div>
-                <p className="text-[11px] text-black/55 mb-3 text-center">Example result from our showcase:</p>
+                <p className="text-[13px] text-black/70 mb-3 text-center">Example result from our showcase:</p>
                 <div className="grid grid-cols-2 gap-3 w-full">
                   {[
                     { image: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776353545/1_y95xdr.webp', name: 'Eddy Sofa', retailer: 'West Elm' },
@@ -2262,18 +2262,18 @@ const AIConceptsPage: React.FC = () => {
                       <div className="overflow-hidden w-full" style={{ aspectRatio: '4/3', borderRadius: 4, marginBottom: 8 }}>
                         <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
                       </div>
-                      <p className="text-[11px] font-medium text-black leading-tight truncate">{p.name}</p>
-                      <p className="text-[10px] text-black/55 mt-0.5">{p.retailer}</p>
+                      <p className="text-[12px] font-medium text-black leading-tight truncate">{p.name}</p>
+                      <p className="text-[11px] text-black/65 mt-0.5">{p.retailer}</p>
                     </div>
                   ))}
                 </div>
-                <p className="mt-2.5 text-[10px] text-black/45 text-center">Upload your room to get personalised results</p>
+                <p className="mt-2.5 text-[12px] text-black/65 text-center">Upload your room to get personalised results</p>
               </div>
 
               {/* CTA */}
               <button
                 onClick={() => triggerGoogleSignIn()}
-                className="self-start inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.25em] px-6 py-3 hover:bg-[#003d99] transition-colors"
+                className="self-start inline-flex items-center gap-2 bg-[#0047AB] text-white text-[11px] font-bold uppercase tracking-[0.25em] px-6 py-3.5 hover:bg-[#003d99] transition-colors"
               >
                 Start for free — no card needed →
               </button>
@@ -2289,7 +2289,7 @@ const AIConceptsPage: React.FC = () => {
                 <h3 className="font-display text-[30px] md:text-[42px] font-light italic text-[#0047AB] tracking-tight leading-tight mb-2">
                   {t('aiVision.gallery.title')}
                 </h3>
-                <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-black/45">
+                <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-black/65">
                   {t('aiVision.gallery.subtitle')}
                 </p>
               </div>
@@ -2299,7 +2299,7 @@ const AIConceptsPage: React.FC = () => {
 
                 {/* Tier 1: YOUR ROOM — centred, moderate size */}
                 <div className="flex flex-col items-center gap-2">
-                  <p className="text-[8px] font-bold uppercase tracking-[0.32em] text-black/40">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.32em] text-black/55">
                     {t('aiVision.gallery.labelRoom')}
                   </p>
                   <img
@@ -2312,7 +2312,7 @@ const AIConceptsPage: React.FC = () => {
 
                 {/* Tier 2: + 3 INSPIRATIONS */}
                 <div className="flex flex-col items-center gap-2">
-                  <p className="text-[8px] font-bold uppercase tracking-[0.32em] text-black/40">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.32em] text-black/55">
                     {t('aiVision.gallery.labelInspirations')}
                   </p>
                   <div className="flex gap-3">
@@ -2329,11 +2329,11 @@ const AIConceptsPage: React.FC = () => {
                 </div>
 
                 {/* Arrow divider */}
-                <p className="text-xl text-black/35 leading-none select-none">&darr;</p>
+                <p className="text-xl text-black/55 leading-none select-none">&darr;</p>
 
                 {/* Tier 3: = 3 CONCEPTS — hero tier, fills available width */}
                 <div className="flex flex-col items-center gap-2 w-full">
-                  <p className="text-[8px] font-bold uppercase tracking-[0.32em] text-black/40">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.32em] text-black/55">
                     {t('aiVision.gallery.labelConcepts')}
                   </p>
                   {/* flex-1 on each image + gap-3.5 fills the container width */}
@@ -2389,16 +2389,16 @@ const AIConceptsPage: React.FC = () => {
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 text-center px-8">
                   <div className="w-10 h-10 border-2 border-white/15 border-t-white/70 rounded-full animate-spin" />
                   <div className="space-y-2">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/55">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.35em] text-white/75">
                       {processingStage === 'extract' ? 'Step 1 / 2' : 'Generating'}
                     </p>
-                    <p key={`${processingStage}-${processingPhase}`} className="text-sm font-light text-white/80 tracking-wide animate-pulse">
+                    <p key={`${processingStage}-${processingPhase}`} className="text-sm font-light text-white tracking-wide animate-pulse">
                       {processingStage === 'extract'
                         ? t('ai.vision.analyzing')
                         : PROCESSING_PHASES[processingPhase]}
                     </p>
                   </div>
-                  <p className="text-[8px] text-white/35 uppercase tracking-widest">
+                  <p className="text-[11px] text-white/65 uppercase tracking-widest">
                     {t('ai.processingTime')}
                   </p>
                 </div>
@@ -2410,8 +2410,8 @@ const AIConceptsPage: React.FC = () => {
           {error && !isProcessing && (
             <div className="flex-grow flex flex-col items-center justify-center gap-5 bg-black p-16 text-center">
               <AlertCircle className="w-10 h-10 text-red-400" />
-              <p className="text-sm md:text-base font-bold uppercase tracking-[0.4em] text-white/50">{error}</p>
-              <button onClick={() => setError(null)} className="text-sm md:text-base font-bold uppercase tracking-widest text-white border-b border-white/30 pb-0.5 hover:border-white transition-colors">
+              <p className="text-sm md:text-base font-bold uppercase tracking-[0.4em] text-white/85">{error}</p>
+              <button onClick={() => setError(null)} className="text-sm md:text-base font-bold uppercase tracking-widest text-white border-b border-white/45 pb-0.5 hover:border-white transition-colors">
                 {t('btn.tryAgain')}
               </button>
             </div>
@@ -2478,13 +2478,13 @@ const AIConceptsPage: React.FC = () => {
               <div className="grid grid-cols-2 border-b border-black/8" style={{ gap: '1px', background: 'rgba(0,0,0,0.08)' }}>
                 <div className="bg-white">
                   <div className="px-5 border-b border-black/6 flex items-center justify-between" style={{ height: 38 }}>
-                    <span className="text-xs font-bold uppercase tracking-[0.3em] text-black/45">{t('ai.originalRoom')}</span>
+                    <span className="text-xs font-bold uppercase tracking-[0.3em] text-black/65">{t('ai.originalRoom')}</span>
                   </div>
                   <img src={roomImage} className="w-full object-cover" style={{ aspectRatio: roomAspectRatio }} alt="Original" />
                 </div>
                 <div className="bg-white">
                   <div className="px-5 border-b border-black/6 flex items-center justify-between" style={{ height: 38 }}>
-                    <span className="text-xs font-bold uppercase tracking-[0.3em] text-black/45">{t('ai.genConcept')}</span>
+                    <span className="text-xs font-bold uppercase tracking-[0.3em] text-black/65">{t('ai.genConcept')}</span>
                     <span className="text-[7px] text-black/35 uppercase tracking-widest">AI{selectedStyle ? ` · ${t(`ai.style.${selectedStyle.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}` : ''}</span>
                   </div>
                   {selectedConceptUrl && (
@@ -2501,7 +2501,7 @@ const AIConceptsPage: React.FC = () => {
               )}
 
               <div className="px-8 py-5 bg-white border-b border-black/8">
-                <p className="text-xs font-bold uppercase tracking-[0.3em] text-black/45 mb-1">{t('ai.genConcepts')}</p>
+                <p className="text-xs font-bold uppercase tracking-[0.3em] text-black/65 mb-1">{t('ai.genConcepts')}</p>
                 {sessionConceptArchive.length > 0 && (
                   <p className="text-[10px] text-black/55 mb-3 leading-relaxed max-w-xl">
                     {t('ai.sessionConceptsArchiveHint')}
@@ -2587,7 +2587,7 @@ const AIConceptsPage: React.FC = () => {
                   <div className="flex flex-col items-center px-8 md:px-12 py-10 gap-7 w-full max-w-2xl mx-auto">
                     {/* Header */}
                     <div className="text-center">
-                      <p className="text-[9px] font-bold uppercase tracking-[0.35em] text-black/40 mb-3">How It Works</p>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.35em] text-black/65 mb-3">How It Works</p>
                       <h3 className="font-display text-2xl md:text-3xl font-bold tracking-tight text-black mb-2">
                         Which of these feels like home?
                       </h3>
@@ -2617,21 +2617,21 @@ const AIConceptsPage: React.FC = () => {
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                             />
                           </div>
-                          <span className="mt-1.5 text-[8px] font-bold uppercase tracking-[0.2em] text-black/50 text-center w-full">{style}</span>
+                          <span className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-black/65 text-center w-full">{style}</span>
                         </button>
                       ))}
                     </div>
 
                     {/* CTA */}
                     <div className="flex flex-col items-center gap-3 w-full bg-black/[0.03] border-t border-black/[0.06] pt-6 pb-5 -mx-8 px-8" style={{ width: 'calc(100% + 4rem)' }}>
-                      <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/40">Ready to find your style?</p>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-black/65">Ready to find your style?</p>
                       <button
                         onClick={triggerGoogleSignIn}
-                        className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.25em] px-7 py-4 hover:bg-[#003d99] transition-colors"
+                        className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[11px] font-bold uppercase tracking-[0.25em] px-7 py-4 hover:bg-[#003d99] transition-colors"
                       >
                         Sign in to start your quiz →
                       </button>
-                      <p className="text-[9px] text-black/55 uppercase tracking-[0.2em]">Free · 18 rooms · 2 minutes · No card needed</p>
+                      <p className="text-[12px] text-black/70 uppercase tracking-[0.2em]">Free · 18 rooms · 2 minutes · No card needed</p>
                     </div>
                   </div>
                 )}
@@ -2649,19 +2649,19 @@ const AIConceptsPage: React.FC = () => {
                     </div>
                     <div className="flex items-center justify-between px-8 py-3 border-b border-black/8">
                       <div className="flex items-center gap-4">
-                        <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/55">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-black/70">
                           {t('ai.quiz.roomOf').replace('{current}', (quizStep + 1).toString()).replace('{total}', QUIZ_LENGTH.toString())}
                         </p>
                         {voteHistory.length > 0 && (
                           <button
                             onClick={handleQuizBack}
-                            className="text-[10px] uppercase tracking-[0.2em] text-black/55 hover:text-black/85 transition-colors flex items-center gap-1"
+                            className="text-[11px] uppercase tracking-[0.2em] text-black/70 hover:text-black transition-colors flex items-center gap-1"
                           >
                             ← Previous room
                           </button>
                         )}
                       </div>
-                      <p className="text-[9px] text-black/45 uppercase tracking-widest">
+                      <p className="text-[11px] text-black/65 uppercase tracking-widest">
                         {t('ai.quiz.rateHonestly')}
                       </p>
                     </div>
@@ -2728,7 +2728,7 @@ const AIConceptsPage: React.FC = () => {
 
                         {/* Header row — always visible */}
                         <div className="flex items-center justify-between flex-shrink-0">
-                          <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/45">Your Favorites</p>
+                          <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-black/65">Your Favorites</p>
                           <p className="text-[10px] text-black/55">{lovedRooms.length} of {voteHistory.length} loved</p>
                         </div>
 
@@ -2748,7 +2748,7 @@ const AIConceptsPage: React.FC = () => {
                               transition={{ duration: 0.2 }}
                               className="flex-shrink-0 border-t border-black/8 pt-2 pb-1"
                             >
-                              <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/45 mb-1">Leading Styles</p>
+                              <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-black/65 mb-1">Leading Styles</p>
                               <p className="text-[11px] text-black/60 font-medium leading-relaxed">
                                 {(() => {
                                   const total = Object.values(quizVotes).reduce((a: number, b: number) => a + b, 0) || 1;
@@ -2778,7 +2778,7 @@ const AIConceptsPage: React.FC = () => {
                                 className="flex flex-col items-center justify-center gap-2 text-center py-8 pointer-events-none"
                               >
                                 <Heart size={18} strokeWidth={1.5} className="text-black/35" />
-                                <p className="text-[10px] text-black/45 font-medium tracking-[0.05em]">
+                                <p className="text-[12px] text-black/70 font-medium tracking-[0.05em]">
                                   Love rooms to build your moodboard
                                 </p>
                               </motion.div>
@@ -2846,7 +2846,7 @@ const AIConceptsPage: React.FC = () => {
                           <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-[#0047AB] mb-2">{t('ai.quiz.designDNA')}</p>
                           <h2 className="font-display text-3xl font-bold tracking-tight mb-1">
                             {t(`ai.style.${quizResult[0]?.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}
-                            {quizResult[1] && <span className="text-black/45"> · {t(`ai.style.${quizResult[1].style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>}
+                            {quizResult[1] && <span className="text-black/65"> · {t(`ai.style.${quizResult[1].style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>}
                           </h2>
                           <p className="text-xs text-black/55 uppercase tracking-[0.2em]">{t('ai.quiz.basedOnRatings')}</p>
                         </div>
@@ -2863,7 +2863,7 @@ const AIConceptsPage: React.FC = () => {
                         {/* Style breakdown */}
                         {quizResult.filter(r => r.pct > 0).length > 0 && (
                           <div className="border-t border-black/8 pt-4">
-                            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/45 mb-3">Your style breakdown</p>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-black/65 mb-3">Your style breakdown</p>
                             <div className="flex flex-col gap-2.5">
                               {quizResult.filter(r => r.pct > 0).map((r) => (
                                 <div key={r.style} className="flex items-center gap-3">
@@ -2891,7 +2891,7 @@ const AIConceptsPage: React.FC = () => {
                           return (
                             <div className="border border-black/8 p-4 bg-neutral-50">
                               <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#0047AB] mb-2">{quizResult[0].style}</p>
-                              <p className="text-[10px] text-black/50 leading-relaxed mb-3">{desc.summary}</p>
+                              <p className="text-[12px] md:text-[13px] text-black/75 leading-relaxed mb-3">{desc.summary}</p>
                               <div className="flex flex-wrap gap-1">
                                 {desc.elements.map(el => (
                                   <span key={el} className="text-[7px] font-bold uppercase tracking-wide text-black/55 border border-black/10 px-2 py-0.5">{el}</span>
@@ -2945,10 +2945,10 @@ const AIConceptsPage: React.FC = () => {
                 {!authLoading && !user && (
                   <div className="flex flex-col items-center justify-center gap-6 py-20 px-8 text-center flex-grow bg-white">
                     <div className="w-16 h-16 border border-black/8 flex items-center justify-center text-black/25 text-3xl">◎</div>
-                    <h3 className="font-display text-2xl font-light text-black/45 tracking-tight">
+                    <h3 className="font-display text-2xl font-light text-black/75 tracking-tight">
                       Shop any interior
                     </h3>
-                    <p className="text-sm text-black/45 uppercase tracking-[0.2em] leading-[2]">
+                    <p className="text-[13px] text-black/70 uppercase tracking-[0.2em] leading-[2]">
                       Free · 3 shopping lists · PDF included
                     </p>
 
@@ -3050,7 +3050,7 @@ const AIConceptsPage: React.FC = () => {
                         {!showAlternateUpload ? (
                           <button
                             onClick={() => setShowAlternateUpload(true)}
-                            className="text-[10px] text-black/45 mt-6 hover:text-black/70 transition-colors"
+                            className="text-[12px] text-black/70 mt-6 hover:text-black transition-colors"
                           >
                             Want to shop a different photo instead?{' '}
                             <span className="underline text-black/70">Upload a different image →</span>
@@ -3085,9 +3085,9 @@ const AIConceptsPage: React.FC = () => {
                                   </>
                                 ) : (
                                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-50">
-                                    <div className="w-9 h-9 border border-black/15 flex items-center justify-center text-black/40 text-xl font-thin">⌂</div>
-                                    <span className="text-sm font-bold uppercase tracking-[0.25em] text-black/35">{shopDragOver ? 'Drop to upload' : 'Upload a photo'}</span>
-                                    <span className="text-[8px] text-black/35 uppercase tracking-widest">JPG, PNG · max 10MB</span>
+                                    <div className="w-9 h-9 border border-black/15 flex items-center justify-center text-black/65 text-xl font-thin">⌂</div>
+                                    <span className="text-sm font-bold uppercase tracking-[0.25em] text-black/70">{shopDragOver ? 'Drop to upload' : 'Upload a photo'}</span>
+                                    <span className="text-[11px] text-black/65 uppercase tracking-widest">JPG, PNG · max 10MB</span>
                                   </div>
                                 )}
                               </div>
@@ -3101,13 +3101,13 @@ const AIConceptsPage: React.FC = () => {
                                 🛒 {t('ai.shop.findProducts')}
                               </button>
                               {standaloneShoppingImage && (
-                                <button onClick={() => setStandaloneShoppingImage(null)} className="text-[9px] text-black/45 uppercase tracking-widest border border-black/10 px-4 hover:text-black hover:border-black/40 transition-all">
+                                <button onClick={() => setStandaloneShoppingImage(null)} className="text-[11px] text-black/70 uppercase tracking-widest border border-black/20 px-4 hover:text-black hover:border-black/55 transition-all">
                                   Reset
                                 </button>
                               )}
                               <button
                                 onClick={() => { setShowAlternateUpload(false); setStandaloneShoppingImage(null); }}
-                                className="text-[9px] text-black/45 uppercase tracking-widest border border-black/10 px-4 hover:text-black hover:border-black/40 transition-all"
+                                className="text-[11px] text-black/70 uppercase tracking-widest border border-black/20 px-4 hover:text-black hover:border-black/55 transition-all"
                               >
                                 Cancel
                               </button>
@@ -3122,7 +3122,7 @@ const AIConceptsPage: React.FC = () => {
                       <div className="w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 border-r border-black/8 px-8 py-6 flex flex-col gap-6">
                         <div className="flex items-center gap-3">
                           <div className="w-5 h-5 bg-black text-white text-[8px] flex items-center justify-center font-bold flex-shrink-0">1</div>
-                          <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/50">
+                          <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/70">
                             {t('ai.shop.anyInterior')}
                           </span>
                         </div>
@@ -3153,10 +3153,10 @@ const AIConceptsPage: React.FC = () => {
                               ) : (
                                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-50">
                                   <div className="w-9 h-9 border border-black/15 flex items-center justify-center text-black/40 text-xl font-thin">⌂</div>
-                                  <span className="text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/35">
+                                  <span className="text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/70">
                                     {shopDragOver ? 'Drop to upload' : 'Upload a photo'}
                                   </span>
-                                  <span className="text-[8px] text-black/35 uppercase tracking-widest">JPG, PNG · max 10MB</span>
+                                  <span className="text-[11px] text-black/65 uppercase tracking-widest">JPG, PNG · max 10MB</span>
                                 </div>
                               )}
                             </div>
@@ -3167,7 +3167,7 @@ const AIConceptsPage: React.FC = () => {
                         <div>
                           <div className="flex items-center gap-3 mb-3">
                             <div className="w-5 h-5 bg-black text-white text-[8px] flex items-center justify-center font-bold flex-shrink-0">2</div>
-                            <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/50">
+                            <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/70">
                               {t('ai.shop.shopIn')}
                             </span>
                           </div>
@@ -3190,7 +3190,7 @@ const AIConceptsPage: React.FC = () => {
                               </select>
                               <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-black/55 text-[10px]">▾</div>
                             </div>
-                            <span className="text-[8px] text-black/35 uppercase tracking-widest">
+                            <span className="text-[11px] text-black/65 uppercase tracking-widest">
                               More countries coming soon
                             </span>
                           </div>
@@ -3252,7 +3252,7 @@ const AIConceptsPage: React.FC = () => {
                               </div>
                             ))}
                           </div>
-                          <p className="mt-2.5 text-[10px] text-black/45 text-center">Upload your room to get personalised results</p>
+                          <p className="mt-2.5 text-[12px] text-black/65 text-center">Upload your room to get personalised results</p>
                         </div>
 
                       </div>
@@ -3268,7 +3268,7 @@ const AIConceptsPage: React.FC = () => {
                       <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-black mb-1">
                         {t('ai.shop.newConcept')}
                       </p>
-                      <p className="text-[10px] text-black/50 leading-relaxed max-w-xs">
+                      <p className="text-[12px] md:text-[13px] text-black/75 leading-relaxed max-w-xs">
                         {t('ai.shop.newConceptDesc')}
                       </p>
                     </div>
@@ -3317,12 +3317,12 @@ const AIConceptsPage: React.FC = () => {
                           alt="Source"
                         />
                         <div className="pt-1 flex-grow">
-                          <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/45 mb-2">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-black/65 mb-2">
                             {searchSourceIsStandalone
                               ? (language === 'en' ? 'Shopping from your uploaded photo' : 'Shopping from uploaded photo')
                               : (language === 'en' ? 'Shopping from your AI concept' : 'Shopping from AI concept')}
                           </p>
-                          <p className="text-[11px] text-black/60 leading-relaxed mb-4">
+                          <p className="text-[13px] text-black/75 leading-relaxed mb-4">
                             {language === 'en' ? 'Products matched to the items identified in this interior.' : 'Products matched to this interior'}
                           </p>
                           <button
@@ -3345,18 +3345,18 @@ const AIConceptsPage: React.FC = () => {
                     {shoppingItems.length > 0 && (
                       <div className="mx-8 mt-6 py-4 border border-black/8 bg-neutral-50 flex items-center justify-between px-4">
                         <div className="flex items-center gap-3 flex-wrap">
-                          <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-black/50">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-black/70">
                             {t('ai.shop.itemsIdentified').replace('{count}', shoppingItems.length.toString())}
                           </p>
                           {shoppingItems.map((item: any, idx: number) => (
-                            <span key={idx} className="text-[9px] font-bold uppercase tracking-[0.15em] px-2.5 py-1 bg-black text-white">
+                            <span key={idx} className="text-[11px] font-bold uppercase tracking-[0.15em] px-2.5 py-1 bg-black text-white">
                               {item.category}
                             </span>
                           ))}
                         </div>
                         <button
                           onClick={() => { setShoppingDone(false); setShoppingResults([]); setShoppingItems([]); }}
-                          className="text-[9px] uppercase tracking-widest text-black/45 hover:text-black transition-colors flex-shrink-0 ml-4"
+                          className="text-[11px] uppercase tracking-widest text-black/65 hover:text-black transition-colors flex-shrink-0 ml-4"
                         >
                           {t('btn.reset')}
                         </button>
@@ -3365,7 +3365,7 @@ const AIConceptsPage: React.FC = () => {
 
                     {shoppingResults.length === 0 && (
                       <div className="px-8 py-8 text-center">
-                        <p className="text-[10px] text-black/50 uppercase tracking-widest">
+                        <p className="text-[12px] text-black/70 uppercase tracking-widest">
                           {t('ai.shop.noProducts')}
                         </p>
                       </div>
@@ -3374,7 +3374,7 @@ const AIConceptsPage: React.FC = () => {
                     {shoppingResults.length > 0 && (
                       <div className="mx-8 mt-4 mb-2 pl-4 pr-4 py-3 border-l-2 border-amber-400 bg-amber-50 flex items-start gap-2.5">
                         <AlertCircle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
-                        <p className="text-[10px] text-amber-900/80 leading-relaxed">
+                        <p className="text-[12px] text-amber-900 leading-relaxed">
                           <strong className="font-bold text-amber-900">Before you buy</strong> — these are AI-matched suggestions, not guaranteed exact matches. Always verify dimensions, materials, and quality before purchasing.
                         </p>
                       </div>
@@ -3385,8 +3385,8 @@ const AIConceptsPage: React.FC = () => {
                         <div key={gIdx} className="px-8 py-6">
                           {/* Item header */}
                           <div className="flex items-center gap-3 mb-4">
-                            <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-black">{group.item.category}</span>
-                            <span className="text-[9px] text-black/55">— {group.item.description}</span>
+                            <span className="text-[12px] font-bold uppercase tracking-[0.25em] text-black">{group.item.category}</span>
+                            <span className="text-[12px] text-black/70">— {group.item.description}</span>
                           </div>
 
                           {group.error ? (
@@ -3405,15 +3405,15 @@ const AIConceptsPage: React.FC = () => {
                                         : <div className="w-full h-full flex items-center justify-center text-2xl opacity-10">&#128715;</div>}
                                     </div>
                                     <div className="p-2.5 flex flex-col gap-0.5 flex-1">
-                                      <p className="text-[8px] font-bold uppercase tracking-[0.18em] text-[#0047AB]">{entry.retailer}</p>
-                                      <p className="text-[10px] font-medium text-black leading-snug line-clamp-2">{entry.product.title}</p>
-                                      <p className="text-[11px] font-bold text-black mt-auto pt-1">{entry.product.price || 'View →'}</p>
+                                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0047AB]">{entry.retailer}</p>
+                                      <p className="text-[12px] font-medium text-black leading-snug line-clamp-2">{entry.product.title}</p>
+                                      <p className="text-[13px] font-bold text-black mt-auto pt-1">{entry.product.price || 'View →'}</p>
                                     </div>
                                   </a>
                                 ) : (
                                   <div key={rIdx} className="border border-dashed border-black/10 bg-neutral-50/50 flex flex-col items-center justify-center gap-1 p-3 aspect-square">
-                                    <p className="text-[8px] font-bold uppercase tracking-[0.18em] text-black/40">{entry.retailer}</p>
-                                    <p className="text-[8px] text-black/35">Not found</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/60">{entry.retailer}</p>
+                                    <p className="text-[10px] text-black/55">Not found</p>
                                   </div>
                                 )
                               ))}
@@ -3431,36 +3431,36 @@ const AIConceptsPage: React.FC = () => {
                                       : <div className="w-full h-full flex items-center justify-center text-3xl opacity-15">&#128715;</div>}
                                   </div>
                                   <div className="p-3">
-                                    <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-black/50 mb-1">{product.source}</p>
-                                    <p className="text-[11px] font-medium text-black leading-snug line-clamp-2 mb-1">{product.title}</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-black/65 mb-1">{product.source}</p>
+                                    <p className="text-[12px] md:text-[13px] font-medium text-black leading-snug line-clamp-2 mb-1">{product.title}</p>
                                     {product.rating && (
-                                      <p className="text-[9px] text-black/55 mb-1">{'&#9733;'.repeat(Math.round(product.rating))} {product.rating}{product.reviews ? ` (${product.reviews})` : ''}</p>
+                                      <p className="text-[11px] text-black/70 mb-1">{'&#9733;'.repeat(Math.round(product.rating))} {product.rating}{product.reviews ? ` (${product.reviews})` : ''}</p>
                                     )}
-                                    <p className="text-[12px] font-bold text-black">{product.price || 'View price →'}</p>
+                                    <p className="text-[13px] font-bold text-black">{product.price || 'View price →'}</p>
                                   </div>
                                 </a>
                               ))}
                             </div>
 
                           ) : (
-                            <p className="text-[10px] text-black/55 italic">{t('ai.shop.noProductsForItem')}</p>
+                            <p className="text-[12px] text-black/70 italic">{t('ai.shop.noProductsForItem')}</p>
                           )}
                         </div>
                       ))}
                     </div>
 
                     <div className="px-8 py-5 border-t border-black/8 bg-neutral-50 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-                      <p className="text-[9px] text-black/45 leading-relaxed">
+                      <p className="text-[12px] text-black/65 leading-relaxed">
                         {t('ai.shop.resultsVia')}
                       </p>
                       <div className="flex flex-col items-stretch sm:items-end gap-2 flex-shrink-0">
-                        <p className="text-[10px] text-black/50 text-left sm:text-right leading-snug max-w-[min(100%,300px)]">
+                        <p className="text-[12px] text-black/70 text-left sm:text-right leading-snug max-w-[min(100%,300px)]">
                           {t('ai.shop.downloadPdfNotice')}
                         </p>
                         <button
                           type="button"
                           onClick={handleDownloadShoppingPDF}
-                          className="flex items-center justify-center gap-2 bg-black text-white text-[9px] font-bold uppercase tracking-[0.25em] px-5 py-3 hover:bg-black/80 transition-all whitespace-nowrap"
+                          className="flex items-center justify-center gap-2 bg-black text-white text-[11px] font-bold uppercase tracking-[0.25em] px-5 py-3 hover:bg-black/80 transition-all whitespace-nowrap"
                         >
                           <FileDown className="w-3 h-3" />
                           {t('ai.shop.downloadPDF')}

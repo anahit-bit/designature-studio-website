@@ -38,10 +38,10 @@ const Header: React.FC = () => {
   ];
 
   const LanguageSwitcher = () => (
-    <button 
+    <button
       onClick={() => setLanguage(language === 'en' ? 'am' : 'en')}
-      className={`text-[10px] font-bold uppercase tracking-[0.25em] transition-all duration-300 px-2 ${
-        (isDarkTextNeeded && !useLightNav) ? 'text-black hover:text-black/55' : 'text-white hover:text-white/55'
+      className={`text-[11px] font-bold uppercase tracking-[0.25em] transition-all duration-300 px-2 ${
+        (isDarkTextNeeded && !useLightNav) ? 'text-black hover:text-black/65' : 'text-white hover:text-white/70'
       }`}
     >
       {language === 'en' ? 'AM' : 'EN'}
@@ -50,15 +50,15 @@ const Header: React.FC = () => {
 
   const CTAButton = ({ className = "" }: { className?: string }) => (
     <div className={`flex flex-col items-center gap-1.5 ${className}`}>
-      <button 
+      <button
         onClick={() => window.open("https://calendly.com/designature-studio-us/free_consultation", "_blank")}
-        className="group flex items-center justify-center gap-3 bg-black border border-black text-white px-6 py-2.5 text-[10px] font-bold font-body tracking-[0.25em] uppercase rounded-none transition-all duration-500 hover:bg-white hover:text-black hover:scale-[1.02] active:scale-[0.98]"
+        className="group flex items-center justify-center gap-3 bg-black border border-black text-white px-6 py-2.5 text-[11px] font-bold font-body tracking-[0.25em] uppercase rounded-none transition-all duration-500 hover:bg-white hover:text-black hover:scale-[1.02] active:scale-[0.98]"
       >
         {t('btn.bookCall')}
         <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
       </button>
-      <span className={`text-[8px] font-semibold font-body tracking-wider uppercase leading-none transition-colors duration-700 ${
-        (isDarkTextNeeded && !useLightNav) ? 'text-black' : 'text-white/80'
+      <span className={`text-[10px] font-semibold font-body tracking-wider uppercase leading-none transition-colors duration-700 ${
+        (isDarkTextNeeded && !useLightNav) ? 'text-black/75' : 'text-white/85'
       } ${language === 'en' ? 'italic' : ''}`}>
         {t('btn.firstConvo')}
       </span>
@@ -102,12 +102,12 @@ const Header: React.FC = () => {
                   e.preventDefault();
                   link.action();
                 }}
-                className={`relative text-[11px] font-bold uppercase tracking-[0.2em] transition-colors duration-300 group ${
+                className={`relative text-[12px] font-bold uppercase tracking-[0.2em] transition-colors duration-300 group ${
                   link.isHighlight
-                    ? 'text-[#0047AB] hover:text-[#0047AB]/70'
+                    ? 'text-[#0047AB] hover:text-[#0047AB]/75'
                     : isActive
                       ? ((isDarkTextNeeded && !useLightNav) ? 'text-black' : 'text-white')
-                      : ((isDarkTextNeeded && !useLightNav) ? 'text-black/55 hover:text-black' : 'text-white/55 hover:text-white')
+                      : ((isDarkTextNeeded && !useLightNav) ? 'text-black/70 hover:text-black' : 'text-white/75 hover:text-white')
                 }`}
                 style={link.isHighlight ? { animation: 'ai-pulse 2.5s ease-in-out infinite' } : {}}
               >
