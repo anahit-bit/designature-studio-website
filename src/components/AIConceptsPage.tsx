@@ -16,6 +16,7 @@ import RoomAudit from './RoomAudit';
 import FeedbackModal from './FeedbackModal';
 import AIVisionShowcase from './AIVisionShowcase';
 import ShoppingListShowcase from './ShoppingListShowcase';
+import RetailerLogoStrip from './RetailerLogoStrip';
 import { QUIZ_IMAGE_WEIGHTS, TIER_POINTS } from '../data/quizImageWeights';
 
 // ─── Google OAuth client ID ────────────────────────────────────────────────
@@ -403,6 +404,9 @@ const AIConceptsPage: React.FC = () => {
   const [searchSourceIsStandalone, setSearchSourceIsStandalone] = useState(false);
   const [standaloneShoppingAspectRatio, setStandaloneShoppingAspectRatio] = useState<string>('3/4');
   const [shoppingCountry, setShoppingCountry] = useState<string>('us');
+  // Variant B layout: when an AI concept exists, the secondary "shop a different photo"
+  // path is collapsed by default and revealed by clicking the link below the primary action.
+  const [showAlternateUpload, setShowAlternateUpload] = useState(false);
 
   // ── Style Quiz state ──
   const [quizStep, setQuizStep] = useState<number>(0);
@@ -2947,6 +2951,12 @@ const AIConceptsPage: React.FC = () => {
                     <p className="text-sm text-black/45 uppercase tracking-[0.2em] leading-[2]">
                       Free · 3 shopping lists · PDF included
                     </p>
+
+                    {/* Trust signal: which shops we source from. */}
+                    <div className="w-full max-w-xl">
+                      <RetailerLogoStrip variant="trust" />
+                    </div>
+
                     <button
                       onClick={() => triggerGoogleSignIn()}
                       className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.25em] px-5 py-3 hover:bg-[#003d99] transition-colors"
@@ -2992,91 +3002,28 @@ const AIConceptsPage: React.FC = () => {
                 {!shoppingDone && !shoppingLoading && !shoppingError && shoppingItems.length === 0 && (user?.shoppingListsLeft ?? 1) > 0 && (
                   <div className="bg-white">
 
-                    {/* ── TWO-COLUMN: AI concept exists ── */}
-                    {selectedConceptUrl && results.length > 0 ? (
-                      <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-black/8">
+                    {/* Logo strip banner — sets scope ("4-6 items") + retailers, includes upsell. */}
+                    <RetailerLogoStrip variant="banner" onUpgradeClick={() => navigateTo('pricing')} />
 
-                        {/* Left — From AI concept */}
-                        <div className="flex-1 px-8 py-8 flex flex-col gap-4">
-                          <p className="text-[8px] font-bold uppercase tracking-[0.25em] text-black/45">Option A</p>
-                          <p className="text-sm font-bold uppercase tracking-[0.25em] text-black">Shop your AI concept</p>
-                          <p className="text-[10px] text-black/50 leading-relaxed">
-                            Find real products that match the generated design.
-                          </p>
-                          <div className="w-full aspect-[4/3] overflow-hidden border border-black/10">
-                            <img src={selectedConceptUrl} className="w-full h-full object-cover" alt="AI concept" />
-                          </div>
-                          <div className="relative mt-auto">
-                            <select
-                              value={shoppingCountry}
-                              onChange={e => setShoppingCountry(e.target.value)}
-                              className="appearance-none w-full bg-white border border-black/20 text-[10px] font-bold uppercase tracking-[0.1em] text-black px-4 py-2.5 pr-8 cursor-pointer hover:border-black/50 transition-colors focus:outline-none focus:border-black"
-                            >
-                              <option value="us">🇺🇸 United States</option>
-                              <option value="gb" disabled>🇬🇧 United Kingdom — coming soon</option>
-                              <option value="de" disabled>🇩🇪 Germany — coming soon</option>
-                              <option value="fr" disabled>🇫🇷 France — coming soon</option>
-                              <option value="am" disabled>🇦🇲 Armenia — coming soon</option>
-                              <option value="ae" disabled>🇦🇪 UAE — coming soon</option>
-                              <option value="ca" disabled>🇨🇦 Canada — coming soon</option>
-                              <option value="au" disabled>🇦🇺 Australia — coming soon</option>
-                              <option value="ch" disabled>🇨🇭 Switzerland — coming soon</option>
-                            </select>
-                            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-black/55 text-[10px]">▾</div>
-                          </div>
-                          <button
-                            onClick={shopCurrentConcept}
-                            className="w-full flex items-center justify-center gap-2 bg-[#0047AB] text-white text-[10px] font-bold uppercase tracking-[0.25em] py-3.5 hover:bg-[#003d99] transition-all"
-                          >
-                            🛒 Find these products
-                          </button>
+                    {/* ── VARIANT B: AI concept exists — single primary action, alternate upload as quiet secondary ── */}
+                    {selectedConceptUrl && results.length > 0 ? (
+                      <div className="px-8 py-10 flex flex-col items-center max-w-2xl mx-auto">
+
+                        {/* Primary: shop the AI concept */}
+                        <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-black/55 mb-3 text-center">
+                          Source image
+                        </p>
+                        <div className="w-full aspect-[16/10] overflow-hidden border border-black/10 mb-5">
+                          <img src={selectedConceptUrl} className="w-full h-full object-cover" alt="AI concept" />
                         </div>
 
-                        {/* Right — Upload your own */}
-                        <div className="flex-1 px-8 py-8 flex flex-col gap-4">
-                          <p className="text-[8px] font-bold uppercase tracking-[0.25em] text-black/45">Option B</p>
-                          <p className="text-sm font-bold uppercase tracking-[0.25em] text-black">Shop any interior</p>
-                          <p className="text-[10px] text-black/50 leading-relaxed">
-                            Upload any photo — a room you love, a saved image, anything.
-                          </p>
-                          <label htmlFor="standalone-shop-upload" className="block cursor-pointer">
-                            <input
-                              id="standalone-shop-upload"
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) => { const f = e.target.files?.[0]; if (f) processShoppingFile(f); e.target.value = ''; }}
-                            />
-                            <div
-                              className={`relative overflow-hidden border transition-colors ${shopDragOver ? 'border-black bg-black/5' : standaloneShoppingImage ? 'border-black' : 'border-dashed border-black/20 hover:border-black/50'}`}
-                              style={{ aspectRatio: '4/3' }}
-                              onDragOver={(e) => { e.preventDefault(); setShopDragOver(true); }}
-                              onDragEnter={(e) => { e.preventDefault(); setShopDragOver(true); }}
-                              onDragLeave={() => setShopDragOver(false)}
-                              onDrop={handleShopDrop}
-                            >
-                              {standaloneShoppingImage ? (
-                                <>
-                                  <img src={standaloneShoppingImage} className="w-full h-full object-cover" alt="Shopping source" />
-                                  <div className="absolute bottom-0 inset-x-0 bg-black/60 py-2 px-3 text-[8px] font-bold uppercase tracking-widest text-white text-center">
-                                    {t('btn.change')}
-                                  </div>
-                                </>
-                              ) : (
-                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-50">
-                                  <div className="w-9 h-9 border border-black/15 flex items-center justify-center text-black/40 text-xl font-thin">⌂</div>
-                                  <span className="text-sm font-bold uppercase tracking-[0.25em] text-black/35">{shopDragOver ? 'Drop to upload' : 'Upload a photo'}</span>
-                                  <span className="text-[8px] text-black/35 uppercase tracking-widest">JPG, PNG · max 10MB</span>
-                                </div>
-                              )}
-                            </div>
-                          </label>
-                          {/* Country */}
+                        <div className="flex items-center justify-center gap-3 flex-wrap mb-5">
+                          <span className="text-[10px] uppercase tracking-[0.25em] text-black/55">Searching</span>
                           <div className="relative">
                             <select
                               value={shoppingCountry}
                               onChange={e => setShoppingCountry(e.target.value)}
-                              className="appearance-none w-full bg-white border border-black/20 text-[10px] font-bold uppercase tracking-[0.1em] text-black px-4 py-2.5 pr-8 cursor-pointer hover:border-black/50 transition-colors focus:outline-none focus:border-black"
+                              className="appearance-none bg-white border border-black/20 text-[10px] font-bold uppercase tracking-[0.1em] text-black px-3 py-1.5 pr-7 cursor-pointer hover:border-black/50 transition-colors focus:outline-none focus:border-black"
                             >
                               <option value="us">🇺🇸 United States</option>
                               <option value="gb" disabled>🇬🇧 United Kingdom — coming soon</option>
@@ -3088,23 +3035,85 @@ const AIConceptsPage: React.FC = () => {
                               <option value="au" disabled>🇦🇺 Australia — coming soon</option>
                               <option value="ch" disabled>🇨🇭 Switzerland — coming soon</option>
                             </select>
-                            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-black/55 text-[10px]">▾</div>
-                          </div>
-                          <div className="flex gap-2 mt-auto">
-                            <button
-                              onClick={focusShoppingTabAndRunStandaloneSearch}
-                              disabled={!standaloneShoppingImage}
-                              className="flex-1 flex items-center justify-center gap-2 bg-black text-white text-[10px] font-bold uppercase tracking-[0.25em] py-3.5 hover:bg-black/80 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                            >
-                              🛒 {t('ai.shop.findProducts')}
-                            </button>
-                            {standaloneShoppingImage && (
-                              <button onClick={() => setStandaloneShoppingImage(null)} className="text-[9px] text-black/45 uppercase tracking-widest border border-black/10 px-4 hover:text-black hover:border-black/40 transition-all">
-                                Reset
-                              </button>
-                            )}
+                            <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-black/55 text-[9px]">▾</div>
                           </div>
                         </div>
+
+                        <button
+                          onClick={shopCurrentConcept}
+                          className="bg-[#0047AB] text-white text-[10px] font-bold uppercase tracking-[0.25em] px-12 py-4 hover:bg-[#003d99] transition-all"
+                        >
+                          🛒 Find products in this concept
+                        </button>
+
+                        {/* Quiet secondary: shop a different photo */}
+                        {!showAlternateUpload ? (
+                          <button
+                            onClick={() => setShowAlternateUpload(true)}
+                            className="text-[10px] text-black/45 mt-6 hover:text-black/70 transition-colors"
+                          >
+                            Want to shop a different photo instead?{' '}
+                            <span className="underline text-black/70">Upload a different image →</span>
+                          </button>
+                        ) : (
+                          <div className="w-full mt-8 pt-8 border-t border-black/8 flex flex-col gap-4">
+                            <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-black/55 text-center">
+                              Or shop a different photo
+                            </p>
+                            <label htmlFor="alt-shop-upload" className="block cursor-pointer">
+                              <input
+                                id="alt-shop-upload"
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => { const f = e.target.files?.[0]; if (f) processShoppingFile(f); e.target.value = ''; }}
+                              />
+                              <div
+                                className={`relative overflow-hidden border transition-colors ${shopDragOver ? 'border-black bg-black/5' : standaloneShoppingImage ? 'border-black' : 'border-dashed border-black/20 hover:border-black/50'}`}
+                                style={{ aspectRatio: '16/10' }}
+                                onDragOver={(e) => { e.preventDefault(); setShopDragOver(true); }}
+                                onDragEnter={(e) => { e.preventDefault(); setShopDragOver(true); }}
+                                onDragLeave={() => setShopDragOver(false)}
+                                onDrop={handleShopDrop}
+                              >
+                                {standaloneShoppingImage ? (
+                                  <>
+                                    <img src={standaloneShoppingImage} className="w-full h-full object-cover" alt="Shopping source" />
+                                    <div className="absolute bottom-0 inset-x-0 bg-black/60 py-2 px-3 text-[8px] font-bold uppercase tracking-widest text-white text-center">
+                                      {t('btn.change')}
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-50">
+                                    <div className="w-9 h-9 border border-black/15 flex items-center justify-center text-black/40 text-xl font-thin">⌂</div>
+                                    <span className="text-sm font-bold uppercase tracking-[0.25em] text-black/35">{shopDragOver ? 'Drop to upload' : 'Upload a photo'}</span>
+                                    <span className="text-[8px] text-black/35 uppercase tracking-widest">JPG, PNG · max 10MB</span>
+                                  </div>
+                                )}
+                              </div>
+                            </label>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={focusShoppingTabAndRunStandaloneSearch}
+                                disabled={!standaloneShoppingImage}
+                                className="flex-1 flex items-center justify-center gap-2 bg-black text-white text-[10px] font-bold uppercase tracking-[0.25em] py-3 hover:bg-black/80 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                              >
+                                🛒 {t('ai.shop.findProducts')}
+                              </button>
+                              {standaloneShoppingImage && (
+                                <button onClick={() => setStandaloneShoppingImage(null)} className="text-[9px] text-black/45 uppercase tracking-widest border border-black/10 px-4 hover:text-black hover:border-black/40 transition-all">
+                                  Reset
+                                </button>
+                              )}
+                              <button
+                                onClick={() => { setShowAlternateUpload(false); setStandaloneShoppingImage(null); }}
+                                className="text-[9px] text-black/45 uppercase tracking-widest border border-black/10 px-4 hover:text-black hover:border-black/40 transition-all"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                     ) : (
