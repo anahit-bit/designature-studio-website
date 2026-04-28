@@ -71,6 +71,9 @@ const translations = {
     'nav.blog': 'Blog',
     'nav.bookConsultation': 'Book a Consultation',
     'nav.freeConsultation': 'Free Consultation',
+    'nav.tryAiFree': 'Try AI free',
+    'nav.goToStudio': 'Go to Studio',
+    'nav.signOut': 'Sign out',
 
     // Hero
     'hero.studio2021': 'Designature Studio Est. 2021',
@@ -549,6 +552,9 @@ const translations = {
     'nav.blog': 'Բլոգ',
     'nav.bookConsultation': 'Ամրագրել Խորհրդատվություն',
     'nav.freeConsultation': 'Անվճար Խորհրդատվություն',
+    'nav.tryAiFree': 'Փորձել AI-ը անվճար',
+    'nav.goToStudio': 'Դեպի Ստուդիա',
+    'nav.signOut': 'Դուրս գալ',
     'nav.backToHome': 'Վերադառնալ Գլխավոր',
 
     // Hero

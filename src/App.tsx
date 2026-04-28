@@ -21,6 +21,7 @@ import CTABanner from './components/CTABanner';
 import Footer from './components/Footer';
 import { LanguageProvider } from './LanguageContext';
 import { ProjectsProvider } from './ProjectsContext';
+import { AuthProvider } from './AuthContext';
 import SessionInactivityGuard from './components/SessionInactivityGuard';
 
 const HomePage: React.FC = () => (
@@ -79,21 +80,23 @@ const AIVisionRoute: React.FC = () => (
 const App: React.FC = () => (
   <BrowserRouter>
     <LanguageProvider>
-      <ProjectsProvider>
-        <SessionInactivityGuard />
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/portfolio" element={<PortfolioRoute />} />
-          <Route path="/portfolio/:id" element={<ProjectDetailRoute />} />
-          <Route path="/services" element={<ServicesPage />} />
-          <Route path="/studio" element={<StudioPage />} />
-          <Route path="/ai-concepts" element={<AIConceptsRoute />} />
-          <Route path="/ai-vision" element={<AIVisionRoute />} />
-          <Route path="/pricing" element={<PricingRoute />} />
-          <Route path="/faq" element={<FAQPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </ProjectsProvider>
+      <AuthProvider>
+        <ProjectsProvider>
+          <SessionInactivityGuard />
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/portfolio" element={<PortfolioRoute />} />
+            <Route path="/portfolio/:id" element={<ProjectDetailRoute />} />
+            <Route path="/services" element={<ServicesPage />} />
+            <Route path="/studio" element={<StudioPage />} />
+            <Route path="/ai-concepts" element={<AIConceptsRoute />} />
+            <Route path="/ai-vision" element={<AIVisionRoute />} />
+            <Route path="/pricing" element={<PricingRoute />} />
+            <Route path="/faq" element={<FAQPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </ProjectsProvider>
+      </AuthProvider>
     </LanguageProvider>
   </BrowserRouter>
 );

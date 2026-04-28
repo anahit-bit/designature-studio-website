@@ -5,11 +5,14 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import StudioPage from '../components/StudioPage';
 import { LanguageProvider } from '../LanguageContext';
+import { AuthProvider } from '../AuthContext';
 
 const renderWithProvider = (ui: React.ReactElement) => {
   return render(
     <MemoryRouter>
-      <LanguageProvider>{ui}</LanguageProvider>
+      <LanguageProvider>
+        <AuthProvider>{ui}</AuthProvider>
+      </LanguageProvider>
     </MemoryRouter>
   );
 };
