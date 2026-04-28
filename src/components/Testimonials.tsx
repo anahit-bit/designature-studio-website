@@ -53,13 +53,13 @@ const Testimonials: React.FC = () => {
     <section id="testimonials" className="py-16 md:py-24 bg-white font-body">
       <div className="max-w-[1800px] mx-auto px-8 md:px-16">
         <div className="flex flex-col items-center text-center mb-10 md:mb-12">
-          <h2 className="text-sm md:text-base font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/45 mb-8">
+          <h2 className="text-sm md:text-base font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/65 mb-8">
             {t('test.title')}
           </h2>
           <h3 className="text-4xl md:text-5xl lg:text-7xl font-bold font-display tracking-architectural leading-[1] max-w-4xl mb-10">
             {t('test.heading')}
           </h3>
-          <p className="text-black/60 text-sm md:text-lg font-medium max-w-2xl leading-relaxed">
+          <p className="text-black/75 text-sm md:text-lg font-medium max-w-2xl leading-relaxed">
             {t('test.subtext')}
           </p>
         </div>
@@ -98,7 +98,7 @@ const Testimonials: React.FC = () => {
                   <span className="text-sm md:text-base font-bold font-body text-neutral-800 tracking-widest uppercase">
                     {item.name}
                   </span>
-                  <span className="text-[10px] font-bold font-body uppercase tracking-[0.3em] text-neutral-400 mt-2">
+                  <span className="text-[11px] font-bold font-body uppercase tracking-[0.3em] text-neutral-600 mt-2">
                     {item.country}
                   </span>
                 </div>
@@ -113,19 +113,19 @@ const Testimonials: React.FC = () => {
             <button
               onClick={prev}
               aria-label="Previous testimonials"
-              className="flex items-center justify-center w-10 h-10 border border-black/15 text-black/50 hover:border-black/50 hover:text-black transition-all duration-200"
+              className="flex items-center justify-center w-10 h-10 border border-black/25 text-black/70 hover:border-black/60 hover:text-black transition-all duration-200"
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
 
-            <span className="hidden sm:block text-[11px] font-bold uppercase tracking-[0.2em] text-black/45 tabular-nums">
+            <span className="hidden sm:block text-[12px] font-bold uppercase tracking-[0.2em] text-black/65 tabular-nums">
               {page + 1} / {pageCount}
             </span>
 
             <button
               onClick={next}
               aria-label="Next testimonials"
-              className="flex items-center justify-center w-10 h-10 border border-black/15 text-black/50 hover:border-black/50 hover:text-black transition-all duration-200"
+              className="flex items-center justify-center w-10 h-10 border border-black/25 text-black/70 hover:border-black/60 hover:text-black transition-all duration-200"
             >
               <ArrowRight className="w-4 h-4" />
             </button>

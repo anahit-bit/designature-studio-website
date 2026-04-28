@@ -37,8 +37,8 @@ const ProjectDetail: React.FC = () => {
     if (!src) {
       return (
         <div className={`w-full ${aspect} bg-neutral-50 flex flex-col items-center justify-center border border-dashed border-neutral-200`}>
-          <span className="text-sm md:text-base font-bold uppercase tracking-[0.3em] text-black/35">{label}</span>
-          <span className="text-[8px] uppercase tracking-widest text-black/25 mt-2">{t('portfolio.noImage')}</span>
+          <span className="text-sm md:text-base font-bold uppercase tracking-[0.3em] text-black/55">{label}</span>
+          <span className="text-[10px] uppercase tracking-widest text-black/45 mt-2">{t('portfolio.noImage')}</span>
         </div>
       );
     }
@@ -60,11 +60,11 @@ const ProjectDetail: React.FC = () => {
       
       {/* 1. Navigation & Title Area */}
       <div className="max-w-[1800px] mx-auto px-8 md:px-16 pt-12">
-        <button 
+        <button
           onClick={() => navigateTo('portfolio')}
-          className="text-sm md:text-base font-bold uppercase tracking-widest text-black/55 hover:text-black transition-colors flex items-center gap-2 group mb-12"
+          className="text-sm md:text-base font-bold uppercase tracking-widest text-black/70 hover:text-black transition-colors flex items-center gap-2 group mb-12"
         >
-          <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" /> 
+          <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
           {t('portfolio.back')}
         </button>
 
@@ -72,7 +72,7 @@ const ProjectDetail: React.FC = () => {
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold font-display tracking-architectural uppercase leading-[0.9]">
             {title}
           </h1>
-          <p className="text-black/50 text-xs md:text-sm font-medium max-w-md leading-relaxed italic">
+          <p className="text-black/75 text-[13px] md:text-sm font-medium max-w-md leading-relaxed italic">
             {description}
           </p>
         </div>
@@ -82,15 +82,15 @@ const ProjectDetail: React.FC = () => {
       <div className="border-y border-black/5 bg-neutral-50/50 mb-12">
         <div className="max-w-[1800px] mx-auto px-8 md:px-16 py-8 flex flex-wrap gap-16 md:gap-32">
           <div className="flex flex-col gap-1">
-            <span className="text-sm md:text-base font-bold uppercase tracking-[0.3em] text-black/45">{t('port.detail.location')}</span>
+            <span className="text-sm md:text-base font-bold uppercase tracking-[0.3em] text-black/65">{t('port.detail.location')}</span>
             <span className="text-sm md:text-base font-bold font-display uppercase tracking-tight">{location}</span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-sm md:text-base font-bold uppercase tracking-[0.3em] text-black/45">{t('port.detail.area')}</span>
+            <span className="text-sm md:text-base font-bold uppercase tracking-[0.3em] text-black/65">{t('port.detail.area')}</span>
             <span className="text-sm md:text-base font-bold font-display uppercase tracking-tight">{project.area}</span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-sm md:text-base font-bold uppercase tracking-[0.3em] text-black/45">{t('port.detail.date')}</span>
+            <span className="text-sm md:text-base font-bold uppercase tracking-[0.3em] text-black/65">{t('port.detail.date')}</span>
             <span className="text-sm md:text-base font-bold font-display uppercase tracking-tight">{project.date}</span>
           </div>
         </div>
@@ -111,7 +111,7 @@ const ProjectDetail: React.FC = () => {
           <div className="bg-neutral-50 border border-black/5 p-10 md:p-16 flex flex-col md:flex-row gap-12 items-start md:items-center">
             <div className="max-w-2xl">
               <h3 className="text-2xl md:text-3xl font-bold font-display uppercase tracking-tight mb-4">{title}</h3>
-              <p className="text-black/55 text-sm md:text-base italic leading-relaxed">{description}</p>
+              <p className="text-black/75 text-sm md:text-base italic leading-relaxed">{description}</p>
             </div>
           </div>
 
@@ -248,7 +248,7 @@ const ProjectDetail: React.FC = () => {
       {/* Footer Navigation */}
       <section className="border-t border-black/5 bg-white py-24 group cursor-pointer overflow-hidden relative">
         <div className="max-w-[1800px] mx-auto px-8 md:px-16 text-center">
-          <span className="text-sm md:text-base font-bold uppercase tracking-[0.5em] text-black/55 mb-8 inline-block">{t('portfolio.next')}</span>
+          <span className="text-sm md:text-base font-bold uppercase tracking-[0.5em] text-black/70 mb-8 inline-block">{t('portfolio.next')}</span>
           <h4 className="text-3xl md:text-5xl lg:text-7xl font-bold font-display tracking-architectural leading-none uppercase transition-all duration-700">
              {t('portfolio.exploreMore')}
           </h4>
