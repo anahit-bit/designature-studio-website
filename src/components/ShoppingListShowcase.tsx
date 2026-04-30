@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { cld, cldSrcSet, THUMB_WIDTHS } from '../lib/cld';
 
 // ─── Product data ─────────────────────────────────────────────────────────────
 const SHOWCASE_PRODUCTS = [
@@ -159,7 +160,13 @@ export default function ShoppingListShowcase({ onRequestLogin }: Props) {
           style={{ borderRadius: 12, maxHeight: 400 }}
         >
           <img
-            src={HERO_IMAGE}
+            src={cld(HERO_IMAGE, 1024, { crop: 'fill', aspectRatio: '16/9' })}
+            srcSet={cldSrcSet(HERO_IMAGE, [480, 768, 1024, 1280], { crop: 'fill', aspectRatio: '16/9' })}
+            sizes="(min-width: 900px) 900px, 100vw"
+            width={1280}
+            height={720}
+            loading="lazy"
+            decoding="async"
             alt="Living room concept"
             className="w-full object-cover"
             style={{ aspectRatio: '16/9', maxHeight: 400, objectFit: 'cover' }}
@@ -198,7 +205,13 @@ export default function ShoppingListShowcase({ onRequestLogin }: Props) {
               {/* Product image */}
               <div className="overflow-hidden bg-neutral-50" style={{ aspectRatio: '1/1' }}>
                 <img
-                  src={product.image}
+                  src={cld(product.image, 360, { crop: 'fill', aspectRatio: '1/1' })}
+                  srcSet={cldSrcSet(product.image, THUMB_WIDTHS, { crop: 'fill', aspectRatio: '1/1' })}
+                  sizes="(min-width: 1024px) 280px, (min-width: 640px) 50vw, 100vw"
+                  width={400}
+                  height={400}
+                  loading="lazy"
+                  decoding="async"
                   alt={product.name}
                   className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
                 />
