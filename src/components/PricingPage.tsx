@@ -5,6 +5,9 @@ import Footer from './Footer';
 import CTABanner from './CTABanner';
 import { useLanguage } from '../LanguageContext';
 import { ArrowLeft } from 'lucide-react';
+import { cld, cldSrcSet, DEFAULT_WIDTHS } from '../lib/cld';
+
+const PRICING_HERO = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1772391549/3d_render_2_uoxs3r.jpg';
 
 const PricingPage: React.FC = () => {
   const { navigateTo, t } = useLanguage();
@@ -15,10 +18,19 @@ const PricingPage: React.FC = () => {
 
       {/* Hero */}
       <section className="relative w-full h-[85vh] md:h-screen overflow-hidden bg-black font-body">
-        <div
-          className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(https://res.cloudinary.com/dys2k5muv/image/upload/v1772391549/3d_render_2_uoxs3r.jpg)` }}
-        >
+        <div className="absolute inset-0 z-0">
+          <img
+            src={cld(PRICING_HERO, 1440)}
+            srcSet={cldSrcSet(PRICING_HERO, DEFAULT_WIDTHS)}
+            sizes="100vw"
+            width={1920} height={1080}
+            loading="eager"
+            fetchPriority="high"
+            decoding="sync"
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+            draggable={false}
+          />
           <div className="absolute inset-0 bg-black/50 z-[1]" />
         </div>
         <div className="relative z-10 h-full max-w-[1800px] mx-auto px-8 md:px-16 flex flex-col justify-center pb-20">

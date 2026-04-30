@@ -4,6 +4,9 @@ import { ArrowLeft, Eye, Zap, Target, Shield, ArrowRight } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 import Header from './Header';
 import Footer from './Footer';
+import { cld, cldSrcSet, DEFAULT_WIDTHS } from '../lib/cld';
+
+const VISION_BG = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1770984801/3_eigbly.jpg';
 
 const AIVisionPage: React.FC = () => {
   const { t, navigateTo } = useLanguage();
@@ -81,10 +84,15 @@ const AIVisionPage: React.FC = () => {
           <div className="relative py-40 md:py-60 flex flex-col items-center text-center overflow-hidden">
             <div className="absolute inset-0 z-0">
               <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black z-10" />
-              <img 
-                src="https://res.cloudinary.com/dys2k5muv/image/upload/v1770984801/3_eigbly.jpg"
-                className="w-full h-full object-cover opacity-20 grayscale"
+              <img
+                src={cld(VISION_BG, 1440)}
+                srcSet={cldSrcSet(VISION_BG, DEFAULT_WIDTHS)}
+                sizes="100vw"
+                width={1920} height={1080}
+                loading="lazy"
+                decoding="async"
                 alt="Architectural Vision"
+                className="w-full h-full object-cover opacity-20 grayscale"
               />
             </div>
             

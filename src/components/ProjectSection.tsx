@@ -2,6 +2,8 @@
 import React from 'react';
 import { useLanguage } from '../LanguageContext';
 import { useProjects } from '../ProjectsContext';
+import ResponsiveImage from './ResponsiveImage';
+import { CARD_WIDTHS } from '../lib/cld';
 
 const ProjectSection: React.FC = () => {
   const { language, t, navigateTo } = useLanguage();
@@ -35,9 +37,14 @@ const ProjectSection: React.FC = () => {
               className="group cursor-pointer transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-4"
             >
               <div className="aspect-[4/5] overflow-hidden bg-neutral-100 mb-4 relative shadow-sm group-hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.12)] transition-all duration-700">
-                <img 
-                  src={project.imageUrl} 
-                  alt={language === 'en' ? project.titleEN : project.titleAM} 
+                <ResponsiveImage
+                  src={project.imageUrl}
+                  alt={language === 'en' ? project.titleEN : project.titleAM}
+                  aspectRatio="4/5"
+                  crop="fill"
+                  sizes="(min-width: 768px) 50vw, 100vw"
+                  widths={CARD_WIDTHS}
+                  baseWidth={640}
                   className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-1000 group-hover:scale-105"
                 />
                 {/* Subtle overlay removed for "constant color" clarity, adding a very faint depth shadow on hover */}

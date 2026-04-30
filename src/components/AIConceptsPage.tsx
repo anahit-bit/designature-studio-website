@@ -18,6 +18,7 @@ import AIVisionShowcase from './AIVisionShowcase';
 import ShoppingListShowcase from './ShoppingListShowcase';
 import RetailerLogoStrip from './RetailerLogoStrip';
 import { QUIZ_IMAGE_WEIGHTS, TIER_POINTS } from '../data/quizImageWeights';
+import { cld, cldSrcSet, THUMB_WIDTHS } from '../lib/cld';
 
 // ─── Google OAuth client ID ────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
@@ -2303,7 +2304,11 @@ const AIConceptsPage: React.FC = () => {
                     {t('aiVision.gallery.labelRoom')}
                   </p>
                   <img
-                    src={INSPIRATION_GALLERY.roomPhotoUrl}
+                    src={cld(INSPIRATION_GALLERY.roomPhotoUrl, 480)}
+                    srcSet={cldSrcSet(INSPIRATION_GALLERY.roomPhotoUrl, [320, 480, 640])}
+                    sizes="min(320px, 70vw)"
+                    width={640} height={480}
+                    loading="lazy" decoding="async"
                     alt="Sample room"
                     className="rounded-sm border border-black/8 object-cover"
                     style={{ width: 'min(320px, 70vw)' }}
@@ -2319,7 +2324,11 @@ const AIConceptsPage: React.FC = () => {
                     {INSPIRATION_GALLERY.referenceUrls.map((url, i) => (
                       <img
                         key={i}
-                        src={url}
+                        src={cld(url, 360, { crop: 'fill', aspectRatio: '1/1' })}
+                        srcSet={cldSrcSet(url, [240, 360, 480], { crop: 'fill', aspectRatio: '1/1' })}
+                        sizes="min(180px, 38vw)"
+                        width={360} height={360}
+                        loading="lazy" decoding="async"
                         alt={`Reference ${i + 1}`}
                         className="rounded-sm border border-black/8 object-cover flex-shrink-0"
                         style={{ width: 'min(180px, 38vw)', height: 'min(180px, 38vw)' }}
@@ -2341,7 +2350,11 @@ const AIConceptsPage: React.FC = () => {
                     {INSPIRATION_GALLERY.conceptUrls.map((url, i) => (
                       <img
                         key={i}
-                        src={url}
+                        src={cld(url, 480)}
+                        srcSet={cldSrcSet(url, [320, 480, 640])}
+                        sizes="min(280px, 33vw)"
+                        width={560} height={420}
+                        loading="lazy" decoding="async"
                         alt={`Concept ${i + 1}`}
                         className="rounded-sm border border-black/8 object-cover min-w-0"
                         style={{ flex: '1 1 0', maxWidth: 280 }}
@@ -2612,7 +2625,11 @@ const AIConceptsPage: React.FC = () => {
                         <button key={style} onClick={triggerGoogleSignIn} className="group focus:outline-none flex flex-col">
                           <div style={{ aspectRatio: '1' }} className="overflow-hidden w-full">
                             <img
-                              src={url}
+                              src={cld(url, 360, { crop: 'fill', aspectRatio: '1/1' })}
+                              srcSet={cldSrcSet(url, THUMB_WIDTHS, { crop: 'fill', aspectRatio: '1/1' })}
+                              sizes="(min-width: 768px) 200px, 33vw"
+                              width={400} height={400}
+                              loading="lazy" decoding="async"
                               alt={style}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                             />
@@ -2675,7 +2692,12 @@ const AIConceptsPage: React.FC = () => {
                   <div className="flex-shrink-0 flex items-start justify-start bg-neutral-50 p-4 w-full lg:w-[632px]">
                     <div className="relative w-full max-w-[600px] overflow-hidden bg-neutral-100 aspect-square" style={{ maxHeight: '70vh' }}>
                       <img
-                        src={currentQuizImage.url}
+                        src={cld(currentQuizImage.url, 768, { crop: 'fill', aspectRatio: '1/1' })}
+                        srcSet={cldSrcSet(currentQuizImage.url, [480, 768, 1024], { crop: 'fill', aspectRatio: '1/1' })}
+                        sizes="(min-width: 1024px) 600px, 100vw"
+                        width={1024} height={1024}
+                        decoding="async"
+                        fetchPriority="high"
                         alt={currentQuizStyle}
                         onLoad={() => { if (!quizDone) setQuizImageReady(true); }}
                         onError={() => { if (!quizDone) setQuizImageReady(true); }}
@@ -2807,7 +2829,15 @@ const AIConceptsPage: React.FC = () => {
                                   >
                                     {/* Thumbnail */}
                                     <div className="flex-shrink-0 w-[60px] h-[60px] overflow-hidden rounded-[4px] bg-neutral-100">
-                                      <img src={room.imageUrl} alt="Loved room" className="w-full h-full object-cover" />
+                                      <img
+                                        src={cld(room.imageUrl, 120, { crop: 'fill', aspectRatio: '1/1' })}
+                                        srcSet={cldSrcSet(room.imageUrl, [120, 180], { crop: 'fill', aspectRatio: '1/1' })}
+                                        sizes="60px"
+                                        width={120} height={120}
+                                        loading="lazy" decoding="async"
+                                        alt="Loved room"
+                                        className="w-full h-full object-cover"
+                                      />
                                     </div>
                                     {/* Text */}
                                     <div className="flex flex-col justify-center min-w-0 gap-0.5">
@@ -2912,7 +2942,11 @@ const AIConceptsPage: React.FC = () => {
                             {resultGalleryImages.map((url, i) => (
                               <div key={i} className="aspect-square overflow-hidden bg-neutral-100">
                                 <img
-                                  src={url}
+                                  src={cld(url, 480, { crop: 'fill', aspectRatio: '1/1' })}
+                                  srcSet={cldSrcSet(url, [320, 480, 640], { crop: 'fill', aspectRatio: '1/1' })}
+                                  sizes="(min-width: 1024px) 240px, 50vw"
+                                  width={480} height={480}
+                                  decoding="async"
                                   alt={`${quizResult[0].style} ${i + 1}`}
                                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                                   loading="lazy"

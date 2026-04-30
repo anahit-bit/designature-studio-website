@@ -4,6 +4,7 @@ import { useLanguage } from '../LanguageContext';
 import { useProjects } from '../ProjectsContext';
 import { ProjectData } from '../constants';
 import { ArrowLeft } from 'lucide-react';
+import ResponsiveImage from './ResponsiveImage';
 
 const ProjectDetail: React.FC = () => {
   const { language, t, navigateTo, selectedProjectId } = useLanguage();
@@ -32,7 +33,21 @@ const ProjectDetail: React.FC = () => {
   const description = language === 'en' ? project.descriptionEN : project.descriptionAM;
   const location = language === 'en' ? project.locationEN : project.locationAM;
 
-  const ImageOrPlaceholder = ({ src, aspect, labelKey, n }: { src?: string; aspect: string; labelKey: string; n?: number }) => {
+  // Map Tailwind aspect class → ratio string + sizes hint (slot position
+  // determines how wide the slot is in the layout, which determines which
+  // srcset width the browser picks).
+  const ASPECT_MAP: Record<string, { ratio: string; sizes: string }> = {
+    // Full-bleed wide renders (slot 1 hero, slot 4 second-hero, additional)
+    'aspect-video':    { ratio: '16/9', sizes: '(min-width: 1800px) 1800px, 100vw' },
+    // Portrait pairs (50% width on tablet+)
+    'aspect-[4/5]':    { ratio: '4/5',  sizes: '(min-width: 768px) 50vw, 100vw' },
+    // Landscape pairs
+    'aspect-[4/3]':    { ratio: '4/3',  sizes: '(min-width: 768px) 50vw, 100vw' },
+    // Trio of squares (33% width on tablet+)
+    'aspect-square':   { ratio: '1/1',  sizes: '(min-width: 768px) 33vw, 100vw' },
+  };
+
+  const ImageOrPlaceholder = ({ src, aspect, labelKey, n, priority }: { src?: string; aspect: string; labelKey: string; n?: number; priority?: boolean }) => {
     const label = t(labelKey).replace('{n}', n?.toString() || '');
     if (!src) {
       return (
@@ -42,13 +57,18 @@ const ProjectDetail: React.FC = () => {
         </div>
       );
     }
+    const cfg = ASPECT_MAP[aspect] ?? { ratio: '1/1', sizes: '100vw' };
     return (
       <div className={`w-full overflow-hidden bg-neutral-100 group ${aspect} relative`}>
-        <img
+        <ResponsiveImage
           src={src}
-          loading="lazy"
-          className="w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-105"
           alt={label}
+          aspectRatio={cfg.ratio}
+          crop="fill"
+          sizes={cfg.sizes}
+          baseWidth={1024}
+          priority={priority}
+          className="w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/[0.02] transition-colors duration-700 pointer-events-none" />
       </div>
@@ -101,10 +121,11 @@ const ProjectDetail: React.FC = () => {
         <div className="max-w-[1800px] mx-auto px-8 md:px-16 flex flex-col gap-5">
           
           {/* Photo 1 — Full width landscape (16:9) */}
-          <ImageOrPlaceholder 
-            src={project.gallery[0]} 
-            aspect="aspect-video" 
-            labelKey="portfolio.mainPerspective" 
+          <ImageOrPlaceholder
+            src={project.gallery[0]}
+            aspect="aspect-video"
+            labelKey="portfolio.mainPerspective"
+            priority
           />
 
           {/* Info block mid-gallery */}

@@ -6,6 +6,9 @@ import { motion, Variants } from 'framer-motion';
 import { useLanguage, PortfolioFilter } from '../LanguageContext';
 import Header from './Header';
 import Footer from './Footer';
+import { cld, cldSrcSet, DEFAULT_WIDTHS } from '../lib/cld';
+
+const SERVICES_HERO = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1771143071/services_1_oatiib.jpg';
 
 const ServicesPage: React.FC = () => {
   const { t, language, navigateTo } = useLanguage();
@@ -99,12 +102,19 @@ const ServicesPage: React.FC = () => {
       
       {/* Cinematic Hero Section */}
       <section className="relative w-full h-[85vh] md:h-screen overflow-hidden bg-black font-body">
-        <div 
-          className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
-          style={{ 
-            backgroundImage: `url(https://res.cloudinary.com/dys2k5muv/image/upload/v1771143071/services_1_oatiib.jpg)`,
-          }}
-        >
+        <div className="absolute inset-0 z-0">
+          <img
+            src={cld(SERVICES_HERO, 1440)}
+            srcSet={cldSrcSet(SERVICES_HERO, DEFAULT_WIDTHS)}
+            sizes="100vw"
+            width={1920} height={1080}
+            loading="eager"
+            fetchPriority="high"
+            decoding="sync"
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+            draggable={false}
+          />
           <div className="absolute inset-0 bg-black/40 z-[1]" />
         </div>
 

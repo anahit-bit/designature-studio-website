@@ -1,37 +1,44 @@
 import { motion } from 'framer-motion';
+import { cld, cldSrcSet, THUMB_WIDTHS } from '../lib/cld';
 
 // ─── Cloudinary base — swap filenames if assets change ───────────────────────
+// f_auto + q_auto baked in via cld(); kept here as raw public IDs.
 const CLD = 'https://res.cloudinary.com/dys2k5muv/image/upload';
 
 const EXAMPLES = [
   {
     id: 1,
-    roomUrl:    `${CLD}/w_400,c_fill,q_auto/before_1_tjwkhh.jpg`,
-    inspoUrls:  [`${CLD}/w_400,c_fill,q_auto/inspo_1_x0f61y.jpg`, `${CLD}/w_400,c_fill,q_auto/inspo_1_1_q216nn.jpg`],
-    conceptUrl: `${CLD}/w_700,q_auto/after_1_wp9msc.png`,
+    roomUrl:    `${CLD}/before_1_tjwkhh.jpg`,
+    inspoUrls:  [`${CLD}/inspo_1_x0f61y.jpg`, `${CLD}/inspo_1_1_q216nn.jpg`],
+    conceptUrl: `${CLD}/after_1_wp9msc.png`,
     label: 'Rental apartment — Japandi dream',
     chip: { label: 'Japandi', type: 'style' as const },
   },
   {
     id: 2,
-    roomUrl:    `${CLD}/w_400,c_fill,q_auto/before_2_s6lh97.png`,
+    roomUrl:    `${CLD}/before_2_s6lh97.png`,
     inspoUrls:  [
-      `${CLD}/w_400,c_fill,q_auto/inspo_2_1_ewilhk.jpg`,
-      `${CLD}/w_400,c_fill,q_auto/inspo_2_2_eg0lr9.jpg`,
+      `${CLD}/inspo_2_1_ewilhk.jpg`,
+      `${CLD}/inspo_2_2_eg0lr9.jpg`,
     ],
-    conceptUrl: `${CLD}/w_700,q_auto/after_2_aq8cwh.png`,
+    conceptUrl: `${CLD}/after_2_aq8cwh.png`,
     label: 'Empty shell — Mid-Century sanctuary',
     chip: { label: 'Living Room', type: 'room' as const },
   },
   {
     id: 3,
-    roomUrl:    `${CLD}/w_400,c_fill,q_auto/before_3_mne2jp.jpg`,
-    inspoUrls:  [`${CLD}/w_400,c_fill,q_auto/inspo_3_scvknf.png`],
-    conceptUrl: `${CLD}/w_700,q_auto/after_3_f14b5p.jpg`,
+    roomUrl:    `${CLD}/before_3_mne2jp.jpg`,
+    inspoUrls:  [`${CLD}/inspo_3_scvknf.png`],
+    conceptUrl: `${CLD}/after_3_f14b5p.jpg`,
     label: 'Plain bedroom — Bohemian retreat',
     chip: { label: 'Bohemian', type: 'style' as const },
   },
 ];
+
+// Image-delivery transforms applied to existing <img> tags. Layout/JSX is
+// LOCKED for this component — we only swap src/srcSet/sizes/loading.
+const SMALL_FILL = { crop: 'fill' as const, aspectRatio: '4/3' };
+const HERO_LIMIT = { crop: 'limit' as const };
 // ─────────────────────────────────────────────────────────────────────────────
 
 const fadeUp = {
@@ -65,7 +72,15 @@ function ExampleRow({ example, index }: { example: typeof EXAMPLES[0]; index: nu
           <div className="flex flex-col gap-1">
             <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/35">Room</span>
             <div className="overflow-hidden" style={{ aspectRatio: '4/3' }}>
-              <img src={example.roomUrl} alt="Room" className="w-full h-full object-cover" />
+              <img
+                src={cld(example.roomUrl, 360, SMALL_FILL)}
+                srcSet={cldSrcSet(example.roomUrl, THUMB_WIDTHS, SMALL_FILL)}
+                sizes="(min-width: 768px) 240px, 50vw"
+                width={400} height={300}
+                loading="lazy" decoding="async"
+                alt="Room"
+                className="w-full h-full object-cover"
+              />
             </div>
           </div>
           <div className="flex flex-col gap-1">
@@ -74,7 +89,15 @@ function ExampleRow({ example, index }: { example: typeof EXAMPLES[0]; index: nu
             </span>
             {example.inspoUrls.map((url, i) => (
               <div key={i} className="overflow-hidden" style={{ aspectRatio: '4/3' }}>
-                <img src={url} alt={`Inspiration ${i + 1}`} className="w-full h-full object-cover" />
+                <img
+                  src={cld(url, 360, SMALL_FILL)}
+                  srcSet={cldSrcSet(url, THUMB_WIDTHS, SMALL_FILL)}
+                  sizes="(min-width: 768px) 240px, 50vw"
+                  width={400} height={300}
+                  loading="lazy" decoding="async"
+                  alt={`Inspiration ${i + 1}`}
+                  className="w-full h-full object-cover"
+                />
               </div>
             ))}
           </div>
@@ -89,7 +112,15 @@ function ExampleRow({ example, index }: { example: typeof EXAMPLES[0]; index: nu
         <div className="flex flex-col gap-1">
           <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/35">Concept</span>
           <div className="overflow-hidden w-full" style={{ aspectRatio: '4/3' }}>
-            <img src={example.conceptUrl} alt="Concept" className="w-full h-full object-cover" />
+            <img
+              src={cld(example.conceptUrl, 768, HERO_LIMIT)}
+              srcSet={cldSrcSet(example.conceptUrl, [480, 768, 1024], HERO_LIMIT)}
+              sizes="(min-width: 768px) 580px, 100vw"
+              width={1024} height={768}
+              loading="lazy" decoding="async"
+              alt="Concept"
+              className="w-full h-full object-cover"
+            />
           </div>
         </div>
       </div>
@@ -100,7 +131,15 @@ function ExampleRow({ example, index }: { example: typeof EXAMPLES[0]; index: nu
           <div className="flex flex-col gap-1 flex-1">
             <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/35">Room</span>
             <div className="overflow-hidden" style={{ aspectRatio: '4/3' }}>
-              <img src={example.roomUrl} alt="Room" className="w-full h-full object-cover" />
+              <img
+                src={cld(example.roomUrl, 360, SMALL_FILL)}
+                srcSet={cldSrcSet(example.roomUrl, THUMB_WIDTHS, SMALL_FILL)}
+                sizes="50vw"
+                width={400} height={300}
+                loading="lazy" decoding="async"
+                alt="Room"
+                className="w-full h-full object-cover"
+              />
             </div>
           </div>
           <div className="flex flex-col gap-1 flex-1">
@@ -109,7 +148,15 @@ function ExampleRow({ example, index }: { example: typeof EXAMPLES[0]; index: nu
             </span>
             {example.inspoUrls.map((url, i) => (
               <div key={i} className="overflow-hidden" style={{ aspectRatio: '4/3' }}>
-                <img src={url} alt={`Inspiration ${i + 1}`} className="w-full h-full object-cover" />
+                <img
+                  src={cld(url, 360, SMALL_FILL)}
+                  srcSet={cldSrcSet(url, THUMB_WIDTHS, SMALL_FILL)}
+                  sizes="50vw"
+                  width={400} height={300}
+                  loading="lazy" decoding="async"
+                  alt={`Inspiration ${i + 1}`}
+                  className="w-full h-full object-cover"
+                />
               </div>
             ))}
           </div>
@@ -120,7 +167,15 @@ function ExampleRow({ example, index }: { example: typeof EXAMPLES[0]; index: nu
         <div className="flex flex-col gap-1">
           <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/35">Concept</span>
           <div className="overflow-hidden w-full" style={{ aspectRatio: '4/3' }}>
-            <img src={example.conceptUrl} alt="Concept" className="w-full h-full object-cover" />
+            <img
+              src={cld(example.conceptUrl, 768, HERO_LIMIT)}
+              srcSet={cldSrcSet(example.conceptUrl, [480, 768, 1024], HERO_LIMIT)}
+              sizes="100vw"
+              width={1024} height={768}
+              loading="lazy" decoding="async"
+              alt="Concept"
+              className="w-full h-full object-cover"
+            />
           </div>
         </div>
       </div>

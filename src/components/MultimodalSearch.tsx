@@ -4,38 +4,38 @@ import { useLanguage } from '../LanguageContext';
 
 const PAIRS = [
   {
-    before: 'https://res.cloudinary.com/dys2k5muv/image/upload/c_fill,w_480,h_360,g_auto/v1774284110/before_1_fnbjlt.jpg',
-    after:  'https://res.cloudinary.com/dys2k5muv/image/upload/c_fill,w_480,h_360,g_auto/v1774284114/after_1_khwg9g.jpg',
+    before: 'https://res.cloudinary.com/dys2k5muv/image/upload/f_auto,q_auto,c_fill,w_480,h_360,g_auto/v1774284110/before_1_fnbjlt.jpg',
+    after:  'https://res.cloudinary.com/dys2k5muv/image/upload/f_auto,q_auto,c_fill,w_480,h_360,g_auto/v1774284114/after_1_khwg9g.jpg',
     style:  'Mid-Century',
   },
   {
-    before: 'https://res.cloudinary.com/dys2k5muv/image/upload/c_fill,w_480,h_360,g_auto/v1774284111/before_2_k7jvg3.png',
-    after:  'https://res.cloudinary.com/dys2k5muv/image/upload/c_fill,w_480,h_360,g_auto/v1774284111/after_2_kzpr3p.png',
+    before: 'https://res.cloudinary.com/dys2k5muv/image/upload/f_auto,q_auto,c_fill,w_480,h_360,g_auto/v1774284111/before_2_k7jvg3.png',
+    after:  'https://res.cloudinary.com/dys2k5muv/image/upload/f_auto,q_auto,c_fill,w_480,h_360,g_auto/v1774284111/after_2_kzpr3p.png',
     style:  'Bohemian',
   },
   {
-    before: 'https://res.cloudinary.com/dys2k5muv/image/upload/c_fill,w_480,h_360,g_auto/v1774284116/before_3_blruai.jpg',
-    after:  'https://res.cloudinary.com/dys2k5muv/image/upload/c_fill,w_480,h_360,g_auto/v1774284111/after_3_z5x2lg.png',
+    before: 'https://res.cloudinary.com/dys2k5muv/image/upload/f_auto,q_auto,c_fill,w_480,h_360,g_auto/v1774284116/before_3_blruai.jpg',
+    after:  'https://res.cloudinary.com/dys2k5muv/image/upload/f_auto,q_auto,c_fill,w_480,h_360,g_auto/v1774284111/after_3_z5x2lg.png',
     style:  'Modern',
   },
   {
-    before: 'https://res.cloudinary.com/dys2k5muv/image/upload/c_fill,w_480,h_360,g_auto/v1774284112/before_4_vpepte.png',
-    after:  'https://res.cloudinary.com/dys2k5muv/image/upload/c_fill,w_480,h_360,g_auto/v1774284115/after_4_xgalms.png',
+    before: 'https://res.cloudinary.com/dys2k5muv/image/upload/f_auto,q_auto,c_fill,w_480,h_360,g_auto/v1774284112/before_4_vpepte.png',
+    after:  'https://res.cloudinary.com/dys2k5muv/image/upload/f_auto,q_auto,c_fill,w_480,h_360,g_auto/v1774284115/after_4_xgalms.png',
     style:  'Dopamine',
   },
   {
-    before: 'https://res.cloudinary.com/dys2k5muv/image/upload/c_fill,w_480,h_360,g_auto/v1774284115/before_5_swe3ua.png',
-    after:  'https://res.cloudinary.com/dys2k5muv/image/upload/c_fill,w_480,h_360,g_auto/v1774284109/after_5_hpcmzu.jpg',
+    before: 'https://res.cloudinary.com/dys2k5muv/image/upload/f_auto,q_auto,c_fill,w_480,h_360,g_auto/v1774284115/before_5_swe3ua.png',
+    after:  'https://res.cloudinary.com/dys2k5muv/image/upload/f_auto,q_auto,c_fill,w_480,h_360,g_auto/v1774284109/after_5_hpcmzu.jpg',
     style:  'Rustic',
   },
   {
-    before: 'https://res.cloudinary.com/dys2k5muv/image/upload/c_fill,w_480,h_360,g_auto/v1774284116/before_6_s9l1sb.jpg',
-    after:  'https://res.cloudinary.com/dys2k5muv/image/upload/c_fill,w_480,h_360,g_auto/v1774284114/after_6_gmuyn5.png',
+    before: 'https://res.cloudinary.com/dys2k5muv/image/upload/f_auto,q_auto,c_fill,w_480,h_360,g_auto/v1774284116/before_6_s9l1sb.jpg',
+    after:  'https://res.cloudinary.com/dys2k5muv/image/upload/f_auto,q_auto,c_fill,w_480,h_360,g_auto/v1774284114/after_6_gmuyn5.png',
     style:  'Japandi',
   },
   {
-    before: 'https://res.cloudinary.com/dys2k5muv/image/upload/c_fill,w_480,h_360,g_auto/v1774284117/before_7_bwczrl.jpg',
-    after:  'https://res.cloudinary.com/dys2k5muv/image/upload/c_fill,w_480,h_360,g_auto/v1774284109/after_7_i66inr.jpg',
+    before: 'https://res.cloudinary.com/dys2k5muv/image/upload/f_auto,q_auto,c_fill,w_480,h_360,g_auto/v1774284117/before_7_bwczrl.jpg',
+    after:  'https://res.cloudinary.com/dys2k5muv/image/upload/f_auto,q_auto,c_fill,w_480,h_360,g_auto/v1774284109/after_7_i66inr.jpg',
     style:  'Mid-Century',
   },
 ];
@@ -132,8 +132,11 @@ const MultimodalSearch: React.FC = () => {
                 <img
                   src={pair.before}
                   alt={`Before ${idx + 1}`}
-                  className="w-full h-full object-cover"
+                  width={480} height={360}
                   loading="lazy"
+                  decoding="async"
+                  fetchPriority="low"
+                  className="w-full h-full object-cover"
                 />
                 <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm px-2 py-0.5">
                   <span className="text-[7px] font-bold uppercase tracking-[0.25em] text-white/50">{t('ai.designFirst.before')}</span>
@@ -148,8 +151,11 @@ const MultimodalSearch: React.FC = () => {
                 <img
                   src={pair.after}
                   alt={`After ${idx + 1}`}
-                  className="w-full h-full object-cover"
+                  width={480} height={360}
                   loading="lazy"
+                  decoding="async"
+                  fetchPriority="low"
+                  className="w-full h-full object-cover"
                 />
                 <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm px-2 py-0.5">
                   <span className="text-[7px] font-bold uppercase tracking-[0.25em] text-[#0047AB]">

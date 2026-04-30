@@ -4,6 +4,11 @@ import { useLanguage } from '../LanguageContext';
 import Header from './Header';
 import Footer from './Footer';
 import emailjs from '@emailjs/browser';
+import ResponsiveImage from './ResponsiveImage';
+import { cld, cldSrcSet, DEFAULT_WIDTHS } from '../lib/cld';
+
+const STUDIO_HERO = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1771178204/memphis_1_bhkave.jpg';
+const FOUNDER_PHOTO = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775402047/20260124_090857_yj4blf.jpg';
 
 const StudioPage: React.FC = () => {
   const { t, language, navigateTo } = useLanguage();
@@ -37,10 +42,19 @@ const StudioPage: React.FC = () => {
           SECTION 1 — HERO (unchanged, kept as-is)
           ══════════════════════════════════════════ */}
       <section className="relative w-full h-[85vh] md:h-screen overflow-hidden bg-black font-body">
-        <div
-          className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(https://res.cloudinary.com/dys2k5muv/image/upload/v1771178204/memphis_1_bhkave.jpg)` }}
-        >
+        <div className="absolute inset-0 z-0">
+          <img
+            src={cld(STUDIO_HERO, 1440)}
+            srcSet={cldSrcSet(STUDIO_HERO, DEFAULT_WIDTHS)}
+            sizes="100vw"
+            width={1920} height={1080}
+            loading="eager"
+            fetchPriority="high"
+            decoding="sync"
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+            draggable={false}
+          />
           <div className="absolute inset-0 bg-black/40 z-[1]" />
         </div>
         <div className="relative z-10 h-full max-w-[1800px] mx-auto px-8 md:px-16 flex flex-col justify-center pb-20">
@@ -73,7 +87,12 @@ const StudioPage: React.FC = () => {
           {/* Left — photo fills the column */}
           <div className="relative overflow-hidden bg-neutral-200" style={{ minHeight: '60vh' }}>
             <img
-              src="https://res.cloudinary.com/dys2k5muv/image/upload/v1775402047/20260124_090857_yj4blf.jpg"
+              src={cld(FOUNDER_PHOTO, 1024)}
+              srcSet={cldSrcSet(FOUNDER_PHOTO, [480, 768, 1024, 1440])}
+              sizes="(min-width: 1024px) 50vw, 100vw"
+              width={1024} height={1280}
+              loading="lazy"
+              decoding="async"
               alt="Anahit Ghasabyan"
               className="w-full h-full object-cover object-center"
               style={{ position: 'absolute', inset: 0 }}
