@@ -47,7 +47,7 @@ const StudioPage: React.FC = () => {
           <div className="max-w-4xl pt-20">
             <button
               onClick={() => navigateTo('home')}
-              className="text-[10px] font-bold uppercase tracking-widest text-white/60 mb-12 hover:text-white transition-colors flex items-center gap-2 group w-fit"
+              className="text-[11px] font-bold uppercase tracking-widest text-white/80 mb-12 hover:text-white transition-colors flex items-center gap-2 group w-fit"
             >
               <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
               {t('portfolio.backHome')}
@@ -85,7 +85,7 @@ const StudioPage: React.FC = () => {
           {/* Right — name, quote, stats */}
           <div className="flex flex-col justify-between px-12 md:px-20 py-20 bg-white">
             <div>
-              <p className="text-[8px] font-bold uppercase tracking-[0.5em] text-black/45 mb-6">
+              <p className="text-[10px] font-bold uppercase tracking-[0.5em] text-black/65 mb-6">
                 {t('studio.founderTitle')}
               </p>
               <h2 className="font-display text-4xl md:text-5xl lg:text-[4.5vw] font-bold tracking-architectural leading-[0.88] uppercase mb-3">
@@ -94,15 +94,15 @@ const StudioPage: React.FC = () => {
               <h2 className="font-display text-4xl md:text-5xl lg:text-[4.5vw] font-bold tracking-architectural leading-[0.88] uppercase italic font-light mb-6">
                 Ghasabyan
               </h2>
-              <p className="text-[9px] font-bold uppercase tracking-[0.4em] text-black/45 mb-12">
+              <p className="text-[11px] font-bold uppercase tracking-[0.4em] text-black/65 mb-12">
                 {t('studio.founderRole')} · Designature Studio · Est. 2021
               </p>
 
-              <blockquote className="text-lg md:text-xl font-light text-black/60 leading-relaxed italic border-l border-black/10 pl-6 mb-12 max-w-sm">
+              <blockquote className="text-lg md:text-xl font-light text-black/80 leading-relaxed italic border-l border-black/10 pl-6 mb-12 max-w-sm">
                 "{t('studio.founderQuote')}"
               </blockquote>
 
-              <p className="text-sm font-light text-black/50 leading-relaxed max-w-sm">
+              <p className="text-sm md:text-[15px] font-light text-black/75 leading-relaxed max-w-sm">
                 {t('studio.founderBio')}
               </p>
             </div>
@@ -112,23 +112,23 @@ const StudioPage: React.FC = () => {
               <div className="flex gap-12 pt-10 border-t border-black/6 mb-8">
                 <div>
                   <span className="font-display text-3xl font-bold text-black block mb-1">100+</span>
-                  <span className="text-[8px] uppercase tracking-[0.3em] text-black/45">{t('studio.projects')}</span>
+                  <span className="text-[11px] uppercase tracking-[0.3em] text-black/65">{t('studio.projects')}</span>
                 </div>
                 <div>
                   <span className="font-display text-3xl font-bold text-black block mb-1">2021</span>
-                  <span className="text-[8px] uppercase tracking-[0.3em] text-black/45">{t('studio.founded')}</span>
+                  <span className="text-[11px] uppercase tracking-[0.3em] text-black/65">{t('studio.founded')}</span>
                 </div>
                 <div>
                   <span className="font-display text-3xl font-bold text-black block mb-1">9</span>
-                  <span className="text-[8px] uppercase tracking-[0.3em] text-black/45">{language === 'en' ? 'Countries' : 'Երկրներ'}</span>
+                  <span className="text-[11px] uppercase tracking-[0.3em] text-black/65">{language === 'en' ? 'Countries' : 'Երկրներ'}</span>
                 </div>
               </div>
 
               {/* Social */}
               <div className="flex gap-5">
-                <a href="https://www.instagram.com/designature_interior/" target="_blank" rel="noopener noreferrer" className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/45 hover:text-black transition-colors border-b border-black/10 hover:border-black pb-0.5">Instagram</a>
-                <a href="https://www.facebook.com/Designature.Design.Studio" target="_blank" rel="noopener noreferrer" className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/45 hover:text-black transition-colors border-b border-black/10 hover:border-black pb-0.5">Facebook</a>
-                <a href="mailto:anahit@designature.studio" className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/45 hover:text-black transition-colors border-b border-black/10 hover:border-black pb-0.5">Email</a>
+                <a href="https://www.instagram.com/designature_interior/" target="_blank" rel="noopener noreferrer" className="text-[11px] font-bold uppercase tracking-[0.3em] text-black/65 hover:text-black transition-colors border-b border-black/10 hover:border-black pb-0.5">Instagram</a>
+                <a href="https://www.facebook.com/Designature.Design.Studio" target="_blank" rel="noopener noreferrer" className="text-[11px] font-bold uppercase tracking-[0.3em] text-black/65 hover:text-black transition-colors border-b border-black/10 hover:border-black pb-0.5">Facebook</a>
+                <a href="mailto:anahit@designature.studio" className="text-[11px] font-bold uppercase tracking-[0.3em] text-black/65 hover:text-black transition-colors border-b border-black/10 hover:border-black pb-0.5">Email</a>
               </div>
             </div>
           </div>
@@ -143,7 +143,7 @@ const StudioPage: React.FC = () => {
 
               {/* Sticky label */}
               <div className="lg:sticky lg:top-32 lg:self-start">
-                <p className="text-[8px] font-bold uppercase tracking-[0.5em] text-black/45 mb-4">{t('studio.aboutTitle')}</p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.5em] text-black/65 mb-4">{t('studio.aboutTitle')}</p>
                 <h3 className="font-display text-3xl md:text-4xl font-light leading-tight">
                   {language === 'en' ? <>Crafting spaces<br />with <em>purpose</em></> : t('studio.aboutHeading')}
                 </h3>
@@ -151,13 +151,13 @@ const StudioPage: React.FC = () => {
 
               {/* Story paragraphs */}
               <div className="lg:col-span-2 space-y-8">
-                <p className="text-base md:text-lg font-light leading-relaxed text-black/70">
+                <p className="text-base md:text-lg font-light leading-relaxed text-black/85">
                   {t('studio.aboutDesc1')}
                 </p>
-                <p className="text-base md:text-lg font-light leading-relaxed text-black/50">
+                <p className="text-base md:text-lg font-light leading-relaxed text-black/75">
                   {t('studio.aboutDesc2')}
                 </p>
-                <p className="text-base md:text-lg font-light leading-relaxed text-black/50">
+                <p className="text-base md:text-lg font-light leading-relaxed text-black/75">
                   {t('studio.story.p3')}
                 </p>
               </div>
@@ -174,13 +174,13 @@ const StudioPage: React.FC = () => {
             {/* Left — contact info */}
             <div className="lg:pr-20 lg:border-r border-white/20 flex flex-col justify-between pb-16 lg:pb-0">
               <div>
-                <p className="text-[8px] font-bold uppercase tracking-[0.5em] text-white/50 mb-5">
+                <p className="text-[11px] font-bold uppercase tracking-[0.5em] text-white/70 mb-5">
                   {t('studio.contact.title')}
                 </p>
                 <h2 className="font-display text-5xl md:text-6xl font-light leading-[0.92] letter-spacing-tight mb-6">
-                  {language === 'en' ? <>Let's build<br />something<br /><em className="text-white/70">remarkable</em></> : <>Ստեղծենք<br />ինչ-որ<br /><em className="text-white/70">հիշարժան</em></>}
+                  {language === 'en' ? <>Let's build<br />something<br /><em className="text-white/85">remarkable</em></> : <>Ստեղծենք<br />ինչ-որ<br /><em className="text-white/85">հիշարժան</em></>}
                 </h2>
-                <p className="text-sm font-light text-white/60 leading-relaxed max-w-xs mt-8">
+                <p className="text-sm md:text-[15px] font-light text-white/80 leading-relaxed max-w-xs mt-8">
                   {t('studio.contactSub')}
                 </p>
               </div>
@@ -192,13 +192,13 @@ const StudioPage: React.FC = () => {
                   { label: t('studio.contact.location'), values: [t('studio.contact.location.desc')], href: null },
                 ].map((item, i) => (
                   <div key={i} className="flex gap-8 py-5 border-t border-white/15">
-                    <span className="text-[8px] uppercase tracking-[0.35em] text-white/55 w-14 flex-shrink-0 pt-0.5">{item.label}</span>
+                    <span className="text-[11px] uppercase tracking-[0.35em] text-white/70 w-14 flex-shrink-0 pt-0.5">{item.label}</span>
                     <div className="flex flex-col gap-1">
                       {item.values.map((v, j) => (
                         item.href ? (
-                          <a key={j} href={item.href} className="text-sm font-light text-white/80 hover:text-white transition-colors">{v}</a>
+                          <a key={j} href={item.href} className="text-sm md:text-[15px] font-light text-white/90 hover:text-white transition-colors">{v}</a>
                         ) : (
-                          <span key={j} className="text-sm font-light text-white/80">{v}</span>
+                          <span key={j} className="text-sm md:text-[15px] font-light text-white/90">{v}</span>
                         )
                       ))}
                     </div>
@@ -209,7 +209,7 @@ const StudioPage: React.FC = () => {
 
             {/* Right — form */}
             <div className="lg:pl-20 pt-16 lg:pt-0 flex flex-col justify-center">
-              <p className="font-display text-lg italic text-white/60 mb-12">
+              <p className="font-display text-lg italic text-white/80 mb-12">
                 {t('studio.contact.form.title')}
               </p>
 
@@ -217,23 +217,23 @@ const StudioPage: React.FC = () => {
                 {/* Name + Email row */}
                 <div className="grid md:grid-cols-2 gap-8">
                   <div className="border-b border-white/20 pb-3 focus-within:border-white/50 transition-colors">
-                    <label className="block text-[7px] uppercase tracking-[0.4em] text-white/55 mb-2">{t('studio.formName')}</label>
-                    <input type="text" name="user_name" required className="w-full bg-transparent text-white text-sm font-light outline-none placeholder-white/40" placeholder={t('studio.contact.form.name')} />
+                    <label className="block text-[10px] uppercase tracking-[0.4em] text-white/70 mb-2">{t('studio.formName')}</label>
+                    <input type="text" name="user_name" required className="w-full bg-transparent text-white text-sm font-light outline-none placeholder-white/55" placeholder={t('studio.contact.form.name')} />
                   </div>
                   <div className="border-b border-white/20 pb-3 focus-within:border-white/50 transition-colors">
-                    <label className="block text-[7px] uppercase tracking-[0.4em] text-white/55 mb-2">{t('studio.formEmail')}</label>
-                    <input type="email" name="user_email" required className="w-full bg-transparent text-white text-sm font-light outline-none placeholder-white/40" placeholder={t('studio.contact.form.email')} />
+                    <label className="block text-[10px] uppercase tracking-[0.4em] text-white/70 mb-2">{t('studio.formEmail')}</label>
+                    <input type="email" name="user_email" required className="w-full bg-transparent text-white text-sm font-light outline-none placeholder-white/55" placeholder={t('studio.contact.form.email')} />
                   </div>
                 </div>
 
                 <div className="border-b border-white/20 pb-3 focus-within:border-white/50 transition-colors mt-8">
-                  <label className="block text-[7px] uppercase tracking-[0.4em] text-white/55 mb-2">{t('studio.formSubject')}</label>
-                  <input type="text" name="subject" required className="w-full bg-transparent text-white text-sm font-light outline-none placeholder-white/40" placeholder={t('studio.contact.form.subject')} />
+                  <label className="block text-[10px] uppercase tracking-[0.4em] text-white/70 mb-2">{t('studio.formSubject')}</label>
+                  <input type="text" name="subject" required className="w-full bg-transparent text-white text-sm font-light outline-none placeholder-white/55" placeholder={t('studio.contact.form.subject')} />
                 </div>
 
                 <div className="border-b border-white/20 pb-3 focus-within:border-white/50 transition-colors mt-8">
-                  <label className="block text-[7px] uppercase tracking-[0.4em] text-white/55 mb-2">{t('studio.formMessage')}</label>
-                  <textarea name="message" required rows={6} className="w-full min-h-[140px] bg-transparent text-white text-sm font-light outline-none resize-none placeholder-white/40" placeholder={t('studio.contact.form.message')} />
+                  <label className="block text-[10px] uppercase tracking-[0.4em] text-white/70 mb-2">{t('studio.formMessage')}</label>
+                  <textarea name="message" required rows={6} className="w-full min-h-[140px] bg-transparent text-white text-sm font-light outline-none resize-none placeholder-white/55" placeholder={t('studio.contact.form.message')} />
                 </div>
 
                 {/* Submit row */}
@@ -241,7 +241,7 @@ const StudioPage: React.FC = () => {
                   <button
                     type="submit"
                     disabled={formStatus === 'loading'}
-                    className="flex items-center gap-3 bg-white text-black text-[9px] font-bold uppercase tracking-[0.35em] px-8 py-4 hover:bg-white/85 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex items-center gap-3 bg-white text-black text-[11px] font-bold uppercase tracking-[0.35em] px-8 py-4 hover:bg-white/85 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {formStatus === 'loading' ? t('studio.formSending') : t('studio.formSend')}
                     <Send className="w-3.5 h-3.5" />
@@ -251,13 +251,13 @@ const StudioPage: React.FC = () => {
                 {formStatus === 'success' && (
                   <div className="flex items-center gap-3 text-emerald-400 mt-4 animate-in fade-in">
                     <CheckCircle2 className="w-4 h-4" />
-                    <span className="text-[9px] font-bold uppercase tracking-widest">{t('studio.formSuccess')}</span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest">{t('studio.formSuccess')}</span>
                   </div>
                 )}
                 {formStatus === 'error' && (
                   <div className="flex items-center gap-3 text-rose-400 mt-4 animate-in fade-in">
                     <AlertCircle className="w-4 h-4" />
-                    <span className="text-[9px] font-bold uppercase tracking-widest">{t('studio.formError')}</span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest">{t('studio.formError')}</span>
                   </div>
                 )}
               </form>

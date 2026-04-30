@@ -64,15 +64,15 @@ const MultimodalSearch: React.FC = () => {
           <div>
             <div className="flex items-center gap-3 mb-6">
               <Sparkles className="w-4 h-4 text-[#0047AB]" />
-              <span className="text-[9px] font-bold uppercase tracking-[0.5em] text-white/55">
+              <span className="text-[11px] font-bold uppercase tracking-[0.5em] text-white/75">
                 {t('ai.engine')}
               </span>
             </div>
             <h3 className={`font-bold font-display tracking-tight leading-[0.9] uppercase mb-4 ${language === 'am' ? 'text-3xl md:text-4xl lg:text-5xl' : 'text-5xl md:text-6xl lg:text-7xl'}`}>
               <span>{t('ai.designFirst.title1')}</span><br />
-              <span className="italic font-light text-white/60">{t('ai.designFirst.title2')}</span>
+              <span className="italic font-light text-white/70">{t('ai.designFirst.title2')}</span>
             </h3>
-            <p className="text-[10px] text-white/45 uppercase tracking-[0.2em] mb-8">
+            <p className="text-[12px] text-white/70 uppercase tracking-[0.2em] mb-8">
               {t('ai.desc')}
             </p>
             {/* Tool list */}
@@ -86,11 +86,11 @@ const MultimodalSearch: React.FC = () => {
                 { n: '06', labelKey: 'ai.designFirst.tool6', live: false },
               ].map(tool => (
                 <div key={tool.n} className="flex items-center gap-4">
-                  <span className={`text-[11px] font-bold tracking-widest w-7 flex-shrink-0 ${tool.live ? 'text-[#0047AB]' : 'text-white/35'}`}>{tool.n}</span>
-                  <span className={`text-sm tracking-wide ${tool.live ? 'text-white/70' : 'text-white/40'}`}>{t(tool.labelKey)}</span>
+                  <span className={`text-[13px] font-bold tracking-widest w-7 flex-shrink-0 ${tool.live ? 'text-[#0047AB]' : 'text-white/55'}`}>{tool.n}</span>
+                  <span className={`text-sm tracking-wide ${tool.live ? 'text-white/85' : 'text-white/55'}`}>{t(tool.labelKey)}</span>
                   {tool.live
-                    ? <span className="text-[7px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 bg-green-500/15 text-green-400 flex-shrink-0">Live</span>
-                    : <span className="text-[7px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 bg-white/5 text-white/35 flex-shrink-0">Soon</span>
+                    ? <span className="text-[10px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 bg-green-500/20 text-green-300 flex-shrink-0">Live</span>
+                    : <span className="text-[10px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 bg-white/10 text-white/65 flex-shrink-0">Soon</span>
                   }
                 </div>
               ))}
@@ -100,7 +100,7 @@ const MultimodalSearch: React.FC = () => {
 
           {/* Right — description */}
           <div className="md:max-w-xs md:text-right hidden md:block">
-            <p className="text-white/50 text-sm tracking-wide leading-relaxed">
+            <p className="text-white/75 text-sm tracking-wide leading-relaxed">
               {t('ai.designFirst.rightDesc')}
             </p>
           </div>
@@ -135,8 +135,8 @@ const MultimodalSearch: React.FC = () => {
                   className="w-full h-full object-cover"
                   loading="lazy"
                 />
-                <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm px-2 py-0.5">
-                  <span className="text-[7px] font-bold uppercase tracking-[0.25em] text-white/50">{t('ai.designFirst.before')}</span>
+                <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-sm px-2 py-1">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/85">{t('ai.designFirst.before')}</span>
                 </div>
               </div>
 
@@ -151,8 +151,8 @@ const MultimodalSearch: React.FC = () => {
                   className="w-full h-full object-cover"
                   loading="lazy"
                 />
-                <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm px-2 py-0.5">
-                  <span className="text-[7px] font-bold uppercase tracking-[0.25em] text-[#0047AB]">
+                <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm px-2 py-1">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#5b8eff]">
                     {pair.style}
                   </span>
                 </div>
@@ -171,29 +171,29 @@ const MultimodalSearch: React.FC = () => {
           <div className="flex items-center gap-8 md:gap-12">
             <div>
               <div className="text-xl font-bold font-display tracking-tight">3</div>
-              <div className="text-[8px] uppercase tracking-[0.3em] text-white/45 mt-0.5">{t('ai.designFirst.freeConcepts')}</div>
+              <div className="text-[10px] uppercase tracking-[0.3em] text-white/65 mt-1">{t('ai.designFirst.freeConcepts')}</div>
             </div>
             <div className="w-px h-8 bg-white/10" />
             <div>
               <div className="text-xl font-bold font-display tracking-tight">12</div>
-              <div className="text-[8px] uppercase tracking-[0.3em] text-white/45 mt-0.5">{t('ai.designFirst.designStyles')}</div>
+              <div className="text-[10px] uppercase tracking-[0.3em] text-white/65 mt-1">{t('ai.designFirst.designStyles')}</div>
             </div>
             <div className="w-px h-8 bg-white/10" />
             <div>
               <div className="text-xl font-bold font-display tracking-tight">20s</div>
-              <div className="text-[8px] uppercase tracking-[0.3em] text-white/45 mt-0.5">{t('ai.designFirst.genTime')}</div>
+              <div className="text-[10px] uppercase tracking-[0.3em] text-white/65 mt-1">{t('ai.designFirst.genTime')}</div>
             </div>
             <div className="w-px h-8 bg-white/10" />
             <div>
               <div className="text-xl font-bold font-display tracking-tight">Free</div>
-              <div className="text-[8px] uppercase tracking-[0.3em] text-white/45 mt-0.5">{t('ai.designFirst.toExplore')}</div>
+              <div className="text-[10px] uppercase tracking-[0.3em] text-white/65 mt-1">{t('ai.designFirst.toExplore')}</div>
             </div>
           </div>
 
           {/* Right — CTA button */}
           <button
             onClick={() => navigateTo('ai-concepts')}
-            className="group flex items-center gap-4 bg-[#0047AB] text-white px-10 py-4 text-[10px] font-bold uppercase tracking-[0.4em] hover:bg-[#003d99] transition-all duration-300"
+            className="group flex items-center gap-4 bg-[#0047AB] text-white px-10 py-4 text-[12px] font-bold uppercase tracking-[0.4em] hover:bg-[#003d99] transition-all duration-300"
           >
             {t('btn.tryAi')}
             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />

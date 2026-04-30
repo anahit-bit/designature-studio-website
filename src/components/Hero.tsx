@@ -44,7 +44,7 @@ const Hero: React.FC = () => {
       <div className="relative z-20 h-full max-w-[1800px] mx-auto px-8 md:px-16 flex flex-col justify-end pb-32 pointer-events-none">
         <div className="max-w-4xl pointer-events-auto">
           <div className="overflow-hidden mb-4">
-            <p className="text-white/60 text-sm md:text-base font-bold tracking-[0.5em] uppercase slide-in-from-bottom">
+            <p className="text-white/85 text-sm md:text-base font-bold tracking-[0.5em] uppercase slide-in-from-bottom">
               {t('hero.studio2021')}
             </p>
           </div>
@@ -57,7 +57,7 @@ const Hero: React.FC = () => {
           </h1>
           
           <div className="flex flex-col md:flex-row md:items-center gap-12">
-            <p className="text-base md:text-xl font-light text-white/70 max-w-xl leading-relaxed fade-in" style={{ animationDelay: '500ms' }}>
+            <p className="text-base md:text-xl font-light text-white/85 max-w-xl leading-relaxed fade-in" style={{ animationDelay: '500ms' }}>
               {slides[current].subtitle}
             </p>
             <button
