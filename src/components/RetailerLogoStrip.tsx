@@ -27,7 +27,10 @@ const Logos: React.FC<{ alignment?: 'start' | 'center' }> = ({ alignment = 'star
         src={getLogoUrl(r.domain)}
         alt={r.name}
         title={r.name}
+        width={32}
+        height={32}
         loading="lazy"
+        decoding="async"
         className="w-8 h-8 object-contain"
       />
     ))}
@@ -39,7 +42,7 @@ const RetailerLogoStrip: React.FC<Props> = ({ variant, onUpgradeClick }) => {
     // Compact strip for the sign-in gate. Centered, single line of copy.
     return (
       <div className="w-full pt-6 mt-2 border-t border-black/8">
-        <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-black/50 mb-3 text-center">
+        <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-black/65 mb-3 text-center">
           Sourced from designer-favorite US retailers
         </p>
         <Logos alignment="center" />
@@ -52,13 +55,13 @@ const RetailerLogoStrip: React.FC<Props> = ({ variant, onUpgradeClick }) => {
     <div className="px-8 py-6 border-b border-black/8 bg-neutral-50/60">
       <div className="flex items-start justify-between gap-6 flex-wrap">
         <div className="max-w-md">
-          <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-black/55 mb-1.5">
+          <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-black/65 mb-1.5">
             Free shopping list
           </p>
-          <p className="text-sm font-bold text-black leading-snug">
+          <p className="text-sm md:text-[15px] font-bold text-black leading-snug">
             We'll find <span className="text-[#0047AB]">4–6 curated items</span> across furniture, rugs, lighting, wall art &amp; decor.
           </p>
-          <p className="text-[10px] text-black/50 mt-1.5">
+          <p className="text-[12px] text-black/70 mt-2">
             Sourced from these designer-favorite US retailers:
           </p>
         </div>
@@ -66,7 +69,7 @@ const RetailerLogoStrip: React.FC<Props> = ({ variant, onUpgradeClick }) => {
       </div>
 
       {onUpgradeClick && (
-        <p className="text-[10px] text-black/50 mt-4">
+        <p className="text-[12px] text-black/70 mt-4">
           Want our full curated network across regions?{' '}
           <button
             type="button"

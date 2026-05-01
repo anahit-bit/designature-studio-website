@@ -3,6 +3,7 @@ import { X, Download, Play, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getServices } from '../constants';
 import { useLanguage } from '../LanguageContext';
 import { SERVICE_ASSETS } from '../serviceAssets';
+import { cld, cldSrcSet } from '../lib/cld';
 
 type PopupState =
   | { type: 'closed' }
@@ -85,7 +86,10 @@ const ImagePopup: React.FC<{ urls: string[]; onClose: () => void }> = ({ urls, o
       <div className="relative w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
         <img
           key={urls[currentIndex]}
-          src={urls[currentIndex]}
+          src={cld(urls[currentIndex], 1440)}
+          srcSet={cldSrcSet(urls[currentIndex], [768, 1024, 1440, 1920])}
+          sizes="100vw"
+          decoding="async"
           alt="Service example"
           className="max-w-full max-h-full object-contain shadow-2xl animate-in fade-in zoom-in-95 duration-500"
         />
@@ -202,9 +206,9 @@ const Services: React.FC = () => {
       <section id="services" className="pt-16 md:pt-24 pb-0 bg-white font-body">
         <div className="max-w-[1800px] mx-auto px-8 md:px-16">
           <div className="flex flex-col items-center text-center mb-10 md:mb-12">
-            <h2 className="text-sm md:text-base font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/45 mb-8">{t('serv.title')}</h2>
+            <h2 className="text-sm md:text-base font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/65 mb-8">{t('serv.title')}</h2>
             <h3 className="text-4xl md:text-6xl lg:text-7xl font-bold font-display tracking-architectural leading-[1] max-w-4xl mb-10">{t('serv.heading')}</h3>
-            <p className="text-black/60 text-sm md:text-lg font-medium max-w-2xl leading-relaxed">
+            <p className="text-black/75 text-sm md:text-lg font-medium max-w-2xl leading-relaxed">
               {language === 'en'
                 ? 'Our comprehensive suite of services ensures every aspect of your architectural journey is handled with precision and artistic integrity.'
                 : 'Մեր ծառայությունների ամբողջական փաթեթը'}
@@ -233,22 +237,22 @@ const Services: React.FC = () => {
                       key={service.id}
                       className="group p-6 md:p-8 flex flex-col gap-3 hover:bg-neutral-50 transition-colors duration-200 cursor-default"
                     >
-                      <div className="text-[8px] font-bold uppercase tracking-[0.2em] text-black/45">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-black/55">
                         {String(serviceIdx).padStart(2, '0')}
                       </div>
                       <div className="text-black group-hover:text-[#0047AB] transition-colors duration-200">
                         {iconMap[service.id] ?? service.renderIcon()}
                       </div>
-                      <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-black group-hover:text-[#0047AB] transition-colors duration-200 leading-tight">
+                      <div className="text-[12px] md:text-[13px] font-bold uppercase tracking-[0.08em] text-black group-hover:text-[#0047AB] transition-colors duration-200 leading-tight">
                         {service.title}
                       </div>
-                      <div className="text-[10px] text-black/50 leading-relaxed flex-1">
+                      <div className="text-[13px] text-black/75 leading-relaxed flex-1">
                         {service.description}
                       </div>
                       <button
                         onClick={() => handleExample(service.id)}
                         disabled={isDownloading}
-                        className="text-[9px] font-bold uppercase tracking-[0.1em] text-[#0047AB] hover:text-black transition-colors duration-200 text-left disabled:opacity-50 disabled:cursor-wait w-fit flex items-center gap-1.5"
+                        className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#0047AB] hover:text-black transition-colors duration-200 text-left disabled:opacity-50 disabled:cursor-wait w-fit flex items-center gap-1.5"
                       >
                         {isDownloading ? t('services.downloading') : t('btn.example')}
                         {!isDownloading && asset?.action === 'pdf-download' && <Download className="w-3 h-3" />}
