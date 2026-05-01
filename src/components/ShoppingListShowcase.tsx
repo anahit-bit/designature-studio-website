@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion';
-import { cld, cldSrcSet, THUMB_WIDTHS } from '../lib/cld';
 
 // ─── Product data ─────────────────────────────────────────────────────────────
 const SHOWCASE_PRODUCTS = [
@@ -137,13 +136,13 @@ export default function ShoppingListShowcase({ onRequestLogin }: Props) {
           viewport={{ once: true }}
           className="text-center w-full"
         >
-          <p className="text-[11px] font-bold uppercase tracking-[0.35em] text-black/65 mb-3">
+          <p className="text-[9px] font-bold uppercase tracking-[0.35em] text-black/40 mb-3">
             How it works
           </p>
           <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight leading-tight text-black mb-3">
             From concept to cart
           </h2>
-          <p className="text-sm md:text-[15px] text-black/75 leading-relaxed mx-auto max-w-xl">
+          <p className="text-sm text-black/60 leading-relaxed mx-auto max-w-xl">
             Our AI identified 4 key pieces in this room and found matching products from trusted
             retailers &#8212; no affiliate fees, just real products that fit the style.
           </p>
@@ -160,13 +159,7 @@ export default function ShoppingListShowcase({ onRequestLogin }: Props) {
           style={{ borderRadius: 12, maxHeight: 400 }}
         >
           <img
-            src={cld(HERO_IMAGE, 1024, { crop: 'fill', aspectRatio: '16/9' })}
-            srcSet={cldSrcSet(HERO_IMAGE, [480, 768, 1024, 1280], { crop: 'fill', aspectRatio: '16/9' })}
-            sizes="(min-width: 900px) 900px, 100vw"
-            width={1280}
-            height={720}
-            loading="lazy"
-            decoding="async"
+            src={HERO_IMAGE}
             alt="Living room concept"
             className="w-full object-cover"
             style={{ aspectRatio: '16/9', maxHeight: 400, objectFit: 'cover' }}
@@ -183,7 +176,7 @@ export default function ShoppingListShowcase({ onRequestLogin }: Props) {
           className="flex items-center gap-3 w-full"
         >
           <div className="h-px flex-1 bg-black/8" />
-          <p className="text-[11px] font-bold uppercase tracking-[0.35em] text-black/65 whitespace-nowrap">
+          <p className="text-[9px] font-bold uppercase tracking-[0.35em] text-black/40 whitespace-nowrap">
             AI identified these pieces &#8595;
           </p>
           <div className="h-px flex-1 bg-black/8" />
@@ -205,30 +198,24 @@ export default function ShoppingListShowcase({ onRequestLogin }: Props) {
               {/* Product image */}
               <div className="overflow-hidden bg-neutral-50" style={{ aspectRatio: '1/1' }}>
                 <img
-                  src={cld(product.image, 360, { crop: 'fill', aspectRatio: '1/1' })}
-                  srcSet={cldSrcSet(product.image, THUMB_WIDTHS, { crop: 'fill', aspectRatio: '1/1' })}
-                  sizes="(min-width: 1024px) 280px, (min-width: 640px) 50vw, 100vw"
-                  width={400}
-                  height={400}
-                  loading="lazy"
-                  decoding="async"
+                  src={product.image}
                   alt={product.name}
                   className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
                 />
               </div>
               {/* Product info */}
               <div className="p-3 flex flex-col gap-1">
-                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-black/65">
+                <p className="text-[8px] font-bold uppercase tracking-[0.22em] text-black/45">
                   {product.category}
                 </p>
-                <p className="text-[12px] md:text-[13px] font-bold text-black leading-tight line-clamp-2">
+                <p className="text-[11px] font-bold text-black leading-tight line-clamp-2">
                   {product.name}
                 </p>
                 <div className="flex items-center justify-between mt-1.5">
-                  <p className="text-[11px] text-black/70 uppercase tracking-[0.1em]">
+                  <p className="text-[9px] text-black/55 uppercase tracking-[0.1em]">
                     {product.retailer}
                   </p>
-                  <p className="text-[12px] md:text-[13px] font-bold text-black">
+                  <p className="text-[11px] font-bold text-black">
                     {product.price}
                   </p>
                 </div>
@@ -247,16 +234,16 @@ export default function ShoppingListShowcase({ onRequestLogin }: Props) {
           className="flex flex-col items-center gap-3 w-full bg-black/[0.03] border-t border-black/[0.06] pt-6 pb-5 -mx-8 px-8"
           style={{ width: 'calc(100% + 4rem)' }}
         >
-          <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-black/65">
+          <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/40">
             Shop any interior
           </p>
           <button
             onClick={onRequestLogin}
-            className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[11px] font-bold uppercase tracking-[0.25em] px-7 py-4 hover:bg-[#003d99] transition-colors"
+            className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.25em] px-7 py-4 hover:bg-[#003d99] transition-colors"
           >
             Start for free &#8212; no card needed &#8594;
           </button>
-          <p className="text-[12px] text-black/70 uppercase tracking-[0.2em]">
+          <p className="text-[9px] text-black/55 uppercase tracking-[0.2em]">
             Free &#183; 3 shopping lists &#183; PDF download
           </p>
         </motion.div>

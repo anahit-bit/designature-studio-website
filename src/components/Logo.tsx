@@ -14,10 +14,6 @@ const Logo: React.FC<LogoProps> = ({
     <img
       src="https://res.cloudinary.com/dys2k5muv/image/upload/v1771145846/logo_shgdcd.svg"
       alt="Designature Logo"
-      width={160}
-      height={32}
-      decoding="async"
-      fetchPriority="high"
       className={`${className} w-auto object-contain transition-all duration-700 cursor-pointer`}
       style={invert ? { filter: 'brightness(0) invert(1)' } : undefined}
     />

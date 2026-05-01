@@ -19,14 +19,7 @@ import { generateConceptImage } from "./services/aiVision/imageGeneration.js";
 import { getCacheKey, getCachedBrief, setCachedBrief } from "./services/aiVision/styleCache.js";
 import { STYLE_NAME_TO_PRESET, ROOM_NAME_TO_TYPE } from "./services/aiVision/stylePresets.js";
 
-const FALLBACK_ENV_PATH = 'E:/Secrets/Website/.env';
-dotenv.config({
-  path: existsSync('.env')
-    ? '.env'
-    : existsSync(FALLBACK_ENV_PATH)
-    ? FALLBACK_ENV_PATH
-    : undefined,
-});
+dotenv.config();
 
 /** Free tier caps (UI + API). Paid tier can be added later with an `isPaid` flag. */
 const FREE_TIER_MAX_CONCEPTS = 3;
@@ -129,7 +122,7 @@ function getSession(token: string): string | null {
 // ─── Server ────────────────────────────────────────────────────────────────
 async function startServer() {
   const app = express();
-  const PORT = Number(process.env.NIXPACKS_NODEJS_PORT) || Number(process.env.PORT) || 3000;
+  const PORT = Number(process.env.NIXPACKS_NODEJS_PORT) || 3000;
 
   // Raised to 100 MB to accommodate base64-encoded room + reference images in one request
   app.use(express.json({ limit: "100mb" }));

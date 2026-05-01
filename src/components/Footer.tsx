@@ -126,13 +126,13 @@ const Footer: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 md:gap-16 mb-24">
             
             <div className="space-y-8">
-              <h4 className="text-xs font-bold uppercase tracking-[0.4em] text-white/65">{t('footer.studio')}</h4>
+              <h4 className="text-xs font-bold uppercase tracking-[0.4em] text-white/45">{t('footer.studio')}</h4>
               <nav className="flex flex-col gap-4">
                 {footerLinks.studio.map((link) => (
-                  <button
-                    key={link.name}
+                  <button 
+                    key={link.name} 
                     onClick={link.action}
-                    className="text-left text-xs font-bold uppercase tracking-widest text-white/80 hover:text-[#0047AB] transition-colors duration-300"
+                    className="text-left text-xs font-bold uppercase tracking-widest text-white/60 hover:text-[#0047AB] transition-colors duration-300"
                   >
                     {link.name}
                   </button>
@@ -141,12 +141,12 @@ const Footer: React.FC = () => {
             </div>
 
             <div className="space-y-8">
-              <h4 className="text-xs font-bold uppercase tracking-[0.4em] text-white/65">{t('footer.usefulLinks')}</h4>
+              <h4 className="text-xs font-bold uppercase tracking-[0.4em] text-white/45">{t('footer.usefulLinks')}</h4>
               <nav className="flex flex-col gap-4">
                 <button
                   type="button"
                   onClick={footerLinks.faq.action}
-                  className="text-left text-xs font-bold uppercase tracking-widest text-white/80 hover:text-[#0047AB] transition-colors duration-300"
+                  className="text-left text-xs font-bold uppercase tracking-widest text-white/60 hover:text-[#0047AB] transition-colors duration-300"
                 >
                   {footerLinks.faq.name}
                 </button>
@@ -155,7 +155,7 @@ const Footer: React.FC = () => {
                     key={link.name}
                     type="button"
                     onClick={() => setPolicyModal(link.policy)}
-                    className="text-left text-xs font-bold uppercase tracking-widest text-white/80 hover:text-[#0047AB] transition-colors duration-300"
+                    className="text-left text-xs font-bold uppercase tracking-widest text-white/60 hover:text-[#0047AB] transition-colors duration-300"
                   >
                     {link.name}
                   </button>
@@ -164,23 +164,23 @@ const Footer: React.FC = () => {
             </div>
 
             <div className="space-y-8">
-              <h4 className="text-xs font-bold uppercase tracking-[0.4em] text-white/65">{t('footer.contacts')}</h4>
+              <h4 className="text-xs font-bold uppercase tracking-[0.4em] text-white/45">{t('footer.contacts')}</h4>
               <div className="flex flex-col gap-6">
-                <a href="mailto:hello@designature.studio" className="text-xs font-bold tracking-widest uppercase text-white/80 hover:text-[#0047AB] transition-colors duration-300">
+                <a href="mailto:hello@designature.studio" className="text-xs font-bold tracking-widest uppercase text-white/60 hover:text-[#0047AB] transition-colors duration-300">
                   hello@designature.studio
                 </a>
-
+                
                 <div className="flex flex-col gap-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">{t('footer.usOffice')}</span>
-                  <a href="https://wa.me/13474801265" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-4 text-xs font-bold tracking-widest uppercase text-white/80 hover:text-[#0047AB] transition-colors duration-300">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-white/35">{t('footer.usOffice')}</span>
+                  <a href="https://wa.me/13474801265" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-4 text-xs font-bold tracking-widest uppercase text-white/60 hover:text-[#0047AB] transition-colors duration-300">
                     <WhatsAppIcon className="w-4 h-4 text-white group-hover:text-[#0047AB] transition-colors" />
                     +1 (347) 480-1265
                   </a>
                 </div>
 
                 <div className="flex flex-col gap-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">{t('footer.amOffice')}</span>
-                  <a href="https://wa.me/37493860364" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-4 text-xs font-bold tracking-widest uppercase text-white/80 hover:text-[#0047AB] transition-colors duration-300">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-white/35">{t('footer.amOffice')}</span>
+                  <a href="https://wa.me/37493860364" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-4 text-xs font-bold tracking-widest uppercase text-white/60 hover:text-[#0047AB] transition-colors duration-300">
                     <WhatsAppIcon className="w-4 h-4 text-white group-hover:text-[#0047AB] transition-colors" />
                     +374 93 86 03 64
                   </a>
@@ -193,23 +193,23 @@ const Footer: React.FC = () => {
                 {t('footer.newsletterHeader')}
               </h4>
               <div className="flex flex-col gap-4">
-                <input
-                  type="email"
+                <input 
+                  type="email" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={t('footer.emailLabel')}
-                  className={`w-full bg-white text-black px-4 py-4 text-[13px] font-medium tracking-widest focus:outline-none rounded-none placeholder:text-black/65 transition-all duration-300 border ${
+                  className={`w-full bg-white text-black px-4 py-4 text-xs font-medium tracking-widest focus:outline-none rounded-none placeholder:text-black/55 transition-all duration-300 border ${
                     status === 'error' ? 'border-red-500 animate-shake' : 'border-transparent'
                   }`}
                 />
-                <button
+                <button 
                   onClick={handleSubscribe}
                   disabled={status === 'loading'}
-                  className="w-full bg-black border border-white text-white px-8 py-4 text-[11px] font-bold uppercase tracking-[0.4em] transition-all duration-500 hover:bg-[#0047AB] hover:border-[#0047AB] rounded-none disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-black border border-white text-white px-8 py-4 text-[10px] font-bold uppercase tracking-[0.4em] transition-all duration-500 hover:bg-[#0047AB] hover:border-[#0047AB] rounded-none disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {getButtonText()}
                 </button>
-                <p className="text-[11px] font-medium tracking-widest text-white/65 leading-relaxed uppercase">
+                <p className="text-[9px] font-medium tracking-widest text-white/45 leading-relaxed uppercase">
                   {t('footer.newsletterSub')}
                 </p>
               </div>
@@ -217,7 +217,7 @@ const Footer: React.FC = () => {
           </div>
 
           <div className="pt-10 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-8">
-            <div className="text-[10px] font-bold tracking-[0.3em] uppercase text-white/55">
+            <div className="text-[9px] font-bold tracking-[0.3em] uppercase text-white/35">
               {t('footer.rights')}
             </div>
 
