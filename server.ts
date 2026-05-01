@@ -19,7 +19,14 @@ import { generateConceptImage } from "./services/aiVision/imageGeneration.js";
 import { getCacheKey, getCachedBrief, setCachedBrief } from "./services/aiVision/styleCache.js";
 import { STYLE_NAME_TO_PRESET, ROOM_NAME_TO_TYPE } from "./services/aiVision/stylePresets.js";
 
-dotenv.config();
+const FALLBACK_ENV_PATH = 'E:/Secrets/Website/.env';
+dotenv.config({
+  path: existsSync('.env')
+    ? '.env'
+    : existsSync(FALLBACK_ENV_PATH)
+    ? FALLBACK_ENV_PATH
+    : undefined,
+});
 
 /** Free tier caps (UI + API). Paid tier can be added later with an `isPaid` flag. */
 const FREE_TIER_MAX_CONCEPTS = 3;
