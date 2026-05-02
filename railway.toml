@@ -6,3 +6,5 @@ buildCommand = "npm install && npm run build"
 startCommand = "NODE_ENV=production npx tsx server.ts"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
+healthcheckPath = "/api/health"
+healthcheckTimeout = 100

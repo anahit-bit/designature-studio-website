@@ -11,13 +11,13 @@ const CTABanner: React.FC = () => {
 
         {/* Left — message */}
         <div className="flex flex-col gap-3 md:max-w-2xl">
-          <p className="text-[9px] font-bold uppercase tracking-[0.4em] text-white/40">
+          <p className="text-[11px] font-bold uppercase tracking-[0.4em] text-white/65">
             {language === 'en' ? 'Free — no commitment needed' : 'Free — no commitment needed'}
           </p>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold font-display tracking-tight leading-[0.95] text-white">
             {t('cta.banner.title')}
           </h2>
-          <p className="text-white/55 text-sm md:text-base font-light leading-relaxed mt-1">
+          <p className="text-white/80 text-sm md:text-base font-light leading-relaxed mt-1">
             {t('cta.banner.subtext')}
           </p>
         </div>
@@ -27,7 +27,7 @@ const CTABanner: React.FC = () => {
           href="https://calendly.com/designature-studio-us/free_consultation"
           target="_blank"
           rel="noopener noreferrer"
-          className="group flex-shrink-0 inline-flex items-center gap-4 bg-white text-black px-10 py-5 text-[10px] font-bold uppercase tracking-[0.4em] hover:bg-[#0047AB] hover:text-white transition-all duration-300"
+          className="group flex-shrink-0 inline-flex items-center gap-4 bg-white text-black px-10 py-5 text-[12px] font-bold uppercase tracking-[0.4em] hover:bg-[#0047AB] hover:text-white transition-all duration-300"
         >
           {t('cta.banner.btn')}
           <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
