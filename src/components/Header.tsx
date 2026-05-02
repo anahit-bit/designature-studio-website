@@ -1,13 +1,29 @@
 
-import React, { useState, useEffect } from 'react';
-import { Menu, X, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Menu, X, ArrowRight, LogOut } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
+import { useAuth } from '../AuthContext';
 import Logo from './Logo';
 
 const Header: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const { language, setLanguage, t, navigateTo, currentPage } = useLanguage();
+  const { user, isLoading: authLoading, signOut } = useAuth();
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close account dropdown when clicking outside
+  useEffect(() => {
+    if (!isAccountMenuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
+        setIsAccountMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [isAccountMenuOpen]);
 
   // On white-background pages without hero images, we need black text from the start.
   // Studio page now has a hero, so it starts transparent like Home.
@@ -34,14 +50,14 @@ const Header: React.FC = () => {
     { name: t('nav.portfolio'), href: '#projects', page: 'portfolio', action: () => navigateTo('portfolio') },
     { name: t('nav.services'), href: '#services', page: 'services', action: () => navigateTo('services') },
     { name: t('nav.pricing'), href: '#pricing', page: 'pricing', action: () => navigateTo('pricing') },
-    { name: t('nav.aiConcepts'), href: '#ai-concepts', page: 'ai-concepts', action: () => navigateTo('ai-concepts'), isHighlight: true },
+    { name: t('nav.aiStudio'), href: '#ai-concepts', page: 'ai-concepts', action: () => navigateTo('ai-concepts'), isHighlight: true },
   ];
 
   const LanguageSwitcher = () => (
-    <button 
+    <button
       onClick={() => setLanguage(language === 'en' ? 'am' : 'en')}
-      className={`text-[10px] font-bold uppercase tracking-[0.25em] transition-all duration-300 px-2 ${
-        (isDarkTextNeeded && !useLightNav) ? 'text-black hover:text-black/55' : 'text-white hover:text-white/55'
+      className={`text-[11px] font-bold uppercase tracking-[0.25em] transition-all duration-300 px-2 ${
+        (isDarkTextNeeded && !useLightNav) ? 'text-black hover:text-black/65' : 'text-white hover:text-white/70'
       }`}
     >
       {language === 'en' ? 'AM' : 'EN'}
@@ -50,20 +66,110 @@ const Header: React.FC = () => {
 
   const CTAButton = ({ className = "" }: { className?: string }) => (
     <div className={`flex flex-col items-center gap-1.5 ${className}`}>
-      <button 
+      <button
         onClick={() => window.open("https://calendly.com/designature-studio-us/free_consultation", "_blank")}
-        className="group flex items-center justify-center gap-3 bg-black border border-black text-white px-6 py-2.5 text-[10px] font-bold font-body tracking-[0.25em] uppercase rounded-none transition-all duration-500 hover:bg-white hover:text-black hover:scale-[1.02] active:scale-[0.98]"
+        className="group flex items-center justify-center gap-3 bg-black border border-black text-white px-6 py-2.5 text-[11px] font-bold font-body tracking-[0.25em] uppercase rounded-none transition-all duration-500 hover:bg-white hover:text-black hover:scale-[1.02] active:scale-[0.98]"
       >
         {t('btn.bookCall')}
         <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
       </button>
-      <span className={`text-[8px] font-semibold font-body tracking-wider uppercase leading-none transition-colors duration-700 ${
-        (isDarkTextNeeded && !useLightNav) ? 'text-black' : 'text-white/80'
+      <span className={`text-[10px] font-semibold font-body tracking-wider uppercase leading-none transition-colors duration-700 ${
+        (isDarkTextNeeded && !useLightNav) ? 'text-black/75' : 'text-white/85'
       } ${language === 'en' ? 'italic' : ''}`}>
         {t('btn.firstConvo')}
       </span>
     </div>
   );
+
+  const onDarkBg = !(isDarkTextNeeded && !useLightNav);
+  const isOnAIConcepts = currentPage === 'ai-concepts';
+  const userInitial = (user?.name || user?.email || '?').charAt(0).toUpperCase();
+
+  /** Secondary header CTA — visibly less prominent than the primary "Let's chat" Calendly button.
+   *  Logged out: "Try AI free →" text-link → /ai-concepts.
+   *  Logged in: account chip + "Go to Studio" with a sign-out dropdown.
+   *  Hidden while AuthContext is still probing /api/auth/me to avoid a flash of the wrong state. */
+  const SecondaryCTA = ({ inMobileMenu = false }: { inMobileMenu?: boolean }) => {
+    if (authLoading) {
+      return inMobileMenu ? null : <div className="min-w-[100px]" aria-hidden />;
+    }
+
+    if (!user) {
+      // Hide on /ai-concepts when logged out — the user is already there.
+      if (isOnAIConcepts && !inMobileMenu) return null;
+      const baseColor = inMobileMenu
+        ? 'text-[#0047AB] hover:text-[#003d99]'
+        : (onDarkBg ? 'text-white hover:text-white/70' : 'text-[#0047AB] hover:text-[#003d99]');
+      return (
+        <button
+          onClick={() => {
+            navigateTo('ai-concepts');
+            if (inMobileMenu) setIsMobileMenuOpen(false);
+          }}
+          className={`group flex items-center gap-1.5 text-[10px] font-bold tracking-[0.25em] uppercase transition-colors ${baseColor}`}
+        >
+          {t('nav.tryAiFree')}
+          <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+        </button>
+      );
+    }
+
+    // Logged-in chip + Go to Studio + sign-out dropdown
+    const textColor = inMobileMenu ? 'text-black' : (onDarkBg ? 'text-white' : 'text-black');
+    const subtleColor = inMobileMenu ? 'text-black/55' : (onDarkBg ? 'text-white/55' : 'text-black/55');
+    return (
+      <div className="relative flex items-center gap-2" ref={inMobileMenu ? undefined : accountMenuRef}>
+        <button
+          onClick={() => setIsAccountMenuOpen((v) => !v)}
+          aria-label={user.name || user.email}
+          aria-haspopup="menu"
+          aria-expanded={isAccountMenuOpen}
+          className="flex items-center justify-center w-7 h-7 rounded-full overflow-hidden border border-current/20 bg-[#0047AB] text-white text-[10px] font-bold flex-shrink-0"
+        >
+          {user.picture ? (
+            <img src={user.picture} alt={user.name} className="w-full h-full object-cover" />
+          ) : (
+            <span>{userInitial}</span>
+          )}
+        </button>
+        <button
+          onClick={() => {
+            navigateTo('ai-concepts');
+            if (inMobileMenu) setIsMobileMenuOpen(false);
+          }}
+          className={`group flex items-center gap-1.5 text-[10px] font-bold tracking-[0.25em] uppercase transition-colors ${textColor} hover:opacity-70`}
+        >
+          {t('nav.goToStudio')}
+          <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+        </button>
+        {isAccountMenuOpen && (
+          <div
+            role="menu"
+            className="absolute right-0 top-full mt-2 min-w-[180px] bg-white border border-black/10 shadow-lg py-1 z-[110]"
+          >
+            <div className="px-4 py-2 border-b border-black/5">
+              <div className="text-[10px] font-bold text-black truncate">{user.name}</div>
+              <div className={`text-[9px] truncate ${subtleColor.replace('text-white', 'text-black').replace('/55', '/45')}`}>
+                {user.email}
+              </div>
+            </div>
+            <button
+              role="menuitem"
+              onClick={async () => {
+                setIsAccountMenuOpen(false);
+                if (inMobileMenu) setIsMobileMenuOpen(false);
+                await signOut();
+              }}
+              className="w-full flex items-center gap-2 px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.2em] text-black hover:bg-black/5 transition-colors"
+            >
+              <LogOut className="w-3 h-3" />
+              {t('nav.signOut')}
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -102,12 +208,12 @@ const Header: React.FC = () => {
                   e.preventDefault();
                   link.action();
                 }}
-                className={`relative text-[11px] font-bold uppercase tracking-[0.2em] transition-colors duration-300 group ${
+                className={`relative text-[12px] font-bold uppercase tracking-[0.2em] transition-colors duration-300 group ${
                   link.isHighlight
-                    ? 'text-[#0047AB] hover:text-[#0047AB]/70'
+                    ? 'text-[#0047AB] hover:text-[#0047AB]/75'
                     : isActive
                       ? ((isDarkTextNeeded && !useLightNav) ? 'text-black' : 'text-white')
-                      : ((isDarkTextNeeded && !useLightNav) ? 'text-black/55 hover:text-black' : 'text-white/55 hover:text-white')
+                      : ((isDarkTextNeeded && !useLightNav) ? 'text-black/70 hover:text-black' : 'text-white/75 hover:text-white')
                 }`}
                 style={link.isHighlight ? { animation: 'ai-pulse 2.5s ease-in-out infinite' } : {}}
               >
@@ -134,6 +240,7 @@ const Header: React.FC = () => {
 
           <div className="hidden lg:flex items-center gap-8">
             {/* <LanguageSwitcher /> */}
+            <SecondaryCTA />
             <CTAButton />
           </div>
 
@@ -186,6 +293,7 @@ const Header: React.FC = () => {
 
           <div className="px-8 pb-10 md:px-16 md:pb-16 flex flex-col items-center gap-6">
             {/* <LanguageSwitcher /> */}
+            <SecondaryCTA inMobileMenu />
             <CTAButton className="w-full" />
           </div>
         </div>

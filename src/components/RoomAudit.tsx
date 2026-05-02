@@ -229,17 +229,17 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center gap-6 py-20 px-8 text-center flex-grow">
-        <div className="w-16 h-16 border border-black/8 flex items-center justify-center text-black/25 text-3xl">◎</div>
-        <h3 className="font-display text-2xl font-light text-black/45 tracking-tight">
+        <div className="w-16 h-16 border border-black/15 flex items-center justify-center text-black/55 text-3xl">◎</div>
+        <h3 className="font-display text-2xl font-light text-black/75 tracking-tight">
           Score your space
         </h3>
-        <p className="text-sm text-black/45 uppercase tracking-[0.2em] leading-[2]">
+        <p className="text-[13px] text-black/70 uppercase tracking-[0.2em] leading-[2]">
           Design & Studio plans · Instant results
         </p>
         {onRequestLogin && (
           <button
             onClick={onRequestLogin}
-            className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.25em] px-5 py-3 hover:bg-[#003d99] transition-colors"
+            className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[11px] font-bold uppercase tracking-[0.25em] px-6 py-3.5 hover:bg-[#003d99] transition-colors"
           >
             Score your room →
           </button>
@@ -262,7 +262,7 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
           <div>
             <div className="flex items-center gap-3 mb-3">
               <div className="w-5 h-5 bg-black text-white text-[8px] flex items-center justify-center font-bold flex-shrink-0">1</div>
-              <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/50">
+              <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/70">
                 Upload your room
               </span>
             </div>
@@ -275,17 +275,17 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
                 {roomImage ? (
                   <>
                     <img src={roomImage} className="w-full h-full object-cover" alt="Room to audit" />
-                    <div className="absolute bottom-0 inset-x-0 bg-black/60 py-2 px-3 text-[8px] font-bold uppercase tracking-widest text-white text-center">
+                    <div className="absolute bottom-0 inset-x-0 bg-black/70 py-2 px-3 text-[11px] font-bold uppercase tracking-widest text-white text-center">
                       Change photo
                     </div>
                   </>
                 ) : (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-50">
-                    <div className="w-9 h-9 border border-black/15 flex items-center justify-center text-black/40 text-xl font-thin">⌂</div>
-                    <span className="text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/35">
+                    <div className="w-9 h-9 border border-black/15 flex items-center justify-center text-black/55 text-xl font-thin">⌂</div>
+                    <span className="text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/65">
                       Upload room photo
                     </span>
-                    <span className="text-[8px] text-black/35 uppercase tracking-widest">JPG, PNG · max 10MB</span>
+                    <span className="text-[11px] text-black/65 uppercase tracking-widest">JPG, PNG · max 10MB</span>
                   </div>
                 )}
               </div>
@@ -298,9 +298,9 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
           <div>
             <div className="flex items-center gap-3 mb-3">
               <div className="w-5 h-5 bg-black/20 text-white text-[8px] flex items-center justify-center font-bold flex-shrink-0">2</div>
-              <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/50">
+              <span className="text-sm md:text-base font-bold uppercase tracking-[0.35em] text-black/70">
                 Your goals{' '}
-                <span className="text-black/35 normal-case font-normal tracking-normal ml-1">(optional)</span>
+                <span className="text-black/55 normal-case font-normal tracking-normal ml-1">(optional)</span>
               </span>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -308,10 +308,10 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
                 <button
                   key={goal.id}
                   onClick={() => toggleGoal(goal.id)}
-                  className={`px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.12em] border transition-all rounded-[2px] ${
+                  className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] border transition-all rounded-[2px] ${
                     selectedGoals.includes(goal.id)
                       ? 'border-black bg-black text-white'
-                      : 'border-black/15 text-black/55 hover:border-black/40 hover:text-black/70'
+                      : 'border-black/25 text-black/75 hover:border-black/50 hover:text-black'
                   }`}
                 >
                   {goal.label}
@@ -324,7 +324,7 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
 
           {/* Counter */}
           <div className="flex items-center justify-between bg-neutral-50 border border-black/8 px-4 py-3">
-            <span className="text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/55">
+            <span className="text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/75">
               {remainingLabel}
             </span>
             <div className="flex gap-1">
@@ -336,7 +336,7 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
 
           {/* Error */}
           {error && (
-            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 text-red-700 text-[10px]">
+            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 text-red-700 text-[12px]">
               <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
@@ -373,11 +373,11 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
               exit={{ opacity: 0 }}
               className="flex-grow flex flex-col items-center justify-center gap-5 p-16 text-center"
             >
-              <div className="w-16 h-16 border border-black/8 flex items-center justify-center text-black/25 text-3xl">✦</div>
-              <h3 className="font-display text-3xl font-light text-black/35 tracking-tight">
+              <div className="w-16 h-16 border border-black/15 flex items-center justify-center text-black/55 text-3xl">✦</div>
+              <h3 className="font-display text-3xl font-light text-black/65 tracking-tight">
                 Your audit will appear here
               </h3>
-              <p className="text-sm uppercase tracking-[0.3em] text-black/35 leading-[2]">
+              <p className="text-[13px] uppercase tracking-[0.3em] text-black/70 leading-[2]">
                 {roomImage ? 'Click Score My Room to start' : 'Complete the steps on the left'}
               </p>
             </motion.div>
@@ -407,10 +407,10 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
                     <div className={`text-2xl font-bold ${overallGrade(result.overallScore).color}`}>
                       {overallGrade(result.overallScore).letter}
                     </div>
-                    <div className="text-[8px] text-black/40 uppercase tracking-widest">/ 100</div>
+                    <div className="text-[11px] text-black/65 uppercase tracking-widest">/ 100</div>
                   </div>
                 </div>
-                <p className="text-[8px] text-black/40 leading-relaxed self-end pb-2 max-w-[180px] text-right">
+                <p className="text-[11px] text-black/65 leading-relaxed self-end pb-2 max-w-[180px] text-right">
                   Weighted avg of 6 dimensions (each /10), scaled to 100
                 </p>
               </div>
@@ -419,7 +419,7 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
               <div className="flex flex-col gap-2">
                 {result.dimensions.map((dim, i) => (
                   <div key={i} className="flex items-center gap-3">
-                    <span className="text-[8px] text-black/55 w-[90px] truncate uppercase tracking-wide flex-shrink-0">
+                    <span className="text-[11px] text-black/75 w-[90px] truncate uppercase tracking-wide flex-shrink-0">
                       {dim.label.split(' ')[0]}
                     </span>
                     <div className="flex-1 h-1.5 bg-black/6 rounded-full overflow-hidden">
@@ -430,7 +430,7 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
                         className={`h-full rounded-full ${scoreColor(dim.score)}`}
                       />
                     </div>
-                    <span className={`text-[9px] font-bold w-10 text-right flex-shrink-0 ${scoreTextColor(dim.score)}`}>
+                    <span className={`text-[11px] font-bold w-10 text-right flex-shrink-0 ${scoreTextColor(dim.score)}`}>
                       {dim.score}/10
                     </span>
                   </div>
@@ -439,7 +439,7 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
 
               {/* Detailed breakdown */}
               <div>
-                <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/40 mb-4">
+                <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-black/65 mb-4">
                   Detailed breakdown
                 </p>
                 <div className="space-y-4">
@@ -453,16 +453,16 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
                     >
                       <div className="flex-shrink-0 text-right w-10">
                         <span className={`text-base font-bold ${scoreTextColor(dim.score)}`}>{dim.score}</span>
-                        <span className="text-[7px] text-black/35 block">/ 10</span>
+                        <span className="text-[10px] text-black/55 block">/ 10</span>
                       </div>
                       <div className="flex-1 pb-4 border-b border-black/6 last:border-0">
                         <div className="flex items-center gap-2 mb-1">
                           <div className={`w-2 h-2 rounded-full ${scoreColor(dim.score)}`} />
-                          <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-black/70">
+                          <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-black/85">
                             {dim.label}
                           </span>
                         </div>
-                        <p className="text-[11px] text-black/50 leading-relaxed">{dim.verdict}</p>
+                        <p className="text-[13px] text-black/75 leading-relaxed">{dim.verdict}</p>
                       </div>
                     </motion.div>
                   ))}
@@ -471,7 +471,7 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
 
               {/* Fix Now */}
               <div className="bg-black p-6">
-                <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-white/55 mb-4">
+                <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-white/75 mb-4">
                   Fix now — Top 3 improvements
                 </p>
                 <div className="space-y-3">
@@ -483,10 +483,10 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
                       transition={{ delay: 0.4 + 0.1 * i }}
                       className="flex gap-3"
                     >
-                      <div className="w-5 h-5 bg-white text-black text-[9px] flex items-center justify-center font-bold flex-shrink-0">
+                      <div className="w-5 h-5 bg-white text-black text-[11px] flex items-center justify-center font-bold flex-shrink-0">
                         {i + 1}
                       </div>
-                      <p className="text-[11px] text-white/80 leading-relaxed pt-0.5">{fix}</p>
+                      <p className="text-[13px] text-white/85 leading-relaxed pt-0.5">{fix}</p>
                     </motion.div>
                   ))}
                 </div>
@@ -495,7 +495,7 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
               {/* Reset */}
               <button
                 onClick={handleReset}
-                className="self-center flex items-center gap-2 py-2.5 px-5 border border-black/15 text-[9px] font-bold uppercase tracking-[0.25em] text-black/55 hover:border-black/40 hover:text-black/70 transition-all"
+                className="self-center flex items-center gap-2 py-2.5 px-5 border border-black/25 text-[11px] font-bold uppercase tracking-[0.25em] text-black/75 hover:border-black/55 hover:text-black transition-all"
               >
                 <RefreshCw className="w-3 h-3" />
                 Audit another room
