@@ -2,6 +2,8 @@
 import React from 'react';
 import { useLanguage } from '../LanguageContext';
 import { useProjects } from '../ProjectsContext';
+import ResponsiveImage from './ResponsiveImage';
+import { CARD_WIDTHS } from '../lib/cld';
 
 const ProjectSection: React.FC = () => {
   const { language, t, navigateTo } = useLanguage();
@@ -17,11 +19,11 @@ const ProjectSection: React.FC = () => {
       <div className="max-w-[1800px] mx-auto px-8 md:px-16">
         {/* Centered Section Header */}
         <div className="flex flex-col items-center text-center mb-10 md:mb-12">
-          <h2 className="text-sm md:text-base font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/45 mb-8">{t('pro.title')}</h2>
+          <h2 className="text-sm md:text-base font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/65 mb-8">{t('pro.title')}</h2>
           <h3 className="text-4xl md:text-5xl lg:text-7xl font-bold font-display tracking-architectural leading-[1] max-w-4xl mb-10">
             {t('pro.heading')}
           </h3>
-          <p className="text-black/60 text-sm md:text-lg font-medium max-w-2xl leading-relaxed">
+          <p className="text-black/75 text-sm md:text-lg font-medium max-w-2xl leading-relaxed">
             {t('pro.subtext')}
           </p>
         </div>
@@ -35,9 +37,14 @@ const ProjectSection: React.FC = () => {
               className="group cursor-pointer transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-4"
             >
               <div className="aspect-[4/5] overflow-hidden bg-neutral-100 mb-4 relative shadow-sm group-hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.12)] transition-all duration-700">
-                <img 
-                  src={project.imageUrl} 
-                  alt={language === 'en' ? project.titleEN : project.titleAM} 
+                <ResponsiveImage
+                  src={project.imageUrl}
+                  alt={language === 'en' ? project.titleEN : project.titleAM}
+                  aspectRatio="4/5"
+                  crop="fill"
+                  sizes="(min-width: 768px) 50vw, 100vw"
+                  widths={CARD_WIDTHS}
+                  baseWidth={640}
                   className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-1000 group-hover:scale-105"
                 />
                 {/* Subtle overlay removed for "constant color" clarity, adding a very faint depth shadow on hover */}
@@ -45,7 +52,7 @@ const ProjectSection: React.FC = () => {
               </div>
               
               <div className="space-y-2 px-1">
-                <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-black/55">
+                <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-black/70">
                   {language === 'en' ? project.categoryEN : project.categoryAM}
                 </p>
                 <h4 className="text-xl md:text-2xl font-bold font-display tracking-tight uppercase transition-transform duration-700 group-hover:translate-x-2">

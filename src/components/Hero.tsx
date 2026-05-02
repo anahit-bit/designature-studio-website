@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Instagram, Facebook, ChevronRight } from 'lucide-react';
 import { getHeroSlides } from '../constants';
 import { useLanguage } from '../LanguageContext';
+import { cld, cldSrcSet, DEFAULT_WIDTHS } from '../lib/cld';
 
 
 const Hero: React.FC = () => {
@@ -19,32 +20,43 @@ const Hero: React.FC = () => {
 
   return (
     <section className="relative w-full h-screen min-h-screen overflow-hidden bg-black font-body">
-      {/* Background Slides with high-priority inline styling and cross-fade */}
-      {slides.map((slide, index) => (
-        <div 
-          key={slide.id}
-          className={`absolute inset-0 transition-opacity duration-[2000ms] ease-[cubic-bezier(0.23,1,0.32,1)] ${
-            index === current ? 'opacity-100 z-10' : 'opacity-0 z-0'
-          }`}
-          style={{
-            backgroundImage: `url(${slide.imageUrl})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-            height: '100vh',
-            width: '100%'
-          }}
-        >
-          {/* Subtle dark overlay to ensure text legibility over high-end renders - Increased to 30% */}
-          <div className="absolute inset-0 bg-black/30 z-[11] pointer-events-none" />
-        </div>
-      ))}
+      {/* Background slides — <img> with srcset so the LCP candidate gets
+          fetchpriority=high, AVIF/WebP, and a properly-sized source.
+          Visual output matches the previous background-image: cover. */}
+      {slides.map((slide, index) => {
+        const isFirst = index === 0;
+        const isActive = index === current;
+        return (
+          <div
+            key={slide.id}
+            className={`absolute inset-0 transition-opacity duration-[2000ms] ease-[cubic-bezier(0.23,1,0.32,1)] ${
+              isActive ? 'opacity-100 z-10' : 'opacity-0 z-0'
+            }`}
+          >
+            <img
+              src={cld(slide.imageUrl, 1440)}
+              srcSet={cldSrcSet(slide.imageUrl, DEFAULT_WIDTHS)}
+              sizes="100vw"
+              alt=""
+              width={1920}
+              height={1080}
+              loading={isFirst ? 'eager' : 'lazy'}
+              fetchPriority={isFirst ? 'high' : 'auto'}
+              decoding={isFirst ? 'sync' : 'async'}
+              className="absolute inset-0 w-full h-full object-cover"
+              draggable={false}
+            />
+            {/* Subtle dark overlay to ensure text legibility over high-end renders - Increased to 30% */}
+            <div className="absolute inset-0 bg-black/30 z-[11] pointer-events-none" />
+          </div>
+        );
+      })}
 
       {/* Hero Content - Elevated Layer */}
       <div className="relative z-20 h-full max-w-[1800px] mx-auto px-8 md:px-16 flex flex-col justify-end pb-32 pointer-events-none">
         <div className="max-w-4xl pointer-events-auto">
           <div className="overflow-hidden mb-4">
-            <p className="text-white/60 text-sm md:text-base font-bold tracking-[0.5em] uppercase slide-in-from-bottom">
+            <p className="text-white/85 text-sm md:text-base font-bold tracking-[0.5em] uppercase slide-in-from-bottom">
               {t('hero.studio2021')}
             </p>
           </div>
@@ -55,9 +67,9 @@ const Hero: React.FC = () => {
               </span>
             ))}
           </h1>
-          
+
           <div className="flex flex-col md:flex-row md:items-center gap-12">
-            <p className="text-base md:text-xl font-light text-white/70 max-w-xl leading-relaxed fade-in" style={{ animationDelay: '500ms' }}>
+            <p className="text-base md:text-xl font-light text-white/85 max-w-xl leading-relaxed fade-in" style={{ animationDelay: '500ms' }}>
               {slides[current].subtitle}
             </p>
             <button
@@ -83,7 +95,7 @@ const Hero: React.FC = () => {
       {/* Slide Navigation Dots */}
       <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-30 flex gap-3">
         {slides.map((_, index) => (
-          <button 
+          <button
             key={index}
             onClick={() => setCurrent(index)}
             className={`h-2 rounded-full transition-all duration-500 ${
