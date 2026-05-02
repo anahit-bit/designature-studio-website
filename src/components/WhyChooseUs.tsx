@@ -59,13 +59,13 @@ const WhyChooseUs: React.FC = () => {
 
         {/* Header */}
         <div className="flex flex-col items-center text-center mb-8 md:mb-10">
-          <h2 className="text-sm md:text-base font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/65 mb-8">
+          <h2 className="text-sm md:text-base font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/45 mb-8">
             {t('why.title')}
           </h2>
           <h3 className="text-4xl md:text-5xl lg:text-7xl font-bold font-display tracking-architectural leading-[1] max-w-5xl mb-10">
             {t('why.heading')}
           </h3>
-          <p className="text-black/75 text-sm md:text-lg font-medium max-w-3xl leading-relaxed">
+          <p className="text-black/60 text-sm md:text-lg font-medium max-w-3xl leading-relaxed">
             {t('why.desc')}
           </p>
         </div>
@@ -81,10 +81,10 @@ const WhyChooseUs: React.FC = () => {
                   {pillar.icon}
                 </div>
                 <div>
-                  <div className="text-[12px] md:text-[13px] font-bold uppercase tracking-[0.08em] text-black group-hover:text-[#0047AB] transition-colors duration-200 mb-2">
+                  <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-black group-hover:text-[#0047AB] transition-colors duration-200 mb-1.5">
                     {t(pillar.titleKey)}
                   </div>
-                  <div className="text-[13px] text-black/75 leading-relaxed">
+                  <div className="text-[11px] text-black/50 leading-relaxed">
                     {t(pillar.descKey)}
                   </div>
                 </div>
@@ -94,23 +94,23 @@ const WhyChooseUs: React.FC = () => {
 
           {/* Right — AI differentiator panel */}
           <div className="bg-[#0a0a0a] px-10 py-12 flex flex-col justify-center gap-6">
-            <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#0047AB]">
+            <div className="text-[8px] font-bold uppercase tracking-[0.3em] text-[#0047AB]">
               {t('why.humanEdge')}
             </div>
             <h4 className="font-display text-4xl md:text-5xl font-bold text-white leading-[0.92] tracking-tight uppercase">
               AI {language === 'en' ? <>helps you<br />explore.</> : <>{t('why.aiExplore')}</>}<br />
-              <span className="italic font-light text-white/65">
+              <span className="italic font-light text-white/55">
                 {language === 'en' ? <>We make it<br />extraordinary.</> : t('why.weMakeExtraordinary')}
               </span>
             </h4>
-            <p className="text-[13px] text-white/80 leading-[1.8] max-w-sm">
+            <p className="text-[11px] text-white/55 leading-[1.9] max-w-sm">
               {language === 'en'
-                ? <>Our tools let you visualise and discover — but the <span className="text-white font-medium">design decisions that make a space uniquely yours</span> come from a trained eye, years of engineering knowledge, and genuine creative instinct. That&apos;s the part AI can&apos;t replicate.</>
+                ? <>Our tools let you visualise and discover — but the <span className="text-white/75 font-medium">design decisions that make a space uniquely yours</span> come from a trained eye, years of engineering knowledge, and genuine creative instinct. That&apos;s the part AI can&apos;t replicate.</>
                 : t('why.aiDesc')}
             </p>
             <button
               onClick={() => window.open('https://calendly.com/designature-studio-us/free_consultation', '_blank')}
-              className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#0047AB] hover:text-white transition-colors duration-200 text-left w-fit mt-2"
+              className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#0047AB] hover:text-white transition-colors duration-200 text-left w-fit mt-2"
             >
               {t('btn.bookCall')} →
             </button>

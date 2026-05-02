@@ -3,8 +3,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useLanguage } from '../LanguageContext';
 import { useProjects } from '../ProjectsContext';
 import { ArrowLeft } from 'lucide-react';
-import ResponsiveImage from './ResponsiveImage';
-import { CARD_WIDTHS } from '../lib/cld';
 
 const PortfolioPage: React.FC = () => {
   const { language, t, navigateTo, portfolioFilter, setPortfolioFilter } = useLanguage();
@@ -33,9 +31,9 @@ const PortfolioPage: React.FC = () => {
         
         {/* Navigation & Header */}
         <div className="flex flex-col mb-24 md:mb-32">
-          <button
+          <button 
             onClick={() => navigateTo('home')}
-            className="text-[11px] font-bold uppercase tracking-[0.35em] text-black/65 mb-10 hover:text-black transition-colors flex items-center gap-2 group w-fit"
+            className="text-[9px] font-bold uppercase tracking-[0.35em] text-black/45 mb-10 hover:text-black transition-colors flex items-center gap-2 group w-fit"
           >
             <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" /> 
             {t('portfolio.backHome')}
@@ -58,8 +56,8 @@ const PortfolioPage: React.FC = () => {
                 <button
                   key={cat.key}
                   onClick={() => handleFilterChange(cat.key as any)}
-                  className={`text-[13px] md:text-base font-bold uppercase tracking-[0.15em] md:tracking-[0.2em] transition-all relative ${
-                    filter === cat.key ? 'text-black' : 'text-black/65 hover:text-black'
+                  className={`text-xs md:text-base font-bold uppercase tracking-[0.15em] md:tracking-[0.2em] transition-all relative ${
+                    filter === cat.key ? 'text-black' : 'text-black/45 hover:text-black/60'
                   }`}
                 >
                   {cat.label}
@@ -74,28 +72,23 @@ const PortfolioPage: React.FC = () => {
 
         {/* 3-Column Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredProjects.map((project, idx) => (
-            <div
-              key={project.id}
+          {filteredProjects.map((project) => (
+            <div 
+              key={project.id} 
               onClick={() => navigateTo('project-detail', project.id)}
               className="group relative aspect-[4/5] bg-neutral-100 overflow-hidden cursor-pointer"
             >
-              <ResponsiveImage
-                src={project.imageUrl}
-                alt={language === 'en' ? project.titleEN : project.titleAM}
-                aspectRatio="4/5"
-                crop="fill"
-                sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
-                widths={CARD_WIDTHS}
-                baseWidth={480}
-                priority={idx < 3}
+              <img 
+                src={project.imageUrl} 
+                alt={language === 'en' ? project.titleEN : project.titleAM} 
+                loading="lazy"
                 className="w-full h-full object-cover object-top opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)]"
                 style={{ imageRendering: '-webkit-optimize-contrast' }}
               />
-
+              
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-700 flex flex-col justify-end p-10">
                 <div className="translate-y-4 group-hover:translate-y-0 transition-transform duration-700">
-                  <p className="text-sm md:text-base font-bold uppercase tracking-[0.4em] text-white/80 mb-3">
+                  <p className="text-sm md:text-base font-bold uppercase tracking-[0.4em] text-white/60 mb-3">
                     {language === 'en' ? project.categoryEN : project.categoryAM}
                   </p>
                   <h4 className="text-2xl md:text-3xl font-bold font-display tracking-architectural uppercase text-white leading-none">

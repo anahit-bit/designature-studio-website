@@ -65,14 +65,12 @@ const translations = {
     'nav.portfolio': 'Portfolio',
     'nav.services': 'Services',
     'nav.aiStudio': 'AI Studio',
+    'nav.aiConcepts': 'AI Concepts',
     'nav.pricing': 'Pricing',
     'nav.contact': 'Contact',
     'nav.blog': 'Blog',
     'nav.bookConsultation': 'Book a Consultation',
     'nav.freeConsultation': 'Free Consultation',
-    'nav.tryAiFree': 'Try AI free',
-    'nav.goToStudio': 'Go to Studio',
-    'nav.signOut': 'Sign out',
 
     // Hero
     'hero.studio2021': 'Designature Studio Est. 2021',
@@ -544,15 +542,13 @@ const translations = {
     'nav.studio': 'Ստուդիա',
     'nav.portfolio': 'Պորտֆոլիո',
     'nav.services': 'Ծառայություններ',
+    'nav.aiConcepts': 'AI Կոնցեպտներ',
     'nav.aiStudio': 'AI Ստուդիա',
     'nav.pricing': 'Գներ',
     'nav.contact': 'Կապ',
     'nav.blog': 'Բլոգ',
     'nav.bookConsultation': 'Ամրագրել Խորհրդատվություն',
     'nav.freeConsultation': 'Անվճար Խորհրդատվություն',
-    'nav.tryAiFree': 'Փորձել AI-ը անվճար',
-    'nav.goToStudio': 'Դեպի Ստուդիա',
-    'nav.signOut': 'Դուրս գալ',
     'nav.backToHome': 'Վերադառնալ Գլխավոր',
 
     // Hero

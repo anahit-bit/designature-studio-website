@@ -61,7 +61,7 @@ const PolicyModal: React.FC<PolicyModalProps> = ({ open, onClose }) => {
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 rounded-sm p-2 text-black/70 transition-colors hover:bg-black/5 hover:text-black"
+            className="shrink-0 rounded-sm p-2 text-black/50 transition-colors hover:bg-black/5 hover:text-black"
             aria-label={t('footer.close')}
           >
             <X className="h-5 w-5" />

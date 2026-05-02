@@ -4,7 +4,6 @@ import { MemoryRouter } from 'react-router-dom';
 import AIConceptsPage from '../components/AIConceptsPage';
 import SessionInactivityGuard from '../components/SessionInactivityGuard';
 import { LanguageProvider } from '../LanguageContext';
-import { AuthProvider } from '../AuthContext';
 
 // Mock GoogleGenAI
 vi.mock('@google/genai', () => ({
@@ -27,10 +26,8 @@ const renderWithProvider = (ui: React.ReactElement) => {
   return render(
     <MemoryRouter>
       <LanguageProvider>
-        <AuthProvider>
-          <SessionInactivityGuard />
-          {ui}
-        </AuthProvider>
+        <SessionInactivityGuard />
+        {ui}
       </LanguageProvider>
     </MemoryRouter>
   );
