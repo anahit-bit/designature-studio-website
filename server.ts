@@ -134,6 +134,15 @@ async function startServer() {
   // Raised to 100 MB to accommodate base64-encoded room + reference images in one request
   app.use(express.json({ limit: "100mb" }));
 
+  // ── Health checks for platform probes (Railway, etc.) ──
+  // Returns 200 with no work so the platform can confirm liveness fast.
+  app.get("/api/health", (_req, res) => {
+    res.status(200).type("text/plain").send("ok");
+  });
+  app.get("/healthz", (_req, res) => {
+    res.status(200).type("text/plain").send("ok");
+  });
+
   // ── Cloudinary Configuration ──
   cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
