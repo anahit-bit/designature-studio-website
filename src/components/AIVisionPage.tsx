@@ -4,6 +4,9 @@ import { ArrowLeft, Eye, Zap, Target, Shield, ArrowRight } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 import Header from './Header';
 import Footer from './Footer';
+import { cld, cldSrcSet, DEFAULT_WIDTHS } from '../lib/cld';
+
+const VISION_BG = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1770984801/3_eigbly.jpg';
 
 const AIVisionPage: React.FC = () => {
   const { t, navigateTo } = useLanguage();
@@ -40,9 +43,9 @@ const AIVisionPage: React.FC = () => {
           
           {/* Header Section */}
           <div className="flex flex-col mb-24 md:mb-40">
-            <button 
+            <button
               onClick={() => navigateTo('home')}
-              className="text-sm md:text-base font-bold uppercase tracking-widest text-white/55 mb-16 hover:text-white transition-colors flex items-center gap-2 group w-fit"
+              className="text-sm md:text-base font-bold uppercase tracking-widest text-white/75 mb-16 hover:text-white transition-colors flex items-center gap-2 group w-fit"
             >
               <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" /> 
               {t('ai.vision.back')}
@@ -52,7 +55,7 @@ const AIVisionPage: React.FC = () => {
               <h1 className="text-3xl md:text-5xl lg:text-[5.5vw] font-bold font-display tracking-architectural leading-[0.8] uppercase">
                 {t('ai.vision.hero')}
               </h1>
-              <p className="text-white/60 text-lg md:text-2xl font-light leading-relaxed max-w-xl italic border-l border-white/10 pl-8">
+              <p className="text-white/85 text-lg md:text-2xl font-light leading-relaxed max-w-xl italic border-l border-white/20 pl-8">
                 {t('ai.vision.heroDesc')}
               </p>
             </div>
@@ -69,7 +72,7 @@ const AIVisionPage: React.FC = () => {
                   <h3 className="text-2xl md:text-4xl font-bold font-display tracking-architectural uppercase">
                     {point.title}
                   </h3>
-                  <p className="text-white/55 text-base md:text-lg font-light leading-relaxed group-hover:text-white/70 transition-colors">
+                  <p className="text-white/80 text-base md:text-lg font-light leading-relaxed group-hover:text-white transition-colors">
                     {point.desc}
                   </p>
                 </div>
@@ -81,10 +84,15 @@ const AIVisionPage: React.FC = () => {
           <div className="relative py-40 md:py-60 flex flex-col items-center text-center overflow-hidden">
             <div className="absolute inset-0 z-0">
               <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black z-10" />
-              <img 
-                src="https://res.cloudinary.com/dys2k5muv/image/upload/v1770984801/3_eigbly.jpg"
-                className="w-full h-full object-cover opacity-20 grayscale"
+              <img
+                src={cld(VISION_BG, 1440)}
+                srcSet={cldSrcSet(VISION_BG, DEFAULT_WIDTHS)}
+                sizes="100vw"
+                width={1920} height={1080}
+                loading="lazy"
+                decoding="async"
                 alt="Architectural Vision"
+                className="w-full h-full object-cover opacity-20 grayscale"
               />
             </div>
             
@@ -94,7 +102,7 @@ const AIVisionPage: React.FC = () => {
               </h2>
               <button
                 onClick={() => navigateTo('studio')}
-                className="group inline-flex items-center gap-3 md:gap-8 text-[11px] md:text-base font-bold uppercase tracking-[0.15em] md:tracking-[0.6em] text-white/60 hover:text-white transition-all"
+                className="group inline-flex items-center gap-3 md:gap-8 text-[12px] md:text-base font-bold uppercase tracking-[0.15em] md:tracking-[0.6em] text-white/85 hover:text-white transition-all"
               >
                 <span className="border-b border-white/20 pb-2 group-hover:border-white transition-all whitespace-nowrap">
                   {t('ai.vision.cta')}
