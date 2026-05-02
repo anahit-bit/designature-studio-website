@@ -122,7 +122,7 @@ function getSession(token: string): string | null {
 // ─── Server ────────────────────────────────────────────────────────────────
 async function startServer() {
   const app = express();
-  const PORT = Number(process.env.NIXPACKS_NODEJS_PORT) || 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   // Raised to 100 MB to accommodate base64-encoded room + reference images in one request
   app.use(express.json({ limit: "100mb" }));
