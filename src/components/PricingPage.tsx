@@ -5,9 +5,6 @@ import Footer from './Footer';
 import CTABanner from './CTABanner';
 import { useLanguage } from '../LanguageContext';
 import { ArrowLeft } from 'lucide-react';
-import { cld, cldSrcSet, DEFAULT_WIDTHS } from '../lib/cld';
-
-const PRICING_HERO = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1772391549/3d_render_2_uoxs3r.jpg';
 
 const PricingPage: React.FC = () => {
   const { navigateTo, t } = useLanguage();
@@ -18,26 +15,17 @@ const PricingPage: React.FC = () => {
 
       {/* Hero */}
       <section className="relative w-full h-[85vh] md:h-screen overflow-hidden bg-black font-body">
-        <div className="absolute inset-0 z-0">
-          <img
-            src={cld(PRICING_HERO, 1440)}
-            srcSet={cldSrcSet(PRICING_HERO, DEFAULT_WIDTHS)}
-            sizes="100vw"
-            width={1920} height={1080}
-            loading="eager"
-            fetchPriority="high"
-            decoding="sync"
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover"
-            draggable={false}
-          />
+        <div
+          className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(https://res.cloudinary.com/dys2k5muv/image/upload/v1772391549/3d_render_2_uoxs3r.jpg)` }}
+        >
           <div className="absolute inset-0 bg-black/50 z-[1]" />
         </div>
         <div className="relative z-10 h-full max-w-[1800px] mx-auto px-8 md:px-16 flex flex-col justify-center pb-20">
           <div className="max-w-4xl pt-20">
             <button
               onClick={() => navigateTo('home')}
-              className="text-[11px] font-bold uppercase tracking-[0.35em] text-white/75 mb-10 hover:text-white transition-colors flex items-center gap-2 group w-fit"
+              className="text-[9px] font-bold uppercase tracking-[0.35em] text-white/55 mb-10 hover:text-white transition-colors flex items-center gap-2 group w-fit"
             >
               <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
               {t('pricing.backHome')}
@@ -45,7 +33,7 @@ const PricingPage: React.FC = () => {
             <h1 className="text-3xl md:text-5xl lg:text-[5.5vw] font-bold font-display text-white tracking-architectural leading-[0.85] uppercase mb-8 animate-in fade-in slide-in-from-bottom duration-1000">
               {t('pricing.hero')}
             </h1>
-            <p className="text-white/80 text-base md:text-lg font-light leading-relaxed animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
+            <p className="text-white/60 text-base font-light leading-relaxed animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
               {t('pricing.subtitle')}
             </p>
           </div>

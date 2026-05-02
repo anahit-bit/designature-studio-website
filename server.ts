@@ -19,14 +19,7 @@ import { generateConceptImage } from "./services/aiVision/imageGeneration.js";
 import { getCacheKey, getCachedBrief, setCachedBrief } from "./services/aiVision/styleCache.js";
 import { STYLE_NAME_TO_PRESET, ROOM_NAME_TO_TYPE } from "./services/aiVision/stylePresets.js";
 
-const FALLBACK_ENV_PATH = 'E:/Secrets/Website/.env';
-dotenv.config({
-  path: existsSync('.env')
-    ? '.env'
-    : existsSync(FALLBACK_ENV_PATH)
-    ? FALLBACK_ENV_PATH
-    : undefined,
-});
+dotenv.config();
 
 /** Free tier caps (UI + API). Paid tier can be added later with an `isPaid` flag. */
 const FREE_TIER_MAX_CONCEPTS = 3;
@@ -133,15 +126,6 @@ async function startServer() {
 
   // Raised to 100 MB to accommodate base64-encoded room + reference images in one request
   app.use(express.json({ limit: "100mb" }));
-
-  // ── Health checks for platform probes (Railway, etc.) ──
-  // Returns 200 with no work so the platform can confirm liveness fast.
-  app.get("/api/health", (_req, res) => {
-    res.status(200).type("text/plain").send("ok");
-  });
-  app.get("/healthz", (_req, res) => {
-    res.status(200).type("text/plain").send("ok");
-  });
 
   // ── Cloudinary Configuration ──
   cloudinary.config({
