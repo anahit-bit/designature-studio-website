@@ -3,13 +3,7 @@ import { ArrowLeft, ArrowRight, CheckCircle2, X, Download, AlertCircle, RefreshC
 import { motion, AnimatePresence } from 'framer-motion';
 // GoogleGenAI removed — AI Vision generation is now handled server-side.
 import { useLanguage } from '../LanguageContext';
-import {
-  getStoredToken,
-  storeToken,
-  clearSessionLocal,
-  touchActivity,
-  SESSION_EXPIRED_EVENT,
-} from '../sessionClient';
+import { useAuth, AuthUser } from '../AuthContext';
 import Header from './Header';
 import Footer from './Footer';
 import RoomAudit from './RoomAudit';
@@ -19,8 +13,6 @@ import ShoppingListShowcase from './ShoppingListShowcase';
 import RetailerLogoStrip from './RetailerLogoStrip';
 import { QUIZ_IMAGE_WEIGHTS, TIER_POINTS } from '../data/quizImageWeights';
 
-// ─── Google OAuth client ID ────────────────────────────────────────────────
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const QUIZ_VOTE_UNLOCK_MS = process.env.NODE_ENV === 'test' ? 10 : 1500;
 /** Free tier: max generated concepts in the UI row (paid tier can be raised later). */
 const FREE_TIER_MAX_CONCEPT_SLOTS = 3;
@@ -252,45 +244,9 @@ function styleToCloudinaryFolderName(style: string): string {
   return style.trim().replace(/\s+/g, '-');
 }
 
-// ─── Types ─────────────────────────────────────────────────────────────────
-interface AuthUser {
-  email: string;
-  name: string;
-  picture: string;
-  generationsLeft: number;
-  /** Free-tier shopping list runs remaining (from server) */
-  shoppingListsLeft?: number;
-  isPaid?: boolean;
-  /** Paid-tier audit quota (999 = unlimited) */
-  auditsLeft?: number;
-}
-
-// ─── Helpers ───────────────────────────────────────────────────────────────
-async function apiFetch(path: string, options: RequestInit = {}) {
-  const token = getStoredToken();
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string> || {}),
-  };
-  if (token) headers['x-session-token'] = token;
-  const res = await fetch(path, { ...options, headers });
-  return res;
-}
-
-// ─── Google Sign-In button component ───────────────────────────────────────
+// ─── Google Sign-In + AI Studio integration globals ───────────────────────
 declare global {
   interface Window {
-    google?: {
-      accounts: {
-        id: {
-          initialize: (config: any) => void;
-          renderButton: (el: HTMLElement, config: any) => void;
-          prompt: () => void;
-          cancel: () => void;
-          disableAutoSelect: () => void;
-        };
-      };
-    };
     aistudio?: {
       hasSelectedApiKey: () => Promise<boolean>;
       openSelectKey: () => Promise<void>;
@@ -302,10 +258,17 @@ declare global {
 const AIConceptsPage: React.FC = () => {
   const { language, t, navigateTo } = useLanguage();
 
-  // Auth state
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [googleScriptLoaded, setGoogleScriptLoaded] = useState(false);
+  // Auth state — lifted into AuthContext (A-001)
+  const {
+    user,
+    isLoading: authLoading,
+    googleReady,
+    signIn,
+    signOut,
+    setUser,
+    refreshQuota,
+    apiFetch,
+  } = useAuth();
   const prevUserRef = useRef<AuthUser | null>(null);
 
   // Scroll to top when session is restored on load (user goes null → authenticated)
@@ -671,64 +634,15 @@ const AIConceptsPage: React.FC = () => {
       .catch(() => {});
   }, [quizDone, quizResult[0]?.style]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Load Google script ──
+  // ── Clear page-local concept state when AuthContext clears the user ──
+  // (Google script load + /api/auth/me probe + SESSION_EXPIRED handling all live in AuthContext.)
   useEffect(() => {
-    // If script tag already exists
-    if (document.getElementById('google-gsi-script')) {
-      // If Google API already loaded, mark immediately
-      if (window.google?.accounts?.id) {
-        setGoogleScriptLoaded(true);
-      } else {
-        // Script tag exists but still loading — wait for it
-        const existing = document.getElementById('google-gsi-script') as HTMLScriptElement;
-        const prev = existing.onload;
-        existing.onload = (e) => {
-          if (prev) (prev as any)(e);
-          setGoogleScriptLoaded(true);
-        };
-      }
-      return;
-    }
-    const script = document.createElement('script');
-    script.id = 'google-gsi-script';
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    script.onload = () => setGoogleScriptLoaded(true);
-    document.head.appendChild(script);
-  }, []);
-
-  // ── Restore session on mount ──
-  useEffect(() => {
-    const token = getStoredToken();
-    if (!token) {
-      setAuthLoading(false);
-      return;
-    }
-    apiFetch('/api/auth/me')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data?.email) {
-          touchActivity();
-          setUser(data);
-        } else clearSessionLocal();
-      })
-      .catch(() => clearSessionLocal())
-      .finally(() => setAuthLoading(false));
-  }, []);
-
-  // ── Sync UI when app-wide inactivity guard clears the session ──
-  useEffect(() => {
-    const onExpired = () => {
-      setUser(null);
-      setResults([]);
-      setSessionConceptArchive([]);
-      setRoomImage(null);
-      setInspirationImages([]);
-    };
-    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
-    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
-  }, []);
+    if (user) return;
+    setResults([]);
+    setSessionConceptArchive([]);
+    setRoomImage(null);
+    setInspirationImages([]);
+  }, [user]);
 
   // ── Warn before leaving if unsaved concepts ──
   useEffect(() => {
@@ -742,41 +656,29 @@ const AIConceptsPage: React.FC = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [results, sessionConceptArchive]);
 
-  // ── Clear Google button when logged in ──
+  // ── Hide visible Google button when logged in ──
   useEffect(() => {
-    if (user) {
-      // Kill all Google sign-in UI
-      try {
-        if (window.google?.accounts?.id) {
-          window.google.accounts.id.cancel();
-          window.google.accounts.id.disableAutoSelect();
-        }
-      } catch {}
-      ['google-signin-btn', 'google-signin-btn-shop'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) { el.innerHTML = ''; el.style.display = 'none'; }
-      });
-    }
+    if (!user) return;
+    ['google-signin-btn', 'google-signin-btn-shop'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.innerHTML = '';
+        el.style.display = 'none';
+      }
+    });
   }, [user]);
 
-  // ── Initialize Google Sign-In ──
+  // ── Render the visible Google button into #google-signin-btn ──
+  // The Google API is initialized once globally by AuthContext; this effect just
+  // calls renderButton when the DOM target exists and we're logged out.
   useEffect(() => {
-    if (!googleScriptLoaded || authLoading || user) return;
-    if (!GOOGLE_CLIENT_ID) return;
+    if (!googleReady || authLoading || user) return;
 
-    // Retry until the DOM element actually exists — handles first-navigation timing
     let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     const tryRender = () => {
-      if (user) return; // user logged in while we were waiting
+      if (user) return;
       if (!window.google?.accounts?.id) return;
-
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleGoogleCallback,
-        auto_select: false,
-        cancel_on_tap_outside: true,
-      });
-
       const el = document.getElementById('google-signin-btn');
       if (el) {
         el.style.display = '';
@@ -788,61 +690,31 @@ const AIConceptsPage: React.FC = () => {
           width: '320',
         });
       } else if (attempts < 10) {
-        // DOM not ready yet — retry every 150ms up to 10 times
         attempts++;
-        t = setTimeout(tryRender, 150);
+        timer = setTimeout(tryRender, 150);
       }
     };
 
-    let t = setTimeout(tryRender, 100);
-    return () => clearTimeout(t);
-  }, [googleScriptLoaded, user, authLoading, GOOGLE_CLIENT_ID]);
+    timer = setTimeout(tryRender, 100);
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [googleReady, user, authLoading]);
 
-  // ── Handle Google credential response ──
-  const handleGoogleCallback = useCallback(async (response: { credential: string }) => {
-    try {
-      const res = await apiFetch('/api/auth/google', {
-        method: 'POST',
-        body: JSON.stringify({
-          credential: response.credential,
-          toolUsed: activeTool,
-          source: 'ai-concepts',
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Auth failed');
-      storeToken(data.token);
-      setUser(data.user);
-      try {
-        window.google?.accounts?.id?.cancel?.();
-        requestAnimationFrame(() => {
-          window.google?.accounts?.id?.cancel?.();
-        });
-      } catch {
-        /* ignore */
-      }
-    } catch (err) {
-      console.error('Google auth error:', err);
-      setError(t('ai.signInFailed'));
-    }
-  }, [t, activeTool]);
+  /** Trigger the Google sign-in flow with current page context. */
+  const triggerGoogleSignIn = useCallback(() => {
+    signIn({ toolUsed: activeTool, source: 'ai-concepts' });
+  }, [signIn, activeTool]);
 
-  // ── Logout ──
+  /** Sign out and clear page-local concept state. */
   const handleLogout = useCallback(async () => {
-    try {
-      window.google?.accounts?.id?.cancel?.();
-      window.google?.accounts?.id?.disableAutoSelect?.();
-    } catch {
-      /* gsi not loaded */
-    }
-    await apiFetch('/api/auth/logout', { method: 'POST' });
-    clearSessionLocal();
-    setUser(null);
+    await signOut();
+    // The user-cleared effect above also clears these, but we call here for immediacy.
     setResults([]);
     setSessionConceptArchive([]);
     setRoomImage(null);
     setInspirationImages([]);
-  }, []);
+  }, [signOut]);
 
   // ── Escape key for lightbox ──
   useEffect(() => {
@@ -1518,25 +1390,6 @@ const AIConceptsPage: React.FC = () => {
     }, 80);
   };
 
-  const triggerGoogleSignIn = () => {
-    // Create a temporary hidden button container and render Google Sign-In into it
-    const tmp = document.createElement('div');
-    tmp.style.position = 'absolute';
-    tmp.style.opacity = '0';
-    tmp.style.pointerEvents = 'none';
-    document.body.appendChild(tmp);
-    if (window.google?.accounts?.id) {
-      window.google.accounts.id.renderButton(tmp, {
-        theme: 'outline', size: 'large', width: '300',
-      });
-      setTimeout(() => {
-        const btn = tmp.querySelector('div[role=button]') as HTMLElement;
-        if (btn) btn.click();
-        setTimeout(() => document.body.removeChild(tmp), 1000);
-      }, 300);
-    }
-  };
-
   const handlePinterestPaste = async (url: string) => {
     if (!url.trim() || inspirationImages.length >= 5) return;
     if (!url.includes('pinterest.com') && !url.includes('pin.it')) {
@@ -2190,17 +2043,7 @@ const AIConceptsPage: React.FC = () => {
                 onProcessingChange={setAuditProcessing}
                 onAuditComplete={async () => {
                   setAuditComplete(true);
-                  try {
-                    const res = await apiFetch('/api/auth/me');
-                    if (res.ok) {
-                      const data = await res.json();
-                      setUser((prev) =>
-                        prev
-                          ? { ...prev, generationsLeft: data?.generationsLeft ?? prev.generationsLeft, shoppingListsLeft: data?.shoppingListsLeft ?? prev.shoppingListsLeft }
-                          : prev
-                      );
-                    }
-                  } catch {}
+                  await refreshQuota();
                 }}
                 onRequestLogin={triggerGoogleSignIn}
               />
