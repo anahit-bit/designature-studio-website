@@ -1,234 +1,244 @@
 import React from 'react';
 import { useLanguage } from '../../LanguageContext';
-import ResponsiveImage from '../ResponsiveImage';
-import { CARD_WIDTHS } from '../../lib/cld';
-
-interface TilePair {
-  before: string;
-  after: string;
-  badge: string;
-  badgeLive?: boolean;
-  delay: number;
-  alt: string;
-}
 
 /**
- * Section 5 — Dynamic AI tiles + right-side copy.
+ * AI Studio section — v3.1 (Hero Demo + Tool Strip + Roadmap Ribbon + CTAs).
  *
- * Each tile shows two stacked image layers (before / after). The "after"
- * layer crossfades on a 7s loop while a slow Ken Burns zoom (20s) is
- * applied to both layers. Stagger delays prevent the three tiles from
- * cycling in sync.
+ * Replaces the previous abstract 3-tile design. Reads as a real product
+ * showcase rather than decorative imagery: a big before/after split that
+ * cycles through transformations, then a 4-tool strip with tier pills, a
+ * roadmap ribbon hinting at platform ambition, and two CTAs.
  *
- * Production TODO: each tile should cycle through 3-4 different rooms,
- * not just one before/after pair. For this localhost build, single pair
- * per tile is OK — owner will add more variants later (S-013 follow-up).
+ * PRODUCTION TODO: replace the 12 gradient stops in the @keyframes
+ * `ds-demoaftercycle` with real Cloudinary URLs of AI Vision before/after
+ * pairs (use cld() helper). One stop ≈ 5s of dwell time inside the 60s loop.
  */
 const AIToolsSection: React.FC = () => {
   const { t, navigateTo } = useLanguage();
-
-  const tiles: TilePair[] = [
-    {
-      before: 'https://res.cloudinary.com/dys2k5muv/image/upload/before_1_tjwkhh.jpg',
-      after: 'https://res.cloudinary.com/dys2k5muv/image/upload/after_1_wp9msc.png',
-      badge: t('home.ai.badge.live'),
-      badgeLive: true,
-      delay: 0.5,
-      alt: 'AI Vision concept demo',
-    },
-    {
-      before: 'https://res.cloudinary.com/dys2k5muv/image/upload/before_2_s6lh97.png',
-      after: 'https://res.cloudinary.com/dys2k5muv/image/upload/after_2_aq8cwh.png',
-      badge: t('home.ai.badge.quiz'),
-      delay: 1,
-      alt: 'Style Quiz preview',
-    },
-    {
-      before: 'https://res.cloudinary.com/dys2k5muv/image/upload/before_3_mne2jp.jpg',
-      after: 'https://res.cloudinary.com/dys2k5muv/image/upload/after_3_f14b5p.jpg',
-      badge: t('home.ai.badge.list'),
-      delay: 3,
-      alt: 'Shopping List preview',
-    },
-  ];
 
   return (
     <section className="py-20 md:py-24 bg-[#0A0A0A] text-white">
       <style>{`
         @keyframes ds-kenburns {
-          0%   { transform: scale(1.0) translate(0, 0); }
-          50%  { transform: scale(1.08) translate(-1%, -0.5%); }
-          100% { transform: scale(1.0) translate(0, 0); }
+          0%, 100% { transform: scale(1); }
+          50%      { transform: scale(1.08); }
         }
-        @keyframes ds-crossfade {
-          0%, 38%   { opacity: 1; }
-          50%, 88%  { opacity: 0; }
-          100%      { opacity: 1; }
+        @keyframes ds-demoaftercycle {
+          0%     { background: linear-gradient(135deg, #c5a880 0%, #6e553a 100%); }
+          8.33%  { background: linear-gradient(135deg, #8da3b3 0%, #3e556a 100%); }
+          16.67% { background: linear-gradient(135deg, #d6c4a8 0%, #6b5d4a 100%); }
+          25%    { background: linear-gradient(135deg, #6b8e7e 0%, #2a3f37 100%); }
+          33.33% { background: linear-gradient(135deg, #2e3e5a 0%, #b39574 100%); }
+          41.67% { background: linear-gradient(135deg, #c97e5a 0%, #d6c4a8 100%); }
+          50%    { background: linear-gradient(135deg, #e0bdb6 0%, #8a8290 100%); }
+          58.33% { background: linear-gradient(135deg, #4a5359 0%, #8b6f4e 100%); }
+          66.67% { background: linear-gradient(135deg, #b07a4f 0%, #6b6557 100%); }
+          75%    { background: linear-gradient(135deg, #9bab8e 0%, #d6cdb8 100%); }
+          83.33% { background: linear-gradient(135deg, #d49b91 0%, #ddc7b7 100%); }
+          91.67% { background: linear-gradient(135deg, #5a3a3c 0%, #8b6f4e 100%); }
+          100%   { background: linear-gradient(135deg, #c5a880 0%, #6e553a 100%); }
         }
-        .ai-tile { position: relative; overflow: hidden; border-radius: 4px; background: #1a1a1a; }
-        .ai-tile-layer { position: absolute; inset: 0; }
-        .ai-tile-layer.before { animation: ds-kenburns 20s ease-in-out infinite; }
-        .ai-tile-layer.after  { animation: ds-kenburns 20s ease-in-out infinite, ds-crossfade 7s ease-in-out infinite; }
+        .ds-demo-before-img {
+          background: linear-gradient(135deg, #6a6a6a 0%, #2a2a2a 100%);
+          animation: ds-kenburns 24s ease-in-out infinite;
+        }
+        .ds-demo-after-img {
+          animation: ds-kenburns 24s ease-in-out infinite, ds-demoaftercycle 60s ease-in-out infinite;
+        }
         @media (prefers-reduced-motion: reduce) {
-          .ai-tile-layer.before, .ai-tile-layer.after { animation: none; }
+          .ds-demo-before-img, .ds-demo-after-img { animation: none !important; }
+          .ds-demo-after-img { background: linear-gradient(135deg, #c5a880 0%, #6e553a 100%); }
         }
       `}</style>
 
       <div className="max-w-[1280px] mx-auto px-6 md:px-14">
-        <div className="text-center mb-14 md:mb-16">
+        {/* ─── Layer 1 — Section header ─── */}
+        <div className="text-center max-w-[720px] mx-auto mb-14 md:mb-16">
           <div className="w-12 h-px bg-white/30 mx-auto mb-5" aria-hidden="true" />
-          <span className="inline-block text-[13px] md:text-[15px] font-bold uppercase tracking-[0.26em] text-white/65 mb-4">
+          <span className="inline-block text-[11px] md:text-[12px] font-bold uppercase tracking-[0.26em] text-[#0047AB] mb-4">
             {t('home.ai.eyebrow')}
           </span>
-          <h2 className="font-display font-normal leading-[1.1] tracking-[-0.01em] text-[34px] md:text-[44px] lg:text-[56px] max-w-[900px] mx-auto">
-            {t('home.ai.headline')}
+          <h2 className="font-display font-normal leading-[1.1] tracking-[-0.01em] text-[36px] md:text-[44px] lg:text-[56px]">
+            {t('home.ai.headline.l1')}
+            <br />
+            {t('home.ai.headline.l2')}
           </h2>
+          <p className="text-[16px] md:text-[17px] leading-[1.6] text-white/70 mt-5">
+            {t('home.ai.lead')}
+          </p>
         </div>
 
-        <div className="grid gap-12 lg:gap-16 lg:grid-cols-[1.5fr_1fr] items-stretch">
-          {/* Left: dynamic tile canvas */}
+        {/* ─── Layer 2 — Hero demo (before/after split) ─── */}
+        <div
+          className="relative grid gap-1 mb-14 rounded-lg overflow-hidden grid-cols-1 sm:grid-cols-2 h-[360px] sm:h-[420px] lg:h-[480px]"
+        >
+          {/* Before */}
+          <div className="relative overflow-hidden">
+            <span className="absolute top-5 left-5 z-[2] bg-black/70 text-white text-[10px] font-bold tracking-[0.3em] uppercase px-3.5 py-2 rounded-sm">
+              {t('home.ai.demoBefore')}
+            </span>
+            <div className="ds-demo-before-img absolute inset-0" aria-hidden="true" />
+          </div>
+          {/* After */}
+          <div className="relative overflow-hidden">
+            <span className="absolute top-5 left-5 z-[2] bg-[#0047AB] text-white text-[10px] font-bold tracking-[0.3em] uppercase px-3.5 py-2 rounded-sm">
+              {t('home.ai.demoAfter')}
+            </span>
+            <div className="ds-demo-after-img absolute inset-0" aria-hidden="true" />
+          </div>
+          {/* Divider — vertical on desktop, horizontal on mobile */}
           <div
-            className="grid gap-2 grid-cols-2 grid-rows-2"
-            style={{ height: 'clamp(380px, 56vh, 540px)' }}
+            className="pointer-events-none absolute z-[3] bg-white/[0.18] left-0 right-0 top-1/2 h-px sm:left-1/2 sm:right-auto sm:top-0 sm:bottom-0 sm:w-px sm:h-auto"
+            aria-hidden="true"
+          />
+        </div>
+
+        {/* ─── Layer 3 — Tool strip (4 cards) ─── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+          {/* Card 1 — Style Quiz */}
+          <a
+            href="/ai-concepts"
+            onClick={(e) => { e.preventDefault(); navigateTo('ai-concepts'); }}
+            className="group relative block bg-white/[0.04] border border-white/[0.08] rounded-md p-5 transition-all duration-300 hover:bg-white/[0.07] hover:-translate-y-1 hover:border-white/[0.18] no-underline text-inherit"
           >
-            {/* Feature tile spans 2 rows */}
-            <div className="ai-tile row-span-2">
-              <div className="ai-tile-layer before">
-                <ResponsiveImage
-                  src={tiles[0].before}
-                  alt={`${tiles[0].alt} (before)`}
-                  aspectRatio="4/5"
-                  crop="fill"
-                  sizes="(min-width: 1024px) 40vw, 50vw"
-                  widths={CARD_WIDTHS}
-                  baseWidth={640}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="ai-tile-layer after" style={{ animationDelay: '0s, 0.5s' }}>
-                <ResponsiveImage
-                  src={tiles[0].after}
-                  alt={`${tiles[0].alt} (after)`}
-                  aspectRatio="4/5"
-                  crop="fill"
-                  sizes="(min-width: 1024px) 40vw, 50vw"
-                  widths={CARD_WIDTHS}
-                  baseWidth={640}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <span
-                className="absolute top-4 left-4 z-[5] text-[10px] font-bold tracking-[0.25em] uppercase text-white px-3 py-1.5 rounded-full backdrop-blur-md"
-                style={{ background: tiles[0].badgeLive ? 'rgba(0,71,171,0.85)' : 'rgba(0,0,0,0.6)' }}
-              >
-                {tiles[0].badge}
-              </span>
-            </div>
-
-            {/* Tile 2 (top right) */}
-            <div className="ai-tile">
-              <div className="ai-tile-layer before">
-                <ResponsiveImage
-                  src={tiles[1].before}
-                  alt={`${tiles[1].alt} (before)`}
-                  aspectRatio="1/1"
-                  crop="fill"
-                  sizes="(min-width: 1024px) 20vw, 25vw"
-                  widths={CARD_WIDTHS}
-                  baseWidth={480}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="ai-tile-layer after" style={{ animationDelay: `0s, ${tiles[1].delay}s` }}>
-                <ResponsiveImage
-                  src={tiles[1].after}
-                  alt={`${tiles[1].alt} (after)`}
-                  aspectRatio="1/1"
-                  crop="fill"
-                  sizes="(min-width: 1024px) 20vw, 25vw"
-                  widths={CARD_WIDTHS}
-                  baseWidth={480}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <span
-                className="absolute top-4 left-4 z-[5] text-[10px] font-bold tracking-[0.25em] uppercase text-white px-3 py-1.5 rounded-full backdrop-blur-md"
-                style={{ background: 'rgba(0,0,0,0.6)' }}
-              >
-                {tiles[1].badge}
-              </span>
-            </div>
-
-            {/* Tile 3 (bottom right) */}
-            <div className="ai-tile">
-              <div className="ai-tile-layer before">
-                <ResponsiveImage
-                  src={tiles[2].before}
-                  alt={`${tiles[2].alt} (before)`}
-                  aspectRatio="1/1"
-                  crop="fill"
-                  sizes="(min-width: 1024px) 20vw, 25vw"
-                  widths={CARD_WIDTHS}
-                  baseWidth={480}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="ai-tile-layer after" style={{ animationDelay: `0s, ${tiles[2].delay}s` }}>
-                <ResponsiveImage
-                  src={tiles[2].after}
-                  alt={`${tiles[2].alt} (after)`}
-                  aspectRatio="1/1"
-                  crop="fill"
-                  sizes="(min-width: 1024px) 20vw, 25vw"
-                  widths={CARD_WIDTHS}
-                  baseWidth={480}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <span
-                className="absolute top-4 left-4 z-[5] text-[10px] font-bold tracking-[0.25em] uppercase text-white px-3 py-1.5 rounded-full backdrop-blur-md"
-                style={{ background: 'rgba(0,0,0,0.6)' }}
-              >
-                {tiles[2].badge}
-              </span>
-            </div>
-          </div>
-
-          {/* Right: copy */}
-          <div className="flex flex-col justify-center">
-            <h3 className="font-display font-normal leading-[1.15] text-[28px] md:text-[34px] lg:text-[42px] mb-6">
-              {t('home.ai.title')}
+            <div
+              className="w-full rounded-sm mb-4"
+              style={{ aspectRatio: '4/3', background: 'linear-gradient(135deg, #4a5a6a 0%, #1c2530 100%)' }}
+              aria-hidden="true"
+            />
+            <h3 className="font-display font-medium text-[26px] text-white mb-2 leading-[1.15]">
+              {t('home.ai.tools.styleQuiz.title')}
             </h3>
-            <p className="text-[16px] md:text-[17px] leading-[1.6] text-white/75 mb-9 max-w-[420px]">
-              {t('home.ai.desc')}
+            <p className="text-[14px] text-white/72 leading-[1.55] mb-4 min-h-[44px]">
+              {t('home.ai.tools.styleQuiz.desc')}
             </p>
+            <span className="flex items-center gap-2.5 border-t border-white/10 pt-3.5">
+              <span className="inline-block px-2.5 py-1 rounded-full text-[9px] font-bold tracking-[0.22em] uppercase bg-white/[0.12] text-white shrink-0">
+                {t('home.ai.tier.free')}
+              </span>
+              <span className="text-[10px] font-semibold tracking-[0.18em] uppercase text-white/65">
+                {t('home.ai.tier.unlimited')}
+              </span>
+            </span>
+          </a>
 
-            <ul className="mb-10">
-              {[
-                { name: t('home.ai.tool1.name'), tag: t('home.ai.tool1.tag') },
-                { name: t('home.ai.tool2.name'), tag: t('home.ai.tool2.tag') },
-                { name: t('home.ai.tool3.name'), tag: t('home.ai.tool3.tag') },
-              ].map((tool) => (
-                <li
-                  key={tool.name}
-                  className="flex justify-between items-center py-4 border-b border-white/15 text-[16px] md:text-[17px]"
-                >
-                  <span className="font-medium tracking-[0.04em]">{tool.name}</span>
-                  <span className="text-[13px] font-semibold tracking-[0.22em] uppercase text-white/65">
-                    {tool.tag}
-                  </span>
-                </li>
-              ))}
-            </ul>
+          {/* Card 2 — AI Vision (FEATURED) */}
+          <a
+            href="/ai-concepts"
+            onClick={(e) => { e.preventDefault(); navigateTo('ai-concepts'); }}
+            className="group relative block bg-[rgba(0,71,171,0.16)] border border-[rgba(0,71,171,0.55)] rounded-md p-5 transition-all duration-300 hover:bg-[rgba(0,71,171,0.22)] hover:-translate-y-1 hover:border-[rgba(0,71,171,0.75)] no-underline text-inherit"
+          >
+            <span className="absolute top-3 right-3 z-[2] bg-[#0047AB] text-white text-[9px] font-bold tracking-[0.22em] uppercase px-2.5 py-1.5 rounded-sm">
+              {t('home.ai.featuredBadge')}
+            </span>
+            <div
+              className="w-full rounded-sm mb-4"
+              style={{ aspectRatio: '4/3', background: 'linear-gradient(135deg, #c5a880 0%, #6b5d4a 100%)' }}
+              aria-hidden="true"
+            />
+            <h3 className="font-display font-medium text-[26px] text-white mb-2 leading-[1.15]">
+              {t('home.ai.tools.aiVision.title')}
+            </h3>
+            <p className="text-[14px] text-white/72 leading-[1.55] mb-4 min-h-[44px]">
+              {t('home.ai.tools.aiVision.desc')}
+            </p>
+            <span className="flex items-center gap-2.5 border-t border-white/10 pt-3.5">
+              <span className="inline-block px-2.5 py-1 rounded-full text-[9px] font-bold tracking-[0.22em] uppercase bg-[#0047AB] text-white shrink-0">
+                {t('home.ai.tier.free')}
+              </span>
+              <span className="text-[10px] font-semibold tracking-[0.18em] uppercase text-white/65">
+                {t('home.ai.tier.aiVisionCount')}
+              </span>
+            </span>
+          </a>
 
-            <button
-              type="button"
-              onClick={() => navigateTo('ai-concepts')}
-              className="inline-flex items-center text-[13px] font-bold tracking-[0.25em] uppercase text-white border-b border-white pb-3 w-fit hover:opacity-80 transition-opacity"
-            >
-              {t('home.ai.cta')}
-            </button>
-          </div>
+          {/* Card 3 — Shopping List */}
+          <a
+            href="/ai-concepts"
+            onClick={(e) => { e.preventDefault(); navigateTo('ai-concepts'); }}
+            className="group relative block bg-white/[0.04] border border-white/[0.08] rounded-md p-5 transition-all duration-300 hover:bg-white/[0.07] hover:-translate-y-1 hover:border-white/[0.18] no-underline text-inherit"
+          >
+            <div
+              className="w-full rounded-sm mb-4"
+              style={{ aspectRatio: '4/3', background: 'linear-gradient(135deg, #8b6f4e 0%, #3a2d1e 100%)' }}
+              aria-hidden="true"
+            />
+            <h3 className="font-display font-medium text-[26px] text-white mb-2 leading-[1.15]">
+              {t('home.ai.tools.shoppingList.title')}
+            </h3>
+            <p className="text-[14px] text-white/72 leading-[1.55] mb-4 min-h-[44px]">
+              {t('home.ai.tools.shoppingList.desc')}
+            </p>
+            <span className="flex items-center gap-2.5 border-t border-white/10 pt-3.5">
+              <span className="inline-block px-2.5 py-1 rounded-full text-[9px] font-bold tracking-[0.22em] uppercase bg-white/[0.12] text-white shrink-0">
+                {t('home.ai.tier.free')}
+              </span>
+              <span className="text-[10px] font-semibold tracking-[0.18em] uppercase text-white/65">
+                {t('home.ai.tier.shoppingListCount')}
+              </span>
+            </span>
+          </a>
+
+          {/* Card 4 — Room Audit (paid) */}
+          <a
+            href="/ai-concepts"
+            onClick={(e) => { e.preventDefault(); navigateTo('ai-concepts'); }}
+            className="group relative block bg-white/[0.04] border border-white/[0.08] rounded-md p-5 transition-all duration-300 hover:bg-white/[0.07] hover:-translate-y-1 hover:border-white/[0.18] no-underline text-inherit"
+          >
+            <div
+              className="w-full rounded-sm mb-4"
+              style={{ aspectRatio: '4/3', background: 'linear-gradient(135deg, #5a7080 0%, #2a3540 100%)' }}
+              aria-hidden="true"
+            />
+            <h3 className="font-display font-medium text-[26px] text-white mb-2 leading-[1.15]">
+              {t('home.ai.tools.roomAudit.title')}
+            </h3>
+            <p className="text-[14px] text-white/72 leading-[1.55] mb-4 min-h-[44px]">
+              {t('home.ai.tools.roomAudit.desc')}
+            </p>
+            <span className="flex items-center gap-2.5 border-t border-white/10 pt-3.5">
+              <span
+                className="inline-block px-2.5 py-1 rounded-full text-[9px] font-bold tracking-[0.22em] uppercase shrink-0"
+                style={{ background: 'rgba(255, 215, 0, 0.18)', color: '#f4d23a' }}
+              >
+                {t('home.ai.tier.designPlus')}
+              </span>
+              <span className="text-[10px] font-semibold tracking-[0.18em] uppercase text-white/65">
+                {t('home.ai.tier.roomAuditCount')}
+              </span>
+            </span>
+          </a>
+        </div>
+
+        {/* ─── Layer 4 — Roadmap ribbon ─── */}
+        <div
+          className="flex flex-wrap items-center gap-x-5 gap-y-2 mb-14 px-6 md:px-7 py-5 bg-white/[0.025] rounded-r-sm"
+          style={{ borderLeft: '2px solid #0047AB' }}
+        >
+          <span className="text-[10px] font-bold tracking-[0.32em] uppercase text-[#0047AB] whitespace-nowrap">
+            {t('home.ai.comingSoonLabel')}
+          </span>
+          <span className="text-[13px] leading-[1.6] text-white/60 tracking-[0.04em]">
+            {t('home.ai.comingSoonItems')}
+          </span>
+        </div>
+
+        {/* ─── Layer 5 — CTAs ─── */}
+        <div className="flex flex-wrap gap-6 justify-center items-center">
+          <button
+            type="button"
+            onClick={() => navigateTo('ai-concepts')}
+            className="inline-flex items-center gap-3 px-9 py-[18px] bg-[#0047AB] text-white text-[13px] font-bold tracking-[0.25em] uppercase rounded-sm transition-transform duration-200 hover:-translate-y-0.5"
+          >
+            {t('home.ai.cta.tryFree')}
+          </button>
+          <button
+            type="button"
+            onClick={() => navigateTo('ai-concepts')}
+            className="inline-flex items-center gap-3 px-4 py-[18px] text-white text-[13px] font-bold tracking-[0.25em] uppercase border-b border-white/60 transition-colors duration-200 hover:text-[#0047AB] hover:border-[#0047AB]"
+          >
+            {t('home.ai.cta.browseAll')}
+          </button>
         </div>
       </div>
     </section>
