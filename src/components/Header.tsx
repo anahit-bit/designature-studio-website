@@ -34,7 +34,7 @@ const Header: React.FC = () => {
     { name: t('nav.portfolio'), href: '#projects', page: 'portfolio', action: () => navigateTo('portfolio') },
     { name: t('nav.services'), href: '#services', page: 'services', action: () => navigateTo('services') },
     { name: t('nav.pricing'), href: '#pricing', page: 'pricing', action: () => navigateTo('pricing') },
-    { name: t('nav.aiConcepts'), href: '#ai-concepts', page: 'ai-concepts', action: () => navigateTo('ai-concepts'), isHighlight: true },
+    { name: t('nav.aiStudio'), href: '#ai-concepts', page: 'ai-concepts', action: () => navigateTo('ai-concepts'), isHighlight: true },
   ];
 
   const LanguageSwitcher = () => (
