@@ -26,8 +26,9 @@ const Header: React.FC = () => {
   }, [isAccountMenuOpen]);
 
   // On white-background pages without hero images, we need black text from the start.
-  // Studio page now has a hero, so it starts transparent like Home.
-  const isDarkTextNeeded = isScrolled || currentPage === 'portfolio' || currentPage === 'project-detail' || currentPage === 'services' || currentPage === 'studio' || currentPage === 'pricing' || currentPage === 'faq';
+  // S-013: Home now opens on a cream text band (not a dark image hero), so dark
+  // text is needed there too.
+  const isDarkTextNeeded = isScrolled || currentPage === 'home' || currentPage === 'portfolio' || currentPage === 'project-detail' || currentPage === 'services' || currentPage === 'studio' || currentPage === 'pricing' || currentPage === 'faq';
   const isAIConceptsPage = currentPage === 'ai-concepts';
   const useLightNav = isAIConceptsPage && !isScrolled;
 

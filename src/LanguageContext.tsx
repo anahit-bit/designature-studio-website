@@ -537,6 +537,83 @@ const translations = {
     'pricing.notify': 'Notify me when live',
     'pricing.notify.sent': "✓ Got it — we'll notify you",
     'pricing.notify.btn': 'Notify me',
+
+    // S-013 Home narrative — Section 1 (Hero text)
+    'home.hero.eyebrow': 'Interior Design Studio · Yerevan',
+    'home.hero.headline.l1': 'Bring us a space.',
+    'home.hero.headline.l2': "We'll bring it to life.",
+    'home.hero.tagline': "Apartments. Houses. Commercial. Designature Studio designs the space you've imagined — and the parts you haven't yet.",
+
+    // Section 2 (Image band)
+    'home.band.apartments.cat': 'Apartments',
+    'home.band.apartments.cap': 'Where you actually live.',
+    'home.band.houses.cat': 'Houses',
+    'home.band.houses.cap': 'From foundations to finishes.',
+    'home.band.commercial.cat': 'Commercial',
+    'home.band.commercial.cap': 'Where customers come back.',
+
+    // Section 3 (How it works)
+    'home.how.eyebrow': 'How we work together',
+    'home.how.headline': 'From first idea to finished space.',
+    'home.how.s1.title': 'Explore',
+    'home.how.s1.desc': 'Understand your taste and try ideas on your space — at your own pace.',
+    'home.how.s1.tools': 'Style Quiz · AI Vision · Portfolio',
+    'home.how.s2.title': 'Consult',
+    'home.how.s2.desc': "A 45-minute paid call with the studio. Review what you've explored, your space, your budget, your timeline.",
+    'home.how.s2.tools': 'Book · Calendly',
+    'home.how.s3.title': 'Design',
+    'home.how.s3.desc': 'The studio develops concepts, drawings, and material specifications tailored to your project.',
+    'home.how.s3.tools': 'Concept · Drawings · Materials',
+    'home.how.s4.title': 'Realize',
+    'home.how.s4.desc': "We oversee execution and handover. You move in to a space that's truly yours.",
+    'home.how.s4.tools': 'Execution · Handover',
+    'home.how.cta': "See what you'll receive →",
+    'home.how.ctaSub': 'Sample design brief · PDF',
+
+    // Section 4 (Featured Work)
+    'home.work.eyebrow': 'Selected projects',
+    'home.work.headline': 'Recent work.',
+    'home.work.cta': 'View full portfolio →',
+    'home.work.locApartmentYerevan': 'Apartment · Yerevan',
+    'home.work.locHouseYerevan': 'House · Yerevan',
+    'home.work.locApartment': 'Apartment',
+    'home.work.locHouse': 'House',
+    'home.work.locCommercial': 'Commercial',
+
+    // Section 5 (AI tools)
+    'home.ai.eyebrow': 'Tools at the studio',
+    'home.ai.headline': 'Explore your space before you ever pick up the phone.',
+    'home.ai.title': 'AI tools, designer-curated.',
+    'home.ai.desc': 'Designed for real projects. Use them to come to the consultation already aligned.',
+    'home.ai.tool1.name': 'Style Quiz',
+    'home.ai.tool1.tag': '2 minutes',
+    'home.ai.tool2.name': 'AI Vision',
+    'home.ai.tool2.tag': '3 free concepts',
+    'home.ai.tool3.name': 'Shopping List',
+    'home.ai.tool3.tag': 'PDF included',
+    'home.ai.cta': 'Try AI free →',
+    'home.ai.badge.live': 'Live · AI Vision',
+    'home.ai.badge.quiz': 'Style Quiz',
+    'home.ai.badge.list': 'Shopping List',
+
+    // Section 6 (Voices)
+    'home.voices.eyebrow': 'From our clients',
+    'home.voices.headline': 'Voices.',
+    'home.voices.q1': '"Designature Studio was great to work with — super responsive and delivered quality renderings. Highly recommended."',
+    'home.voices.q1source': 'Verified client',
+    'home.voices.q2': '"They iterate until the client is fully satisfied — something genuinely praiseworthy."',
+    'home.voices.q2source': 'Verified client',
+    'home.voices.q3': '"2nd project with Designature Studio and they did a great job. Thank you."',
+    'home.voices.q3source': 'Repeat client',
+
+    // Section 7 (Closing)
+    'home.closing.eyebrow': 'Your move',
+    'home.closing.headline': 'Two ways forward.',
+    'home.closing.sub': 'Explore your space with AI. Or sit down with the studio. Same destination.',
+    'home.closing.ai.label': 'Try AI free →',
+    'home.closing.ai.sub': 'Explore on your own',
+    'home.closing.book.label': 'Book a consultation →',
+    'home.closing.book.sub': 'Sit down with the studio',
   },
   am: {
     // Nav
@@ -1032,6 +1109,83 @@ const translations = {
     'ai.vision.point4.desc': 'Տեխնոլոգիաների կիրառում առօրյա գործերը հոգալու համար՝ ազատելով մեր ճարտարապետներին կենտրոնանալու բացառապետ Ձեր նախագծի հոգու և արվեստի վրա:',
     'ai.vision.quote': 'Գեղեցկության ալգորիթմը մարդն է:',
     'ai.vision.cta': 'Ծանոթացեք մեր փիլիսոփայությանը',
+
+    // S-013 Home narrative — Section 1 (Hero text) [AM placeholders — refine later]
+    'home.hero.eyebrow': 'Ինտերիեր Դիզայնի Ստուդիա · Երևան',
+    'home.hero.headline.l1': 'Բերեք մեզ տարածք:',
+    'home.hero.headline.l2': 'Մենք կկենդանացնենք այն:',
+    'home.hero.tagline': 'Բնակարաններ: Տներ: Կոմերցիոն: Designature Studio-ն նախագծում է Ձեր երազած տարածքը — և այն, ինչը դեռ չեք պատկերացրել:',
+
+    // Section 2 (Image band)
+    'home.band.apartments.cat': 'Բնակարաններ',
+    'home.band.apartments.cap': 'Որտեղ Դուք իրականում ապրում եք:',
+    'home.band.houses.cat': 'Տներ',
+    'home.band.houses.cap': 'Հիմքից մինչև վերջնական հարդարում:',
+    'home.band.commercial.cat': 'Կոմերցիոն',
+    'home.band.commercial.cap': 'Որտեղ հաճախորդները վերադառնում են:',
+
+    // Section 3 (How it works)
+    'home.how.eyebrow': 'Ինչպես ենք միասին աշխատում',
+    'home.how.headline': 'Առաջին գաղափարից մինչև պատրաստ տարածք:',
+    'home.how.s1.title': 'Ուսումնասիրել',
+    'home.how.s1.desc': 'Հասկացեք Ձեր ճաշակը և փորձեք գաղափարները Ձեր տարածքում՝ Ձեր սեփական ռիթմով:',
+    'home.how.s1.tools': 'Style Quiz · AI Vision · Պորտֆոլիո',
+    'home.how.s2.title': 'Խորհրդակցել',
+    'home.how.s2.desc': '45-րոպեանոց վճարովի զրույց ստուդիայի հետ: Քննարկում ենք Ձեր տարածքը, բյուջեն և ժամկետները:',
+    'home.how.s2.tools': 'Ամրագրել · Calendly',
+    'home.how.s3.title': 'Նախագծել',
+    'home.how.s3.desc': 'Ստուդիան մշակում է կոնցեպտներ, գծագրեր և նյութերի հստակ ընտրություն Ձեր նախագծի համար:',
+    'home.how.s3.tools': 'Կոնցեպտ · Գծագրեր · Նյութեր',
+    'home.how.s4.title': 'Իրականացնել',
+    'home.how.s4.desc': 'Մենք վերահսկում ենք իրականացումն ու հանձնումը: Դուք տեղափոխվում եք իսկապես Ձերն տարածք:',
+    'home.how.s4.tools': 'Իրականացում · Հանձնում',
+    'home.how.cta': 'Տեսնել ինչ եք ստանալու →',
+    'home.how.ctaSub': 'Դիզայնի օրինակելի փաստաթուղթ · PDF',
+
+    // Section 4 (Featured Work)
+    'home.work.eyebrow': 'Ընտրված նախագծեր',
+    'home.work.headline': 'Վերջին աշխատանքները:',
+    'home.work.cta': 'Տեսնել ամբողջ պորտֆոլիոն →',
+    'home.work.locApartmentYerevan': 'Բնակարան · Երևան',
+    'home.work.locHouseYerevan': 'Տուն · Երևան',
+    'home.work.locApartment': 'Բնակարան',
+    'home.work.locHouse': 'Տուն',
+    'home.work.locCommercial': 'Կոմերցիոն',
+
+    // Section 5 (AI tools)
+    'home.ai.eyebrow': 'Ստուդիայի գործիքները',
+    'home.ai.headline': 'Ուսումնասիրեք Ձեր տարածքը՝ նախքան հեռախոսը վերցնելը:',
+    'home.ai.title': 'AI գործիքներ՝ դիզայների ձեռքով ընտրված:',
+    'home.ai.desc': 'Նախագծված են իրական պրոյեկտների համար: Օգտագործեք դրանք, որպեսզի խորհրդակցության գաք արդեն պատրաստված:',
+    'home.ai.tool1.name': 'Style Quiz',
+    'home.ai.tool1.tag': '2 րոպե',
+    'home.ai.tool2.name': 'AI Vision',
+    'home.ai.tool2.tag': '3 անվճար կոնցեպտ',
+    'home.ai.tool3.name': 'Shopping List',
+    'home.ai.tool3.tag': 'PDF ներառված',
+    'home.ai.cta': 'Փորձել AI-ը անվճար →',
+    'home.ai.badge.live': 'Live · AI Vision',
+    'home.ai.badge.quiz': 'Style Quiz',
+    'home.ai.badge.list': 'Shopping List',
+
+    // Section 6 (Voices)
+    'home.voices.eyebrow': 'Մեր հաճախորդներից',
+    'home.voices.headline': 'Կարծիքներ:',
+    'home.voices.q1': '«Designature Studio-ի հետ աշխատանքը հիանալի էր — արագ արձագանքող և որակյալ ռենդերներ: Շատ եմ խորհուրդ տալիս:»',
+    'home.voices.q1source': 'Հաստատված հաճախորդ',
+    'home.voices.q2': '«Նրանք իտերացիա են անում մինչև հաճախորդը լիարժեք գոհ լինի — իսկապես գովելի մոտեցում:»',
+    'home.voices.q2source': 'Հաստատված հաճախորդ',
+    'home.voices.q3': '«2-րդ նախագիծն է Designature Studio-ի հետ, և կրկին հիանալի աշխատանք: Շնորհակալություն:»',
+    'home.voices.q3source': 'Կրկին դիմած հաճախորդ',
+
+    // Section 7 (Closing)
+    'home.closing.eyebrow': 'Ձեր քայլը',
+    'home.closing.headline': 'Երկու ճանապարհ:',
+    'home.closing.sub': 'Ուսումնասիրեք Ձեր տարածքը AI-ով: Կամ նստեք ստուդիայի հետ: Միևնույն նպատակը:',
+    'home.closing.ai.label': 'Փորձել AI-ը անվճար →',
+    'home.closing.ai.sub': 'Ուսումնասիրել ինքնուրույն',
+    'home.closing.book.label': 'Ամրագրել խորհրդատվություն →',
+    'home.closing.book.sub': 'Նստել ստուդիայի հետ',
   }
 };
 
