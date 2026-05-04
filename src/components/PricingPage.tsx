@@ -25,7 +25,7 @@ const PricingPage: React.FC = () => {
           <div className="max-w-4xl pt-20">
             <button
               onClick={() => navigateTo('home')}
-              className="text-[9px] font-bold uppercase tracking-[0.35em] text-white/55 mb-10 hover:text-white transition-colors flex items-center gap-2 group w-fit"
+              className="text-[11px] font-bold uppercase tracking-[0.35em] text-white/75 mb-10 hover:text-white transition-colors flex items-center gap-2 group w-fit"
             >
               <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
               {t('pricing.backHome')}
@@ -33,7 +33,7 @@ const PricingPage: React.FC = () => {
             <h1 className="text-3xl md:text-5xl lg:text-[5.5vw] font-bold font-display text-white tracking-architectural leading-[0.85] uppercase mb-8 animate-in fade-in slide-in-from-bottom duration-1000">
               {t('pricing.hero')}
             </h1>
-            <p className="text-white/60 text-base font-light leading-relaxed animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
+            <p className="text-white/80 text-base md:text-lg font-light leading-relaxed animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
               {t('pricing.subtitle')}
             </p>
           </div>
