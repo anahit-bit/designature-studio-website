@@ -3,6 +3,7 @@ import { X, Download, Play, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getServices } from '../constants';
 import { useLanguage } from '../LanguageContext';
 import { SERVICE_ASSETS } from '../serviceAssets';
+import { cld, cldSrcSet } from '../lib/cld';
 
 type PopupState =
   | { type: 'closed' }
@@ -85,7 +86,10 @@ const ImagePopup: React.FC<{ urls: string[]; onClose: () => void }> = ({ urls, o
       <div className="relative w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
         <img
           key={urls[currentIndex]}
-          src={urls[currentIndex]}
+          src={cld(urls[currentIndex], 1440)}
+          srcSet={cldSrcSet(urls[currentIndex], [768, 1024, 1440, 1920])}
+          sizes="100vw"
+          decoding="async"
           alt="Service example"
           className="max-w-full max-h-full object-contain shadow-2xl animate-in fade-in zoom-in-95 duration-500"
         />
