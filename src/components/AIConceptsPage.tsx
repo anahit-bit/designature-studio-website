@@ -412,7 +412,13 @@ const AIConceptsPage: React.FC = () => {
   const [seenQuizImages, setSeenQuizImages] = useState<Set<string>>(new Set());
   /** Unseen images of the top result style — shown in result gallery */
   const [resultGalleryImages, setResultGalleryImages] = useState<string[]>([]);
-  const [activeTool, setActiveTool] = useState<'quiz' | 'vision' | 'shopping' | 'audit'>('quiz');
+  // Initial tool can be deep-linked from the home AI section via URL hash
+  // (e.g. /ai-concepts#vision). Falls back to the default 'quiz' otherwise.
+  const [activeTool, setActiveTool] = useState<'quiz' | 'vision' | 'shopping' | 'audit'>(() => {
+    if (typeof window === 'undefined') return 'quiz';
+    const h = window.location.hash.replace(/^#/, '');
+    return h === 'vision' || h === 'shopping' || h === 'audit' || h === 'quiz' ? h : 'quiz';
+  });
   const [auditComplete, setAuditComplete] = useState(false);
   const [auditProcessing, setAuditProcessing] = useState(false);
   const [quizRooms, setQuizRooms] = useState<QuizRooms>(QUIZ_ROOMS_FALLBACK);
@@ -425,6 +431,26 @@ const AIConceptsPage: React.FC = () => {
   useLayoutEffect(() => {
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     window.scrollTo({ top: 0, left: 0 });
+  }, []);
+
+  // ── Deep-link scroll — when arriving at /ai-concepts#<tool>, scroll the
+  // tool grid into view. Runs post-paint after a delay so it wins the race
+  // against LanguageContext's pathname-change scroll-to-top + the local
+  // useLayoutEffect's scroll-to-top. We use raw scrollTo with the element's
+  // measured offsetTop because smooth scrollIntoView gets clobbered by the
+  // earlier scroll-to-top calls in some browsers; manual scrollTo at the
+  // right time is reliable.
+  useEffect(() => {
+    const h = window.location.hash.replace(/^#/, '');
+    const isToolHash = h === 'quiz' || h === 'vision' || h === 'shopping' || h === 'audit';
+    if (!isToolHash) return;
+    const t = setTimeout(() => {
+      const el = document.getElementById('ai-concepts-tools');
+      if (!el) return;
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({ top, behavior: 'instant' });
+    }, 200);
+    return () => clearTimeout(t);
   }, []);
 
   // ── Reset all ephemeral tool state on every mount (fresh start on load / navigate) ──
