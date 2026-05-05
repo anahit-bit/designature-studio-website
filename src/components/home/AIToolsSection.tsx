@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../LanguageContext';
 import { cld, cldSrcSet, CARD_WIDTHS } from '../../lib/cld';
 
@@ -20,6 +21,7 @@ import { cld, cldSrcSet, CARD_WIDTHS } from '../../lib/cld';
  */
 const AIToolsSection: React.FC = () => {
   const { t, navigateTo } = useLanguage();
+  const navigate = useNavigate();
 
   // 4 paired before/after rooms used for the demo. Add more later by
   // appending IDs and another `.demo-layer-N` rule + animation-delay below.
@@ -123,8 +125,8 @@ const AIToolsSection: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
           {/* Card 1 — Style Quiz */}
           <a
-            href="/ai-concepts"
-            onClick={(e) => { e.preventDefault(); navigateTo('ai-concepts'); }}
+            href="/ai-concepts#quiz"
+            onClick={(e) => { e.preventDefault(); navigate('/ai-concepts#quiz'); }}
             className="group relative block bg-white/[0.04] border border-white/[0.08] rounded-md p-5 transition-all duration-300 hover:bg-white/[0.07] hover:-translate-y-1 hover:border-white/[0.18] no-underline text-inherit"
           >
             <img
@@ -155,8 +157,8 @@ const AIToolsSection: React.FC = () => {
 
           {/* Card 2 — AI Vision (FEATURED) */}
           <a
-            href="/ai-concepts"
-            onClick={(e) => { e.preventDefault(); navigateTo('ai-concepts'); }}
+            href="/ai-concepts#vision"
+            onClick={(e) => { e.preventDefault(); navigate('/ai-concepts#vision'); }}
             className="group relative block bg-[rgba(0,71,171,0.16)] border border-[rgba(0,71,171,0.55)] rounded-md p-5 transition-all duration-300 hover:bg-[rgba(0,71,171,0.22)] hover:-translate-y-1 hover:border-[rgba(0,71,171,0.75)] no-underline text-inherit"
           >
             <span className="absolute top-3 right-3 z-[2] bg-[#0047AB] text-white text-[9px] font-bold tracking-[0.22em] uppercase px-2.5 py-1.5 rounded-sm">
@@ -190,8 +192,8 @@ const AIToolsSection: React.FC = () => {
 
           {/* Card 3 — Shopping List */}
           <a
-            href="/ai-concepts"
-            onClick={(e) => { e.preventDefault(); navigateTo('ai-concepts'); }}
+            href="/ai-concepts#shopping"
+            onClick={(e) => { e.preventDefault(); navigate('/ai-concepts#shopping'); }}
             className="group relative block bg-white/[0.04] border border-white/[0.08] rounded-md p-5 transition-all duration-300 hover:bg-white/[0.07] hover:-translate-y-1 hover:border-white/[0.18] no-underline text-inherit"
           >
             <img
@@ -222,8 +224,8 @@ const AIToolsSection: React.FC = () => {
 
           {/* Card 4 — Room Audit (paid) */}
           <a
-            href="/ai-concepts"
-            onClick={(e) => { e.preventDefault(); navigateTo('ai-concepts'); }}
+            href="/ai-concepts#audit"
+            onClick={(e) => { e.preventDefault(); navigate('/ai-concepts#audit'); }}
             className="group relative block bg-white/[0.04] border border-white/[0.08] rounded-md p-5 transition-all duration-300 hover:bg-white/[0.07] hover:-translate-y-1 hover:border-white/[0.18] no-underline text-inherit"
           >
             <img
