@@ -1,20 +1,38 @@
 import React from 'react';
 import { useLanguage } from '../../LanguageContext';
+import { cld, cldSrcSet, CARD_WIDTHS } from '../../lib/cld';
 
 /**
- * AI Studio section — v3.1 (Hero Demo + Tool Strip + Roadmap Ribbon + CTAs).
+ * AI Studio section — v3.1 with real Cloudinary imagery.
  *
- * Replaces the previous abstract 3-tile design. Reads as a real product
- * showcase rather than decorative imagery: a big before/after split that
- * cycles through transformations, then a 4-tool strip with tier pills, a
- * roadmap ribbon hinting at platform ambition, and two CTAs.
+ * Hero demo (Layer 2) is a side-by-side before/after split. Each side
+ * stacks 4 absolutely-positioned image layers and crossfades between them
+ * on a 48s loop (one layer dwells for 21% of the cycle, fades out across
+ * 4%, stays hidden for 71%, fades back in across 4%). The 4 layers are
+ * staggered by -12s each, which keeps the cycle smooth and the
+ * before/after sides synchronized across the 4 paired rooms.
  *
- * PRODUCTION TODO: replace the 12 gradient stops in the @keyframes
- * `ds-demoaftercycle` with real Cloudinary URLs of AI Vision before/after
- * pairs (use cld() helper). One stop ≈ 5s of dwell time inside the 60s loop.
+ * Both sides also run a slow Ken Burns zoom (24s) on top of the fade.
+ * `prefers-reduced-motion` disables every animation.
+ *
+ * Tool card thumbnails (Layer 3) use the same cld() helper so they get
+ * f_auto/q_auto AVIF/WebP delivery and a srcset for the actual card width.
  */
 const AIToolsSection: React.FC = () => {
   const { t, navigateTo } = useLanguage();
+
+  // 4 paired before/after rooms used for the demo. Add more later by
+  // appending IDs and another `.demo-layer-N` rule + animation-delay below.
+  const beforeIds = ['before_2_k7jvg3', 'before_3_blruai', 'before_4_vpepte', 'before_6_s9l1sb'];
+  const afterIds = ['after_2_kzpr3p', 'after_3_z5x2lg', 'after_4_xgalms', 'after_6_gmuyn5'];
+
+  // Tool card thumbnails — one real "after" image per card.
+  const toolThumbs = {
+    styleQuiz: 'after_1_khwg9g',
+    aiVision: 'after_2_kzpr3p',
+    shoppingList: 'after_3_z5x2lg',
+    roomAudit: 'after_4_xgalms',
+  };
 
   return (
     <section className="py-20 md:py-24 bg-[#0A0A0A] text-white">
@@ -23,31 +41,27 @@ const AIToolsSection: React.FC = () => {
           0%, 100% { transform: scale(1); }
           50%      { transform: scale(1.08); }
         }
-        @keyframes ds-demoaftercycle {
-          0%     { background: linear-gradient(135deg, #c5a880 0%, #6e553a 100%); }
-          8.33%  { background: linear-gradient(135deg, #8da3b3 0%, #3e556a 100%); }
-          16.67% { background: linear-gradient(135deg, #d6c4a8 0%, #6b5d4a 100%); }
-          25%    { background: linear-gradient(135deg, #6b8e7e 0%, #2a3f37 100%); }
-          33.33% { background: linear-gradient(135deg, #2e3e5a 0%, #b39574 100%); }
-          41.67% { background: linear-gradient(135deg, #c97e5a 0%, #d6c4a8 100%); }
-          50%    { background: linear-gradient(135deg, #e0bdb6 0%, #8a8290 100%); }
-          58.33% { background: linear-gradient(135deg, #4a5359 0%, #8b6f4e 100%); }
-          66.67% { background: linear-gradient(135deg, #b07a4f 0%, #6b6557 100%); }
-          75%    { background: linear-gradient(135deg, #9bab8e 0%, #d6cdb8 100%); }
-          83.33% { background: linear-gradient(135deg, #d49b91 0%, #ddc7b7 100%); }
-          91.67% { background: linear-gradient(135deg, #5a3a3c 0%, #8b6f4e 100%); }
-          100%   { background: linear-gradient(135deg, #c5a880 0%, #6e553a 100%); }
+        @keyframes ds-layerfade {
+          0%   { opacity: 1; }
+          21%  { opacity: 1; }
+          25%  { opacity: 0; }
+          96%  { opacity: 0; }
+          100% { opacity: 1; }
         }
-        .ds-demo-before-img {
-          background: linear-gradient(135deg, #6a6a6a 0%, #2a2a2a 100%);
-          animation: ds-kenburns 24s ease-in-out infinite;
+        .ds-demo-layer {
+          position: absolute;
+          inset: 0;
+          background-size: cover;
+          background-position: center;
+          animation: ds-layerfade 48s ease-in-out infinite, ds-kenburns 24s ease-in-out infinite;
         }
-        .ds-demo-after-img {
-          animation: ds-kenburns 24s ease-in-out infinite, ds-demoaftercycle 60s ease-in-out infinite;
-        }
+        .ds-demo-layer-1 { animation-delay:   0s,    0s; }
+        .ds-demo-layer-2 { animation-delay: -12s,   -6s; }
+        .ds-demo-layer-3 { animation-delay: -24s,  -12s; }
+        .ds-demo-layer-4 { animation-delay: -36s,  -18s; }
         @media (prefers-reduced-motion: reduce) {
-          .ds-demo-before-img, .ds-demo-after-img { animation: none !important; }
-          .ds-demo-after-img { background: linear-gradient(135deg, #c5a880 0%, #6e553a 100%); }
+          .ds-demo-layer { animation: none !important; }
+          .ds-demo-layer:not(:first-child) { opacity: 0; }
         }
       `}</style>
 
@@ -68,23 +82,35 @@ const AIToolsSection: React.FC = () => {
           </p>
         </div>
 
-        {/* ─── Layer 2 — Hero demo (before/after split) ─── */}
-        <div
-          className="relative grid gap-1 mb-14 rounded-lg overflow-hidden grid-cols-1 sm:grid-cols-2 h-[360px] sm:h-[420px] lg:h-[480px]"
-        >
-          {/* Before */}
+        {/* ─── Layer 2 — Hero demo (4-layer crossfade per side) ─── */}
+        <div className="relative grid gap-1 mb-14 rounded-lg overflow-hidden grid-cols-1 sm:grid-cols-2 h-[360px] sm:h-[420px] lg:h-[480px]">
+          {/* Before side */}
           <div className="relative overflow-hidden">
             <span className="absolute top-5 left-5 z-[2] bg-black/70 text-white text-[10px] font-bold tracking-[0.3em] uppercase px-3.5 py-2 rounded-sm">
               {t('home.ai.demoBefore')}
             </span>
-            <div className="ds-demo-before-img absolute inset-0" aria-hidden="true" />
+            {beforeIds.map((id, i) => (
+              <div
+                key={id}
+                className={`ds-demo-layer ds-demo-layer-${i + 1}`}
+                style={{ backgroundImage: `url(${cld(id, 1200)})` }}
+                aria-hidden="true"
+              />
+            ))}
           </div>
-          {/* After */}
+          {/* After side */}
           <div className="relative overflow-hidden">
             <span className="absolute top-5 left-5 z-[2] bg-[#0047AB] text-white text-[10px] font-bold tracking-[0.3em] uppercase px-3.5 py-2 rounded-sm">
               {t('home.ai.demoAfter')}
             </span>
-            <div className="ds-demo-after-img absolute inset-0" aria-hidden="true" />
+            {afterIds.map((id, i) => (
+              <div
+                key={id}
+                className={`ds-demo-layer ds-demo-layer-${i + 1}`}
+                style={{ backgroundImage: `url(${cld(id, 1200)})` }}
+                aria-hidden="true"
+              />
+            ))}
           </div>
           {/* Divider — vertical on desktop, horizontal on mobile */}
           <div
@@ -93,7 +119,7 @@ const AIToolsSection: React.FC = () => {
           />
         </div>
 
-        {/* ─── Layer 3 — Tool strip (4 cards) ─── */}
+        {/* ─── Layer 3 — Tool strip (4 cards with real thumbs) ─── */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
           {/* Card 1 — Style Quiz */}
           <a
@@ -101,10 +127,15 @@ const AIToolsSection: React.FC = () => {
             onClick={(e) => { e.preventDefault(); navigateTo('ai-concepts'); }}
             className="group relative block bg-white/[0.04] border border-white/[0.08] rounded-md p-5 transition-all duration-300 hover:bg-white/[0.07] hover:-translate-y-1 hover:border-white/[0.18] no-underline text-inherit"
           >
-            <div
-              className="w-full rounded-sm mb-4"
-              style={{ aspectRatio: '4/3', background: 'linear-gradient(135deg, #4a5a6a 0%, #1c2530 100%)' }}
-              aria-hidden="true"
+            <img
+              src={cld(toolThumbs.styleQuiz, 600)}
+              srcSet={cldSrcSet(toolThumbs.styleQuiz, CARD_WIDTHS)}
+              sizes="(min-width: 1024px) 300px, (min-width: 768px) 50vw, 100vw"
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="w-full rounded-sm mb-4 object-cover"
+              style={{ aspectRatio: '4/3' }}
             />
             <h3 className="font-display font-medium text-[26px] text-white mb-2 leading-[1.15]">
               {t('home.ai.tools.styleQuiz.title')}
@@ -131,10 +162,15 @@ const AIToolsSection: React.FC = () => {
             <span className="absolute top-3 right-3 z-[2] bg-[#0047AB] text-white text-[9px] font-bold tracking-[0.22em] uppercase px-2.5 py-1.5 rounded-sm">
               {t('home.ai.featuredBadge')}
             </span>
-            <div
-              className="w-full rounded-sm mb-4"
-              style={{ aspectRatio: '4/3', background: 'linear-gradient(135deg, #c5a880 0%, #6b5d4a 100%)' }}
-              aria-hidden="true"
+            <img
+              src={cld(toolThumbs.aiVision, 600)}
+              srcSet={cldSrcSet(toolThumbs.aiVision, CARD_WIDTHS)}
+              sizes="(min-width: 1024px) 300px, (min-width: 768px) 50vw, 100vw"
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="w-full rounded-sm mb-4 object-cover"
+              style={{ aspectRatio: '4/3' }}
             />
             <h3 className="font-display font-medium text-[26px] text-white mb-2 leading-[1.15]">
               {t('home.ai.tools.aiVision.title')}
@@ -158,10 +194,15 @@ const AIToolsSection: React.FC = () => {
             onClick={(e) => { e.preventDefault(); navigateTo('ai-concepts'); }}
             className="group relative block bg-white/[0.04] border border-white/[0.08] rounded-md p-5 transition-all duration-300 hover:bg-white/[0.07] hover:-translate-y-1 hover:border-white/[0.18] no-underline text-inherit"
           >
-            <div
-              className="w-full rounded-sm mb-4"
-              style={{ aspectRatio: '4/3', background: 'linear-gradient(135deg, #8b6f4e 0%, #3a2d1e 100%)' }}
-              aria-hidden="true"
+            <img
+              src={cld(toolThumbs.shoppingList, 600)}
+              srcSet={cldSrcSet(toolThumbs.shoppingList, CARD_WIDTHS)}
+              sizes="(min-width: 1024px) 300px, (min-width: 768px) 50vw, 100vw"
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="w-full rounded-sm mb-4 object-cover"
+              style={{ aspectRatio: '4/3' }}
             />
             <h3 className="font-display font-medium text-[26px] text-white mb-2 leading-[1.15]">
               {t('home.ai.tools.shoppingList.title')}
@@ -185,10 +226,15 @@ const AIToolsSection: React.FC = () => {
             onClick={(e) => { e.preventDefault(); navigateTo('ai-concepts'); }}
             className="group relative block bg-white/[0.04] border border-white/[0.08] rounded-md p-5 transition-all duration-300 hover:bg-white/[0.07] hover:-translate-y-1 hover:border-white/[0.18] no-underline text-inherit"
           >
-            <div
-              className="w-full rounded-sm mb-4"
-              style={{ aspectRatio: '4/3', background: 'linear-gradient(135deg, #5a7080 0%, #2a3540 100%)' }}
-              aria-hidden="true"
+            <img
+              src={cld(toolThumbs.roomAudit, 600)}
+              srcSet={cldSrcSet(toolThumbs.roomAudit, CARD_WIDTHS)}
+              sizes="(min-width: 1024px) 300px, (min-width: 768px) 50vw, 100vw"
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="w-full rounded-sm mb-4 object-cover"
+              style={{ aspectRatio: '4/3' }}
             />
             <h3 className="font-display font-medium text-[26px] text-white mb-2 leading-[1.15]">
               {t('home.ai.tools.roomAudit.title')}
