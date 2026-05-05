@@ -7,6 +7,11 @@ import { ArrowLeft } from 'lucide-react';
  * receive →" links here. S-014 will replace this stub with the full page
  * (sample design brief PDF, deliverable previews, etc.).
  */
+const SAMPLE_REQUEST_SUBJECT = 'Sample request — Designature Studio';
+const SAMPLE_REQUEST_BODY = "Hi Anahit,\n\nCould you please send me a sample of the deliverables I'd receive from a Designature Studio project? I'd love to see what to expect.\n\nThank you!";
+const SAMPLE_REQUEST_MAILTO =
+  `mailto:anahit@designature.studio?subject=${encodeURIComponent(SAMPLE_REQUEST_SUBJECT)}&body=${encodeURIComponent(SAMPLE_REQUEST_BODY)}`;
+
 const DeliverablesPage: React.FC = () => {
   const navigate = useNavigate();
 
@@ -25,7 +30,7 @@ const DeliverablesPage: React.FC = () => {
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <a
-            href="mailto:hello@designature.studio?subject=Sample design brief"
+            href={SAMPLE_REQUEST_MAILTO}
             className="inline-flex items-center justify-center px-8 py-4 bg-[#0A0A0A] text-white text-[12px] font-bold tracking-[0.25em] uppercase hover:opacity-85 transition-opacity"
           >
             Request a sample
