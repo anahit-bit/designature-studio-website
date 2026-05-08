@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "start": "tsx server.ts",
-    "build": "vite build",
+    "build": "tsx scripts/build-sitemap.ts && vite build",
     "preview": "vite preview",
     "lint": "tsc && vite build",
     "test": "vitest run",

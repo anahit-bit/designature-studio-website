@@ -4,22 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>Designature Studio | Interior Design Yerevan</title>
-    <meta name="description" content="Designature Studio is a premier interior design and architectural firm in Yerevan, Armenia. We create exceptional spaces that blend aesthetics with functionality through innovative design and AI-powered concepts." />
-    
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://designature.studio" />
-    <meta property="og:title" content="Designature Studio | Interior Design Yerevan" />
-    <meta property="og:description" content="Premier interior design and architectural firm in Yerevan, Armenia. Exceptional spaces blending aesthetics with functionality through innovative design." />
-    <meta property="og:image" content="https://res.cloudinary.com/dys2k5muv/image/upload/v1772532381/1_h9ofqr.jpg" />
 
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://designature.studio" />
-    <meta property="twitter:title" content="Designature Studio | Interior Design Yerevan" />
-    <meta property="twitter:description" content="Premier interior design and architectural firm in Yerevan, Armenia. Exceptional spaces blending aesthetics with functionality through innovative design." />
-    <meta property="twitter:image" content="https://res.cloudinary.com/dys2k5muv/image/upload/v1772532381/1_h9ofqr.jpg" />
+    <!-- Per-route <title>, <meta name="description">, canonical, and OG tags
+         are injected at runtime by <SeoHead> (see src/components/SeoHead.tsx),
+         which uses React 19 native head hoisting. We deliberately do NOT ship
+         a static <title> or <meta name="description"> here — React 19 appends
+         rather than replaces, so a static fallback would create duplicate tags
+         in the rendered DOM and confuse crawlers. JS-running crawlers (Google,
+         Bing) get the per-route values via React. Non-JS social crawlers
+         (Facebook/LinkedIn/WhatsApp/Slack) get only the og:image fallback below
+         until S-019 (server-side meta injection) lands in Phase 2. -->
+    <meta property="og:image" content="https://res.cloudinary.com/dys2k5muv/image/upload/v1772532381/1_h9ofqr.jpg" />
 
     <!-- Preconnect to image CDN so the hero image handshake starts in parallel with HTML parsing. -->
     <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
