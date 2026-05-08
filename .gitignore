@@ -13,5 +13,8 @@ users.json
 # Claude Code worktrees (nested git repos, local-only)
 .claude/worktrees/
 
+# Per-developer Claude Code permission allowlist (machine-specific)
+.claude/settings.local.json
+
 # Sanity Studio lives in its own repo at E:/Business/Claude/Portfolio/studio
 studio/
