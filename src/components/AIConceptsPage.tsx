@@ -1837,7 +1837,8 @@ const AIConceptsPage: React.FC = () => {
            below it. For ALL quiz steps (rating and result) drop the viewport
            height chain — other tools keep flex-grow + minHeight:'75vh'. */}
       <div className={`flex flex-col border-t border-black/10${!authLoading && !user && (activeTool === 'vision' || activeTool === 'shopping') ? ' hidden' : ''}${activeTool !== 'quiz' ? ' flex-grow' : ''}`}>
-        <div className={`max-w-[1600px] w-full mx-auto px-8 md:px-16 flex flex-col lg:flex-row${activeTool !== 'quiz' ? ' flex-grow' : ''}`} style={activeTool !== 'quiz' ? { minHeight: '75vh' } : undefined}>
+        {/* Quiz uses full-bleed sections (its own backgrounds + paddings); other tools keep the centered 1600px shell. */}
+        <div className={activeTool === 'quiz' ? 'w-full' : 'max-w-[1600px] w-full mx-auto px-8 md:px-16 flex flex-col lg:flex-row flex-grow'} style={activeTool !== 'quiz' ? { minHeight: '75vh' } : undefined}>
 
         {/* ════ LEFT SIDEBAR ════ */}
         <div id="ai-vision-panel" className={`w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 border-r border-black/8 flex flex-col${activeTool === 'shopping' || activeTool === 'quiz' || activeTool === 'audit' || (!user && activeTool === 'vision') ? ' hidden' : ''}`}>
