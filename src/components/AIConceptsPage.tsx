@@ -2812,6 +2812,17 @@ const AIConceptsPage: React.FC = () => {
                           className="absolute inset-0 w-full h-full object-contain"
                           loading="eager"
                         />
+                        {/* Loading shimmer — masks Cloudinary cold-start latency on first visit. */}
+                        <div
+                          aria-hidden="true"
+                          className={`absolute inset-0 transition-opacity duration-500 pointer-events-none ${quizImageReady ? 'opacity-0' : 'opacity-100'}`}
+                          style={{
+                            background: 'linear-gradient(110deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.10) 45%, rgba(255,255,255,0.04) 90%)',
+                            backgroundSize: '200% 100%',
+                            animation: 'quizShimmer 1.6s ease-in-out infinite',
+                          }}
+                        />
+                        <style>{`@keyframes quizShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
 
                         {/* Top overlay bar */}
                         <div className="absolute top-0 left-0 right-0 flex flex-wrap items-center justify-between gap-3 px-5 md:px-7 py-5 bg-gradient-to-b from-black/65 to-transparent text-white z-[5]">
