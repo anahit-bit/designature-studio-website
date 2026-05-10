@@ -2819,11 +2819,9 @@ const AIConceptsPage: React.FC = () => {
                 {/* ── State 4 — Results (cinematic DNA reveal) ── */}
                 {quizDone && (() => {
                   const top = quizResult[0];
-                  const styleHeroUrl = top
-                    ? `https://res.cloudinary.com/dys2k5muv/image/upload/c_fill,g_auto,w_1920/${(quizRooms[top.style]?.[0]?.url || '').match(/Quiz\/[^?]+/)?.[0] || ''}`
-                    : '';
-                  const fallbackHero = top ? (quizRooms[top.style]?.[0]?.url || '') : '';
-                  const heroBg = (top && quizRooms[top.style]?.[0]?.url) ? styleHeroUrl : fallbackHero;
+                  const rawHero = top ? (quizRooms[top.style]?.[0]?.url || '') : '';
+                  // Smart-cropped wide hero via cld helper (c_fill, g_auto, 16:9).
+                  const heroBg = rawHero ? cld(rawHero, 1920, { crop: 'fill', aspectRatio: '16/9' }) : '';
                   const desc = top ? STYLE_DESCRIPTIONS[top.style] : null;
                   return (
                     <>
