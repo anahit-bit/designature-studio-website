@@ -32,7 +32,9 @@
       "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\nGET /faq -> \" http://localhost:3000/portfolio/37)",
       "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3000/faq)",
       "Bash(curl -s http://localhost:3000/portfolio/29)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(echo \"EXIT=$?\")"
     ]
   }
 }

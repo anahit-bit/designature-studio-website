@@ -419,6 +419,20 @@ const AIConceptsPage: React.FC = () => {
     const h = window.location.hash.replace(/^#/, '');
     return h === 'vision' || h === 'shopping' || h === 'audit' || h === 'quiz' ? h : 'quiz';
   });
+  // ── Direction B drawer + toast + share + save-modal state ──
+  const [quizDrawerOpen, setQuizDrawerOpen] = useState(false);
+  const [quizToast, setQuizToast] = useState<string | null>(null);
+  const [quizSharedView, setQuizSharedView] = useState(false);
+  const [quizSaveModalOpen, setQuizSaveModalOpen] = useState(false);
+  const quizToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showQuizToast = useCallback((msg: string) => {
+    setQuizToast(msg);
+    if (quizToastTimerRef.current) clearTimeout(quizToastTimerRef.current);
+    quizToastTimerRef.current = setTimeout(() => setQuizToast(null), 3200);
+  }, []);
+
+  // ── Quiz state persistence (survives navigation away/back) ──
+  const QUIZ_PERSIST_KEY = 'ds_quiz_results_v1';
   const [auditComplete, setAuditComplete] = useState(false);
   const [auditProcessing, setAuditProcessing] = useState(false);
   const [quizRooms, setQuizRooms] = useState<QuizRooms>(QUIZ_ROOMS_FALLBACK);
@@ -1320,6 +1334,10 @@ const AIConceptsPage: React.FC = () => {
     setLovedRooms([]);
     setSeenQuizImages(new Set());
     setResultGalleryImages([]);
+    // Clear persisted results on explicit Retake.
+    if (typeof window !== 'undefined') {
+      try { sessionStorage.removeItem(QUIZ_PERSIST_KEY); } catch { /* sessionStorage blocked */ }
+    }
   };
 
   const handleApplyQuizStyle = () => {
@@ -1336,6 +1354,171 @@ const AIConceptsPage: React.FC = () => {
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 50);
   };
+
+  // Share URL uses window.location.origin so it works correctly in production
+  // (https://www.designature.studio) AND lets us test the URL-parsing logic
+  // in localhost incognito tabs on the same machine.
+  //
+  // Cross-device friend testing requires deployment to production first.
+  /** Build a shareable URL with DNA + percentages baked in. */
+  const buildShareUrl = useCallback((): string => {
+    if (typeof window === 'undefined' || quizResult.length === 0) return '';
+    const primary = quizResult[0]?.style ?? '';
+    const secondary = quizResult[1]?.style ?? '';
+    const dna = secondary
+      ? `${primary.replace(/\s+/g, '-')}-${secondary.replace(/\s+/g, '-')}`
+      : primary.replace(/\s+/g, '-');
+    const pcts = quizResult.slice(0, 5).map(r => Math.round(r.pct)).join('-');
+    const params = new URLSearchParams({ dna, pcts });
+    return `${window.location.origin}/ai-concepts?${params.toString()}`;
+  }, [quizResult]);
+
+  /** Share handler — copies URL or invokes native share on mobile. */
+  const handleShareDna = useCallback(async () => {
+    const url = buildShareUrl();
+    if (!url) return;
+    const title = 'My design DNA — Designature Studio';
+    const text = quizResult[0]
+      ? `My design style is ${quizResult[0].style}${quizResult[1] ? ` + ${quizResult[1].style}` : ''}.`
+      : 'Check out my design DNA.';
+    try {
+      if (typeof navigator !== 'undefined' && (navigator as any).share && /Mobi|Android/i.test(navigator.userAgent)) {
+        await (navigator as any).share({ title, text, url });
+        return;
+      }
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      }
+      showQuizToast(t('ai.quiz.shareToast'));
+    } catch {
+      // user cancelled native share or clipboard blocked — silently no-op
+    }
+  }, [buildShareUrl, quizResult, showQuizToast, t]);
+
+  /** Save handler — paid users get a toast, free users get a confirmation modal. */
+  const handleSaveStyle = useCallback(() => {
+    if (!user?.isPaid) {
+      setQuizSaveModalOpen(true);
+      return;
+    }
+    console.log('save style', quizResult[0]?.style);
+    showQuizToast(t('ai.quiz.savedToast'));
+  }, [user?.isPaid, quizResult, showQuizToast, t]);
+
+  // ── On-load handler: parse ?dna=...&pcts=... URL params and skip to results ──
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const dna = params.get('dna');
+    const pcts = params.get('pcts');
+    if (!dna || !pcts) return;
+    const styleSlugs = dna.split('-').reduce<string[]>((acc, part) => {
+      // Re-stitch hyphenated styles like "Mid-Century" by checking the canonical STYLES list.
+      const candidate = acc.length > 0 ? `${acc[acc.length - 1]} ${part}` : part;
+      const candHyphen = acc.length > 0 ? `${acc[acc.length - 1]}-${part}` : part;
+      const match = STYLES.find(s => s === candidate || s === candHyphen || s === part);
+      if (match && match !== acc[acc.length - 1]) {
+        if (acc.length > 0 && (match === candidate || match === candHyphen)) {
+          acc[acc.length - 1] = match;
+        } else {
+          acc.push(match);
+        }
+      } else {
+        acc.push(part);
+      }
+      return acc;
+    }, []);
+    const validStyles = styleSlugs.filter(s => STYLES.includes(s));
+    const pctVals = pcts.split('-').map(n => parseInt(n, 10)).filter(n => !isNaN(n));
+    if (validStyles.length === 0 || pctVals.length === 0) return;
+    const synthResult: { style: string; pct: number }[] = [];
+    const used = new Set<string>();
+    for (let i = 0; i < pctVals.length; i++) {
+      let style = validStyles[i];
+      if (!style || used.has(style)) {
+        style = STYLES.find(s => !used.has(s)) ?? STYLES[0];
+      }
+      used.add(style);
+      synthResult.push({ style, pct: pctVals[i] });
+    }
+    setQuizResult(synthResult);
+    setQuizDone(true);
+    setQuizSharedView(true);
+    setActiveTool('quiz');
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Clear shared-view state and start a fresh quiz for the user. */
+  const exitSharedView = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      const url = `${window.location.origin}${window.location.pathname}#quiz`;
+      window.history.replaceState({}, '', url);
+      try { sessionStorage.removeItem(QUIZ_PERSIST_KEY); } catch { /* sessionStorage blocked */ }
+    }
+    setQuizSharedView(false);
+    handleQuizReset();
+  }, [handleQuizReset]);
+
+  // ── Persist results to sessionStorage so navigation away/back keeps the DNA visible ──
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!quizDone || quizResult.length === 0 || quizSharedView) return;
+    try {
+      sessionStorage.setItem(QUIZ_PERSIST_KEY, JSON.stringify({
+        quizResult,
+        quizVotes,
+        lovedRooms,
+        ts: Date.now(),
+      }));
+    } catch {
+      // sessionStorage blocked / quota — non-fatal
+    }
+  }, [quizDone, quizResult, quizVotes, lovedRooms, quizSharedView]);
+
+  // ── Restore persisted results on mount when no shared-link params present ──
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('dna') && params.get('pcts')) return; // shared view takes precedence
+    try {
+      const raw = sessionStorage.getItem(QUIZ_PERSIST_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed?.quizResult) || parsed.quizResult.length === 0) return;
+      setQuizResult(parsed.quizResult);
+      if (parsed.quizVotes) setQuizVotes(parsed.quizVotes);
+      if (Array.isArray(parsed.lovedRooms)) setLovedRooms(parsed.lovedRooms);
+      setQuizDone(true);
+    } catch {
+      // bad JSON / blocked — ignore
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Clear persisted results on logout (transition from signed-in to signed-out only,
+  //     NOT on initial mount where user is null from the start) ──
+  const wasSignedInRef = useRef(false);
+  useEffect(() => {
+    if (user) {
+      wasSignedInRef.current = true;
+      return;
+    }
+    if (!wasSignedInRef.current) return;
+    wasSignedInRef.current = false;
+    if (typeof window === 'undefined') return;
+    try { sessionStorage.removeItem(QUIZ_PERSIST_KEY); } catch { /* blocked */ }
+  }, [user]);
+
+  // ── Escape-key closes save-style modal + drawer ──
+  useEffect(() => {
+    if (!quizSaveModalOpen && !quizDrawerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setQuizSaveModalOpen(false);
+        setQuizDrawerOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [quizSaveModalOpen, quizDrawerOpen]);
 
   const handleShoppingSearch = async (overrideItems?: any[], forceStandalone?: boolean) => {
     const imageToAnalyse = forceStandalone
@@ -1546,9 +1729,9 @@ const AIConceptsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── TOOL SELECTOR GRID ── */}
+      {/* ── TOOL SELECTOR GRID (full-bleed) ── */}
       <div>
-        <div className="max-w-[1600px] mx-auto px-8 md:px-16">
+        <div>
           <div id="ai-concepts-tools" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 border-y-2 border-black">
 
             {/* Tool 1 — Style Quiz (LIVE) */}
@@ -1687,9 +1870,9 @@ const AIConceptsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Active tool bar */}
-        <div id="active-tool-bar" className="max-w-[1600px] mx-auto px-8 md:px-16">
-          <div className="bg-[#0047AB] flex items-center justify-between px-6 py-3">
+        {/* Active tool bar (full-bleed cobalt stripe) */}
+        <div id="active-tool-bar">
+          <div className="bg-[#0047AB] flex items-center justify-between px-8 md:px-16 py-3">
             <div>
               <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/75 mb-0.5">
                 {activeTool === 'quiz' ? '01' : activeTool === 'vision' ? '02' : activeTool === 'shopping' ? '03' : '04'} — {t('ai.nowActive')}
@@ -1730,7 +1913,8 @@ const AIConceptsPage: React.FC = () => {
            below it. For ALL quiz steps (rating and result) drop the viewport
            height chain — other tools keep flex-grow + minHeight:'75vh'. */}
       <div className={`flex flex-col border-t border-black/10${!authLoading && !user && (activeTool === 'vision' || activeTool === 'shopping') ? ' hidden' : ''}${activeTool !== 'quiz' ? ' flex-grow' : ''}`}>
-        <div className={`max-w-[1600px] w-full mx-auto px-8 md:px-16 flex flex-col lg:flex-row${activeTool !== 'quiz' ? ' flex-grow' : ''}`} style={activeTool !== 'quiz' ? { minHeight: '75vh' } : undefined}>
+        {/* Quiz uses full-bleed sections (its own backgrounds + paddings); other tools keep the centered 1600px shell. */}
+        <div className={activeTool === 'quiz' ? 'w-full' : 'max-w-[1600px] w-full mx-auto px-8 md:px-16 flex flex-col lg:flex-row flex-grow'} style={activeTool !== 'quiz' ? { minHeight: '75vh' } : undefined}>
 
         {/* ════ LEFT SIDEBAR ════ */}
         <div id="ai-vision-panel" className={`w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 border-r border-black/8 flex flex-col${activeTool === 'shopping' || activeTool === 'quiz' || activeTool === 'audit' || (!user && activeTool === 'vision') ? ' hidden' : ''}`}>
@@ -2464,376 +2648,552 @@ const AIConceptsPage: React.FC = () => {
               {activeTool === 'quiz' && (
               <div id="style-quiz-section" className="flex flex-col bg-white">
 
-                {/* Style gallery — logged-out state */}
-                {!authLoading && !user && (
-                  <div className="flex flex-col items-center px-8 md:px-12 py-10 gap-7 w-full max-w-2xl mx-auto">
-                    {/* Header */}
-                    <div className="text-center">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.35em] text-black/65 mb-3">How It Works</p>
-                      <h3 className="font-display text-2xl md:text-3xl font-bold tracking-tight text-black mb-2">
-                        Which of these feels like home?
-                      </h3>
-                      <p className="text-sm text-black/60 leading-relaxed">
-                        Your taste has a name. We'll help you find it.
+                {/* ── State 1 — Logged-out hero (Direction B) ── */}
+                {!authLoading && !user && !quizSharedView && !quizDone && (
+                  <div className="bg-white py-16 md:py-20">
+                    <div className="px-8 md:px-16">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#0047AB] mb-5">Style Quiz</p>
+                      <h1 className="font-display font-normal tracking-tight leading-[1.05] text-black mb-5 max-w-[720px]" style={{ fontSize: 'clamp(40px, 5vw, 64px)' }}>
+                        {t('ai.quiz.heroTitle')}
+                      </h1>
+                      <p className="text-[17px] text-black/75 max-w-[560px] leading-relaxed mb-12">
+                        {t('ai.quiz.heroLead')}
                       </p>
+
+                      {/* 2-col layout: voting preview + 3-step explainer */}
+                      <div className="grid lg:grid-cols-[1.4fr_1fr] gap-10 lg:gap-14 items-stretch">
+                        {/* LEFT — paused voting preview */}
+                        <div className="relative bg-black overflow-hidden shadow-[0_28px_60px_rgba(0,0,0,0.18)]" style={{ aspectRatio: '4/3' }}>
+                          <img
+                            src={cld('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', 1024)}
+                            srcSet={cldSrcSet('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', [640, 960, 1280])}
+                            sizes="(min-width: 1024px) 60vw, 100vw"
+                            alt="Quiz preview"
+                            className="absolute inset-0 w-full h-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                          {/* Top overlay */}
+                          <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-5 py-4 bg-gradient-to-b from-black/55 to-transparent text-white">
+                            <div className="flex items-center gap-3">
+                              <span className="text-[10px] font-bold uppercase tracking-[0.22em]">Room 03 / 18</span>
+                              <div className="w-[110px] h-[3px] bg-white/25 rounded-full overflow-hidden">
+                                <div className="h-full bg-[#0047AB]" style={{ width: '17%' }} />
+                              </div>
+                            </div>
+                            <div className="inline-flex items-center gap-2 bg-white/95 text-black px-3 py-1.5 rounded-full">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#9E5E41]" />
+                              <span className="text-[10px] font-bold uppercase tracking-[0.22em]">Favorites · 2</span>
+                            </div>
+                          </div>
+                          {/* Style tag */}
+                          <div className="absolute top-[70px] left-5 bg-white/95 text-black px-3 py-1.5">
+                            <span className="text-[10px] font-bold uppercase tracking-[0.22em]">Mid-Century</span>
+                          </div>
+                          {/* Bottom overlay */}
+                          <div className="absolute bottom-0 left-0 right-0 px-5 pt-12 pb-5 bg-gradient-to-t from-black/70 to-transparent">
+                            <div className="flex gap-2.5">
+                              <button type="button" onClick={triggerGoogleSignIn} className="flex-1 py-3 text-center text-[10px] font-bold uppercase tracking-[0.22em] text-white border border-white/70 bg-transparent backdrop-blur-sm">Not for me</button>
+                              <button type="button" onClick={triggerGoogleSignIn} className="flex-1 py-3 text-center text-[10px] font-bold uppercase tracking-[0.22em] text-white border border-white/70 bg-transparent backdrop-blur-sm">Skip</button>
+                              <button type="button" onClick={triggerGoogleSignIn} className="flex-1 py-3 text-center text-[10px] font-bold uppercase tracking-[0.22em] text-black bg-white border border-white">✦ Love it</button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* RIGHT — 3 steps + CTA */}
+                        <div className="flex flex-col gap-10 justify-between">
+                          <div className="flex flex-col gap-7">
+                            {[
+                              { n: '1', title: t('ai.quiz.step1Title'), body: t('ai.quiz.step1Body') },
+                              { n: '2', title: t('ai.quiz.step2Title'), body: t('ai.quiz.step2Body') },
+                              { n: '3', title: t('ai.quiz.step3Title'), body: t('ai.quiz.step3Body') },
+                            ].map(s => (
+                              <div key={s.n} className="grid grid-cols-[36px_1fr] gap-5 items-start">
+                                <div className="w-8 h-8 rounded-full border-[1.5px] border-[#0047AB] text-[#0047AB] font-display text-lg flex items-center justify-center">{s.n}</div>
+                                <div>
+                                  <h4 className="text-[13px] font-bold uppercase tracking-[0.18em] text-black mb-1.5">{s.title}</h4>
+                                  <p className="text-[14px] text-black/75 leading-relaxed">{s.body}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="flex flex-col gap-3.5 border-t border-[#DAD2C3] pt-7">
+                            <button
+                              type="button"
+                              onClick={triggerGoogleSignIn}
+                              className="inline-flex items-center justify-center gap-3 px-7 py-[18px] bg-[#0047AB] text-white text-[12px] font-bold uppercase tracking-[0.25em] hover:bg-[#003d99] transition-colors"
+                            >
+                              {t('ai.quiz.signInCta')} →
+                            </button>
+                            <p className="text-[11px] text-black/65 uppercase tracking-[0.18em] text-center">
+                              {t('ai.quiz.heroMeta')}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* 3×3 style grid — curated one image per style */}
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {([
-                        { style: 'Japandi',      url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774954444/9_ti0qtx.png' },
-                        { style: 'Modern',       url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950422/3_2_be2ubi.jpg' },
-                        { style: 'Mid-Century',  url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg' },
-                        { style: 'Bohemian',     url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774949549/1_piprtp.png' },
-                        { style: 'Coastal',      url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950150/10_ezeifi.jpg' },
-                        { style: 'Industrial',   url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774954018/6_xibejv.png' },
-                        { style: 'Art Deco',     url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775713416/19_eify7o.png' },
-                        { style: 'Rustic',       url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950455/11_hjofyz.jpg' },
-                        { style: 'Transitional', url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774940230/1_jxbeef.png' },
-                      ] as const).map(({ style, url }) => (
-                        <button key={style} onClick={triggerGoogleSignIn} className="group focus:outline-none flex flex-col">
-                          <div style={{ aspectRatio: '1' }} className="overflow-hidden w-full">
+                    {/* 8-style preview strip */}
+                    <div className="px-8 md:px-16 mt-20">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-black/65 mb-4">{t('ai.quiz.eightStyles')}</p>
+                      <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
+                        {([
+                          { style: 'Japandi',      url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774954444/9_ti0qtx.png' },
+                          { style: 'Modern',       url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950422/3_2_be2ubi.jpg' },
+                          { style: 'Mid-Century',  url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg' },
+                          { style: 'Bohemian',     url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774949549/1_piprtp.png' },
+                          { style: 'Rustic',       url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950455/11_hjofyz.jpg' },
+                          { style: 'Art Deco',     url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775713416/19_eify7o.png' },
+                          { style: 'Industrial',   url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774954018/6_xibejv.png' },
+                          { style: 'Coastal',      url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950150/10_ezeifi.jpg' },
+                        ] as const).map(({ style, url }) => (
+                          <button
+                            key={style}
+                            type="button"
+                            onClick={triggerGoogleSignIn}
+                            className="group relative overflow-hidden bg-[#DAD2C3] hover:-translate-y-1 transition-transform duration-300 focus:outline-none"
+                            style={{ aspectRatio: '3/4' }}
+                          >
                             <img
-                              src={cld(url, 360, { crop: 'fill', aspectRatio: '1/1' })}
-                              srcSet={cldSrcSet(url, THUMB_WIDTHS, { crop: 'fill', aspectRatio: '1/1' })}
-                              sizes="(min-width: 768px) 200px, 33vw"
-                              width={400} height={400}
+                              src={cld(url, 360, { crop: 'fill', aspectRatio: '3/4' })}
+                              srcSet={cldSrcSet(url, THUMB_WIDTHS, { crop: 'fill', aspectRatio: '3/4' })}
+                              sizes="(min-width: 768px) 12vw, 25vw"
+                              width={360} height={480}
                               loading="lazy" decoding="async"
                               alt={style}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              className="w-full h-full object-cover"
                             />
-                          </div>
-                          <span className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-black/65 text-center w-full">{style}</span>
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* CTA */}
-                    <div className="flex flex-col items-center gap-3 w-full bg-black/[0.03] border-t border-black/[0.06] pt-6 pb-5 -mx-8 px-8" style={{ width: 'calc(100% + 4rem)' }}>
-                      <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-black/65">Ready to find your style?</p>
-                      <button
-                        onClick={triggerGoogleSignIn}
-                        className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[11px] font-bold uppercase tracking-[0.25em] px-7 py-4 hover:bg-[#003d99] transition-colors"
-                      >
-                        Sign in to start your quiz →
-                      </button>
-                      <p className="text-[12px] text-black/70 uppercase tracking-[0.2em]">Free · 18 rooms · 2 minutes · No card needed</p>
+                            <span className="absolute bottom-0 left-0 right-0 px-2.5 py-2 bg-gradient-to-t from-black/70 to-transparent text-white text-[9px] font-bold uppercase tracking-[0.22em]">
+                              {style}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {!authLoading && user && (<>
+                {/* ── States 2 & 4 — Voting + Results (logged-in OR shared-view OR persisted results) ── */}
+                {!authLoading && (user || quizSharedView || quizDone) && (<>
 
-                {/* Centered max-width wrapper for all quiz content */}
-                <div className="w-full max-w-[1600px] mx-auto flex-grow flex flex-col min-h-0">
+                {/* Shared-style banner — only when arriving from a share URL */}
+                {quizSharedView && quizDone && (
+                  <div className="bg-[#0047AB] text-white px-8 md:px-16 py-3 flex flex-wrap items-center gap-x-4 gap-y-2 justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-[0.22em]">
+                      {t('ai.quiz.sharedBanner')}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={exitSharedView}
+                      className="text-[11px] font-bold uppercase tracking-[0.18em] underline underline-offset-4 hover:text-white/85 transition-colors"
+                    >
+                      {t('ai.quiz.takeYourQuiz')}
+                    </button>
+                  </div>
+                )}
 
-                {/* Progress bar */}
+                {/* ── State 2 — Voting (cinematic single-pane) ── */}
                 {!quizDone && (
-                  <div>
-                    <div className="h-1 bg-black/5">
-                      <div className="h-1 bg-[#0047AB] transition-all duration-300" style={{ width: `${(quizStep / QUIZ_LENGTH) * 100}%` }} />
-                    </div>
-                    <div className="flex items-center justify-between px-8 py-3 border-b border-black/8">
-                      <div className="flex items-center gap-4">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-black/70">
-                          {t('ai.quiz.roomOf').replace('{current}', (quizStep + 1).toString()).replace('{total}', QUIZ_LENGTH.toString())}
-                        </p>
-                        {voteHistory.length > 0 && (
+                  <div className="bg-[#0a0a0a]">
+                    <div className="mx-auto px-6 md:px-14 pt-12 pb-16" style={{ maxWidth: '1280px' }}>
+                      <div className="relative w-full overflow-hidden bg-black shadow-[0_32px_80px_rgba(0,0,0,0.4)]" style={{ aspectRatio: '16/10' }}>
+                        {/* Room image — object-fit contain so the whole room is visible */}
+                        <img
+                          src={cld(currentQuizImage.url, 1600)}
+                          srcSet={cldSrcSet(currentQuizImage.url, [768, 1280, 1600])}
+                          sizes="(min-width: 1024px) 1100px, 100vw"
+                          width={1600} height={1000}
+                          decoding="async"
+                          fetchPriority="high"
+                          alt={currentQuizStyle}
+                          onLoad={() => { if (!quizDone) setQuizImageReady(true); }}
+                          onError={() => { if (!quizDone) setQuizImageReady(true); }}
+                          className="absolute inset-0 w-full h-full object-contain"
+                          loading="eager"
+                        />
+                        {/* Loading shimmer — masks Cloudinary cold-start latency on first visit. */}
+                        <div
+                          aria-hidden="true"
+                          className={`absolute inset-0 transition-opacity duration-500 pointer-events-none ${quizImageReady ? 'opacity-0' : 'opacity-100'}`}
+                          style={{
+                            background: 'linear-gradient(110deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.10) 45%, rgba(255,255,255,0.04) 90%)',
+                            backgroundSize: '200% 100%',
+                            animation: 'quizShimmer 1.6s ease-in-out infinite',
+                          }}
+                        />
+                        <style>{`@keyframes quizShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
+
+                        {/* Top overlay bar */}
+                        <div className="absolute top-0 left-0 right-0 flex flex-wrap items-center justify-between gap-3 px-5 md:px-7 py-5 bg-gradient-to-b from-black/65 to-transparent text-white z-[5]">
+                          <div className="flex items-center gap-5 flex-wrap">
+                            <span className="text-[10px] font-bold uppercase tracking-[0.22em]">
+                              {t('ai.quiz.roomOf').replace('{current}', (quizStep + 1).toString()).replace('{total}', QUIZ_LENGTH.toString())}
+                            </span>
+                            <div className="w-[140px] md:w-[180px] h-[3px] bg-white/22 rounded-full overflow-hidden">
+                              <div className="h-full bg-[#0047AB] transition-all duration-500" style={{ width: `${((quizStep + 1) / QUIZ_LENGTH) * 100}%` }} />
+                            </div>
+                            {voteHistory.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={handleQuizBack}
+                                className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/80 hover:text-white transition-colors"
+                              >
+                                ← Previous room
+                              </button>
+                            )}
+                          </div>
                           <button
-                            onClick={handleQuizBack}
-                            className="text-[11px] uppercase tracking-[0.2em] text-black/70 hover:text-black transition-colors flex items-center gap-1"
+                            type="button"
+                            onClick={() => setQuizDrawerOpen(true)}
+                            className="inline-flex items-center gap-2.5 bg-white/95 text-black px-4 py-2.5 rounded-full hover:scale-[1.04] transition-transform"
                           >
-                            ← Previous room
+                            <Heart size={12} strokeWidth={2.5} className="text-[#9E5E41] fill-[#9E5E41]" />
+                            <span className="text-[10px] font-bold uppercase tracking-[0.22em]">
+                              {t('ai.quiz.favorites')} · {lovedRooms.length}
+                            </span>
                           </button>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-black/65 uppercase tracking-widest">
-                        {t('ai.quiz.rateHonestly')}
-                      </p>
-                    </div>
-                  </div>
-                )}
+                        </div>
 
-                {/* ── 3-col during quiz / 2-col on results ── */}
-                <div className="flex flex-col lg:flex-row lg:items-start flex-grow">
+                        {/* Style tag (top-left, below the bar) */}
+                        <div className="absolute top-[78px] md:top-[90px] left-5 md:left-7 bg-white/95 text-black px-3.5 py-2 z-[5]">
+                          <span className="text-[10px] font-bold uppercase tracking-[0.22em]">
+                            {t(`ai.style.${currentQuizStyle.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}
+                          </span>
+                        </div>
 
-                  {/* LEFT — room image (current during quiz, last loved when done) */}
-                  <div className="flex-shrink-0 flex items-start justify-start bg-neutral-50 p-4 w-full lg:w-[632px]">
-                    <div className="relative w-full max-w-[600px] overflow-hidden bg-neutral-100 aspect-square" style={{ maxHeight: '70vh' }}>
-                      <img
-                        src={cld(currentQuizImage.url, 768, { crop: 'fill', aspectRatio: '1/1' })}
-                        srcSet={cldSrcSet(currentQuizImage.url, [480, 768, 1024], { crop: 'fill', aspectRatio: '1/1' })}
-                        sizes="(min-width: 1024px) 600px, 100vw"
-                        width={1024} height={1024}
-                        decoding="async"
-                        fetchPriority="high"
-                        alt={currentQuizStyle}
-                        onLoad={() => { if (!quizDone) setQuizImageReady(true); }}
-                        onError={() => { if (!quizDone) setQuizImageReady(true); }}
-                        className="absolute inset-0 w-full h-full object-cover"
-                        loading="eager"
-                      />
-                      <div className="absolute top-3 left-3 bg-white/90 px-3 py-1.5 border border-black/10">
-                        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/60">
-                          {t(`ai.style.${currentQuizStyle.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* MIDDLE — voting + taste bars (quiz only) */}
-                  {!quizDone && (
-                    <div className="w-full lg:w-[260px] flex-shrink-0 flex flex-col border-l border-black/8">
-                      <div className="p-6 border-b border-black/8">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-black mb-5">
-                          {t('ai.quiz.howFeel')}
-                        </p>
-                        <div className="flex flex-col gap-2">
-                          <button onClick={() => handleQuizVote('love')} disabled={!quizImageReady} className="w-full py-3.5 bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-black/80 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                            <span>✦</span> {t('ai.quiz.loveIt')}
-                          </button>
-                          <button onClick={() => handleQuizVote('skip')} disabled={!quizImageReady} className="w-full py-3 border border-black/40 text-[10px] font-bold uppercase tracking-[0.25em] text-black/75 hover:bg-black/5 hover:border-black/60 hover:text-black/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                            {t('ai.quiz.skip')}
-                          </button>
-                          <button onClick={() => handleQuizVote('no')} disabled={!quizImageReady} className="w-full py-3 border border-black/40 text-[10px] font-bold uppercase tracking-[0.25em] text-black/75 hover:bg-black/5 hover:border-black/60 hover:text-black/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                            {t('ai.quiz.notMyStyle')}
-                          </button>
-                          {quizStep >= 4 && (
+                        {/* Bottom overlay — voting buttons + early-end link */}
+                        <div className="absolute bottom-0 left-0 right-0 px-5 md:px-7 pt-14 pb-6 bg-gradient-to-t from-black/80 to-transparent z-[5]">
+                          <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 max-w-[760px] mx-auto">
                             <button
-                              onClick={handleQuizEarlyEnd}
-                              className="mt-4 w-full py-2.5 border border-[#0047AB] text-[#0047AB] text-[10px] font-bold uppercase tracking-[0.25em] hover:bg-[#0047AB]/8 transition-colors flex items-center justify-center gap-2"
+                              type="button"
+                              onClick={() => handleQuizVote('no')}
+                              disabled={!quizImageReady}
+                              className="flex-1 py-4 px-2 text-center text-[11px] sm:text-[12px] font-bold uppercase tracking-[0.22em] sm:tracking-[0.28em] text-white border-[1.5px] border-white/60 bg-black/35 backdrop-blur-md hover:bg-black/55 hover:border-white/85 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              Have enough? See my style →
+                              ✕ {t('ai.quiz.notMyStyle')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleQuizVote('skip')}
+                              disabled={!quizImageReady}
+                              className="flex-1 py-4 px-2 text-center text-[11px] sm:text-[12px] font-bold uppercase tracking-[0.22em] sm:tracking-[0.28em] text-white border-[1.5px] border-white/60 bg-black/35 backdrop-blur-md hover:bg-black/55 hover:border-white/85 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {t('ai.quiz.skip')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleQuizVote('love')}
+                              disabled={!quizImageReady}
+                              className="flex-1 py-4 px-2 text-center text-[11px] sm:text-[12px] font-bold uppercase tracking-[0.22em] sm:tracking-[0.28em] text-black bg-white border-[1.5px] border-white hover:bg-[#f4f4f4] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              ✦ {t('ai.quiz.loveIt')}
+                            </button>
+                          </div>
+                          {lovedRooms.length >= 4 && (
+                            <button
+                              type="button"
+                              onClick={handleQuizEarlyEnd}
+                              className="block mx-auto mt-4 text-[11px] font-bold uppercase tracking-[0.22em] text-white/85 underline underline-offset-4 hover:text-white transition-colors"
+                            >
+                              Have enough — show me my style →
                             </button>
                           )}
                         </div>
                       </div>
+
+                      <p className="text-center mt-6 text-[11px] font-bold uppercase tracking-[0.22em] text-white/55">
+                        {t('ai.quiz.stageCaption')}
+                      </p>
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {/* RIGHT — moodboard during quiz / results+gallery columns when done */}
-                  <div className={`flex-grow flex ${quizDone ? 'flex-col lg:flex-row' : 'flex-col'} border-l border-black/8`}>
-                    {!quizDone ? (
-                      /* Loved-rooms moodboard */
-                      <div className="p-5 flex flex-col gap-2">
-
-                        {/* Header row — always visible */}
-                        <div className="flex items-center justify-between flex-shrink-0">
-                          <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-black/65">Your Favorites</p>
-                          <p className="text-[10px] text-black/55">{lovedRooms.length} of {voteHistory.length} loved</p>
-                        </div>
-
-                        {/* Counter line — always visible */}
-                        <p className="text-[10px] text-black/55 flex-shrink-0">
-                          You've loved {lovedRooms.length} room{lovedRooms.length !== 1 ? 's' : ''} so far
-                        </p>
-
-                        {/* Leading styles — pinned here at top, fades in after 3+ loves */}
-                        <AnimatePresence>
-                          {lovedRooms.length >= 3 && (
-                            <motion.div
-                              key="leading-styles"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              transition={{ duration: 0.2 }}
-                              className="flex-shrink-0 border-t border-black/8 pt-2 pb-1"
-                            >
-                              <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-black/65 mb-1">Leading Styles</p>
-                              <p className="text-[11px] text-black/60 font-medium leading-relaxed">
-                                {(() => {
-                                  const total = Object.values(quizVotes).reduce((a: number, b: number) => a + b, 0) || 1;
-                                  return STYLES
-                                    .filter(s => (quizVotes[s] || 0) > 0)
-                                    .sort((a, b) => (quizVotes[b] || 0) - (quizVotes[a] || 0))
-                                    .slice(0, 3)
-                                    .map(s => `${t(`ai.style.${s.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)} ${(((quizVotes[s] || 0) / total) * 100).toFixed(1)}%`)
-                                    .join(' · ');
-                                })()}
+                {/* ── State 4 — Results (cinematic DNA reveal) ── */}
+                {quizDone && (() => {
+                  const top = quizResult[0];
+                  const rawHero = top ? (quizRooms[top.style]?.[0]?.url || '') : '';
+                  // Smart-cropped wide hero via cld helper (c_fill, g_auto, 16:9).
+                  const heroBg = rawHero ? cld(rawHero, 1920, { crop: 'fill', aspectRatio: '16/9' }) : '';
+                  const desc = top ? STYLE_DESCRIPTIONS[top.style] : null;
+                  return (
+                    <>
+                      {/* Full-bleed cinematic results stage */}
+                      <section
+                        className="relative overflow-hidden bg-cover bg-center"
+                        style={{
+                          backgroundImage: heroBg ? `url('${heroBg}')` : undefined,
+                          minHeight: '720px',
+                        }}
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-br from-black/75 via-black/40 to-black/15" />
+                        <div className="relative z-10 px-8 md:px-16 py-20 md:py-24">
+                          <div className="grid lg:grid-cols-[1.2fr_1fr] gap-12 lg:gap-20 items-end" style={{ minHeight: '540px' }}>
+                            {/* LEFT — DNA reveal */}
+                            <div className="text-white">
+                              <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-white/80 mb-5">
+                                {t('ai.quiz.designDNA')}
                               </p>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-
-                        {/* Card grid area — capped at 6 rows, scrolls internally */}
-                        <div className="relative">
-
-                          {/* Empty state */}
-                          <AnimatePresence>
-                            {lovedRooms.length === 0 && (
-                              <motion.div
-                                key="moodboard-empty"
-                                initial={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.2 }}
-                                className="flex flex-col items-center justify-center gap-2 text-center py-8 pointer-events-none"
-                              >
-                                <Heart size={18} strokeWidth={1.5} className="text-black/35" />
-                                <p className="text-[12px] text-black/70 font-medium tracking-[0.05em]">
-                                  Love rooms to build your moodboard
+                              <h2 className="font-display font-normal leading-[0.95] tracking-tight text-white mb-4" style={{ fontSize: 'clamp(56px, 7vw, 110px)', letterSpacing: '-0.02em' }}>
+                                {top ? t(`ai.style.${top.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`) : ''}
+                                {quizResult[1] && (
+                                  <span className="block italic text-white/55 mt-2" style={{ fontSize: '0.55em', letterSpacing: '-0.01em' }}>
+                                    + {t(`ai.style.${quizResult[1].style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}
+                                  </span>
+                                )}
+                              </h2>
+                              {desc && (
+                                <p className="text-[17px] md:text-[18px] font-light text-white/85 leading-relaxed max-w-[480px] mb-9">
+                                  {desc.summary}
                                 </p>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
+                              )}
+                              {desc && (
+                                <div className="flex flex-wrap gap-2">
+                                  {desc.elements.map(el => (
+                                    <span key={el} className="px-3.5 py-1.5 border border-white/40 rounded-full text-[10px] font-bold uppercase tracking-[0.18em] text-white/85">
+                                      {el}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
 
-                          {/* Card grid — newest first, scrollable once > 12 cards */}
-                          {lovedRooms.length > 0 && (
-                            <div
-                              ref={moodboardRef}
-                              className="overflow-y-auto max-h-[504px]"
-                              style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,0,0,0.12) transparent' }}
-                            >
-                              <div
-                                className="grid gap-2 pb-1"
-                                style={{ gridTemplateColumns: '1fr 1fr', gridAutoFlow: 'row' }}
-                              >
-                                {[...lovedRooms].reverse().map((room) => (
-                                  <motion.div
-                                    key={`loved-${room.step}`}
-                                    initial={{ opacity: 0, y: 8 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ duration: 0.25, ease: 'easeOut' }}
-                                    className="flex flex-row items-center gap-3 bg-white rounded-[4px] p-2 overflow-hidden"
-                                    style={{ border: '0.5px solid rgba(0,0,0,0.08)', minHeight: '76px' }}
-                                  >
-                                    {/* Thumbnail */}
-                                    <div className="flex-shrink-0 w-[60px] h-[60px] overflow-hidden rounded-[4px] bg-neutral-100">
-                                      <img
-                                        src={cld(room.imageUrl, 120, { crop: 'fill', aspectRatio: '1/1' })}
-                                        srcSet={cldSrcSet(room.imageUrl, [120, 180], { crop: 'fill', aspectRatio: '1/1' })}
-                                        sizes="60px"
-                                        width={120} height={120}
-                                        loading="lazy" decoding="async"
-                                        alt="Loved room"
-                                        className="w-full h-full object-cover"
+                            {/* RIGHT — breakdown panel */}
+                            <div className="bg-white/[0.08] border border-white/[0.12] rounded-md p-7 md:p-8" style={{ backdropFilter: 'blur(20px)' }}>
+                              <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-white/65 mb-5">
+                                {t('ai.quiz.styleBreakdown')}
+                              </p>
+                              <div className="flex flex-col gap-3.5">
+                                {quizResult.filter(r => r.pct > 0).slice(0, 5).map((r, i) => (
+                                  <div key={r.style} className="flex items-center gap-3.5">
+                                    <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-white truncate" style={{ flex: '0 0 110px' }}>
+                                      {t(`ai.style.${r.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}
+                                    </span>
+                                    <div className="flex-1 h-1 bg-white/[0.18] rounded-full overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full transition-all duration-700 ${i < 2 ? 'bg-[#0047AB]' : 'bg-white/55'}`}
+                                        style={{ width: `${r.pct}%` }}
                                       />
                                     </div>
-                                    {/* Text */}
-                                    <div className="flex flex-col justify-center min-w-0 gap-0.5">
-                                      <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-black/70 leading-tight">
-                                        {Object.keys(room.styleChanges)[0] ?? ''}
-                                      </p>
-                                      <p className="text-[9px] text-black/55 font-medium leading-snug">
-                                        {Object.entries(room.styleChanges)
-                                          .sort(([, a], [, b]) => b - a)
-                                          .map(([s, pts]) => `+${Number.isInteger(pts) ? pts : pts.toFixed(1)} ${s}`)
-                                          .join(' · ')}
-                                      </p>
-                                    </div>
-                                  </motion.div>
+                                    <span className="text-[14px] font-display font-medium text-white text-right" style={{ flex: '0 0 56px' }}>
+                                      {Math.round(r.pct)}%
+                                    </span>
+                                  </div>
                                 ))}
                               </div>
                             </div>
-                          )}
-
-                          {/* Scroll-affordance gradients */}
-                          {lovedRooms.length > 0 && (
-                            <>
-                              <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-white to-transparent pointer-events-none" />
-                              <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-white to-transparent pointer-events-none" />
-                            </>
-                          )}
+                          </div>
                         </div>
+                      </section>
 
-
-                      </div>
-                    ) : (
-                      /* Results — MIDDLE column: DNA + CTAs + breakdown + description */
-                      <>
-                      <div className="p-8 flex flex-col gap-5 lg:max-w-[420px] flex-shrink-0">
-                        <div>
-                          <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-[#0047AB] mb-2">{t('ai.quiz.designDNA')}</p>
-                          <h2 className="font-display text-3xl font-bold tracking-tight mb-1">
-                            {t(`ai.style.${quizResult[0]?.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}
-                            {quizResult[1] && <span className="text-black/65"> · {t(`ai.style.${quizResult[1].style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}</span>}
-                          </h2>
-                          <p className="text-xs text-black/55 uppercase tracking-[0.2em]">{t('ai.quiz.basedOnRatings')}</p>
+                      {/* Action bar */}
+                      <section className="bg-[#0a0a0a] text-white py-9">
+                        <div className="px-8 md:px-16 flex flex-wrap items-center justify-between gap-5">
+                          <div className="flex-1 min-w-[260px]">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-white/55 mb-1.5">
+                              {t('ai.quiz.whatNext')}
+                            </p>
+                            <p className="font-display text-[22px] font-medium">
+                              {t('ai.quiz.actionsTitle')}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-3">
+                            <button
+                              type="button"
+                              onClick={handleApplyQuizStyle}
+                              className="px-5 py-3.5 bg-[#0047AB] border border-[#0047AB] text-white text-[11px] font-bold uppercase tracking-[0.22em] hover:bg-[#003d99] transition-colors inline-flex items-center gap-2.5"
+                            >
+                              {t('ai.quiz.applyStyle').replace('{style}', t(`ai.style.${(top?.style || '').toLowerCase().replace(/-/g, '').replace(/ /g, '')}`))}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleShareDna}
+                              className="px-5 py-3.5 border border-white/35 text-white text-[11px] font-bold uppercase tracking-[0.22em] hover:bg-white/10 hover:border-white transition-all"
+                            >
+                              {t('ai.quiz.share')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={quizSharedView ? exitSharedView : handleQuizReset}
+                              className="px-5 py-3.5 border border-white/35 text-white text-[11px] font-bold uppercase tracking-[0.22em] hover:bg-white/10 hover:border-white transition-all"
+                            >
+                              {t('ai.quiz.retake')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleSaveStyle}
+                              className={`px-5 py-3.5 border border-white/35 text-[11px] font-bold uppercase tracking-[0.22em] inline-flex items-center gap-2 transition-all ${user?.isPaid ? 'text-white hover:bg-white/10 hover:border-white' : 'text-white/60 hover:text-white/85 hover:border-white/55'}`}
+                              title={user?.isPaid ? '' : t('ai.quiz.upgradeToSave')}
+                            >
+                              {t('ai.quiz.saveStyle')} {!user?.isPaid && <span aria-hidden>🔒</span>}
+                            </button>
+                          </div>
                         </div>
+                      </section>
+                    </>
+                  );
+                })()}
 
-                        <div className="flex flex-col gap-2">
-                          <button onClick={handleApplyQuizStyle} className="w-full py-4 bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-black/80 transition-all flex items-center justify-center gap-2">
-                            ✦ {t('ai.quiz.applyStyle').replace('{style}', t(`ai.style.${quizResult[0]?.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`))}
-                          </button>
-                          <button onClick={handleQuizReset} className="w-full py-3.5 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all">
-                            {t('ai.quiz.retake')}
-                          </button>
-                        </div>
+                </> )}
 
-                        {/* Style breakdown */}
-                        {quizResult.filter(r => r.pct > 0).length > 0 && (
-                          <div className="border-t border-black/8 pt-4">
-                            <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-black/65 mb-3">Your style breakdown</p>
-                            <div className="flex flex-col gap-2.5">
-                              {quizResult.filter(r => r.pct > 0).map((r) => (
-                                <div key={r.style} className="flex items-center gap-3">
-                                  <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-black/70 w-32 flex-shrink-0 truncate">
-                                    {t(`ai.style.${r.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}
-                                  </span>
-                                  <div className="flex-1 h-1 bg-black/15 rounded-full overflow-hidden">
-                                    <div
-                                      className="h-full rounded-full transition-all duration-700 bg-[#0047AB]"
-                                      style={{ width: `${r.pct}%` }}
-                                    />
-                                  </div>
-                                  <span className="text-[11px] font-medium text-black/60 w-10 text-right flex-shrink-0">
-                                    {r.pct.toFixed(1)}%
+                {/* ── Drawer (slide-out from right) ── */}
+                <AnimatePresence>
+                  {quizDrawerOpen && (
+                    <>
+                      <motion.div
+                        key="drawer-overlay"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.18 }}
+                        className="fixed inset-0 bg-black/55 z-[60]"
+                        onClick={() => setQuizDrawerOpen(false)}
+                      />
+                      <motion.aside
+                        key="drawer-panel"
+                        initial={{ x: '100%' }}
+                        animate={{ x: 0 }}
+                        exit={{ x: '100%' }}
+                        transition={{ type: 'tween', ease: 'easeOut', duration: 0.28 }}
+                        className="fixed top-0 right-0 bottom-0 w-full sm:w-[400px] bg-white z-[61] flex flex-col shadow-[-22px_28px_70px_rgba(0,0,0,0.4)]"
+                        role="dialog"
+                        aria-label={t('ai.quiz.drawerTitle')}
+                      >
+                        <header className="px-6 py-5 border-b border-black/8 flex items-baseline justify-between">
+                          <h3 className="font-display text-[22px] font-medium text-black">{t('ai.quiz.drawerTitle')}</h3>
+                          <div className="flex items-center gap-4">
+                            <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
+                              {t('ai.quiz.drawerCount').replace('{loved}', String(lovedRooms.length)).replace('{total}', String(voteHistory.length))}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setQuizDrawerOpen(false)}
+                              aria-label="Close"
+                              className="text-black/55 hover:text-black transition-colors"
+                            >
+                              <X size={18} />
+                            </button>
+                          </div>
+                        </header>
+                        {lovedRooms.length >= 1 && (
+                          <div className="px-6 py-4 bg-[#F4EFE7] border-b border-black/8">
+                            <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-[#0047AB] mb-1">
+                              {t('ai.quiz.leadingStyles')}
+                            </p>
+                            <p className="text-[12px] text-black font-medium">
+                              {(() => {
+                                const total = Object.values(quizVotes).reduce((a: number, b: number) => a + b, 0) || 1;
+                                return STYLES
+                                  .filter(s => (quizVotes[s] || 0) > 0)
+                                  .sort((a, b) => (quizVotes[b] || 0) - (quizVotes[a] || 0))
+                                  .slice(0, 3)
+                                  .map(s => `${t(`ai.style.${s.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)} ${Math.round(((quizVotes[s] || 0) / total) * 100)}%`)
+                                  .join(' · ');
+                              })()}
+                            </p>
+                          </div>
+                        )}
+                        <div className="flex-1 overflow-y-auto px-6 py-5">
+                          {lovedRooms.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center gap-2 text-center py-12 text-black/55">
+                              <Heart size={20} strokeWidth={1.5} />
+                              <p className="text-[12px]">Love rooms to build your moodboard</p>
+                            </div>
+                          ) : (
+                            <div ref={moodboardRef} className="grid grid-cols-2 gap-2.5">
+                              {[...lovedRooms].reverse().map((room) => (
+                                <div key={`drawer-${room.step}`} className="relative aspect-square overflow-hidden rounded-[4px] bg-neutral-100">
+                                  <img
+                                    src={cld(room.imageUrl, 360, { crop: 'fill', aspectRatio: '1/1' })}
+                                    srcSet={cldSrcSet(room.imageUrl, [240, 360, 480], { crop: 'fill', aspectRatio: '1/1' })}
+                                    sizes="160px"
+                                    width={360} height={360}
+                                    loading="lazy" decoding="async"
+                                    alt="Loved room"
+                                    className="absolute inset-0 w-full h-full object-cover"
+                                  />
+                                  <span className="absolute bottom-0 left-0 right-0 px-2 py-1.5 bg-gradient-to-t from-black/70 to-transparent text-white text-[8px] font-bold uppercase tracking-[0.2em]">
+                                    {Object.keys(room.styleChanges)[0] ?? ''}
                                   </span>
                                 </div>
                               ))}
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
+                      </motion.aside>
+                    </>
+                  )}
+                </AnimatePresence>
 
-                        {/* Style description card */}
-                        {quizResult[0] && STYLE_DESCRIPTIONS[quizResult[0].style] && (() => {
-                          const desc = STYLE_DESCRIPTIONS[quizResult[0].style];
-                          return (
-                            <div className="border border-black/8 p-4 bg-neutral-50">
-                              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#0047AB] mb-2">{quizResult[0].style}</p>
-                              <p className="text-[12px] md:text-[13px] text-black/75 leading-relaxed mb-3">{desc.summary}</p>
-                              <div className="flex flex-wrap gap-1">
-                                {desc.elements.map(el => (
-                                  <span key={el} className="text-[7px] font-bold uppercase tracking-wide text-black/55 border border-black/10 px-2 py-0.5">{el}</span>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </div>
-
-                      {/* Results — RIGHT column: gallery 2×3 */}
-                      {resultGalleryImages.length > 0 && quizResult[0] && (
-                        <div className="flex-grow border-t lg:border-t-0 lg:border-l border-black/8 p-5 flex flex-col gap-3">
-                          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-black/55">
-                            What {quizResult[0].style} Looks Like
+                {/* ── Save my style modal (free user upgrade prompt) ── */}
+                <AnimatePresence>
+                  {quizSaveModalOpen && (
+                    <>
+                      <motion.div
+                        key="save-modal-overlay"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.18 }}
+                        className="fixed inset-0 bg-black/60 z-[80]"
+                        onClick={() => setQuizSaveModalOpen(false)}
+                      />
+                      <motion.div
+                        key="save-modal-panel"
+                        initial={{ opacity: 0, y: 12, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 12, scale: 0.97 }}
+                        transition={{ duration: 0.22, ease: 'easeOut' }}
+                        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-[480px] bg-white z-[81] shadow-2xl"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="save-modal-title"
+                      >
+                        <div className="p-7 md:p-8">
+                          <h3 id="save-modal-title" className="font-display text-[26px] md:text-[28px] font-medium text-black mb-3 leading-tight">
+                            Save your style — Design tier feature
+                          </h3>
+                          <p className="text-[14px] text-black/75 leading-relaxed mb-7">
+                            Saving your design DNA to your dashboard is part of the Design tier ($19/mo). Want to review pricing?
                           </p>
-                          <div className="grid grid-cols-2 gap-1">
-                            {resultGalleryImages.map((url, i) => (
-                              <div key={i} className="aspect-square overflow-hidden bg-neutral-100">
-                                <img
-                                  src={cld(url, 480, { crop: 'fill', aspectRatio: '1/1' })}
-                                  srcSet={cldSrcSet(url, [320, 480, 640], { crop: 'fill', aspectRatio: '1/1' })}
-                                  sizes="(min-width: 1024px) 240px, 50vw"
-                                  width={480} height={480}
-                                  decoding="async"
-                                  alt={`${quizResult[0].style} ${i + 1}`}
-                                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                                  loading="lazy"
-                                />
-                              </div>
-                            ))}
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <button
+                              type="button"
+                              onClick={() => { setQuizSaveModalOpen(false); navigateTo('pricing'); }}
+                              className="flex-1 px-5 py-3.5 bg-[#0047AB] text-white text-[11px] font-bold uppercase tracking-[0.22em] hover:bg-[#003d99] transition-colors"
+                            >
+                              View pricing →
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setQuizSaveModalOpen(false)}
+                              className="flex-1 sm:flex-none px-5 py-3.5 text-[11px] font-bold uppercase tracking-[0.22em] text-black/65 hover:text-black transition-colors"
+                            >
+                              Maybe later
+                            </button>
                           </div>
                         </div>
-                      )}
-                      </>
-                    )}
-                  </div>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
 
-                </div>
-
-                </div>{/* end max-width centering wrapper */}
-
-                </> )}
+                {/* ── Toast (share / save feedback) ── */}
+                <AnimatePresence>
+                  {quizToast && (
+                    <motion.div
+                      key="quiz-toast"
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 16 }}
+                      transition={{ duration: 0.2 }}
+                      className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-black text-white px-5 py-3 z-[70] text-[11px] font-bold uppercase tracking-[0.22em] shadow-2xl"
+                      role="status"
+                    >
+                      {quizToast}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
               )}
 
