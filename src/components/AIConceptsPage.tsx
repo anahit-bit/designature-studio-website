@@ -1732,7 +1732,7 @@ const AIConceptsPage: React.FC = () => {
       {/* ── TOOL SELECTOR GRID (full-bleed) ── */}
       <div>
         <div>
-          <div id="ai-concepts-tools" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 border-y-2 border-black px-8 md:px-16">
+          <div id="ai-concepts-tools" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 border-y-2 border-black">
 
             {/* Tool 1 — Style Quiz (LIVE) */}
             <div
