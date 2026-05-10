@@ -419,6 +419,16 @@ const AIConceptsPage: React.FC = () => {
     const h = window.location.hash.replace(/^#/, '');
     return h === 'vision' || h === 'shopping' || h === 'audit' || h === 'quiz' ? h : 'quiz';
   });
+  // ── Direction B drawer + toast + share state ──
+  const [quizDrawerOpen, setQuizDrawerOpen] = useState(false);
+  const [quizToast, setQuizToast] = useState<string | null>(null);
+  const [quizSharedView, setQuizSharedView] = useState(false);
+  const quizToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showQuizToast = useCallback((msg: string) => {
+    setQuizToast(msg);
+    if (quizToastTimerRef.current) clearTimeout(quizToastTimerRef.current);
+    quizToastTimerRef.current = setTimeout(() => setQuizToast(null), 3200);
+  }, []);
   const [auditComplete, setAuditComplete] = useState(false);
   const [auditProcessing, setAuditProcessing] = useState(false);
   const [quizRooms, setQuizRooms] = useState<QuizRooms>(QUIZ_ROOMS_FALLBACK);
@@ -1336,6 +1346,98 @@ const AIConceptsPage: React.FC = () => {
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 50);
   };
+
+  /** Build a shareable URL with DNA + percentages baked in. */
+  const buildShareUrl = useCallback((): string => {
+    if (typeof window === 'undefined' || quizResult.length === 0) return '';
+    const primary = quizResult[0]?.style ?? '';
+    const secondary = quizResult[1]?.style ?? '';
+    const dna = secondary
+      ? `${primary.replace(/\s+/g, '-')}-${secondary.replace(/\s+/g, '-')}`
+      : primary.replace(/\s+/g, '-');
+    const pcts = quizResult.slice(0, 5).map(r => Math.round(r.pct)).join('-');
+    const params = new URLSearchParams({ dna, pcts });
+    return `${window.location.origin}/ai-concepts?${params.toString()}`;
+  }, [quizResult]);
+
+  /** Share handler — copies URL or invokes native share on mobile. */
+  const handleShareDna = useCallback(async () => {
+    const url = buildShareUrl();
+    if (!url) return;
+    const title = 'My design DNA — Designature Studio';
+    const text = quizResult[0]
+      ? `My design style is ${quizResult[0].style}${quizResult[1] ? ` + ${quizResult[1].style}` : ''}.`
+      : 'Check out my design DNA.';
+    try {
+      if (typeof navigator !== 'undefined' && (navigator as any).share && /Mobi|Android/i.test(navigator.userAgent)) {
+        await (navigator as any).share({ title, text, url });
+        return;
+      }
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      }
+      showQuizToast(t('ai.quiz.shareToast'));
+    } catch {
+      // user cancelled native share or clipboard blocked — silently no-op
+    }
+  }, [buildShareUrl, quizResult, showQuizToast, t]);
+
+  /** Save handler — paid users get a toast, free users get an upgrade prompt. */
+  const handleSaveStyle = useCallback(() => {
+    if (!user?.isPaid) {
+      navigateTo('pricing');
+      return;
+    }
+    console.log('save style', quizResult[0]?.style);
+    showQuizToast(t('ai.quiz.savedToast'));
+  }, [user?.isPaid, quizResult, navigateTo, showQuizToast, t]);
+
+  // ── On-load handler: parse ?dna=...&pcts=... URL params and skip to results ──
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const dna = params.get('dna');
+    const pcts = params.get('pcts');
+    if (!dna || !pcts) return;
+    const styleSlugs = dna.split('-').reduce<string[]>((acc, part) => {
+      // Re-stitch hyphenated styles like "Mid-Century" by checking the canonical STYLES list.
+      const candidate = acc.length > 0 ? `${acc[acc.length - 1]} ${part}` : part;
+      const candHyphen = acc.length > 0 ? `${acc[acc.length - 1]}-${part}` : part;
+      const match = STYLES.find(s => s === candidate || s === candHyphen || s === part);
+      if (match && match !== acc[acc.length - 1]) {
+        if (acc.length > 0 && (match === candidate || match === candHyphen)) {
+          acc[acc.length - 1] = match;
+        } else {
+          acc.push(match);
+        }
+      } else {
+        acc.push(part);
+      }
+      return acc;
+    }, []);
+    const validStyles = styleSlugs.filter(s => STYLES.includes(s));
+    const pctVals = pcts.split('-').map(n => parseInt(n, 10)).filter(n => !isNaN(n));
+    if (validStyles.length === 0 || pctVals.length === 0) return;
+    const synthResult: { style: string; pct: number }[] = [];
+    for (let i = 0; i < pctVals.length; i++) {
+      const style = validStyles[i] ?? STYLES[i] ?? STYLES[0];
+      synthResult.push({ style, pct: pctVals[i] });
+    }
+    setQuizResult(synthResult);
+    setQuizDone(true);
+    setQuizSharedView(true);
+    setActiveTool('quiz');
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Clear shared-view state and start a fresh quiz for the user. */
+  const exitSharedView = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      const url = `${window.location.origin}${window.location.pathname}#quiz`;
+      window.history.replaceState({}, '', url);
+    }
+    setQuizSharedView(false);
+    handleQuizReset();
+  }, [handleQuizReset]);
 
   const handleShoppingSearch = async (overrideItems?: any[], forceStandalone?: boolean) => {
     const imageToAnalyse = forceStandalone
