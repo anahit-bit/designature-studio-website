@@ -1648,10 +1648,10 @@ const AIConceptsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── TOOL SELECTOR GRID ── */}
+      {/* ── TOOL SELECTOR GRID (full-bleed) ── */}
       <div>
-        <div className="max-w-[1600px] mx-auto px-8 md:px-16">
-          <div id="ai-concepts-tools" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 border-y-2 border-black">
+        <div>
+          <div id="ai-concepts-tools" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 border-y-2 border-black px-8 md:px-16">
 
             {/* Tool 1 — Style Quiz (LIVE) */}
             <div
@@ -1789,9 +1789,9 @@ const AIConceptsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Active tool bar */}
-        <div id="active-tool-bar" className="max-w-[1600px] mx-auto px-8 md:px-16">
-          <div className="bg-[#0047AB] flex items-center justify-between px-6 py-3">
+        {/* Active tool bar (full-bleed cobalt stripe) */}
+        <div id="active-tool-bar">
+          <div className="bg-[#0047AB] flex items-center justify-between px-8 md:px-16 py-3">
             <div>
               <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/75 mb-0.5">
                 {activeTool === 'quiz' ? '01' : activeTool === 'vision' ? '02' : activeTool === 'shopping' ? '03' : '04'} — {t('ai.nowActive')}
