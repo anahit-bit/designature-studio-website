@@ -119,9 +119,10 @@ describe('AIConceptsPage - Style Quiz', () => {
 
   it('renders a quiz image from Cloudinary API when available', async () => {
     renderWithProvider(<AIConceptsPage />);
-    const imgs = await screen.findAllByRole('img');
     await waitFor(() => {
-      const quizImg = imgs.find((i) => (i as HTMLImageElement).className.includes('object-cover')) as HTMLImageElement | undefined;
+      const imgs = screen.getAllByRole('img');
+      // Voting image is rendered with object-contain (Direction B: full room visible).
+      const quizImg = imgs.find((i) => (i as HTMLImageElement).className.includes('object-contain')) as HTMLImageElement | undefined;
       expect(quizImg).toBeTruthy();
       expect(quizImg!.getAttribute('src')).toMatch(/^https:\/\/example\.com\/mock-/);
     });
