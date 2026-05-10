@@ -1419,8 +1419,13 @@ const AIConceptsPage: React.FC = () => {
     const pctVals = pcts.split('-').map(n => parseInt(n, 10)).filter(n => !isNaN(n));
     if (validStyles.length === 0 || pctVals.length === 0) return;
     const synthResult: { style: string; pct: number }[] = [];
+    const used = new Set<string>();
     for (let i = 0; i < pctVals.length; i++) {
-      const style = validStyles[i] ?? STYLES[i] ?? STYLES[0];
+      let style = validStyles[i];
+      if (!style || used.has(style)) {
+        style = STYLES.find(s => !used.has(s)) ?? STYLES[0];
+      }
+      used.add(style);
       synthResult.push({ style, pct: pctVals[i] });
     }
     setQuizResult(synthResult);
