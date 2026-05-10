@@ -23,6 +23,46 @@ const STYLES = [
   'Industrial', 'Coastal'
 ];
 
+// Synchronously parse `?dna=Mid-Century-Coastal&pcts=62-24-8-4-2` style URLs.
+// Used for INITIAL state so a shared link opens straight to the results screen
+// — no flash of the logged-out hero between first paint and the on-mount effect.
+function parseSharedQuizFromUrl(): { quizResult: { style: string; pct: number }[] } | null {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  const dna = params.get('dna');
+  const pcts = params.get('pcts');
+  if (!dna || !pcts) return null;
+  const styleSlugs = dna.split('-').reduce<string[]>((acc, part) => {
+    const candidate = acc.length > 0 ? `${acc[acc.length - 1]} ${part}` : part;
+    const candHyphen = acc.length > 0 ? `${acc[acc.length - 1]}-${part}` : part;
+    const match = STYLES.find(s => s === candidate || s === candHyphen || s === part);
+    if (match && match !== acc[acc.length - 1]) {
+      if (acc.length > 0 && (match === candidate || match === candHyphen)) {
+        acc[acc.length - 1] = match;
+      } else {
+        acc.push(match);
+      }
+    } else {
+      acc.push(part);
+    }
+    return acc;
+  }, []);
+  const validStyles = styleSlugs.filter(s => STYLES.includes(s));
+  const pctVals = pcts.split('-').map(n => parseInt(n, 10)).filter(n => !isNaN(n));
+  if (validStyles.length === 0 || pctVals.length === 0) return null;
+  const synthResult: { style: string; pct: number }[] = [];
+  const used = new Set<string>();
+  for (let i = 0; i < pctVals.length; i++) {
+    let style = validStyles[i];
+    if (!style || used.has(style)) {
+      style = STYLES.find(s => !used.has(s)) ?? STYLES[0];
+    }
+    used.add(style);
+    synthResult.push({ style, pct: pctVals[i] });
+  }
+  return { quizResult: synthResult };
+}
+
 // All styles available in AI Vision chip selector (superset of quiz styles)
 const VISION_STYLES = [
   'Japandi', 'Modern', 'Mid-Century', 'Bohemian', 'Rustic', 'Art Deco',
@@ -388,8 +428,13 @@ const AIConceptsPage: React.FC = () => {
   };
   const [quizSequence, setQuizSequence] = useState<string[]>(() => generateQuizSequence());
   const [quizVotes, setQuizVotes] = useState<Record<string, number>>({});
-  const [quizDone, setQuizDone] = useState<boolean>(false);
-  const [quizResult, setQuizResult] = useState<{ style: string; pct: number }[]>([]);
+  // Synchronous URL parse for shared-link arrivals — populates initial state so the
+  // results screen renders on first paint instead of flashing the logged-out hero.
+  const sharedInitRef = useRef<{ quizResult: { style: string; pct: number }[] } | null | undefined>(undefined);
+  if (sharedInitRef.current === undefined) sharedInitRef.current = parseSharedQuizFromUrl();
+  const sharedInit = sharedInitRef.current;
+  const [quizDone, setQuizDone] = useState<boolean>(!!sharedInit);
+  const [quizResult, setQuizResult] = useState<{ style: string; pct: number }[]>(sharedInit?.quizResult ?? []);
   const [quizImageReady, setQuizImageReady] = useState<boolean>(false);
   const [quizHistory, setQuizHistory] = useState<{ style: string; pct: number }[][]>([]);
   const [selectedPrevResult, setSelectedPrevResult] = useState<number | null>(null);
@@ -416,13 +461,16 @@ const AIConceptsPage: React.FC = () => {
   // (e.g. /ai-concepts#vision). Falls back to the default 'quiz' otherwise.
   const [activeTool, setActiveTool] = useState<'quiz' | 'vision' | 'shopping' | 'audit'>(() => {
     if (typeof window === 'undefined') return 'quiz';
+    // Shared-link arrivals always land on Quiz (regardless of hash).
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('dna') && params.get('pcts')) return 'quiz';
     const h = window.location.hash.replace(/^#/, '');
     return h === 'vision' || h === 'shopping' || h === 'audit' || h === 'quiz' ? h : 'quiz';
   });
   // ── Direction B drawer + toast + share + save-modal state ──
   const [quizDrawerOpen, setQuizDrawerOpen] = useState(false);
   const [quizToast, setQuizToast] = useState<string | null>(null);
-  const [quizSharedView, setQuizSharedView] = useState(false);
+  const [quizSharedView, setQuizSharedView] = useState<boolean>(!!sharedInit);
   const [quizSaveModalOpen, setQuizSaveModalOpen] = useState(false);
   const quizToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showQuizToast = useCallback((msg: string) => {
@@ -469,18 +517,25 @@ const AIConceptsPage: React.FC = () => {
 
   // ── Reset all ephemeral tool state on every mount (fresh start on load / navigate) ──
   useEffect(() => {
-    // Style Quiz
-    setQuizStep(0);
-    setQuizVotes({});
-    setQuizDone(false);
-    setQuizResult([]);
-    setQuizImageReady(false);
-    setQuizHistory([]);
-    setSelectedPrevResult(null);
-    setShowQuizResults(false);
+    // Style Quiz — skip the destructive resets when arriving via a shared-DNA URL,
+    // otherwise the state we already initialized synchronously gets clobbered.
+    if (!sharedInit) {
+      setQuizStep(0);
+      setQuizVotes({});
+      setQuizDone(false);
+      setQuizResult([]);
+      setQuizImageReady(false);
+      setQuizHistory([]);
+      setSelectedPrevResult(null);
+      setShowQuizResults(false);
+      quizResultSavedRef.current = false;
+      setVoteHistory([]);
+      setLovedRooms([]);
+      setSeenQuizImages(new Set());
+      setResultGalleryImages([]);
+    }
     setQuizSeed(Math.floor(Math.random() * 100));
     setQuizSequence(generateQuizSequence());
-    quizResultSavedRef.current = false;
 
     // AI Vision
     setInspirationImages([]);
@@ -514,12 +569,6 @@ const AIConceptsPage: React.FC = () => {
     setAuditComplete(false);
     setAuditProcessing(false);
 
-    // Quiz undo / seen-image tracking
-    setVoteHistory([]);
-    setLovedRooms([]);
-    setSeenQuizImages(new Set());
-    setResultGalleryImages([]);
-
     // NOTE: user / authLoading / session token are intentionally NOT touched here.
     // NOTE: downloadCount (ds_download_count) is intentionally NOT reset.
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -530,7 +579,11 @@ const AIConceptsPage: React.FC = () => {
   useEffect(() => {
     const email = user?.email;
     if (email === prevUserEmailRef.current) return; // no change, skip
+    const isFirstResolve = prevUserEmailRef.current === undefined;
     prevUserEmailRef.current = email;
+    // First time auth resolves on a shared-DNA arrival: keep the synthesized
+    // results in place — don't reset quiz state from under the friend.
+    if (isFirstResolve && sharedInit) return;
 
     setQuizStep(0);
     setQuizVotes({});

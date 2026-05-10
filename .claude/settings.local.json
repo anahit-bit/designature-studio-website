@@ -34,7 +34,17 @@
       "Bash(curl -s http://localhost:3000/portfolio/29)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(echo \"EXIT=$?\")"
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(git push *)",
+      "Bash(gh pr create --title 'AI-022: Style Quiz Direction B \\(cinematic single-pane rebuild\\)' --body ' *)",
+      "Bash(gh pr *)",
+      "Bash(git fetch *)",
+      "Bash(curl -s \"https://www.designature.studio/ai-concepts?dna=Mid-Century-Coastal&pcts=62-24-8-4-2\")",
+      "Bash(curl -s \"https://www.designature.studio/ai-concepts\" -o /tmp/prod.html)",
+      "Read(//tmp/**)",
+      "Bash(grep -o 'dna.\\\\{0,3\\\\}pcts\\\\|params\\\\.get.\\\\{0,15\\\\}dna\\\\|setQuizSharedView\\\\|quizSharedView' /tmp/prod.js)",
+      "Bash(grep -o \"dna:.\\\\{0,80\\\\}\" /tmp/prod.js)",
+      "Bash(git checkout *)"
     ]
   }
 }
