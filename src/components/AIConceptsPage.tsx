@@ -2574,7 +2574,7 @@ const AIConceptsPage: React.FC = () => {
 
                 {/* ── State 1 — Logged-out hero (Direction B) ── */}
                 {!authLoading && !user && !quizSharedView && (
-                  <div className="bg-[#F4EFE7] py-16 md:py-20">
+                  <div className="bg-white py-16 md:py-20">
                     <div className="px-8 md:px-16">
                       <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#0047AB] mb-5">Style Quiz</p>
                       <h1 className="font-display font-normal tracking-tight leading-[1.05] text-black mb-5 max-w-[720px]" style={{ fontSize: 'clamp(40px, 5vw, 64px)' }}>
