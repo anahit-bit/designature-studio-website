@@ -2566,60 +2566,128 @@ const AIConceptsPage: React.FC = () => {
               {activeTool === 'quiz' && (
               <div id="style-quiz-section" className="flex flex-col bg-white">
 
-                {/* Style gallery — logged-out state */}
-                {!authLoading && !user && (
-                  <div className="flex flex-col items-center px-8 md:px-12 py-10 gap-7 w-full max-w-2xl mx-auto">
-                    {/* Header */}
-                    <div className="text-center">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.35em] text-black/65 mb-3">How It Works</p>
-                      <h3 className="font-display text-2xl md:text-3xl font-bold tracking-tight text-black mb-2">
-                        Which of these feels like home?
-                      </h3>
-                      <p className="text-sm text-black/60 leading-relaxed">
-                        Your taste has a name. We'll help you find it.
+                {/* ── State 1 — Logged-out hero (Direction B) ── */}
+                {!authLoading && !user && !quizSharedView && (
+                  <div className="bg-[#F4EFE7] py-16 md:py-20">
+                    <div className="px-8 md:px-16">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#0047AB] mb-5">Style Quiz</p>
+                      <h1 className="font-display font-normal tracking-tight leading-[1.05] text-black mb-5 max-w-[720px]" style={{ fontSize: 'clamp(40px, 5vw, 64px)' }}>
+                        {t('ai.quiz.heroTitle')}
+                      </h1>
+                      <p className="text-[17px] text-black/75 max-w-[560px] leading-relaxed mb-12">
+                        {t('ai.quiz.heroLead')}
                       </p>
+
+                      {/* 2-col layout: voting preview + 3-step explainer */}
+                      <div className="grid lg:grid-cols-[1.4fr_1fr] gap-10 lg:gap-14 items-stretch">
+                        {/* LEFT — paused voting preview */}
+                        <div className="relative bg-black overflow-hidden shadow-[0_28px_60px_rgba(0,0,0,0.18)]" style={{ aspectRatio: '4/3' }}>
+                          <img
+                            src={cld('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', 1024)}
+                            srcSet={cldSrcSet('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', [640, 960, 1280])}
+                            sizes="(min-width: 1024px) 60vw, 100vw"
+                            alt="Quiz preview"
+                            className="absolute inset-0 w-full h-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                          {/* Top overlay */}
+                          <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-5 py-4 bg-gradient-to-b from-black/55 to-transparent text-white">
+                            <div className="flex items-center gap-3">
+                              <span className="text-[10px] font-bold uppercase tracking-[0.22em]">Room 03 / 18</span>
+                              <div className="w-[110px] h-[3px] bg-white/25 rounded-full overflow-hidden">
+                                <div className="h-full bg-[#0047AB]" style={{ width: '17%' }} />
+                              </div>
+                            </div>
+                            <div className="inline-flex items-center gap-2 bg-white/95 text-black px-3 py-1.5 rounded-full">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#9E5E41]" />
+                              <span className="text-[10px] font-bold uppercase tracking-[0.22em]">Favorites · 2</span>
+                            </div>
+                          </div>
+                          {/* Style tag */}
+                          <div className="absolute top-[70px] left-5 bg-white/95 text-black px-3 py-1.5">
+                            <span className="text-[10px] font-bold uppercase tracking-[0.22em]">Mid-Century</span>
+                          </div>
+                          {/* Bottom overlay */}
+                          <div className="absolute bottom-0 left-0 right-0 px-5 pt-12 pb-5 bg-gradient-to-t from-black/70 to-transparent">
+                            <div className="flex gap-2.5">
+                              <button type="button" onClick={triggerGoogleSignIn} className="flex-1 py-3 text-center text-[10px] font-bold uppercase tracking-[0.22em] text-white border border-white/70 bg-transparent backdrop-blur-sm">Not for me</button>
+                              <button type="button" onClick={triggerGoogleSignIn} className="flex-1 py-3 text-center text-[10px] font-bold uppercase tracking-[0.22em] text-white border border-white/70 bg-transparent backdrop-blur-sm">Skip</button>
+                              <button type="button" onClick={triggerGoogleSignIn} className="flex-1 py-3 text-center text-[10px] font-bold uppercase tracking-[0.22em] text-black bg-white border border-white">✦ Love it</button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* RIGHT — 3 steps + CTA */}
+                        <div className="flex flex-col gap-10 justify-between">
+                          <div className="flex flex-col gap-7">
+                            {[
+                              { n: '1', title: t('ai.quiz.step1Title'), body: t('ai.quiz.step1Body') },
+                              { n: '2', title: t('ai.quiz.step2Title'), body: t('ai.quiz.step2Body') },
+                              { n: '3', title: t('ai.quiz.step3Title'), body: t('ai.quiz.step3Body') },
+                            ].map(s => (
+                              <div key={s.n} className="grid grid-cols-[36px_1fr] gap-5 items-start">
+                                <div className="w-8 h-8 rounded-full border-[1.5px] border-[#0047AB] text-[#0047AB] font-display text-lg flex items-center justify-center">{s.n}</div>
+                                <div>
+                                  <h4 className="text-[13px] font-bold uppercase tracking-[0.18em] text-black mb-1.5">{s.title}</h4>
+                                  <p className="text-[14px] text-black/75 leading-relaxed">{s.body}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="flex flex-col gap-3.5 border-t border-[#DAD2C3] pt-7">
+                            <button
+                              type="button"
+                              onClick={triggerGoogleSignIn}
+                              className="inline-flex items-center justify-center gap-3 px-7 py-[18px] bg-[#0047AB] text-white text-[12px] font-bold uppercase tracking-[0.25em] hover:bg-[#003d99] transition-colors"
+                            >
+                              {t('ai.quiz.signInCta')} →
+                            </button>
+                            <p className="text-[11px] text-black/65 uppercase tracking-[0.18em] text-center">
+                              {t('ai.quiz.heroMeta')}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* 3×3 style grid — curated one image per style */}
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {([
-                        { style: 'Japandi',      url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774954444/9_ti0qtx.png' },
-                        { style: 'Modern',       url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950422/3_2_be2ubi.jpg' },
-                        { style: 'Mid-Century',  url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg' },
-                        { style: 'Bohemian',     url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774949549/1_piprtp.png' },
-                        { style: 'Coastal',      url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950150/10_ezeifi.jpg' },
-                        { style: 'Industrial',   url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774954018/6_xibejv.png' },
-                        { style: 'Art Deco',     url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775713416/19_eify7o.png' },
-                        { style: 'Rustic',       url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950455/11_hjofyz.jpg' },
-                        { style: 'Transitional', url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774940230/1_jxbeef.png' },
-                      ] as const).map(({ style, url }) => (
-                        <button key={style} onClick={triggerGoogleSignIn} className="group focus:outline-none flex flex-col">
-                          <div style={{ aspectRatio: '1' }} className="overflow-hidden w-full">
+                    {/* 8-style preview strip */}
+                    <div className="px-8 md:px-16 mt-20">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-black/65 mb-4">{t('ai.quiz.eightStyles')}</p>
+                      <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
+                        {([
+                          { style: 'Japandi',      url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774954444/9_ti0qtx.png' },
+                          { style: 'Modern',       url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950422/3_2_be2ubi.jpg' },
+                          { style: 'Mid-Century',  url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg' },
+                          { style: 'Bohemian',     url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774949549/1_piprtp.png' },
+                          { style: 'Rustic',       url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950455/11_hjofyz.jpg' },
+                          { style: 'Art Deco',     url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775713416/19_eify7o.png' },
+                          { style: 'Industrial',   url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774954018/6_xibejv.png' },
+                          { style: 'Coastal',      url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950150/10_ezeifi.jpg' },
+                        ] as const).map(({ style, url }) => (
+                          <button
+                            key={style}
+                            type="button"
+                            onClick={triggerGoogleSignIn}
+                            className="group relative overflow-hidden bg-[#DAD2C3] hover:-translate-y-1 transition-transform duration-300 focus:outline-none"
+                            style={{ aspectRatio: '3/4' }}
+                          >
                             <img
-                              src={cld(url, 360, { crop: 'fill', aspectRatio: '1/1' })}
-                              srcSet={cldSrcSet(url, THUMB_WIDTHS, { crop: 'fill', aspectRatio: '1/1' })}
-                              sizes="(min-width: 768px) 200px, 33vw"
-                              width={400} height={400}
+                              src={cld(url, 360, { crop: 'fill', aspectRatio: '3/4' })}
+                              srcSet={cldSrcSet(url, THUMB_WIDTHS, { crop: 'fill', aspectRatio: '3/4' })}
+                              sizes="(min-width: 768px) 12vw, 25vw"
+                              width={360} height={480}
                               loading="lazy" decoding="async"
                               alt={style}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              className="w-full h-full object-cover"
                             />
-                          </div>
-                          <span className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-black/65 text-center w-full">{style}</span>
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* CTA */}
-                    <div className="flex flex-col items-center gap-3 w-full bg-black/[0.03] border-t border-black/[0.06] pt-6 pb-5 -mx-8 px-8" style={{ width: 'calc(100% + 4rem)' }}>
-                      <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-black/65">Ready to find your style?</p>
-                      <button
-                        onClick={triggerGoogleSignIn}
-                        className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[11px] font-bold uppercase tracking-[0.25em] px-7 py-4 hover:bg-[#003d99] transition-colors"
-                      >
-                        Sign in to start your quiz →
-                      </button>
-                      <p className="text-[12px] text-black/70 uppercase tracking-[0.2em]">Free · 18 rooms · 2 minutes · No card needed</p>
+                            <span className="absolute bottom-0 left-0 right-0 px-2.5 py-2 bg-gradient-to-t from-black/70 to-transparent text-white text-[9px] font-bold uppercase tracking-[0.22em]">
+                              {style}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
