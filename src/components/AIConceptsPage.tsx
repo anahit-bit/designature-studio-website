@@ -419,16 +419,20 @@ const AIConceptsPage: React.FC = () => {
     const h = window.location.hash.replace(/^#/, '');
     return h === 'vision' || h === 'shopping' || h === 'audit' || h === 'quiz' ? h : 'quiz';
   });
-  // ── Direction B drawer + toast + share state ──
+  // ── Direction B drawer + toast + share + save-modal state ──
   const [quizDrawerOpen, setQuizDrawerOpen] = useState(false);
   const [quizToast, setQuizToast] = useState<string | null>(null);
   const [quizSharedView, setQuizSharedView] = useState(false);
+  const [quizSaveModalOpen, setQuizSaveModalOpen] = useState(false);
   const quizToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showQuizToast = useCallback((msg: string) => {
     setQuizToast(msg);
     if (quizToastTimerRef.current) clearTimeout(quizToastTimerRef.current);
     quizToastTimerRef.current = setTimeout(() => setQuizToast(null), 3200);
   }, []);
+
+  // ── Quiz state persistence (survives navigation away/back) ──
+  const QUIZ_PERSIST_KEY = 'ds_quiz_results_v1';
   const [auditComplete, setAuditComplete] = useState(false);
   const [auditProcessing, setAuditProcessing] = useState(false);
   const [quizRooms, setQuizRooms] = useState<QuizRooms>(QUIZ_ROOMS_FALLBACK);
@@ -1330,6 +1334,10 @@ const AIConceptsPage: React.FC = () => {
     setLovedRooms([]);
     setSeenQuizImages(new Set());
     setResultGalleryImages([]);
+    // Clear persisted results on explicit Retake.
+    if (typeof window !== 'undefined') {
+      try { sessionStorage.removeItem(QUIZ_PERSIST_KEY); } catch { /* sessionStorage blocked */ }
+    }
   };
 
   const handleApplyQuizStyle = () => {
@@ -1382,15 +1390,15 @@ const AIConceptsPage: React.FC = () => {
     }
   }, [buildShareUrl, quizResult, showQuizToast, t]);
 
-  /** Save handler — paid users get a toast, free users get an upgrade prompt. */
+  /** Save handler — paid users get a toast, free users get a confirmation modal. */
   const handleSaveStyle = useCallback(() => {
     if (!user?.isPaid) {
-      navigateTo('pricing');
+      setQuizSaveModalOpen(true);
       return;
     }
     console.log('save style', quizResult[0]?.style);
     showQuizToast(t('ai.quiz.savedToast'));
-  }, [user?.isPaid, quizResult, navigateTo, showQuizToast, t]);
+  }, [user?.isPaid, quizResult, showQuizToast, t]);
 
   // ── On-load handler: parse ?dna=...&pcts=... URL params and skip to results ──
   useEffect(() => {
@@ -1439,10 +1447,73 @@ const AIConceptsPage: React.FC = () => {
     if (typeof window !== 'undefined') {
       const url = `${window.location.origin}${window.location.pathname}#quiz`;
       window.history.replaceState({}, '', url);
+      try { sessionStorage.removeItem(QUIZ_PERSIST_KEY); } catch { /* sessionStorage blocked */ }
     }
     setQuizSharedView(false);
     handleQuizReset();
   }, [handleQuizReset]);
+
+  // ── Persist results to sessionStorage so navigation away/back keeps the DNA visible ──
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!quizDone || quizResult.length === 0 || quizSharedView) return;
+    try {
+      sessionStorage.setItem(QUIZ_PERSIST_KEY, JSON.stringify({
+        quizResult,
+        quizVotes,
+        lovedRooms,
+        ts: Date.now(),
+      }));
+    } catch {
+      // sessionStorage blocked / quota — non-fatal
+    }
+  }, [quizDone, quizResult, quizVotes, lovedRooms, quizSharedView]);
+
+  // ── Restore persisted results on mount when no shared-link params present ──
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('dna') && params.get('pcts')) return; // shared view takes precedence
+    try {
+      const raw = sessionStorage.getItem(QUIZ_PERSIST_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed?.quizResult) || parsed.quizResult.length === 0) return;
+      setQuizResult(parsed.quizResult);
+      if (parsed.quizVotes) setQuizVotes(parsed.quizVotes);
+      if (Array.isArray(parsed.lovedRooms)) setLovedRooms(parsed.lovedRooms);
+      setQuizDone(true);
+    } catch {
+      // bad JSON / blocked — ignore
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Clear persisted results on logout (transition from signed-in to signed-out only,
+  //     NOT on initial mount where user is null from the start) ──
+  const wasSignedInRef = useRef(false);
+  useEffect(() => {
+    if (user) {
+      wasSignedInRef.current = true;
+      return;
+    }
+    if (!wasSignedInRef.current) return;
+    wasSignedInRef.current = false;
+    if (typeof window === 'undefined') return;
+    try { sessionStorage.removeItem(QUIZ_PERSIST_KEY); } catch { /* blocked */ }
+  }, [user]);
+
+  // ── Escape-key closes save-style modal + drawer ──
+  useEffect(() => {
+    if (!quizSaveModalOpen && !quizDrawerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setQuizSaveModalOpen(false);
+        setQuizDrawerOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [quizSaveModalOpen, quizDrawerOpen]);
 
   const handleShoppingSearch = async (overrideItems?: any[], forceStandalone?: boolean) => {
     const imageToAnalyse = forceStandalone
@@ -2573,7 +2644,7 @@ const AIConceptsPage: React.FC = () => {
               <div id="style-quiz-section" className="flex flex-col bg-white">
 
                 {/* ── State 1 — Logged-out hero (Direction B) ── */}
-                {!authLoading && !user && !quizSharedView && (
+                {!authLoading && !user && !quizSharedView && !quizDone && (
                   <div className="bg-white py-16 md:py-20">
                     <div className="px-8 md:px-16">
                       <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#0047AB] mb-5">Style Quiz</p>
@@ -2698,8 +2769,8 @@ const AIConceptsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* ── States 2 & 4 — Voting + Results (logged-in OR shared-view) ── */}
-                {!authLoading && (user || quizSharedView) && (<>
+                {/* ── States 2 & 4 — Voting + Results (logged-in OR shared-view OR persisted results) ── */}
+                {!authLoading && (user || quizSharedView || quizDone) && (<>
 
                 {/* Shared-style banner — only when arriving from a share URL */}
                 {quizSharedView && quizDone && (
@@ -3034,6 +3105,59 @@ const AIConceptsPage: React.FC = () => {
                           )}
                         </div>
                       </motion.aside>
+                    </>
+                  )}
+                </AnimatePresence>
+
+                {/* ── Save my style modal (free user upgrade prompt) ── */}
+                <AnimatePresence>
+                  {quizSaveModalOpen && (
+                    <>
+                      <motion.div
+                        key="save-modal-overlay"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.18 }}
+                        className="fixed inset-0 bg-black/60 z-[80]"
+                        onClick={() => setQuizSaveModalOpen(false)}
+                      />
+                      <motion.div
+                        key="save-modal-panel"
+                        initial={{ opacity: 0, y: 12, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 12, scale: 0.97 }}
+                        transition={{ duration: 0.22, ease: 'easeOut' }}
+                        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-[480px] bg-white z-[81] shadow-2xl"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="save-modal-title"
+                      >
+                        <div className="p-7 md:p-8">
+                          <h3 id="save-modal-title" className="font-display text-[26px] md:text-[28px] font-medium text-black mb-3 leading-tight">
+                            Save your style — Design tier feature
+                          </h3>
+                          <p className="text-[14px] text-black/75 leading-relaxed mb-7">
+                            Saving your design DNA to your dashboard is part of the Design tier ($19/mo). Want to review pricing?
+                          </p>
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <button
+                              type="button"
+                              onClick={() => { setQuizSaveModalOpen(false); navigateTo('pricing'); }}
+                              className="flex-1 px-5 py-3.5 bg-[#0047AB] text-white text-[11px] font-bold uppercase tracking-[0.22em] hover:bg-[#003d99] transition-colors"
+                            >
+                              View pricing →
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setQuizSaveModalOpen(false)}
+                              className="flex-1 sm:flex-none px-5 py-3.5 text-[11px] font-bold uppercase tracking-[0.22em] text-black/65 hover:text-black transition-colors"
+                            >
+                              Maybe later
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
                     </>
                   )}
                 </AnimatePresence>
