@@ -1355,6 +1355,11 @@ const AIConceptsPage: React.FC = () => {
     }, 50);
   };
 
+  // Share URL uses window.location.origin so it works correctly in production
+  // (https://www.designature.studio) AND lets us test the URL-parsing logic
+  // in localhost incognito tabs on the same machine.
+  //
+  // Cross-device friend testing requires deployment to production first.
   /** Build a shareable URL with DNA + percentages baked in. */
   const buildShareUrl = useCallback((): string => {
     if (typeof window === 'undefined' || quizResult.length === 0) return '';
