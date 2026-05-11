@@ -10,6 +10,7 @@ import RoomAudit from './RoomAudit';
 import FeedbackModal from './FeedbackModal';
 import AIVisionShowcase from './AIVisionShowcase';
 import VisionExperience from './VisionExperience';
+import FeedbackBand from './FeedbackBand';
 import ShoppingListShowcase from './ShoppingListShowcase';
 import RetailerLogoStrip from './RetailerLogoStrip';
 import { QUIZ_IMAGE_WEIGHTS, TIER_POINTS } from '../data/quizImageWeights';
@@ -2375,6 +2376,8 @@ const AIConceptsPage: React.FC = () => {
                 }}
                 onRequestLogin={triggerGoogleSignIn}
               />
+              {/* Persistent feedback band — bottom of Room Audit (AI-023 G) */}
+              <FeedbackBand onOpenFeedback={() => setFeedbackOpen(true)} />
             </div>
           )}
 
@@ -3311,6 +3314,9 @@ const AIConceptsPage: React.FC = () => {
                     </motion.div>
                   )}
                 </AnimatePresence>
+
+                {/* Persistent feedback band — bottom of Style Quiz (AI-023 G) */}
+                <FeedbackBand onOpenFeedback={() => setFeedbackOpen(true)} />
               </div>
               )}
 
@@ -3851,6 +3857,11 @@ const AIConceptsPage: React.FC = () => {
                 )}
 
                   </>
+                )}
+
+                {/* Persistent feedback band — bottom of Shopping List (AI-023 G) */}
+                {activeTool === 'shopping' && (
+                  <FeedbackBand onOpenFeedback={() => setFeedbackOpen(true)} />
                 )}
               </div>
             </div>
