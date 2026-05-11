@@ -324,6 +324,27 @@ export default function VisionExperience(p: VisionExperienceProps) {
     );
   };
 
+  // ── Share concept — native share where available, otherwise copy to clipboard ──
+  const [shareToast, setShareToast] = useState<string | null>(null);
+  const handleShare = async () => {
+    if (!p.selectedConceptUrl) return;
+    const title = 'My Designature AI concept';
+    const text = `My room — ${p.selectedStyle ? p.translateStyle(p.selectedStyle) : 'AI concept'}`;
+    try {
+      if (typeof navigator !== 'undefined' && (navigator as any).share && /Mobi|Android/i.test(navigator.userAgent)) {
+        await (navigator as any).share({ title, text, url: window.location.href });
+        return;
+      }
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(window.location.href);
+        setShareToast('Link copied');
+        setTimeout(() => setShareToast(null), 2000);
+      }
+    } catch {
+      /* user dismissed native share */
+    }
+  };
+
   // ── State 3 — results (30/70 split + variant thumbs + meta-bar) ──
   const renderState3Hero = () => {
     return (
@@ -394,14 +415,14 @@ export default function VisionExperience(p: VisionExperienceProps) {
             )}
             <button
               type="button"
-              onClick={p.shopCurrentConcept}
+              onClick={handleShare}
               className="px-5 py-3 bg-transparent text-white border border-white/40 hover:border-white text-[10px] font-bold uppercase tracking-[0.22em]"
             >
               Share
             </button>
             <button
               type="button"
-              onClick={() => p.navigateTo('home')}
+              onClick={() => p.navigateTo('studio')}
               className="px-5 py-3 bg-[#0047AB] text-white border border-[#0047AB] hover:bg-[#003d99] text-[10px] font-bold uppercase tracking-[0.22em]"
             >
               Get this designed →
@@ -639,6 +660,12 @@ export default function VisionExperience(p: VisionExperienceProps) {
       {state === 3 && renderState3Hero()}
 
       <FeedbackBand onOpenFeedback={() => p.setFeedbackOpen(true)} />
+
+      {shareToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-black text-white px-5 py-3 z-[70] text-[11px] font-bold uppercase tracking-[0.22em] shadow-2xl">
+          {shareToast}
+        </div>
+      )}
     </>
   );
 }
