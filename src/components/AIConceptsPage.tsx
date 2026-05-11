@@ -2002,12 +2002,12 @@ const AIConceptsPage: React.FC = () => {
           processingPhase={processingPhase}
           PROCESSING_PHASES={PROCESSING_PHASES}
           maxConceptSlots={maxConceptSlots}
-          generationsLeft={user.generationsLeft}
+          generationsLeft={user?.generationsLeft ?? 3}
           unlimitedLabel={t('ai.unlimited')}
           remainingLabel={t('ai.remaining')}
           quizResult={quizResult}
           quizDone={quizDone}
-          isPaid={user.isPaid}
+          isPaid={user?.isPaid ?? false}
           navigateTo={navigateTo}
           setFeedbackOpen={setFeedbackOpen}
           shopCurrentConcept={shopCurrentConcept}
