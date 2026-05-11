@@ -182,7 +182,11 @@ export default function VisionExperience(p: VisionExperienceProps) {
 
   // ── State 1 — landing hero (full-bleed before/after slider) ──
   const renderState1Hero = () => (
-    <section className="relative w-full bg-black overflow-hidden vision-hero-section">
+    <section
+      className="relative w-full bg-black overflow-hidden vision-hero-section"
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => p.handleDrop(e, 'room')}
+    >
       <div ref={sliderRef} className="relative w-full" style={{ height: '78vh', minHeight: 560 }}>
         {/* Before pane */}
         <div
@@ -443,7 +447,11 @@ export default function VisionExperience(p: VisionExperienceProps) {
             Inspirations
             <span className="ml-2 font-body text-[11px] tracking-[0.2em] uppercase font-bold text-[#0047AB]">required · 2–3 recommended</span>
           </div>
-          <div className="grid grid-cols-5 gap-2.5 max-w-[560px] mx-auto w-full">
+          <div
+            className="grid grid-cols-5 gap-2.5 max-w-[560px] mx-auto w-full"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => p.handleDrop(e, 'inspiration')}
+          >
             {Array.from({ length: 5 }).map((_, slotIdx) => {
               const img = p.inspirationImages[slotIdx];
               if (img) {
@@ -466,8 +474,8 @@ export default function VisionExperience(p: VisionExperienceProps) {
                   key={slotIdx}
                   type="button"
                   onClick={() => inspoFileRef.current?.click()}
-                  className="aspect-square bg-white border border-dashed border-black/20 hover:border-black/55 hover:bg-[#FAFAFA] transition-colors flex items-center justify-center text-black/40 text-[22px] font-thin"
-                  aria-label="Add inspiration"
+                  className="aspect-square bg-white border border-dashed border-black/20 hover:border-black/55 hover:bg-[#FAFAFA] focus:outline-none focus:ring-2 focus:ring-[#0047AB]/40 focus:border-[#0047AB] transition-colors flex items-center justify-center text-black/40 text-[22px] font-thin"
+                  aria-label={`Add inspiration ${slotIdx + 1} of 5`}
                 >
                   +
                 </button>
