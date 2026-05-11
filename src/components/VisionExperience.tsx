@@ -150,7 +150,7 @@ export default function VisionExperience(p: VisionExperienceProps) {
     const top3 = p.quizResult.slice(0, 3).map(r => `${Math.round(r.pct)}% ${p.translateStyle(r.style)}`).join(' · ');
     return (
       <div
-        className={`bg-[#0047AB] text-white px-6 md:px-14 py-5 md:py-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 transition-opacity duration-200 ${dnaBannerFading ? 'opacity-0' : 'opacity-100'}`}
+        className={`vision-dna-banner bg-[#0047AB] text-white px-6 md:px-14 py-5 md:py-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 transition-opacity duration-200 ${dnaBannerFading ? 'opacity-0' : 'opacity-100'}`}
         role="region"
         aria-label="Apply your design DNA"
       >
@@ -160,7 +160,7 @@ export default function VisionExperience(p: VisionExperienceProps) {
           </div>
           <div className="text-[12px] text-white/85 tracking-wide">From your recent Style Quiz · {top3}</div>
         </div>
-        <div className="flex gap-2 flex-shrink-0">
+        <div className="actions flex gap-2 flex-shrink-0">
           <button
             type="button"
             onClick={() => dismissDnaBanner(false)}
@@ -182,7 +182,7 @@ export default function VisionExperience(p: VisionExperienceProps) {
 
   // ── State 1 — landing hero (full-bleed before/after slider) ──
   const renderState1Hero = () => (
-    <section className="relative w-full bg-black overflow-hidden hero-section">
+    <section className="relative w-full bg-black overflow-hidden vision-hero-section">
       <div ref={sliderRef} className="relative w-full" style={{ height: '78vh', minHeight: 560 }}>
         {/* Before pane */}
         <div
@@ -219,7 +219,7 @@ export default function VisionExperience(p: VisionExperienceProps) {
 
         {/* Overlay scrim + editorial text */}
         <div className="absolute inset-0 z-[5] flex flex-col items-center justify-center text-center px-6 pointer-events-none">
-          <div className="bg-black/50 px-10 md:px-14 py-10 md:py-12 max-w-[720px] pointer-events-auto" style={{ backdropFilter: 'blur(8px)' }}>
+          <div className="vision-scrim bg-black/50 px-10 md:px-14 py-10 md:py-12 max-w-[720px] pointer-events-auto" style={{ backdropFilter: 'blur(8px)' }}>
             <h1 className="font-display font-normal text-white leading-[1.0] tracking-tight mb-4" style={{ fontSize: 'clamp(46px, 6vw, 86px)', letterSpacing: '-0.02em' }}>
               Your room.<br /><em className="italic text-white/80 font-light">Reimagined.</em>
             </h1>
@@ -264,7 +264,7 @@ export default function VisionExperience(p: VisionExperienceProps) {
     const roomLabel = p.selectedRoom || 'Auto-detect room';
 
     return (
-      <section className="relative w-full bg-black overflow-hidden hero-section" style={{ height: '78vh', minHeight: 560 }}>
+      <section className="relative w-full bg-black overflow-hidden vision-hero-section" style={{ height: '78vh', minHeight: 560 }}>
         {/* User's room — object-fit:contain (no crop) */}
         {p.roomImage && (
           <img
@@ -323,17 +323,17 @@ export default function VisionExperience(p: VisionExperienceProps) {
   // ── State 3 — results (30/70 split + variant thumbs + meta-bar) ──
   const renderState3Hero = () => {
     return (
-      <section className="relative w-full bg-black overflow-hidden hero-section result-hero" style={{ height: '78vh', minHeight: 560 }}>
+      <section className="relative w-full bg-black overflow-hidden vision-hero-section vision-result-hero" style={{ height: '78vh', minHeight: 560 }}>
         {/* 30/70 split — desktop. Mobile collapses to single after pane (CSS). */}
-        <div className="absolute inset-y-0 left-0 result-pane-before bg-cover bg-center" style={{ width: '30%', backgroundImage: p.roomImage ? `url('${p.roomImage}')` : undefined }} />
-        <div className="absolute inset-y-0 right-0 result-pane-after bg-cover bg-center" style={{ width: '70%', backgroundImage: p.selectedConceptUrl ? `url('${p.selectedConceptUrl}')` : undefined, cursor: p.selectedConceptUrl ? 'zoom-in' : 'default' }}
+        <div className="absolute inset-y-0 left-0 vision-pane-before bg-cover bg-center" style={{ width: '30%', backgroundImage: p.roomImage ? `url('${p.roomImage}')` : undefined }} />
+        <div className="absolute inset-y-0 right-0 vision-pane-after bg-cover bg-center" style={{ width: '70%', backgroundImage: p.selectedConceptUrl ? `url('${p.selectedConceptUrl}')` : undefined, cursor: p.selectedConceptUrl ? 'zoom-in' : 'default' }}
           onClick={() => p.selectedConceptUrl && p.setIsLightboxOpen(true)}
         />
         {/* Divider */}
-        <div className="absolute inset-y-0 result-divider z-[3]" style={{ left: '30%', width: 2, background: 'rgba(255,255,255,0.6)', transform: 'translateX(-1px)' }} />
+        <div className="absolute inset-y-0 vision-divider z-[3]" style={{ left: '30%', width: 2, background: 'rgba(255,255,255,0.6)', transform: 'translateX(-1px)' }} />
 
         {/* Pane labels */}
-        <div className="absolute top-6 left-6 z-[3] result-label-before">
+        <div className="absolute top-6 left-6 z-[3] vision-label-before">
           <span className="bg-black/65 text-white px-3.5 py-2 text-[10px] font-bold uppercase tracking-[0.25em]">Original</span>
         </div>
         <div className="absolute top-6 right-6 z-[3]">
@@ -344,7 +344,7 @@ export default function VisionExperience(p: VisionExperienceProps) {
 
         {/* Variant thumbs — top-right above the meta-bar */}
         {p.allSessionConcepts.length > 1 && (
-          <div className="absolute right-6 z-[3] flex gap-1.5 result-variants" style={{ bottom: 130 }}>
+          <div className="absolute right-6 z-[3] flex gap-1.5 vision-variants" style={{ bottom: 130 }}>
             {p.allSessionConcepts.slice(0, 6).map((img, idx) => (
               <button
                 key={`v-${idx}`}
@@ -631,24 +631,6 @@ export default function VisionExperience(p: VisionExperienceProps) {
       {state === 3 && renderState3Hero()}
 
       <FeedbackBand onOpenFeedback={() => p.setFeedbackOpen(true)} />
-
-      {/* Responsive styles */}
-      <style>{`
-        @media (max-width: 1024px) {
-          .hero-section { height: 70vh !important; min-height: 480px !important; }
-        }
-        @media (max-width: 768px) {
-          .hero-section { height: 70vh !important; min-height: 480px !important; }
-          .result-hero .result-pane-before { display: none !important; }
-          .result-hero .result-pane-after { width: 100% !important; }
-          .result-hero .result-divider { display: none !important; }
-          .result-hero .result-label-before { display: none !important; }
-          .result-hero .result-variants { right: 1rem !important; }
-        }
-        @media (max-width: 640px) {
-          .hero-section { height: 65vh !important; min-height: 420px !important; }
-        }
-      `}</style>
     </>
   );
 }
