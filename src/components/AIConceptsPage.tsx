@@ -1884,39 +1884,49 @@ const AIConceptsPage: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div className="group relative bg-[#f7f6f4] p-4 border-r border-black/8 cursor-default" style={{ minHeight: '130px' }}>
+              <div
+                onClick={() => navigateTo('pricing')}
+                className="group relative p-4 border-r border-black/8 cursor-pointer transition-all duration-200 opacity-70 hover:opacity-100 vf-locked-tile vf-locked-design"
+                style={{ minHeight: '130px' }}
+              >
                 <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/55 mb-3">04</div>
-                <div className="font-display text-base font-bold leading-tight mb-1 text-black/65">{t('ai.roomAudit')}</div>
-                <div className="text-[11px] text-black/60 leading-relaxed uppercase tracking-wide">
+                <div className="font-display text-base font-bold leading-tight mb-1 text-black/80">{t('ai.roomAudit')}</div>
+                <div className="text-[11px] text-black/65 leading-relaxed uppercase tracking-wide">
                   {t('ai.scoreSpace')}
                 </div>
                 <div className="absolute bottom-3 right-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-black/65 bg-black/5 px-1.5 py-0.5">Soon</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-white bg-[#0047AB] px-1.5 py-0.5">DESIGN+</span>
                 </div>
               </div>
             )}
 
             {/* Tool 5 — Design Brief (SOON) */}
-            <div className="group relative bg-[#f7f6f4] p-4 border-r border-black/8 cursor-default" style={{ minHeight: '130px' }}>
+            <div
+              className="group relative p-4 border-r border-black/8 cursor-not-allowed opacity-[0.62] vf-locked-tile vf-locked-soon"
+              style={{ minHeight: '130px' }}
+            >
               <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/55 mb-3">05</div>
-              <div className="font-display text-base font-bold leading-tight mb-1 text-black/65">{t('ai.designBrief')}</div>
+              <div className="font-display text-base font-bold leading-tight mb-1 text-black/75">{t('ai.designBrief')}</div>
               <div className="text-[11px] text-black/60 leading-relaxed uppercase tracking-wide">
                 {t('ai.buildBrief')}
               </div>
               <div className="absolute bottom-3 right-3">
-                <span className="text-[10px] font-bold uppercase tracking-wide text-black/65 bg-black/5 px-1.5 py-0.5">Soon</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-black/55 bg-black/5 px-1.5 py-0.5">SOON</span>
               </div>
             </div>
 
             {/* Tool 6 — Cultural Advisor (SOON) */}
-            <div className="group relative bg-[#f7f6f4] p-4 cursor-default" style={{ minHeight: '130px' }}>
+            <div
+              className="group relative p-4 cursor-not-allowed opacity-[0.62] vf-locked-tile vf-locked-soon"
+              style={{ minHeight: '130px' }}
+            >
               <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/55 mb-3">06</div>
-              <div className="font-display text-base font-bold leading-tight mb-1 text-black/65">{t('ai.culturalAdvisor')}</div>
+              <div className="font-display text-base font-bold leading-tight mb-1 text-black/75">{t('ai.culturalAdvisor')}</div>
               <div className="text-[11px] text-black/60 leading-relaxed uppercase tracking-wide">
                 {t('ai.blendStyles')}
               </div>
               <div className="absolute bottom-3 right-3">
-                <span className="text-[10px] font-bold uppercase tracking-wide text-black/65 bg-black/5 px-1.5 py-0.5">Soon</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-black/55 bg-black/5 px-1.5 py-0.5">SOON</span>
               </div>
             </div>
 

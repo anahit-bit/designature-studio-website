@@ -1,3 +1,26 @@
 @import "tailwindcss";
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* VF-002 — locked AI tool tile polish.
+   Diagonal hatch on cream base; design-tier hover gains a cobalt-tinted wash. */
+.vf-locked-tile {
+  background-color: #f7f6f4;
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.045) 0,
+    rgba(0, 0, 0, 0.045) 1px,
+    transparent 1px,
+    transparent 9px
+  );
+}
+.vf-locked-design:hover {
+  background-color: #eef2fa;
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(0, 71, 171, 0.10) 0,
+    rgba(0, 71, 171, 0.10) 1px,
+    transparent 1px,
+    transparent 9px
+  );
+}
