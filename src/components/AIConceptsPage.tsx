@@ -1964,7 +1964,7 @@ const AIConceptsPage: React.FC = () => {
 
       {/* ── AI VISION SHOWCASE (logged-out) ── */}
       {!authLoading && !user && activeTool === 'vision' && (
-        <AIVisionShowcase onRequestLogin={triggerGoogleSignIn} />
+        <AIVisionShowcase onRequestLogin={triggerGoogleSignIn} onOpenFeedback={() => setFeedbackOpen(true)} />
       )}
 
       {/* ── AI VISION EXPERIENCE (logged-in, AI-023 Variant D) ── */}
