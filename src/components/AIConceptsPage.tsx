@@ -9,6 +9,7 @@ import Footer from './Footer';
 import RoomAudit from './RoomAudit';
 import FeedbackModal from './FeedbackModal';
 import AIVisionShowcase from './AIVisionShowcase';
+import VisionExperience from './VisionExperience';
 import ShoppingListShowcase from './ShoppingListShowcase';
 import RetailerLogoStrip from './RetailerLogoStrip';
 import { QUIZ_IMAGE_WEIGHTS, TIER_POINTS } from '../data/quizImageWeights';
@@ -1965,6 +1966,59 @@ const AIConceptsPage: React.FC = () => {
         <AIVisionShowcase onRequestLogin={triggerGoogleSignIn} />
       )}
 
+      {/* ── AI VISION EXPERIENCE (logged-in, AI-023 Variant D) ── */}
+      {!authLoading && user && activeTool === 'vision' && (
+        <VisionExperience
+          roomImage={roomImage}
+          inspirationImages={inspirationImages}
+          selectedStyle={selectedStyle}
+          setSelectedStyle={setSelectedStyle}
+          selectedRoom={selectedRoom}
+          setSelectedRoom={setSelectedRoom}
+          isProcessing={isProcessing}
+          results={results}
+          sessionConceptArchive={sessionConceptArchive}
+          allSessionConcepts={allSessionConcepts}
+          selectedConceptIndex={selectedConceptIndex}
+          setSelectedConceptIndex={setSelectedConceptIndex}
+          selectedConceptUrl={selectedConceptUrl}
+          handleFileChange={handleFileChange}
+          handleDrop={handleDrop}
+          handleGenerate={handleGenerate}
+          handleReset={handleReset}
+          handleDownload={handleDownload}
+          handleTrySampleRoom={handleTrySampleRoom}
+          removeInspirationImage={removeInspirationImage}
+          handlePinterestPaste={handlePinterestPaste}
+          pinterestUrl={pinterestUrl}
+          setPinterestUrl={setPinterestUrl}
+          pinterestError={pinterestError}
+          setPinterestError={setPinterestError}
+          pinterestLoading={pinterestLoading}
+          isGenerateDisabled={isGenerateDisabled}
+          isSampleLoading={isSampleLoading}
+          processingStage={processingStage}
+          processingPhase={processingPhase}
+          PROCESSING_PHASES={PROCESSING_PHASES}
+          maxConceptSlots={maxConceptSlots}
+          generationsLeft={user.generationsLeft}
+          unlimitedLabel={t('ai.unlimited')}
+          remainingLabel={t('ai.remaining')}
+          quizResult={quizResult}
+          quizDone={quizDone}
+          isPaid={user.isPaid}
+          navigateTo={navigateTo}
+          setFeedbackOpen={setFeedbackOpen}
+          shopCurrentConcept={shopCurrentConcept}
+          validationError={validationError}
+          error={error}
+          setError={setError}
+          isLightboxOpen={isLightboxOpen}
+          setIsLightboxOpen={setIsLightboxOpen}
+          translateStyle={(s: string) => t(`ai.style.${s.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}
+        />
+      )}
+
       {/* ── SHOPPING LIST SHOWCASE (logged-out) ── */}
       {!authLoading && !user && activeTool === 'shopping' && (
         <ShoppingListShowcase onRequestLogin={triggerGoogleSignIn} />
@@ -1975,7 +2029,7 @@ const AIConceptsPage: React.FC = () => {
            working area sizes to its content and the feedback CTA sits close
            below it. For ALL quiz steps (rating and result) drop the viewport
            height chain — other tools keep flex-grow + minHeight:'75vh'. */}
-      <div className={`flex flex-col border-t border-black/10${!authLoading && !user && (activeTool === 'vision' || activeTool === 'shopping') ? ' hidden' : ''}${activeTool !== 'quiz' ? ' flex-grow' : ''}`}>
+      <div className={`flex flex-col border-t border-black/10${(activeTool === 'vision' || (!authLoading && !user && activeTool === 'shopping')) ? ' hidden' : ''}${activeTool !== 'quiz' ? ' flex-grow' : ''}`}>
         {/* Quiz uses full-bleed sections (its own backgrounds + paddings); other tools keep the centered 1600px shell. */}
         <div className={activeTool === 'quiz' ? 'w-full' : 'max-w-[1600px] w-full mx-auto px-8 md:px-16 flex flex-col lg:flex-row flex-grow'} style={activeTool !== 'quiz' ? { minHeight: '75vh' } : undefined}>
 
