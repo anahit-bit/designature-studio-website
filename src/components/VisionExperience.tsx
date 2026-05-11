@@ -307,14 +307,22 @@ export default function VisionExperience(p: VisionExperienceProps) {
               </span>
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={() => p.handleGenerate(false, false)}
-              disabled={p.isGenerateDisabled}
-              className="bg-[#0047AB] text-white px-12 py-5 text-[12px] font-bold uppercase tracking-[0.3em] inline-flex items-center gap-3 hover:bg-[#003d99] transition-colors rounded-sm disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              ✦ Generate concept
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => p.handleGenerate(false, false)}
+                disabled={p.isGenerateDisabled}
+                className="bg-[#0047AB] text-white px-12 py-5 text-[12px] font-bold uppercase tracking-[0.3em] inline-flex items-center gap-3 hover:bg-[#003d99] transition-colors rounded-sm disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                ✦ Generate concept
+              </button>
+              {/* Disabled-state hint — explains why generate is greyed out */}
+              {p.isGenerateDisabled && p.inspirationImages.length === 0 && !p.selectedStyle && (
+                <p className="mt-4 text-[11px] text-white/65 uppercase tracking-[0.22em] font-bold">
+                  Add an inspiration or pick a style below to continue
+                </p>
+              )}
+            </>
           )}
           {p.validationError && (
             <p className="mt-4 text-[11px] text-red-300 uppercase tracking-[0.18em]">{p.validationError}</p>
