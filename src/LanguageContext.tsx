@@ -216,7 +216,7 @@ const translations = {
     'ai.shopDesc': 'Upload any interior · Find real products · Download PDF',
     'ai.usedAll': "You've used all 3 free generations.",
     'ai.bookConversation': "Let's Talk",
-    'ai.generateConcept': 'Generate Concept',
+    'ai.generateConcept': 'Generate concept',
     'ai.conceptAppear': 'Your concept will appear here',
     'ai.completeSteps': 'Complete the steps on the left',
     'ai.processingTime': 'This takes about 20–40 seconds',
@@ -525,7 +525,7 @@ const translations = {
     'ai.vision.cta': 'Learn about our philosophy',
 
     // General Buttons
-    'btn.generate': 'Generate Concept',
+    'btn.generate': 'Generate concept',
     'btn.download': 'Download',
     'btn.book': "Let's Talk",
     'btn.back': 'Back',
