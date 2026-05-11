@@ -1,7 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Download, RefreshCw } from 'lucide-react';
-import { cld } from '../lib/cld';
+import { cld, cldSrcSet } from '../lib/cld';
 import FeedbackBand from './FeedbackBand';
+
+// Responsive ladders matched to the surfaces they serve.
+const HERO_FULL_WIDTHS = [768, 1024, 1440, 1920];   // 78vh full-bleed slider
+const HERO_USER_WIDTHS = [768, 1280, 1600];          // user's room as hero
+const RESULT_AFTER_WIDTHS = [600, 900, 1400];        // 70% pane (and the 30% before pane reuses same ladder)
+const VARIANT_THUMB_WIDTH = 200;                     // 64×48 thumbs — small fixed
 
 // AI-023 Variant D — full-bleed editorial gallery flow.
 // Spec: WEBSITE-PLAN-ai-vision-VARIANT-D.html.
@@ -188,15 +194,29 @@ export default function VisionExperience(p: VisionExperienceProps) {
       onDrop={(e) => p.handleDrop(e, 'room')}
     >
       <div ref={sliderRef} className="relative w-full" style={{ height: '78vh', minHeight: 560 }}>
-        {/* Before pane */}
-        <div
-          className="absolute inset-y-0 left-0 bg-cover bg-center"
-          style={{ backgroundImage: `url('${cld(SAMPLE_BEFORE, 1920)}')`, width: `${sliderPos}%` }}
+        {/* AFTER pane — fills container, visible right of slider */}
+        <img
+          src={cld(SAMPLE_AFTER, 1440)}
+          srcSet={cldSrcSet(SAMPLE_AFTER, HERO_FULL_WIDTHS)}
+          sizes="100vw"
+          alt="Redesigned concept"
+          width={1920} height={1080}
+          loading="eager"
+          decoding="async"
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ clipPath: `inset(0 0 0 ${sliderPos}%)` }}
         />
-        {/* After pane (full width, masked by before) */}
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url('${cld(SAMPLE_AFTER, 1920)}')`, clipPath: `inset(0 0 0 ${sliderPos}%)` }}
+        {/* BEFORE pane — fills container, visible left of slider */}
+        <img
+          src={cld(SAMPLE_BEFORE, 1440)}
+          srcSet={cldSrcSet(SAMPLE_BEFORE, HERO_FULL_WIDTHS)}
+          sizes="100vw"
+          alt="Original room"
+          width={1920} height={1080}
+          loading="eager"
+          decoding="async"
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
         />
 
         {/* Pane labels */}
@@ -269,11 +289,17 @@ export default function VisionExperience(p: VisionExperienceProps) {
 
     return (
       <section className="relative w-full bg-black overflow-hidden vision-hero-section" style={{ height: '78vh', minHeight: 560 }}>
-        {/* User's room — object-fit:contain (no crop) */}
+        {/* User's room — object-fit:contain (no crop).
+            roomImage is a data: URL (from upload) so cld() / srcset are no-ops
+            and pass through; sizes attribute is set for any future cdn-backed flow. */}
         {p.roomImage && (
           <img
-            src={p.roomImage}
+            src={cld(p.roomImage, 1600)}
+            srcSet={cldSrcSet(p.roomImage, HERO_USER_WIDTHS)}
+            sizes="(min-width: 1024px) 1280px, 100vw"
             alt="Your room"
+            loading="eager"
+            decoding="async"
             className="absolute inset-0 w-full h-full object-contain"
             style={{ background: '#000' }}
           />
@@ -358,10 +384,36 @@ export default function VisionExperience(p: VisionExperienceProps) {
     return (
       <section className="relative w-full bg-black overflow-hidden vision-hero-section vision-result-hero" style={{ height: '78vh', minHeight: 560 }}>
         {/* 30/70 split — desktop. Mobile collapses to single after pane (CSS). */}
-        <div className="absolute inset-y-0 left-0 vision-pane-before bg-cover bg-center" style={{ width: '30%', backgroundImage: p.roomImage ? `url('${p.roomImage}')` : undefined }} />
-        <div className="absolute inset-y-0 right-0 vision-pane-after bg-cover bg-center" style={{ width: '70%', backgroundImage: p.selectedConceptUrl ? `url('${p.selectedConceptUrl}')` : undefined, cursor: p.selectedConceptUrl ? 'zoom-in' : 'default' }}
+        <div className="absolute inset-y-0 left-0 vision-pane-before overflow-hidden" style={{ width: '30%' }}>
+          {p.roomImage && (
+            <img
+              src={cld(p.roomImage, 900)}
+              srcSet={cldSrcSet(p.roomImage, RESULT_AFTER_WIDTHS)}
+              sizes="(min-width: 1024px) 30vw, 100vw"
+              alt="Original room"
+              loading="eager"
+              decoding="async"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          )}
+        </div>
+        <div
+          className="absolute inset-y-0 right-0 vision-pane-after overflow-hidden"
+          style={{ width: '70%', cursor: p.selectedConceptUrl ? 'zoom-in' : 'default' }}
           onClick={() => p.selectedConceptUrl && p.setIsLightboxOpen(true)}
-        />
+        >
+          {p.selectedConceptUrl && (
+            <img
+              src={cld(p.selectedConceptUrl, 1400)}
+              srcSet={cldSrcSet(p.selectedConceptUrl, RESULT_AFTER_WIDTHS)}
+              sizes="(min-width: 1024px) 70vw, 100vw"
+              alt="Concept"
+              loading="eager"
+              decoding="async"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          )}
+        </div>
         {/* Divider */}
         <div className="absolute inset-y-0 vision-divider z-[3]" style={{ left: '30%', width: 2, background: 'rgba(255,255,255,0.6)', transform: 'translateX(-1px)' }} />
 
@@ -383,10 +435,18 @@ export default function VisionExperience(p: VisionExperienceProps) {
                 key={`v-${idx}`}
                 type="button"
                 onClick={() => p.setSelectedConceptIndex(idx)}
-                className={`bg-cover bg-center transition-all ${p.selectedConceptIndex === idx ? 'ring-2 ring-[#0047AB]' : 'opacity-75 hover:opacity-100'}`}
-                style={{ width: 64, height: 48, backgroundImage: `url('${img}')`, boxShadow: '0 4px 12px rgba(0,0,0,0.4)' }}
+                className={`relative overflow-hidden transition-all ${p.selectedConceptIndex === idx ? 'ring-2 ring-[#0047AB]' : 'opacity-75 hover:opacity-100'}`}
+                style={{ width: 64, height: 48, boxShadow: '0 4px 12px rgba(0,0,0,0.4)' }}
                 aria-label={`Variant ${idx + 1}`}
-              />
+              >
+                <img
+                  src={cld(img, VARIANT_THUMB_WIDTH, { crop: 'fill', aspectRatio: '4/3' })}
+                  alt=""
+                  width={VARIANT_THUMB_WIDTH} height={150}
+                  loading="lazy" decoding="async"
+                  className="w-full h-full object-cover"
+                />
+              </button>
             ))}
           </div>
         )}
