@@ -14,6 +14,13 @@
     transparent 9px
   );
 }
+/* AI-023 — active state for "More transformations" cards.
+   Tailwind v4 preflight + shadow CSS-variable system zero out inline box-shadow
+   and outline-width on buttons, so we have to use !important to win. */
+.vision-card-ba[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px #0047AB !important;
+}
+
 .vf-locked-design:hover {
   background-color: #eef2fa;
   background-image: repeating-linear-gradient(
