@@ -149,25 +149,25 @@ export default function AIVisionShowcase({ onRequestLogin, onOpenFeedback }: Pro
   return (
     <div className="w-full bg-white">
 
-      {/* ── HERO (light) ── */}
-      <section ref={heroRef} className="bg-white pt-16 md:pt-20 pb-20 md:pb-24">
-        <div className="max-w-[1280px] mx-auto px-6 md:px-14">
+      {/* ── HERO (light) — layout mirrors Style Quiz logged-out (1.4fr / 1fr) ── */}
+      <section ref={heroRef} className="bg-white py-16 md:py-20">
+        <div className="px-8 md:px-16">
           <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#0047AB] mb-5">AI Vision</p>
-          <h1 className="font-display font-normal leading-[1.05] tracking-tight text-black mb-6 max-w-[780px]" style={{ fontSize: 'clamp(44px, 5vw, 72px)', letterSpacing: '-0.01em' }}>
+          <h1 className="font-display font-normal tracking-tight leading-[1.05] text-black mb-5 max-w-[720px]" style={{ fontSize: 'clamp(40px, 5vw, 64px)' }}>
             Upload your room. See it redesigned.
           </h1>
-          <p className="text-[17px] text-black/75 leading-relaxed max-w-[560px] mb-11">
+          <p className="text-[17px] text-black/75 max-w-[560px] leading-relaxed mb-12">
             Drop a room photo, add 2–3 references, pick a style. Thirty seconds later: three concepts of your space, reimagined — yours to keep, share, or carry into a Designature project.
           </p>
 
-          {/* Two-column stage — square slider + 3-step side panel */}
-          <div className="grid gap-10 lg:gap-16 items-start grid-cols-1 lg:grid-cols-[1fr_360px]">
+          {/* Two-column stage — slider (1.4fr) + 3-step side panel (1fr) */}
+          <div className="grid lg:grid-cols-[1.4fr_1fr] gap-10 lg:gap-14 items-stretch">
 
-            {/* Square before/after slider */}
+            {/* Square before/after slider — sharp corners + shadow match Style Quiz */}
             <div
               ref={sliderRef}
-              className="relative w-full overflow-hidden bg-black rounded-md"
-              style={{ aspectRatio: '1/1', boxShadow: '0 32px 80px rgba(0,0,0,0.18)' }}
+              className="relative w-full overflow-hidden bg-black shadow-[0_28px_60px_rgba(0,0,0,0.18)]"
+              style={{ aspectRatio: '1/1' }}
             >
               {/* AFTER pane — clipped right of slider */}
               <img
@@ -220,39 +220,35 @@ export default function AIVisionShowcase({ onRequestLogin, onOpenFeedback }: Pro
 
             </div>
 
-            {/* Right-side panel — 3-step explainer + sign-in CTA */}
-            <aside className="flex flex-col gap-7 self-stretch">
-              {/* Steps */}
-              <ol className="flex flex-col gap-7 list-none m-0 p-0">
+            {/* Right-side panel — 3-step explainer + bottom-anchored CTA.
+                Style mirrors Style Quiz logged-out exactly (cobalt-outlined
+                step circles, justify-between distributes steps + CTA). */}
+            <aside className="flex flex-col gap-10 justify-between">
+              <div className="flex flex-col gap-7">
                 {[
-                  { n: 1, title: 'Drop a room photo',   body: "Any room of your home. Phone snapshots are fine — better light helps, but isn't required." },
-                  { n: 2, title: 'Add 2–3 inspirations', body: 'Reference photos or Pinterest pins — these tell the AI what direction to take.' },
-                  { n: 3, title: 'See three concepts',   body: 'Thirty seconds of generation. Yours to keep, share with a friend, or carry into a Designature project.' },
-                ].map(step => (
-                  <li key={step.n} className="grid grid-cols-[36px_1fr] gap-4 items-start">
-                    <div className="w-8 h-8 rounded-full border border-black/15 flex items-center justify-center text-black/60 text-[13px] font-display">
-                      {step.n}
-                    </div>
+                  { n: '1', title: 'Drop a room photo',   body: "Any room of your home. Phone snapshots are fine — better light helps, but isn't required." },
+                  { n: '2', title: 'Add 2–3 inspirations', body: 'Reference photos or Pinterest pins — these tell the AI what direction to take.' },
+                  { n: '3', title: 'See three concepts',   body: 'Thirty seconds of generation. Yours to keep, share with a friend, or carry into a Designature project.' },
+                ].map(s => (
+                  <div key={s.n} className="grid grid-cols-[36px_1fr] gap-5 items-start">
+                    <div className="w-8 h-8 rounded-full border-[1.5px] border-[#0047AB] text-[#0047AB] font-display text-lg flex items-center justify-center">{s.n}</div>
                     <div>
-                      <p className="text-[12px] font-bold uppercase tracking-[0.22em] text-black mb-1.5">{step.title}</p>
-                      <p className="text-[13px] text-[#404040] leading-relaxed">{step.body}</p>
+                      <h4 className="text-[13px] font-bold uppercase tracking-[0.18em] text-black mb-1.5">{s.title}</h4>
+                      <p className="text-[14px] text-black/75 leading-relaxed">{s.body}</p>
                     </div>
-                  </li>
+                  </div>
                 ))}
-              </ol>
+              </div>
 
-              <div className="h-px bg-[#DAD2C3]" />
-
-              {/* CTA — matches Style Quiz logged-out CTA exactly */}
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3.5 border-t border-[#DAD2C3] pt-7">
                 <button
                   type="button"
                   onClick={onRequestLogin}
-                  className="inline-flex items-center justify-center gap-3 w-full px-6 py-[18px] bg-[#0047AB] text-white text-[12px] font-bold uppercase tracking-[0.22em] hover:bg-[#003d99] transition-colors"
+                  className="inline-flex items-center justify-center gap-3 px-7 py-[18px] bg-[#0047AB] text-white text-[12px] font-bold uppercase tracking-[0.25em] hover:bg-[#003d99] transition-colors"
                 >
                   {t('ai.quiz.signInCta')} →
                 </button>
-                <p className="text-[11px] uppercase tracking-[0.22em] text-[#6B6B6B] text-left">
+                <p className="text-[11px] text-black/65 uppercase tracking-[0.18em] text-center">
                   Free · 3 generations · No card needed
                 </p>
               </div>
