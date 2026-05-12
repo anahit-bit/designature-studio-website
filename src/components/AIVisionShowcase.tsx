@@ -157,11 +157,11 @@ export default function AIVisionShowcase({ onRequestLogin, onOpenFeedback }: Pro
             Upload your room. See it redesigned.
           </h1>
           <p className="text-[17px] text-black/75 leading-relaxed max-w-[560px] mb-11">
-            Drop a photo of your space. Add inspiration if you have it, or just pick a style. In 20 seconds, three concept renders — yours to keep, share, or carry into a Designature project.
+            Drop a room photo, add 2–3 references, pick a style. Thirty seconds later: three concepts of your space, reimagined — yours to keep, share, or carry into a Designature project.
           </p>
 
-          {/* Two-column stage — square slider + cream side panel */}
-          <div className="grid gap-10 lg:gap-14 items-start grid-cols-1 lg:grid-cols-[1fr_320px]">
+          {/* Two-column stage — square slider + 3-step side panel */}
+          <div className="grid gap-10 lg:gap-16 items-start grid-cols-1 lg:grid-cols-[1fr_360px]">
 
             {/* Square before/after slider */}
             <div
@@ -218,46 +218,43 @@ export default function AIVisionShowcase({ onRequestLogin, onOpenFeedback }: Pro
                 ↔
               </div>
 
-              {/* Bottom-center hint */}
-              <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-[3] pointer-events-none">
-                <span className="bg-white/96 text-black px-5 py-2 font-display text-[15px] font-medium">
-                  Drag to compare →
-                </span>
-              </div>
             </div>
 
-            {/* Right-side panel — featured pair + sign-in CTA */}
-            <aside className="bg-[#F4EFE7] border border-[#DAD2C3] rounded-md p-7 md:p-8 flex flex-col gap-5 self-stretch">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#0047AB] mb-2">Featured transformation</p>
-                <h3 className="font-display text-[26px] md:text-[30px] leading-tight text-black mb-3">{mainPair.name}</h3>
-                <p className="text-[13px] text-[#404040] leading-relaxed">{mainPair.desc}</p>
-              </div>
+            {/* Right-side panel — 3-step explainer + sign-in CTA */}
+            <aside className="flex flex-col gap-7 self-stretch">
+              {/* Steps */}
+              <ol className="flex flex-col gap-7 list-none m-0 p-0">
+                {[
+                  { n: 1, title: 'Drop a room photo',   body: "Any room of your home. Phone snapshots are fine — better light helps, but isn't required." },
+                  { n: 2, title: 'Add 2–3 inspirations', body: 'Reference photos or Pinterest pins — these tell the AI what direction to take.' },
+                  { n: 3, title: 'See three concepts',   body: 'Thirty seconds of generation. Yours to keep, share with a friend, or carry into a Designature project.' },
+                ].map(step => (
+                  <li key={step.n} className="grid grid-cols-[36px_1fr] gap-4 items-start">
+                    <div className="w-8 h-8 rounded-full border border-black/15 flex items-center justify-center text-black/60 text-[13px] font-display">
+                      {step.n}
+                    </div>
+                    <div>
+                      <p className="text-[12px] font-bold uppercase tracking-[0.22em] text-black mb-1.5">{step.title}</p>
+                      <p className="text-[13px] text-[#404040] leading-relaxed">{step.body}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
 
               <div className="h-px bg-[#DAD2C3]" />
 
-              <button
-                type="button"
-                onClick={onRequestLogin}
-                className="inline-flex items-center justify-center gap-2.5 px-6 py-[18px] bg-[#0047AB] text-white text-[12px] font-bold uppercase tracking-[0.22em] hover:bg-[#003d99] transition-colors"
-              >
-                {t('ai.quiz.signInCta')} →
-              </button>
-              <p className="text-[11px] uppercase tracking-[0.22em] text-[#6B6B6B] text-center">
-                Free · 3 generations · No card needed
-              </p>
-
-              <div className="h-px bg-[#DAD2C3]" />
-
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <div className="font-display text-[28px] leading-none text-black">Free</div>
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-[#6B6B6B] mt-1">To explore</div>
-                </div>
-                <div className="flex-1 text-right">
-                  <div className="font-display text-[28px] leading-none text-black">3</div>
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-[#6B6B6B] mt-1">Live AI tools</div>
-                </div>
+              {/* CTA — matches Style Quiz logged-out CTA exactly */}
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={onRequestLogin}
+                  className="inline-flex items-center justify-center gap-3 w-full px-6 py-[18px] bg-[#0047AB] text-white text-[12px] font-bold uppercase tracking-[0.22em] hover:bg-[#003d99] transition-colors"
+                >
+                  {t('ai.quiz.signInCta')} →
+                </button>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-[#6B6B6B] text-left">
+                  Free · 3 generations · No card needed
+                </p>
               </div>
             </aside>
           </div>
