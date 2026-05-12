@@ -9,6 +9,13 @@ const HERO_USER_WIDTHS = [768, 1280, 1600];          // user's room as hero
 const RESULT_AFTER_WIDTHS = [600, 900, 1400];        // 70% pane (and the 30% before pane reuses same ladder)
 const VARIANT_THUMB_WIDTH = 200;                     // 64×48 thumbs — small fixed
 
+// Image quality split — Cloudinary's e_upscale rejects sources >4.2 MP,
+// so we only enhance the small AI-rendered "after" images. "Before" images
+// (source photos, often 4000×5000+) just get q_auto:best + mild sharpen.
+const BEFORE_OPTS = { quality: 'best' as const, sharpen: 40 };
+const AFTER_OPTS  = { quality: 'best' as const, enhance: true, sharpen: 80 };
+const THUMB_AFTER_OPTS = { quality: 'best' as const, enhance: true, sharpen: 60 };
+
 // AI-023 Variant D — full-bleed editorial gallery flow.
 // Spec: WEBSITE-PLAN-ai-vision-VARIANT-D.html.
 
@@ -196,8 +203,8 @@ export default function VisionExperience(p: VisionExperienceProps) {
       <div ref={sliderRef} className="relative w-full" style={{ height: '78vh', minHeight: 560 }}>
         {/* AFTER pane — fills container, visible right of slider */}
         <img
-          src={cld(SAMPLE_AFTER, 1440)}
-          srcSet={cldSrcSet(SAMPLE_AFTER, HERO_FULL_WIDTHS)}
+          src={cld(SAMPLE_AFTER, 1440, AFTER_OPTS)}
+          srcSet={cldSrcSet(SAMPLE_AFTER, HERO_FULL_WIDTHS, AFTER_OPTS)}
           sizes="100vw"
           alt="Redesigned concept"
           width={1920} height={1080}
@@ -208,8 +215,8 @@ export default function VisionExperience(p: VisionExperienceProps) {
         />
         {/* BEFORE pane — fills container, visible left of slider */}
         <img
-          src={cld(SAMPLE_BEFORE, 1440)}
-          srcSet={cldSrcSet(SAMPLE_BEFORE, HERO_FULL_WIDTHS)}
+          src={cld(SAMPLE_BEFORE, 1440, BEFORE_OPTS)}
+          srcSet={cldSrcSet(SAMPLE_BEFORE, HERO_FULL_WIDTHS, BEFORE_OPTS)}
           sizes="100vw"
           alt="Original room"
           width={1920} height={1080}
@@ -387,8 +394,8 @@ export default function VisionExperience(p: VisionExperienceProps) {
         <div className="absolute inset-y-0 left-0 vision-pane-before overflow-hidden" style={{ width: '30%' }}>
           {p.roomImage && (
             <img
-              src={cld(p.roomImage, 900)}
-              srcSet={cldSrcSet(p.roomImage, RESULT_AFTER_WIDTHS)}
+              src={cld(p.roomImage, 900, BEFORE_OPTS)}
+              srcSet={cldSrcSet(p.roomImage, RESULT_AFTER_WIDTHS, BEFORE_OPTS)}
               sizes="(min-width: 1024px) 30vw, 100vw"
               alt="Original room"
               loading="eager"
@@ -404,8 +411,8 @@ export default function VisionExperience(p: VisionExperienceProps) {
         >
           {p.selectedConceptUrl && (
             <img
-              src={cld(p.selectedConceptUrl, 1400)}
-              srcSet={cldSrcSet(p.selectedConceptUrl, RESULT_AFTER_WIDTHS)}
+              src={cld(p.selectedConceptUrl, 1400, AFTER_OPTS)}
+              srcSet={cldSrcSet(p.selectedConceptUrl, RESULT_AFTER_WIDTHS, AFTER_OPTS)}
               sizes="(min-width: 1024px) 70vw, 100vw"
               alt="Concept"
               loading="eager"
@@ -440,7 +447,7 @@ export default function VisionExperience(p: VisionExperienceProps) {
                 aria-label={`Variant ${idx + 1}`}
               >
                 <img
-                  src={cld(img, VARIANT_THUMB_WIDTH, { crop: 'fill', aspectRatio: '4/3' })}
+                  src={cld(img, VARIANT_THUMB_WIDTH, { crop: 'fill', aspectRatio: '4/3', ...THUMB_AFTER_OPTS })}
                   alt=""
                   width={VARIANT_THUMB_WIDTH} height={150}
                   loading="lazy" decoding="async"

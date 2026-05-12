@@ -58,17 +58,25 @@ const ALL_PAIRS: Record<number, Pair> = {
   },
 };
 
-// Hero is 21/9 contained card on desktop. Source images are portrait (~864×1184);
-// using c_fill aspectRatio '21/9' lets Cloudinary smart-crop server-side so the
-// browser gets a properly-framed image at the requested width (no further crop,
-// no soft upscale from a thin CSS-cover slice).
+// Image quality strategy:
+//   BEFORE pane = source photos (often 4000×5000+). Cloudinary's e_upscale
+//   rejects anything >4.2 MP, so we only crank up q_auto:best + a mild sharpen.
+//   AFTER pane = AI-rendered concept (typically ~864×1184). Small source +
+//   stretching into a wide 21/9 hero = soft result, so we run e_upscale as
+//   a pre-chain step (AI-upscale source → then resize), plus q_auto:best
+//   and a stronger sharpen.
+//
+// Hero is the 21/9 contained card. c_fill + g_auto smart-crops server-side
+// so the browser gets a properly-framed image at the requested width.
 const HERO_WIDTHS = [768, 1024, 1440, 1920];
-const HERO_CROP = { crop: 'fill' as const, aspectRatio: '21/9' };
+const HERO_BEFORE_OPTS = { crop: 'fill' as const, aspectRatio: '21/9', quality: 'best' as const, sharpen: 40 };
+const HERO_AFTER_OPTS  = { crop: 'fill' as const, aspectRatio: '21/9', quality: 'best' as const, enhance: true, sharpen: 80 };
 
-// Card halves are 2/3 portrait crops. At 1280 viewport, md+ each card is 33vw =
-// ~420px wide, half = ~210px. At 2× DPR we need ~420px. Larger ladder to cover.
+// Card halves are 2/3 portrait crops. At 1280 viewport, md+ each card is 33vw
+// = ~420px wide, half = ~210px. At 2× DPR we need ~420px → larger ladder.
 const HALF_WIDTHS = [320, 480, 640, 800];
-const HALF_CROP = { crop: 'fill' as const, aspectRatio: '2/3' };
+const HALF_BEFORE_OPTS = { crop: 'fill' as const, aspectRatio: '2/3', quality: 'best' as const, sharpen: 40 };
+const HALF_AFTER_OPTS  = { crop: 'fill' as const, aspectRatio: '2/3', quality: 'best' as const, enhance: true, sharpen: 60 };
 
 // Slider handle position clamp — keeps the 32px-wide handle from being clipped
 // by the container's overflow:hidden at the extremes.
@@ -169,8 +177,8 @@ export default function AIVisionShowcase({ onRequestLogin, onOpenFeedback }: Pro
             {/* AFTER pane — full width, clipped right of slider */}
             <img
               key={`after-${mainPair.id}`}
-              src={cld(mainPair.after, 1440, HERO_CROP)}
-              srcSet={cldSrcSet(mainPair.after, HERO_WIDTHS, HERO_CROP)}
+              src={cld(mainPair.after, 1440, HERO_AFTER_OPTS)}
+              srcSet={cldSrcSet(mainPair.after, HERO_WIDTHS, HERO_AFTER_OPTS)}
               sizes="(min-width: 1280px) 1280px, 100vw"
               alt={`Redesigned room — ${mainPair.style}`}
               width={1920} height={823}
@@ -182,8 +190,8 @@ export default function AIVisionShowcase({ onRequestLogin, onOpenFeedback }: Pro
             {/* BEFORE pane — full width, clipped left of slider */}
             <img
               key={`before-${mainPair.id}`}
-              src={cld(mainPair.before, 1440, HERO_CROP)}
-              srcSet={cldSrcSet(mainPair.before, HERO_WIDTHS, HERO_CROP)}
+              src={cld(mainPair.before, 1440, HERO_BEFORE_OPTS)}
+              srcSet={cldSrcSet(mainPair.before, HERO_WIDTHS, HERO_BEFORE_OPTS)}
               sizes="(min-width: 1280px) 1280px, 100vw"
               alt="Original room"
               width={1920} height={823}
@@ -261,8 +269,8 @@ export default function AIVisionShowcase({ onRequestLogin, onOpenFeedback }: Pro
                 <div className="relative grid grid-cols-2" style={{ aspectRatio: '4/3' }}>
                   <div className="relative overflow-hidden bg-[#f0ece4]">
                     <img
-                      src={cld(pair.before, 480, HALF_CROP)}
-                      srcSet={cldSrcSet(pair.before, HALF_WIDTHS, HALF_CROP)}
+                      src={cld(pair.before, 480, HALF_BEFORE_OPTS)}
+                      srcSet={cldSrcSet(pair.before, HALF_WIDTHS, HALF_BEFORE_OPTS)}
                       sizes="(min-width: 768px) 16vw, 50vw"
                       width={480} height={720}
                       loading="lazy" decoding="async"
@@ -272,8 +280,8 @@ export default function AIVisionShowcase({ onRequestLogin, onOpenFeedback }: Pro
                   </div>
                   <div className="relative overflow-hidden bg-[#f0ece4]" style={{ borderLeft: '1px solid rgba(255,255,255,0.45)' }}>
                     <img
-                      src={cld(pair.after, 480, HALF_CROP)}
-                      srcSet={cldSrcSet(pair.after, HALF_WIDTHS, HALF_CROP)}
+                      src={cld(pair.after, 480, HALF_AFTER_OPTS)}
+                      srcSet={cldSrcSet(pair.after, HALF_WIDTHS, HALF_AFTER_OPTS)}
                       sizes="(min-width: 768px) 16vw, 50vw"
                       width={480} height={720}
                       loading="lazy" decoding="async"
