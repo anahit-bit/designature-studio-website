@@ -163,10 +163,14 @@ export default function AIVisionShowcase({ onRequestLogin, onOpenFeedback }: Pro
           {/* Two-column stage — slider (1.4fr) + 3-step side panel (1fr) */}
           <div className="grid lg:grid-cols-[1.4fr_1fr] gap-10 lg:gap-14 items-stretch">
 
-            {/* Square before/after slider — sharp corners + shadow match Style Quiz */}
+            {/* Square before/after slider — sharp corners + shadow match Style Quiz.
+                Capped at 540×540 on wide screens so the square doesn't grow with
+                its column and overflow the viewport. mx-auto centers it in the
+                column at ≥lg; at <lg the column is narrower than 540 so the cap
+                is a no-op and the slider stays w-full. */}
             <div
               ref={sliderRef}
-              className="relative w-full overflow-hidden bg-black shadow-[0_28px_60px_rgba(0,0,0,0.18)]"
+              className="relative w-full max-w-[540px] mx-auto overflow-hidden bg-black shadow-[0_28px_60px_rgba(0,0,0,0.18)]"
               style={{ aspectRatio: '1/1' }}
             >
               {/* AFTER pane — clipped right of slider */}
