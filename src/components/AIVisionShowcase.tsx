@@ -28,55 +28,53 @@ type Pair = {
   desc: string;
 };
 
+// Manually-cropped 1:1 square sources uploaded to Cloudinary folder "AI/"
+// with the `_square` suffix (originals preserved). See
+// scripts/upload-cropped-vision-pairs.ts for the upload step.
 const ALL_PAIRS: Record<number, Pair> = {
   7: {
     id: 7,
-    before: `${CLD}/before_7_bwczrl`,
-    after:  `${CLD}/after_7_i66inr`,
+    before: `${CLD}/AI/before_7_bwczrl_square`,
+    after:  `${CLD}/AI/after_7_i66inr_square`,
     style: 'Minimalism',
     name: 'Minimalism · living room',
     desc: "A bare-shell room transformed into a calm Minimalism living space — full ceiling, full floor, the room you'd actually walk into.",
   },
   1: {
     id: 1,
-    before: `${CLD}/before_1_fnbjlt`,
-    after:  `${CLD}/after_1_khwg9g`,
+    before: `${CLD}/AI/before_1_fnbjlt_square`,
+    after:  `${CLD}/AI/after_1_khwg9g_square`,
     style: 'Bohemian',
     name: 'Plain bedroom — layered retreat',
     desc: 'A bare room reimagined as a Bohemian bedroom — rattan chair, layered rug, soft window light.',
   },
   2: {
     id: 2,
-    before: `${CLD}/before_2_k7jvg3`,
-    after:  `${CLD}/after_2_kzpr3p`,
+    before: `${CLD}/AI/before_2_k7jvg3_square`,
+    after:  `${CLD}/AI/after_2_kzpr3p_square`,
     style: 'Mid-Century',
     name: 'Empty shell — warm sanctuary',
     desc: 'An empty shell becomes a Mid-Century living space — soft sofa, warm light, pieces that earn their place.',
   },
   4: {
     id: 4,
-    before: `${CLD}/before_4_vpepte`,
-    after:  `${CLD}/after_4_xgalms`,
+    before: `${CLD}/AI/before_4_vpepte_square`,
+    after:  `${CLD}/AI/after_4_xgalms_square`,
     style: 'Contemporary',
     name: 'Bright lounge — refined ease',
     desc: 'An empty bright room turned into a refined Contemporary lounge — clean lines, soft palette, an inviting calm.',
   },
 };
 
-// Hero is 1:1 square (sources are manually cropped to square).
-// AFTER images are AI-rendered (~1 MP) — e_upscale + sharpen recovers detail.
-// BEFORE images are source photos (often >4 MP) — e_upscale would 400, so just
-// q_auto:best + mild sharpen.
+// Hero is 1:1 square. The manually-cropped square sources are all 768-3000px
+// natively, so no e_upscale needed (some exceed the 4.2 MP cap anyway and
+// would 400). q_auto:best + mild sharpen is enough.
 const HERO_WIDTHS = [640, 800, 1024, 1280];
-const HERO_BEFORE_OPTS = { crop: 'fill' as const, aspectRatio: '1/1', quality: 'best' as const, sharpen: 40 };
-const HERO_AFTER_OPTS  = { crop: 'fill' as const, aspectRatio: '1/1', quality: 'best' as const, enhance: true, sharpen: 80 };
+const HERO_OPTS = { crop: 'fill' as const, aspectRatio: '1/1', quality: 'best' as const, sharpen: 60 };
 
-// Card halves are 1:2 vertical slivers within the square card grid.
-// object-fit:cover on the half cell means the image center-crops to fit.
-// At 1280 viewport, md+ each card is 33vw ≈ 420px wide, half ≈ 210px.
+// Card halves use the same square sources at smaller widths.
 const HALF_WIDTHS = [320, 480, 640, 800];
-const HALF_BEFORE_OPTS = { crop: 'fill' as const, aspectRatio: '1/1', quality: 'best' as const, sharpen: 40 };
-const HALF_AFTER_OPTS  = { crop: 'fill' as const, aspectRatio: '1/1', quality: 'best' as const, enhance: true, sharpen: 60 };
+const HALF_OPTS = { crop: 'fill' as const, aspectRatio: '1/1', quality: 'best' as const, sharpen: 50 };
 
 const SLIDER_MIN = 3;
 const SLIDER_MAX = 97;
@@ -174,8 +172,8 @@ export default function AIVisionShowcase({ onRequestLogin, onOpenFeedback }: Pro
               {/* AFTER pane — clipped right of slider */}
               <img
                 key={`after-${mainPair.id}`}
-                src={cld(mainPair.after, 1024, HERO_AFTER_OPTS)}
-                srcSet={cldSrcSet(mainPair.after, HERO_WIDTHS, HERO_AFTER_OPTS)}
+                src={cld(mainPair.after, 1024, HERO_OPTS)}
+                srcSet={cldSrcSet(mainPair.after, HERO_WIDTHS, HERO_OPTS)}
                 sizes="(min-width: 1024px) 800px, 100vw"
                 alt={`Redesigned room — ${mainPair.style}`}
                 width={1024} height={1024}
@@ -187,8 +185,8 @@ export default function AIVisionShowcase({ onRequestLogin, onOpenFeedback }: Pro
               {/* BEFORE pane — clipped left of slider */}
               <img
                 key={`before-${mainPair.id}`}
-                src={cld(mainPair.before, 1024, HERO_BEFORE_OPTS)}
-                srcSet={cldSrcSet(mainPair.before, HERO_WIDTHS, HERO_BEFORE_OPTS)}
+                src={cld(mainPair.before, 1024, HERO_OPTS)}
+                srcSet={cldSrcSet(mainPair.before, HERO_WIDTHS, HERO_OPTS)}
                 sizes="(min-width: 1024px) 800px, 100vw"
                 alt="Original room"
                 width={1024} height={1024}
@@ -295,8 +293,8 @@ export default function AIVisionShowcase({ onRequestLogin, onOpenFeedback }: Pro
                 <div className="relative grid grid-cols-2 overflow-hidden" style={{ aspectRatio: '1/1' }}>
                   <div className="relative overflow-hidden bg-[#f0ece4]">
                     <img
-                      src={cld(pair.before, 480, HALF_BEFORE_OPTS)}
-                      srcSet={cldSrcSet(pair.before, HALF_WIDTHS, HALF_BEFORE_OPTS)}
+                      src={cld(pair.before, 480, HALF_OPTS)}
+                      srcSet={cldSrcSet(pair.before, HALF_WIDTHS, HALF_OPTS)}
                       sizes="(min-width: 768px) 16vw, 50vw"
                       width={480} height={480}
                       loading="lazy" decoding="async"
@@ -306,8 +304,8 @@ export default function AIVisionShowcase({ onRequestLogin, onOpenFeedback }: Pro
                   </div>
                   <div className="relative overflow-hidden bg-[#f0ece4]" style={{ borderLeft: '1px solid rgba(255,255,255,0.6)' }}>
                     <img
-                      src={cld(pair.after, 480, HALF_AFTER_OPTS)}
-                      srcSet={cldSrcSet(pair.after, HALF_WIDTHS, HALF_AFTER_OPTS)}
+                      src={cld(pair.after, 480, HALF_OPTS)}
+                      srcSet={cldSrcSet(pair.after, HALF_WIDTHS, HALF_OPTS)}
                       sizes="(min-width: 768px) 16vw, 50vw"
                       width={480} height={480}
                       loading="lazy" decoding="async"
