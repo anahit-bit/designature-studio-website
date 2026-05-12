@@ -44,7 +44,8 @@
       "Read(//tmp/**)",
       "Bash(grep -o 'dna.\\\\{0,3\\\\}pcts\\\\|params\\\\.get.\\\\{0,15\\\\}dna\\\\|setQuizSharedView\\\\|quizSharedView' /tmp/prod.js)",
       "Bash(grep -o \"dna:.\\\\{0,80\\\\}\" /tmp/prod.js)",
-      "Bash(git checkout *)"
+      "Bash(git checkout *)",
+      "Bash(git rm *)"
     ]
   }
 }
