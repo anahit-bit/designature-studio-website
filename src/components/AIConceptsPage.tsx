@@ -366,6 +366,9 @@ const AIConceptsPage: React.FC = () => {
   /** Index into `allSessionConcepts` (current results first, then pre-reset archive). */
   const [selectedConceptIndex, setSelectedConceptIndex] = useState<number>(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  /** When the quiz "More rooms in your style" gallery opens the lightbox, the
+      URL of the clicked thumb lives here. Cleared when the lightbox closes. */
+  const [lightboxQuizUrl, setLightboxQuizUrl] = useState<string | null>(null);
   /** Data URLs from resets — session-only (cleared on logout); not sent to server. */
   const [sessionConceptArchive, setSessionConceptArchive] = useState<string[]>([]);
 
@@ -811,6 +814,10 @@ const AIConceptsPage: React.FC = () => {
     setRoomImage(null);
     setInspirationImages([]);
   }, [signOut]);
+
+  // Clear the quiz-gallery lightbox URL whenever the lightbox closes,
+  // so opening it again (from any source) doesn't reuse a stale URL.
+  useEffect(() => { if (!isLightboxOpen) setLightboxQuizUrl(null); }, [isLightboxOpen]);
 
   // ── Escape key for lightbox ──
   useEffect(() => {
@@ -3153,6 +3160,46 @@ const AIConceptsPage: React.FC = () => {
                           </div>
                         </div>
                       </section>
+
+                      {/* ── More rooms in your style — gallery of unseen rooms in
+                          dominant style. Hides cleanly if the API failed or no
+                          unseen images are available (resultGalleryImages stays []).
+                          Background stays dark to continue the cinematic hero. */}
+                      {resultGalleryImages.length > 0 && top && (
+                        <section className="bg-[#0a0a0a] text-white pb-16 md:pb-20">
+                          <div className="px-8 md:px-16">
+                            <h3 className="font-display text-[26px] md:text-[28px] leading-tight mb-1">
+                              {t('ai.quiz.moreInStyle')}
+                            </h3>
+                            <p className="text-[12px] uppercase tracking-[0.22em] text-white/55 mb-7">
+                              {t('ai.quiz.moreInStyleCount')
+                                .replace('{count}', String(resultGalleryImages.length))
+                                .replace('{style}', t(`ai.style.${top.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`))}
+                            </p>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
+                              {resultGalleryImages.map((url, i) => (
+                                <button
+                                  key={`gallery-${i}`}
+                                  type="button"
+                                  onClick={() => { setLightboxQuizUrl(url); setIsLightboxOpen(true); }}
+                                  className="relative overflow-hidden aspect-square group focus:outline-none focus:ring-2 focus:ring-[#0047AB]"
+                                  aria-label={`Open ${top.style} room ${i + 1} full size`}
+                                >
+                                  <img
+                                    src={cld(url, 400, { crop: 'fill', aspectRatio: '1/1' })}
+                                    srcSet={cldSrcSet(url, [240, 400, 640], { crop: 'fill', aspectRatio: '1/1' })}
+                                    sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
+                                    width={400} height={400}
+                                    alt={`${top.style} room ${i + 1}`}
+                                    loading="lazy" decoding="async"
+                                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                                  />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </section>
+                      )}
                     </>
                   );
                 })()}
@@ -3910,20 +3957,26 @@ const AIConceptsPage: React.FC = () => {
 
       <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
 
-      {/* ── LIGHTBOX ── */}
+      {/* ── LIGHTBOX ──
+          Falls back to lightboxQuizUrl when no AI-Vision concept is selected,
+          so the Style Quiz "More rooms" gallery thumbs reuse the same modal.
+          Download button is gated on selectedConceptUrl — quiz thumbs are
+          public Cloudinary URLs the user can save via right-click. */}
       <AnimatePresence>
-        {isLightboxOpen && selectedConceptUrl && (
+        {isLightboxOpen && (selectedConceptUrl || lightboxQuizUrl) && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsLightboxOpen(false)} className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 md:p-12 cursor-zoom-out">
             <div className="absolute top-8 right-8 flex gap-4 z-[110]">
-              <button onClick={(e) => { e.stopPropagation(); handleDownload(selectedConceptUrl, selectedConceptIndex + 1); }} className="flex items-center gap-2 px-4 py-2 bg-white text-black text-sm md:text-base font-bold uppercase tracking-widest hover:bg-white/90 transition-all">
-                <Download className="w-4 h-4" /> {t('btn.download')}
-              </button>
+              {selectedConceptUrl && (
+                <button onClick={(e) => { e.stopPropagation(); handleDownload(selectedConceptUrl, selectedConceptIndex + 1); }} className="flex items-center gap-2 px-4 py-2 bg-white text-black text-sm md:text-base font-bold uppercase tracking-widest hover:bg-white/90 transition-all">
+                  <Download className="w-4 h-4" /> {t('btn.download')}
+                </button>
+              )}
               <button onClick={(e) => { e.stopPropagation(); setIsLightboxOpen(false); }} className="text-white/50 hover:text-white transition-colors">
                 <X className="w-8 h-8" />
               </button>
             </div>
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} transition={{ type: 'spring', damping: 25, stiffness: 300 }} className="relative max-w-full max-h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-              <img src={selectedConceptUrl} className="max-w-full max-h-[90vh] object-contain shadow-2xl" alt="Full resolution" />
+              <img src={selectedConceptUrl || lightboxQuizUrl || ''} className="max-w-full max-h-[90vh] object-contain shadow-2xl" alt="Full resolution" />
             </motion.div>
           </motion.div>
         )}
