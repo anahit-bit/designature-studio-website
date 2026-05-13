@@ -72,10 +72,11 @@ const ALL_PAIRS: Record<number, Pair> = {
 // Hero displays up to 950×950 (cap). The `sizes` hint below is intentionally
 // inflated to 1900px so the browser picks the w_1920 srcset entry even at
 // DPR 1 — that gives a 2× source-vs-display ratio, which produces a much
-// crisper visual result than 1× via browser-side Lanczos downsample. Cost is
-// modest (~50 KB more per image vs w_1280).
+// crisper visual result than 1× via browser-side Lanczos downsample.
+// Quality is q_100 (fixed maximum, no auto-optimization) — heavier file
+// (~2.4 MB per image at w_1920) but visibly the sharpest the AI source can be.
 const HERO_WIDTHS = [800, 1280, 1600, 1920, 2400];
-const HERO_OPTS = { crop: 'fill' as const, aspectRatio: '1/1', quality: 'best' as const, sharpen: 100 };
+const HERO_OPTS = { crop: 'fill' as const, aspectRatio: '1/1', quality: 100, sharpen: 100 };
 
 // Card halves use the same square sources at smaller widths.
 const HALF_WIDTHS = [320, 480, 640, 800];

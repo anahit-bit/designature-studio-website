@@ -2795,8 +2795,8 @@ const AIConceptsPage: React.FC = () => {
                         {/* LEFT — paused voting preview */}
                         <div className="relative w-full max-w-[950px] mx-auto bg-black overflow-hidden shadow-[0_28px_60px_rgba(0,0,0,0.18)]" style={{ aspectRatio: '1/1' }}>
                           <img
-                            src={cld('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', 1920, { crop: 'fill', aspectRatio: '1/1', quality: 'best', sharpen: 100 })}
-                            srcSet={cldSrcSet('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', [800, 1280, 1600, 1920, 2400], { crop: 'fill', aspectRatio: '1/1', quality: 'best', sharpen: 100 })}
+                            src={cld('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', 1920, { crop: 'fill', aspectRatio: '1/1', quality: 100, sharpen: 100 })}
+                            srcSet={cldSrcSet('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', [800, 1280, 1600, 1920, 2400], { crop: 'fill', aspectRatio: '1/1', quality: 100, sharpen: 100 })}
                             sizes="(min-width: 1024px) min(1900px, 100vw), 100vw"
                             alt="Quiz preview"
                             className="absolute inset-0 w-full h-full object-cover"

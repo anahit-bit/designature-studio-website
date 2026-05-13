@@ -24,8 +24,13 @@ export interface CldOpts {
    * 'fill'  — server-side crop to the requested ratio (needs aspectRatio).
    */
   crop?: 'limit' | 'fill';
-  /** Cloudinary q_auto preset. */
-  quality?: 'eco' | 'good' | 'best';
+  /**
+   * Cloudinary quality. String presets ('eco' | 'good' | 'best') map to
+   * `q_auto:<preset>`; a number 1-100 maps to a fixed `q_<n>` value.
+   * Use the number form when you want maximum control / minimum compression
+   * (e.g. quality: 100 for a hero photo at large display size).
+   */
+  quality?: 'eco' | 'good' | 'best' | number;
   /** Required when crop='fill'. e.g. '4:5' or '4/5'. */
   aspectRatio?: string;
   /**
@@ -67,7 +72,9 @@ export function cld(srcOrId: string, width: number, opts: CldOpts = {}): string 
 
   const quality = opts.quality ?? 'good';
   const crop = opts.crop ?? 'limit';
-  const tx: string[] = [`f_auto`, `q_auto:${quality}`];
+  // Numeric quality → fixed q_<n>; string preset → q_auto:<preset>.
+  const qToken = typeof quality === 'number' ? `q_${quality}` : `q_auto:${quality}`;
+  const tx: string[] = [`f_auto`, qToken];
 
   if (crop === 'fill') {
     tx.push('c_fill', 'g_auto', `w_${width}`);
