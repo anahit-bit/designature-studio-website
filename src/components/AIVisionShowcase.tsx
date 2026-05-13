@@ -164,11 +164,11 @@ export default function AIVisionShowcase({ onRequestLogin, onOpenFeedback }: Pro
           <div className="grid lg:grid-cols-[1.4fr_1fr] gap-10 lg:gap-14 items-stretch">
 
             {/* Square before/after slider — sharp corners + shadow match Style Quiz.
-                Capped at 660×660 (Option C) on wide screens — same cap on Style
-                Quiz's logged-out preview so both heroes match position + size. */}
+                Capped at 950×950 on wide screens — same cap on Style Quiz so
+                both heroes match position + size. */}
             <div
               ref={sliderRef}
-              className="relative w-full max-w-[660px] mx-auto overflow-hidden bg-black shadow-[0_28px_60px_rgba(0,0,0,0.18)]"
+              className="relative w-full max-w-[950px] mx-auto overflow-hidden bg-black shadow-[0_28px_60px_rgba(0,0,0,0.18)]"
               style={{ aspectRatio: '1/1' }}
             >
               {/* AFTER pane — clipped right of slider */}

@@ -2782,11 +2782,11 @@ const AIConceptsPage: React.FC = () => {
 
                       {/* 2-col layout: voting preview + 3-step explainer.
                           Hero preview matches AI Vision logged-out: 1:1 square,
-                          capped at 660 wide, centered in its column (Option C,
-                          decided 2026-05-13 — same cap on both heroes for parity). */}
+                          capped at 950 wide, centered in its column. Same cap
+                          on both heroes for parity. */}
                       <div className="grid lg:grid-cols-[1.4fr_1fr] gap-10 lg:gap-14 items-stretch">
                         {/* LEFT — paused voting preview */}
-                        <div className="relative w-full max-w-[660px] mx-auto bg-black overflow-hidden shadow-[0_28px_60px_rgba(0,0,0,0.18)]" style={{ aspectRatio: '1/1' }}>
+                        <div className="relative w-full max-w-[950px] mx-auto bg-black overflow-hidden shadow-[0_28px_60px_rgba(0,0,0,0.18)]" style={{ aspectRatio: '1/1' }}>
                           <img
                             src={cld('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', 1024, { crop: 'fill', aspectRatio: '1/1' })}
                             srcSet={cldSrcSet('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', [640, 960, 1280], { crop: 'fill', aspectRatio: '1/1' })}
