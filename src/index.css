@@ -1,3 +1,60 @@
 @import "tailwindcss";
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* VF-002 — locked AI tool tile polish.
+   Diagonal hatch on cream base; design-tier hover gains a cobalt-tinted wash. */
+.vf-locked-tile {
+  background-color: #f7f6f4;
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.045) 0,
+    rgba(0, 0, 0, 0.045) 1px,
+    transparent 1px,
+    transparent 9px
+  );
+}
+/* AI-023 — active state for "More transformations" cards.
+   Tailwind v4 preflight + shadow CSS-variable system zero out inline box-shadow
+   and outline-width on buttons, so we have to use !important to win. */
+.vision-card-ba[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px #0047AB !important;
+}
+
+.vf-locked-design:hover {
+  background-color: #eef2fa;
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(0, 71, 171, 0.10) 0,
+    rgba(0, 71, 171, 0.10) 1px,
+    transparent 1px,
+    transparent 9px
+  );
+}
+
+/* AI-023 — Vision Experience responsive overrides.
+   ≤1024px: collapse anything two-column to stacked, hero shrinks slightly.
+   ≤768px: results pane collapses to single (concept-only) view, divider hidden.
+   ≤640px: tighter chips, smaller scrim padding, DNA banner stacks vertically. */
+@media (max-width: 1024px) {
+  .vision-hero-section { height: 70vh; min-height: 480px; }
+}
+@media (max-width: 768px) {
+  .vision-hero-section { height: 70vh; min-height: 460px; }
+  .vision-result-hero .vision-pane-before { display: none; }
+  .vision-result-hero .vision-pane-after { width: 100% !important; }
+  .vision-result-hero .vision-divider { display: none; }
+  .vision-result-hero .vision-label-before { display: none; }
+  .vision-result-hero .vision-variants { right: 1rem !important; bottom: 7.5rem !important; }
+  .vision-scrim { padding: 28px 22px !important; }
+  .vision-dna-banner { flex-direction: column !important; align-items: stretch !important; }
+  .vision-dna-banner .actions { width: 100%; display: flex; gap: 8px; }
+  .vision-dna-banner .actions > * { flex: 1; }
+}
+@media (max-width: 640px) {
+  .vision-hero-section { height: 65vh; min-height: 420px; }
+  .vision-chip { padding: 7px 12px !important; font-size: 10px !important; letter-spacing: 0.12em !important; }
+  .vision-scrim h1 { font-size: 42px !important; }
+  .vision-overlay-bottom-ttl { font-size: 30px !important; }
+  .vision-meta-bar { padding-bottom: 18px !important; padding-top: 28px !important; }
+}

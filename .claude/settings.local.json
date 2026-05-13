@@ -44,7 +44,13 @@
       "Read(//tmp/**)",
       "Bash(grep -o 'dna.\\\\{0,3\\\\}pcts\\\\|params\\\\.get.\\\\{0,15\\\\}dna\\\\|setQuizSharedView\\\\|quizSharedView' /tmp/prod.js)",
       "Bash(grep -o \"dna:.\\\\{0,80\\\\}\" /tmp/prod.js)",
-      "Bash(git checkout *)"
+      "Bash(git checkout *)",
+      "Bash(git rm *)",
+      "Bash(ls \"/c/Users/User/Downloads/AI_2026-05-12_07_17\" 2>&1)",
+      "Bash(cat /e/Secrets/Website/.env 2>&1 | grep -E \"CLOUDINARY\" | sed 's/=.*/=<set>/')",
+      "Bash(npx tsx *)",
+      "Bash(rm -rf \"/c/Users/User/Downloads/AI_2026-05-12_07_17\" && echo \"deleted\" && ls \"/c/Users/User/Downloads/AI_2026-05-12_07_17\" 2>&1)",
+      "Bash(ls -la \"/c/Users/User/Downloads/\" | grep -E \"_square\" 2>&1)"
     ]
   }
 }

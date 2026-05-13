@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "lint": "tsc && vite build",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prewarm:heroes": "tsx scripts/prewarm-hero-images.ts"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",

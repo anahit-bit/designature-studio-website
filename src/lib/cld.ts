@@ -24,10 +24,35 @@ export interface CldOpts {
    * 'fill'  — server-side crop to the requested ratio (needs aspectRatio).
    */
   crop?: 'limit' | 'fill';
-  /** Cloudinary q_auto preset. */
-  quality?: 'eco' | 'good' | 'best';
+  /**
+   * Cloudinary quality. String presets ('eco' | 'good' | 'best') map to
+   * `q_auto:<preset>`; a number 1-100 maps to a fixed `q_<n>` value.
+   * Use the number form when you want maximum control / minimum compression
+   * (e.g. quality: 100 for a hero photo at large display size).
+   */
+  quality?: 'eco' | 'good' | 'best' | number;
   /** Required when crop='fill'. e.g. '4:5' or '4/5'. */
   aspectRatio?: string;
+  /**
+   * Run Cloudinary's AI upscaler on the source before resizing. For small
+   * source images (AI-generated renders are often ~900px wide) this recovers
+   * detail that would otherwise be lost when stretching into a larger frame.
+   * Costs more credits per delivery but file size stays reasonable because
+   * the upscale runs as a separate transform chain before the c_fill resize.
+   */
+  enhance?: boolean;
+  /**
+   * Mild sharpening applied at the end of the chain (0-2000). Useful for
+   * thumbnails and any image where source quality is the bottleneck.
+   */
+  sharpen?: number;
+  /**
+   * Generic Cloudinary effect appended at the end of the chain as `e_<value>`.
+   * Example: `effect: 'blur:1000'` → produces an `e_blur:1000` transform for
+   * LQIP placeholders. Don't double-apply with `sharpen` (sharpen already
+   * emits `e_sharpen:<n>`).
+   */
+  effect?: string;
 }
 
 /** Default responsive width ladder. */
@@ -54,7 +79,9 @@ export function cld(srcOrId: string, width: number, opts: CldOpts = {}): string 
 
   const quality = opts.quality ?? 'good';
   const crop = opts.crop ?? 'limit';
-  const tx: string[] = [`f_auto`, `q_auto:${quality}`];
+  // Numeric quality → fixed q_<n>; string preset → q_auto:<preset>.
+  const qToken = typeof quality === 'number' ? `q_${quality}` : `q_auto:${quality}`;
+  const tx: string[] = [`f_auto`, qToken];
 
   if (crop === 'fill') {
     tx.push('c_fill', 'g_auto', `w_${width}`);
@@ -68,7 +95,13 @@ export function cld(srcOrId: string, width: number, opts: CldOpts = {}): string 
     tx.push('c_limit', `w_${width}`);
   }
 
-  const transforms = tx.join(',');
+  if (opts.sharpen) tx.push(`e_sharpen:${opts.sharpen}`);
+  if (opts.effect) tx.push(`e_${opts.effect}`);
+
+  // e_upscale runs as its own chain step BEFORE the main resize transforms.
+  // Chained as a separate segment via '/', not joined with commas, so Cloudinary
+  // applies AI upscale to the source first and then downsamples to the target.
+  const transforms = (opts.enhance ? 'e_upscale/' : '') + tx.join(',');
 
   if (isCloudinary) {
     const m = srcOrId.match(/^(https?:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\/)(.*)$/i);

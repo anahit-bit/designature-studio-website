@@ -9,6 +9,8 @@ import Footer from './Footer';
 import RoomAudit from './RoomAudit';
 import FeedbackModal from './FeedbackModal';
 import AIVisionShowcase from './AIVisionShowcase';
+import VisionExperience from './VisionExperience';
+import FeedbackBand from './FeedbackBand';
 import ShoppingListShowcase from './ShoppingListShowcase';
 import RetailerLogoStrip from './RetailerLogoStrip';
 import { QUIZ_IMAGE_WEIGHTS, TIER_POINTS } from '../data/quizImageWeights';
@@ -364,6 +366,9 @@ const AIConceptsPage: React.FC = () => {
   /** Index into `allSessionConcepts` (current results first, then pre-reset archive). */
   const [selectedConceptIndex, setSelectedConceptIndex] = useState<number>(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  /** When the quiz "More rooms in your style" gallery opens the lightbox, the
+      URL of the clicked thumb lives here. Cleared when the lightbox closes. */
+  const [lightboxQuizUrl, setLightboxQuizUrl] = useState<string | null>(null);
   /** Data URLs from resets — session-only (cleared on logout); not sent to server. */
   const [sessionConceptArchive, setSessionConceptArchive] = useState<string[]>([]);
 
@@ -395,6 +400,9 @@ const AIConceptsPage: React.FC = () => {
   const [inspoDragOver, setInspoDragOver] = useState(false);
   const [shopDragOver, setShopDragOver] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  // Style Quiz logged-out hero: LQIP backdrop on the container fills the
+  // visual gap while the high-res img loads; the img renders on top once
+  // bytes arrive (no JS-driven fade needed).
 
   // ── Shopping state ──
   const [shoppingResults, setShoppingResults] = useState<any[]>([]);
@@ -809,6 +817,10 @@ const AIConceptsPage: React.FC = () => {
     setRoomImage(null);
     setInspirationImages([]);
   }, [signOut]);
+
+  // Clear the quiz-gallery lightbox URL whenever the lightbox closes,
+  // so opening it again (from any source) doesn't reuse a stale URL.
+  useEffect(() => { if (!isLightboxOpen) setLightboxQuizUrl(null); }, [isLightboxOpen]);
 
   // ── Escape key for lightbox ──
   useEffect(() => {
@@ -1884,39 +1896,49 @@ const AIConceptsPage: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div className="group relative bg-[#f7f6f4] p-4 border-r border-black/8 cursor-default" style={{ minHeight: '130px' }}>
+              <div
+                onClick={() => navigateTo('pricing')}
+                className="group relative p-4 border-r border-black/8 cursor-pointer transition-all duration-200 opacity-70 hover:opacity-100 vf-locked-tile vf-locked-design"
+                style={{ minHeight: '130px' }}
+              >
                 <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/55 mb-3">04</div>
-                <div className="font-display text-base font-bold leading-tight mb-1 text-black/65">{t('ai.roomAudit')}</div>
-                <div className="text-[11px] text-black/60 leading-relaxed uppercase tracking-wide">
+                <div className="font-display text-base font-bold leading-tight mb-1 text-black/80">{t('ai.roomAudit')}</div>
+                <div className="text-[11px] text-black/65 leading-relaxed uppercase tracking-wide">
                   {t('ai.scoreSpace')}
                 </div>
                 <div className="absolute bottom-3 right-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-black/65 bg-black/5 px-1.5 py-0.5">Soon</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-white bg-[#0047AB] px-1.5 py-0.5">DESIGN+</span>
                 </div>
               </div>
             )}
 
             {/* Tool 5 — Design Brief (SOON) */}
-            <div className="group relative bg-[#f7f6f4] p-4 border-r border-black/8 cursor-default" style={{ minHeight: '130px' }}>
+            <div
+              className="group relative p-4 border-r border-black/8 cursor-not-allowed opacity-[0.62] vf-locked-tile vf-locked-soon"
+              style={{ minHeight: '130px' }}
+            >
               <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/55 mb-3">05</div>
-              <div className="font-display text-base font-bold leading-tight mb-1 text-black/65">{t('ai.designBrief')}</div>
+              <div className="font-display text-base font-bold leading-tight mb-1 text-black/75">{t('ai.designBrief')}</div>
               <div className="text-[11px] text-black/60 leading-relaxed uppercase tracking-wide">
                 {t('ai.buildBrief')}
               </div>
               <div className="absolute bottom-3 right-3">
-                <span className="text-[10px] font-bold uppercase tracking-wide text-black/65 bg-black/5 px-1.5 py-0.5">Soon</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-black/55 bg-black/5 px-1.5 py-0.5">SOON</span>
               </div>
             </div>
 
             {/* Tool 6 — Cultural Advisor (SOON) */}
-            <div className="group relative bg-[#f7f6f4] p-4 cursor-default" style={{ minHeight: '130px' }}>
+            <div
+              className="group relative p-4 cursor-not-allowed opacity-[0.62] vf-locked-tile vf-locked-soon"
+              style={{ minHeight: '130px' }}
+            >
               <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/55 mb-3">06</div>
-              <div className="font-display text-base font-bold leading-tight mb-1 text-black/65">{t('ai.culturalAdvisor')}</div>
+              <div className="font-display text-base font-bold leading-tight mb-1 text-black/75">{t('ai.culturalAdvisor')}</div>
               <div className="text-[11px] text-black/60 leading-relaxed uppercase tracking-wide">
                 {t('ai.blendStyles')}
               </div>
               <div className="absolute bottom-3 right-3">
-                <span className="text-[10px] font-bold uppercase tracking-wide text-black/65 bg-black/5 px-1.5 py-0.5">Soon</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-black/55 bg-black/5 px-1.5 py-0.5">SOON</span>
               </div>
             </div>
 
@@ -1952,7 +1974,60 @@ const AIConceptsPage: React.FC = () => {
 
       {/* ── AI VISION SHOWCASE (logged-out) ── */}
       {!authLoading && !user && activeTool === 'vision' && (
-        <AIVisionShowcase onRequestLogin={triggerGoogleSignIn} />
+        <AIVisionShowcase onRequestLogin={triggerGoogleSignIn} onOpenFeedback={() => setFeedbackOpen(true)} />
+      )}
+
+      {/* ── AI VISION EXPERIENCE (logged-in, AI-023 Variant D) ── */}
+      {!authLoading && user && activeTool === 'vision' && (
+        <VisionExperience
+          roomImage={roomImage}
+          inspirationImages={inspirationImages}
+          selectedStyle={selectedStyle}
+          setSelectedStyle={setSelectedStyle}
+          selectedRoom={selectedRoom}
+          setSelectedRoom={setSelectedRoom}
+          isProcessing={isProcessing}
+          results={results}
+          sessionConceptArchive={sessionConceptArchive}
+          allSessionConcepts={allSessionConcepts}
+          selectedConceptIndex={selectedConceptIndex}
+          setSelectedConceptIndex={setSelectedConceptIndex}
+          selectedConceptUrl={selectedConceptUrl}
+          handleFileChange={handleFileChange}
+          handleDrop={handleDrop}
+          handleGenerate={handleGenerate}
+          handleReset={handleReset}
+          handleDownload={handleDownload}
+          handleTrySampleRoom={handleTrySampleRoom}
+          removeInspirationImage={removeInspirationImage}
+          handlePinterestPaste={handlePinterestPaste}
+          pinterestUrl={pinterestUrl}
+          setPinterestUrl={setPinterestUrl}
+          pinterestError={pinterestError}
+          setPinterestError={setPinterestError}
+          pinterestLoading={pinterestLoading}
+          isGenerateDisabled={isGenerateDisabled}
+          isSampleLoading={isSampleLoading}
+          processingStage={processingStage}
+          processingPhase={processingPhase}
+          PROCESSING_PHASES={PROCESSING_PHASES}
+          maxConceptSlots={maxConceptSlots}
+          generationsLeft={user?.generationsLeft ?? 3}
+          unlimitedLabel={t('ai.unlimited')}
+          remainingLabel={t('ai.remaining')}
+          quizResult={quizResult}
+          quizDone={quizDone}
+          isPaid={user?.isPaid ?? false}
+          navigateTo={navigateTo}
+          setFeedbackOpen={setFeedbackOpen}
+          shopCurrentConcept={shopCurrentConcept}
+          validationError={validationError}
+          error={error}
+          setError={setError}
+          isLightboxOpen={isLightboxOpen}
+          setIsLightboxOpen={setIsLightboxOpen}
+          translateStyle={(s: string) => t(`ai.style.${s.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}
+        />
       )}
 
       {/* ── SHOPPING LIST SHOWCASE (logged-out) ── */}
@@ -1965,7 +2040,7 @@ const AIConceptsPage: React.FC = () => {
            working area sizes to its content and the feedback CTA sits close
            below it. For ALL quiz steps (rating and result) drop the viewport
            height chain — other tools keep flex-grow + minHeight:'75vh'. */}
-      <div className={`flex flex-col border-t border-black/10${!authLoading && !user && (activeTool === 'vision' || activeTool === 'shopping') ? ' hidden' : ''}${activeTool !== 'quiz' ? ' flex-grow' : ''}`}>
+      <div className={`flex flex-col border-t border-black/10${(activeTool === 'vision' || (!authLoading && !user && activeTool === 'shopping')) ? ' hidden' : ''}${activeTool !== 'quiz' ? ' flex-grow' : ''}`}>
         {/* Quiz uses full-bleed sections (its own backgrounds + paddings); other tools keep the centered 1600px shell. */}
         <div className={activeTool === 'quiz' ? 'w-full' : 'max-w-[1600px] w-full mx-auto px-8 md:px-16 flex flex-col lg:flex-row flex-grow'} style={activeTool !== 'quiz' ? { minHeight: '75vh' } : undefined}>
 
@@ -2311,6 +2386,8 @@ const AIConceptsPage: React.FC = () => {
                 }}
                 onRequestLogin={triggerGoogleSignIn}
               />
+              {/* Persistent feedback band — bottom of Room Audit (AI-023 G) */}
+              <FeedbackBand onOpenFeedback={() => setFeedbackOpen(true)} />
             </div>
           )}
 
@@ -2713,18 +2790,30 @@ const AIConceptsPage: React.FC = () => {
                         {t('ai.quiz.heroLead')}
                       </p>
 
-                      {/* 2-col layout: voting preview + 3-step explainer */}
+                      {/* 2-col layout: voting preview + 3-step explainer.
+                          Hero preview matches AI Vision logged-out: 1:1 square,
+                          capped at 950 wide, centered in its column. Same cap
+                          on both heroes for parity. */}
                       <div className="grid lg:grid-cols-[1.4fr_1fr] gap-10 lg:gap-14 items-stretch">
                         {/* LEFT — paused voting preview */}
-                        <div className="relative bg-black overflow-hidden shadow-[0_28px_60px_rgba(0,0,0,0.18)]" style={{ aspectRatio: '4/3' }}>
+                        <div
+                          className="relative w-full max-w-[950px] mx-auto bg-black overflow-hidden shadow-[0_28px_60px_rgba(0,0,0,0.18)]"
+                          style={{
+                            aspectRatio: '1/1',
+                            backgroundImage: `url('${cld('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', 50, { crop: 'fill', aspectRatio: '1/1', quality: 'eco', effect: 'blur:1000' })}')`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                          }}
+                        >
                           <img
-                            src={cld('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', 1024)}
-                            srcSet={cldSrcSet('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', [640, 960, 1280])}
-                            sizes="(min-width: 1024px) 60vw, 100vw"
+                            src={cld('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', 960, { crop: 'fill', aspectRatio: '1/1', quality: 'best', sharpen: 60 })}
+                            srcSet={cldSrcSet('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', [640, 960, 1280, 1920], { crop: 'fill', aspectRatio: '1/1', quality: 'best', sharpen: 60 })}
+                            sizes="(min-width: 1024px) min(950px, 60vw), 100vw"
                             alt="Quiz preview"
                             className="absolute inset-0 w-full h-full object-cover"
-                            loading="lazy"
+                            loading="eager"
                             decoding="async"
+                            fetchPriority="high"
                           />
                           {/* Top overlay */}
                           <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-5 py-4 bg-gradient-to-b from-black/55 to-transparent text-white">
@@ -3083,6 +3172,48 @@ const AIConceptsPage: React.FC = () => {
                           </div>
                         </div>
                       </section>
+
+                      {/* ── More rooms in your style — gallery of unseen rooms in
+                          dominant style. Hides cleanly if the API failed or no
+                          unseen images are available (resultGalleryImages stays []).
+                          Background stays dark to continue the cinematic hero. */}
+                      {resultGalleryImages.length > 0 && top && (
+                        <section className="bg-[#0a0a0a] text-white pb-16 md:pb-20">
+                          <div className="px-8 md:px-16">
+                            <h3 className="font-display text-[26px] md:text-[28px] leading-tight mb-1">
+                              {t('ai.quiz.moreInStyle')}
+                            </h3>
+                            <p className="text-[12px] uppercase tracking-[0.22em] text-white/55 mb-7">
+                              {t('ai.quiz.moreInStyleCount')
+                                .replace('{count}', String(resultGalleryImages.length))
+                                .replace('{style}', t(`ai.style.${top.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`))}
+                            </p>
+                            {/* Single row at md+ (6 cols), 3 cols below md so
+                                mobile thumbs stay tappable. */}
+                            <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-3">
+                              {resultGalleryImages.map((url, i) => (
+                                <button
+                                  key={`gallery-${i}`}
+                                  type="button"
+                                  onClick={() => { setLightboxQuizUrl(url); setIsLightboxOpen(true); }}
+                                  className="relative overflow-hidden aspect-square group focus:outline-none focus:ring-2 focus:ring-[#0047AB]"
+                                  aria-label={`Open ${top.style} room ${i + 1} full size`}
+                                >
+                                  <img
+                                    src={cld(url, 320, { crop: 'fill', aspectRatio: '1/1', quality: 'best' })}
+                                    srcSet={cldSrcSet(url, [240, 360, 480, 640], { crop: 'fill', aspectRatio: '1/1', quality: 'best' })}
+                                    sizes="(min-width: 768px) 16vw, 33vw"
+                                    width={320} height={320}
+                                    alt={`${top.style} room ${i + 1}`}
+                                    loading="lazy" decoding="async"
+                                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                                  />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </section>
+                      )}
                     </>
                   );
                 })()}
@@ -3247,6 +3378,9 @@ const AIConceptsPage: React.FC = () => {
                     </motion.div>
                   )}
                 </AnimatePresence>
+
+                {/* Persistent feedback band — bottom of Style Quiz (AI-023 G) */}
+                <FeedbackBand onOpenFeedback={() => setFeedbackOpen(true)} />
               </div>
               )}
 
@@ -3788,6 +3922,11 @@ const AIConceptsPage: React.FC = () => {
 
                   </>
                 )}
+
+                {/* Persistent feedback band — bottom of Shopping List (AI-023 G) */}
+                {activeTool === 'shopping' && (
+                  <FeedbackBand onOpenFeedback={() => setFeedbackOpen(true)} />
+                )}
               </div>
             </div>
           )}
@@ -3832,20 +3971,26 @@ const AIConceptsPage: React.FC = () => {
 
       <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
 
-      {/* ── LIGHTBOX ── */}
+      {/* ── LIGHTBOX ──
+          Falls back to lightboxQuizUrl when no AI-Vision concept is selected,
+          so the Style Quiz "More rooms" gallery thumbs reuse the same modal.
+          Download button is gated on selectedConceptUrl — quiz thumbs are
+          public Cloudinary URLs the user can save via right-click. */}
       <AnimatePresence>
-        {isLightboxOpen && selectedConceptUrl && (
+        {isLightboxOpen && (selectedConceptUrl || lightboxQuizUrl) && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsLightboxOpen(false)} className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 md:p-12 cursor-zoom-out">
             <div className="absolute top-8 right-8 flex gap-4 z-[110]">
-              <button onClick={(e) => { e.stopPropagation(); handleDownload(selectedConceptUrl, selectedConceptIndex + 1); }} className="flex items-center gap-2 px-4 py-2 bg-white text-black text-sm md:text-base font-bold uppercase tracking-widest hover:bg-white/90 transition-all">
-                <Download className="w-4 h-4" /> {t('btn.download')}
-              </button>
+              {selectedConceptUrl && (
+                <button onClick={(e) => { e.stopPropagation(); handleDownload(selectedConceptUrl, selectedConceptIndex + 1); }} className="flex items-center gap-2 px-4 py-2 bg-white text-black text-sm md:text-base font-bold uppercase tracking-widest hover:bg-white/90 transition-all">
+                  <Download className="w-4 h-4" /> {t('btn.download')}
+                </button>
+              )}
               <button onClick={(e) => { e.stopPropagation(); setIsLightboxOpen(false); }} className="text-white/50 hover:text-white transition-colors">
                 <X className="w-8 h-8" />
               </button>
             </div>
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} transition={{ type: 'spring', damping: 25, stiffness: 300 }} className="relative max-w-full max-h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-              <img src={selectedConceptUrl} className="max-w-full max-h-[90vh] object-contain shadow-2xl" alt="Full resolution" />
+              <img src={selectedConceptUrl || lightboxQuizUrl || ''} className="max-w-full max-h-[90vh] object-contain shadow-2xl" alt="Full resolution" />
             </motion.div>
           </motion.div>
         )}
