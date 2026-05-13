@@ -69,11 +69,13 @@ const ALL_PAIRS: Record<number, Pair> = {
 // Hero is 1:1 square. The manually-cropped square sources are all 768-3000px
 // natively, so no e_upscale needed (some exceed the 4.2 MP cap anyway and
 // would 400). q_auto:best + mild sharpen is enough.
-// Hero displays up to 950×950 (cap). At 2× DPR retina that's 1900 device px;
-// at 3× DPR (some mobile) that's 2850. Ladder covers up to 2400 for crisp
-// delivery without forcing 3× DPR onto everyone.
+// Hero displays up to 950×950 (cap). The `sizes` hint below is intentionally
+// inflated to 1900px so the browser picks the w_1920 srcset entry even at
+// DPR 1 — that gives a 2× source-vs-display ratio, which produces a much
+// crisper visual result than 1× via browser-side Lanczos downsample. Cost is
+// modest (~50 KB more per image vs w_1280).
 const HERO_WIDTHS = [800, 1280, 1600, 1920, 2400];
-const HERO_OPTS = { crop: 'fill' as const, aspectRatio: '1/1', quality: 'best' as const, sharpen: 60 };
+const HERO_OPTS = { crop: 'fill' as const, aspectRatio: '1/1', quality: 'best' as const, sharpen: 100 };
 
 // Card halves use the same square sources at smaller widths.
 const HALF_WIDTHS = [320, 480, 640, 800];
@@ -179,7 +181,7 @@ export default function AIVisionShowcase({ onRequestLogin, onOpenFeedback }: Pro
                 key={`after-${mainPair.id}`}
                 src={cld(mainPair.after, 1024, HERO_OPTS)}
                 srcSet={cldSrcSet(mainPair.after, HERO_WIDTHS, HERO_OPTS)}
-                sizes="(min-width: 1024px) min(950px, 60vw), 100vw"
+                sizes="(min-width: 1024px) min(1900px, 100vw), 100vw"
                 alt={`Redesigned room — ${mainPair.style}`}
                 width={1024} height={1024}
                 loading="eager"
@@ -192,7 +194,7 @@ export default function AIVisionShowcase({ onRequestLogin, onOpenFeedback }: Pro
                 key={`before-${mainPair.id}`}
                 src={cld(mainPair.before, 1024, HERO_OPTS)}
                 srcSet={cldSrcSet(mainPair.before, HERO_WIDTHS, HERO_OPTS)}
-                sizes="(min-width: 1024px) min(950px, 60vw), 100vw"
+                sizes="(min-width: 1024px) min(1900px, 100vw), 100vw"
                 alt="Original room"
                 width={1024} height={1024}
                 loading="eager"
