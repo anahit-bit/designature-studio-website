@@ -400,6 +400,9 @@ const AIConceptsPage: React.FC = () => {
   const [inspoDragOver, setInspoDragOver] = useState(false);
   const [shopDragOver, setShopDragOver] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  // Style Quiz logged-out hero: LQIP backdrop on the container fills the
+  // visual gap while the high-res img loads; the img renders on top once
+  // bytes arrive (no JS-driven fade needed).
 
   // ── Shopping state ──
   const [shoppingResults, setShoppingResults] = useState<any[]>([]);
@@ -2793,15 +2796,24 @@ const AIConceptsPage: React.FC = () => {
                           on both heroes for parity. */}
                       <div className="grid lg:grid-cols-[1.4fr_1fr] gap-10 lg:gap-14 items-stretch">
                         {/* LEFT — paused voting preview */}
-                        <div className="relative w-full max-w-[950px] mx-auto bg-black overflow-hidden shadow-[0_28px_60px_rgba(0,0,0,0.18)]" style={{ aspectRatio: '1/1' }}>
+                        <div
+                          className="relative w-full max-w-[950px] mx-auto bg-black overflow-hidden shadow-[0_28px_60px_rgba(0,0,0,0.18)]"
+                          style={{
+                            aspectRatio: '1/1',
+                            backgroundImage: `url('${cld('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', 50, { crop: 'fill', aspectRatio: '1/1', quality: 'eco', effect: 'blur:1000' })}')`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                          }}
+                        >
                           <img
                             src={cld('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', 960, { crop: 'fill', aspectRatio: '1/1', quality: 'best', sharpen: 60 })}
                             srcSet={cldSrcSet('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', [640, 960, 1280, 1920], { crop: 'fill', aspectRatio: '1/1', quality: 'best', sharpen: 60 })}
                             sizes="(min-width: 1024px) min(950px, 60vw), 100vw"
                             alt="Quiz preview"
                             className="absolute inset-0 w-full h-full object-cover"
-                            loading="lazy"
+                            loading="eager"
                             decoding="async"
+                            fetchPriority="high"
                           />
                           {/* Top overlay */}
                           <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-5 py-4 bg-gradient-to-b from-black/55 to-transparent text-white">

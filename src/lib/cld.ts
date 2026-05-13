@@ -46,6 +46,13 @@ export interface CldOpts {
    * thumbnails and any image where source quality is the bottleneck.
    */
   sharpen?: number;
+  /**
+   * Generic Cloudinary effect appended at the end of the chain as `e_<value>`.
+   * Example: `effect: 'blur:1000'` → produces an `e_blur:1000` transform for
+   * LQIP placeholders. Don't double-apply with `sharpen` (sharpen already
+   * emits `e_sharpen:<n>`).
+   */
+  effect?: string;
 }
 
 /** Default responsive width ladder. */
@@ -89,6 +96,7 @@ export function cld(srcOrId: string, width: number, opts: CldOpts = {}): string 
   }
 
   if (opts.sharpen) tx.push(`e_sharpen:${opts.sharpen}`);
+  if (opts.effect) tx.push(`e_${opts.effect}`);
 
   // e_upscale runs as its own chain step BEFORE the main resize transforms.
   // Chained as a separate segment via '/', not joined with commas, so Cloudinary

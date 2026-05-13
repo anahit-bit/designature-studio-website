@@ -76,6 +76,9 @@ const ALL_PAIRS: Record<number, Pair> = {
 // 5 MB files; this delivers ~half the bytes with a more photographic finish).
 const HERO_WIDTHS = [800, 1280, 1600, 1920, 2400];
 const HERO_OPTS = { crop: 'fill' as const, aspectRatio: '1/1', quality: 'best' as const, sharpen: 60 };
+// LQIP placeholder — tiny blurred preview shown instantly while the real
+// hero downloads. Fades out once both panes' onLoad fires.
+const HERO_LQIP_OPTS = { crop: 'fill' as const, aspectRatio: '1/1', quality: 'eco' as const, effect: 'blur:1000' };
 
 // Card halves use the same square sources at smaller widths.
 const HALF_WIDTHS = [320, 480, 640, 800];
@@ -99,6 +102,10 @@ export default function AIVisionShowcase({ onRequestLogin, onOpenFeedback }: Pro
   const slotPairs = slotIds.map(id => ALL_PAIRS[id]);
 
   const heroRef = useRef<HTMLDivElement>(null);
+
+  // LQIP backdrop is the slider container's background-image (set below). The
+  // real <img> tags render on top; until the bytes arrive they're transparent
+  // and the blur shows through naturally — no JS-driven fade needed.
 
   // Drag-to-compare divider
   const sliderRef = useRef<HTMLDivElement>(null);
@@ -170,11 +177,17 @@ export default function AIVisionShowcase({ onRequestLogin, onOpenFeedback }: Pro
 
             {/* Square before/after slider — sharp corners + shadow match Style Quiz.
                 Capped at 950×950 on wide screens — same cap on Style Quiz so
-                both heroes match position + size. */}
+                both heroes match position + size. Background-image is the LQIP
+                (cheap blurred preview) — fades out once the real images load. */}
             <div
               ref={sliderRef}
               className="relative w-full max-w-[950px] mx-auto overflow-hidden bg-black shadow-[0_28px_60px_rgba(0,0,0,0.18)]"
-              style={{ aspectRatio: '1/1' }}
+              style={{
+                aspectRatio: '1/1',
+                backgroundImage: `url('${cld(mainPair.after, 50, HERO_LQIP_OPTS)}')`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }}
             >
               {/* AFTER pane — clipped right of slider */}
               <img
@@ -186,6 +199,7 @@ export default function AIVisionShowcase({ onRequestLogin, onOpenFeedback }: Pro
                 width={1024} height={1024}
                 loading="eager"
                 decoding="async"
+                fetchPriority="high"
                 className="absolute inset-0 w-full h-full object-cover"
                 style={{ clipPath: `inset(0 0 0 ${sliderPos}%)` }}
               />
@@ -199,6 +213,7 @@ export default function AIVisionShowcase({ onRequestLogin, onOpenFeedback }: Pro
                 width={1024} height={1024}
                 loading="eager"
                 decoding="async"
+                fetchPriority="high"
                 className="absolute inset-0 w-full h-full object-cover"
                 style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
               />
