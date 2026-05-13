@@ -2795,9 +2795,9 @@ const AIConceptsPage: React.FC = () => {
                         {/* LEFT — paused voting preview */}
                         <div className="relative w-full max-w-[950px] mx-auto bg-black overflow-hidden shadow-[0_28px_60px_rgba(0,0,0,0.18)]" style={{ aspectRatio: '1/1' }}>
                           <img
-                            src={cld('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', 1024, { crop: 'fill', aspectRatio: '1/1' })}
-                            srcSet={cldSrcSet('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', [640, 960, 1280], { crop: 'fill', aspectRatio: '1/1' })}
-                            sizes="(min-width: 1024px) 60vw, 100vw"
+                            src={cld('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', 1280, { crop: 'fill', aspectRatio: '1/1', quality: 'best' })}
+                            srcSet={cldSrcSet('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', [800, 1280, 1600, 1920, 2400], { crop: 'fill', aspectRatio: '1/1', quality: 'best' })}
+                            sizes="(min-width: 1024px) min(950px, 60vw), 100vw"
                             alt="Quiz preview"
                             className="absolute inset-0 w-full h-full object-cover"
                             loading="lazy"
@@ -3176,7 +3176,9 @@ const AIConceptsPage: React.FC = () => {
                                 .replace('{count}', String(resultGalleryImages.length))
                                 .replace('{style}', t(`ai.style.${top.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`))}
                             </p>
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
+                            {/* Single row at md+ (6 cols), 3 cols below md so
+                                mobile thumbs stay tappable. */}
+                            <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-3">
                               {resultGalleryImages.map((url, i) => (
                                 <button
                                   key={`gallery-${i}`}
@@ -3186,10 +3188,10 @@ const AIConceptsPage: React.FC = () => {
                                   aria-label={`Open ${top.style} room ${i + 1} full size`}
                                 >
                                   <img
-                                    src={cld(url, 400, { crop: 'fill', aspectRatio: '1/1' })}
-                                    srcSet={cldSrcSet(url, [240, 400, 640], { crop: 'fill', aspectRatio: '1/1' })}
-                                    sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
-                                    width={400} height={400}
+                                    src={cld(url, 320, { crop: 'fill', aspectRatio: '1/1', quality: 'best' })}
+                                    srcSet={cldSrcSet(url, [240, 360, 480, 640], { crop: 'fill', aspectRatio: '1/1', quality: 'best' })}
+                                    sizes="(min-width: 768px) 16vw, 33vw"
+                                    width={320} height={320}
                                     alt={`${top.style} room ${i + 1}`}
                                     loading="lazy" decoding="async"
                                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
