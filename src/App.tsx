@@ -11,6 +11,7 @@ import AIConceptsPage from './components/AIConceptsPage';
 import PricingPage from './components/PricingPage';
 import FAQPage from './components/FAQPage';
 import DeliverablesPage from './components/DeliverablesPage';
+import AdminPage from './components/AdminPage';
 import Footer from './components/Footer';
 import HomeHeroText from './components/home/HomeHeroText';
 import HomeImageBand from './components/home/HomeImageBand';
@@ -101,6 +102,7 @@ const App: React.FC = () => (
             <Route path="/pricing" element={<PricingRoute />} />
             <Route path="/faq" element={<FAQPage />} />
             <Route path="/deliverables" element={<DeliverablesRoute />} />
+            <Route path="/admin" element={<AdminPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </ProjectsProvider>
