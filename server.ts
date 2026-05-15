@@ -100,12 +100,23 @@ interface SerperLogEntry {
   source: string;
 }
 
+/** Per-provider rolling counters across daily/weekly/monthly UTC windows (I-010). */
+interface ProviderCounter {
+  daily:   { date: string; count: number }; // YYYY-MM-DD
+  weekly:  { date: string; count: number }; // YYYY-Www  (ISO week)
+  monthly: { date: string; count: number }; // YYYY-MM
+}
+
 interface DB {
   users: Record<string, User>; // keyed by googleId
   /** Per-UTC-day Serper credit usage. Reset when `date` rolls over. */
   serperUsage?: { date: string; count: number };
   /** Append-only forensic log of Serper-burning calls. Capped at 1000 entries. */
   serperLog?: SerperLogEntry[];
+  /** Per-provider call counters (I-010). Lazy-initialized on first call. */
+  apiCounters?: Record<string, ProviderCounter>;
+  /** Append-only user activity log (I-016). Capped at 5000 entries. */
+  activityLog?: Array<{ ts: string; userEmail: string; action: string }>;
 }
 
 /** UTC YYYY-MM-DD for daily-budget bucketing. */
@@ -117,6 +128,58 @@ function utcDateString(d: Date = new Date()): string {
 function nextUtcMidnightIso(now: Date = new Date()): string {
   const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0));
   return next.toISOString();
+}
+
+/** ISO-week key like "2026-W19" (UTC). */
+function utcWeekString(d: Date = new Date()): string {
+  // ISO week: Thursday of the same week determines the week-year.
+  const dt = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const day = dt.getUTCDay() || 7;
+  dt.setUTCDate(dt.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(dt.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((dt.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return `${dt.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+}
+
+/** Month key "YYYY-MM" (UTC). */
+function utcMonthString(d: Date = new Date()): string {
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+/**
+ * I-010 — bump per-provider counters in rolling daily/weekly/monthly UTC windows.
+ * Mutates `db.apiCounters` in place; caller is responsible for `writeDB(db)`.
+ */
+function recordApiCall(db: DB, provider: string, delta: number = 1): void {
+  if (!db.apiCounters) db.apiCounters = {};
+  const today = utcDateString();
+  const week = utcWeekString();
+  const month = utcMonthString();
+  if (!db.apiCounters[provider]) {
+    db.apiCounters[provider] = {
+      daily:   { date: today, count: 0 },
+      weekly:  { date: week,  count: 0 },
+      monthly: { date: month, count: 0 },
+    };
+  }
+  const c = db.apiCounters[provider];
+  if (c.daily.date   !== today) c.daily   = { date: today, count: 0 };
+  if (c.weekly.date  !== week)  c.weekly  = { date: week,  count: 0 };
+  if (c.monthly.date !== month) c.monthly = { date: month, count: 0 };
+  c.daily.count   += delta;
+  c.weekly.count  += delta;
+  c.monthly.count += delta;
+}
+
+/** Convenience wrapper: read/bump/write in one call. For routes that don't already touch the DB. */
+function bumpApiCount(provider: string, delta: number = 1): void {
+  try {
+    const db = readDB();
+    recordApiCall(db, provider, delta);
+    writeDB(db);
+  } catch (err) {
+    console.error(`[apiCounters] failed to bump ${provider}:`, err);
+  }
 }
 
 function readDB(): DB {
@@ -177,6 +240,7 @@ async function startServer() {
   // ── POST /api/upload — upload image to Cloudinary ──
   app.post("/api/upload", upload.single("image"), (req, res) => {
     if (!req.file) return res.status(400).json({ error: "No image uploaded" });
+    bumpApiCount("cloudinary"); // I-010
     res.json({ url: req.file.path });
   });
 
@@ -362,6 +426,7 @@ async function startServer() {
         valueInputOption: "RAW",
         requestBody: { values: [rowUpdate] },
       });
+      bumpApiCount("sheets"); // I-010 — free-tier user upsert (update)
     } else {
       const newRow = [
         createdAt,
@@ -384,6 +449,7 @@ async function startServer() {
         insertDataOption: "INSERT_ROWS",
         requestBody: { values: [newRow] },
       });
+      bumpApiCount("sheets"); // I-010 — free-tier user upsert (insert)
     }
   }
 
@@ -588,6 +654,7 @@ async function startServer() {
       const data = await r.json();
       if (data.ok) {
         testimonialsCache = { data, expires: Date.now() + TESTIMONIALS_CACHE_MS };
+        bumpApiCount("sheets"); // I-010 — successful Apps Script → Sheets read
       }
       res.json(data);
     } catch (err) {
@@ -668,6 +735,7 @@ async function startServer() {
       if (data.ok) {
         console.log(`[FEEDBACK] Write confirmed — invalidating testimonials cache`);
         testimonialsCache = null;
+        bumpApiCount("sheets"); // I-010 — successful Apps Script → Sheets write
       } else {
         console.error(`[FEEDBACK] Apps Script returned ok=false:`, data.error);
       }
@@ -735,6 +803,7 @@ Output ONLY valid JSON with no markdown fences and no explanation:
           ],
         },
       });
+      bumpApiCount("gemini"); // I-010 — identify call consumed
 
       const rawText: string =
         (geminiRes as any).text ??
@@ -999,6 +1068,9 @@ Output ONLY valid JSON with no markdown fences and no explanation:
         // Cap at 1000 entries — drop oldest when over.
         while (log.length > 1000) log.shift();
         dbShop.serperLog = log;
+
+        // I-010 — mirror into per-provider apiCounters for cross-provider parity.
+        recordApiCall(dbShop, "serper", plannedSerperCalls);
       }
 
       writeDB(dbShop);
@@ -1096,14 +1168,18 @@ Output ONLY valid JSON with no markdown fences and no explanation:
 
       // Detect country server-side from IP (accurate, not browser language)
       let detectedCountry = '';
+      let ipapiCalled = false;
       try {
         const rawIp = (req.headers['x-forwarded-for'] as string || req.ip || '').split(',')[0].trim();
         const isLocal = !rawIp || rawIp === '127.0.0.1' || rawIp === '::1' || rawIp.startsWith('192.168.') || rawIp.startsWith('10.');
         if (!isLocal) {
           const geoRes = await fetch(`https://ipapi.co/${rawIp}/country/`);
+          ipapiCalled = true; // I-010 — credit was consumed regardless of HTTP status
           if (geoRes.ok) detectedCountry = (await geoRes.text()).trim();
         }
-      } catch { /* non-fatal — country stays empty */ }
+      } catch {
+        ipapiCalled = true; // attempted fetch failed mid-flight → still counts
+      }
 
       const now = new Date().toISOString();
       await sheetsApi.spreadsheets.values.append({
@@ -1119,6 +1195,16 @@ Output ONLY valid JSON with no markdown fences and no explanation:
           ]],
         },
       });
+
+      // I-010 — bump sheets + (conditionally) ipapi in one DB write.
+      try {
+        const db = readDB();
+        recordApiCall(db, "sheets");
+        if (ipapiCalled) recordApiCall(db, "ipapi");
+        writeDB(db);
+      } catch (err) {
+        console.error("[apiCounters] newsletter bump failed:", err);
+      }
 
       res.json({ ok: true });
     } catch (err: any) {
@@ -1183,6 +1269,7 @@ Output ONLY valid JSON with no markdown fences and no explanation:
           values: [[now, email.trim().toLowerCase(), plan || ""]],
         },
       });
+      bumpApiCount("sheets"); // I-010
 
       res.json({ ok: true });
     } catch (err: any) {
@@ -1303,6 +1390,7 @@ Output ONLY valid JSON with no markdown fences and no explanation:
           fallbackPreset: hasRefs ? undefined : resolvedPreset,
         });
         setCachedBrief(cacheKey, styleBrief);
+        bumpApiCount("gemini"); // I-010 — style-brief extraction (skipped on cache hit)
       }
 
       // ── Step 2: Concept image ────────────────────────────────────────────────
@@ -1321,6 +1409,8 @@ Output ONLY valid JSON with no markdown fences and no explanation:
         roomType: resolvedRoomType,
         variationSeed: typeof variationSeed === "number" ? variationSeed : undefined,
       });
+      // I-010 — concept image generation. Retries undercount in v1 (NOTE: services/aiVision/imageGeneration.ts retries up to 2× on quota errors; instrument inside the service to capture retries accurately).
+      bumpApiCount("gemini");
 
       return res.json({
         success: true,
@@ -1415,6 +1505,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
           ],
         },
       });
+      bumpApiCount("gemini"); // I-010 — room audit consumed
 
       const rawText: string =
         (geminiRes as any).text ??
