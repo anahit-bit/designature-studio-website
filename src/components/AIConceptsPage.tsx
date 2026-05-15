@@ -17,6 +17,9 @@ import RetailerLogoStrip from './RetailerLogoStrip';
 import { QUIZ_IMAGE_WEIGHTS, TIER_POINTS } from '../data/quizImageWeights';
 import { cld, cldSrcSet, THUMB_WIDTHS } from '../lib/cld';
 import { useShoppingStatus } from '../lib/shoppingStatus';
+import { trackCalendly, trackQuizStart, trackQuizComplete } from '../lib/track';
+
+const CALENDLY_URL = 'https://calendly.com/designature-studio-us/free_consultation';
 
 const QUIZ_VOTE_UNLOCK_MS = process.env.NODE_ENV === 'test' ? 10 : 1500;
 /** Free tier: max generated concepts in the UI row (paid tier can be raised later). */
@@ -736,6 +739,34 @@ const AIConceptsPage: React.FC = () => {
       setSeenQuizImages(prev => new Set(prev).add(currentQuizImage.url));
     }
   }, [currentQuizImage.url, quizDone]);
+
+  // ── I-016: activity log — quiz_start fires once when room 1 appears in a fresh quiz ──
+  const quizStartFiredRef = useRef(false);
+  useEffect(() => {
+    if (quizDone) {
+      quizStartFiredRef.current = false; // reset so a retake fires again
+      return;
+    }
+    if (sharedInit) return; // viewing a shared DNA result — not a real quiz session
+    if (quizStep === 0 && currentQuizImage.url && !quizStartFiredRef.current) {
+      quizStartFiredRef.current = true;
+      trackQuizStart();
+    }
+  }, [quizStep, quizDone, currentQuizImage.url]); // sharedInit is a ref — intentionally omitted
+
+  // ── I-016: activity log — quiz_complete fires when DNA screen renders ──
+  const quizCompleteFiredRef = useRef(false);
+  useEffect(() => {
+    if (!quizDone) {
+      quizCompleteFiredRef.current = false;
+      return;
+    }
+    if (sharedInit) return; // shared DNA viewer never "completed" a quiz here
+    if (!quizCompleteFiredRef.current) {
+      quizCompleteFiredRef.current = true;
+      trackQuizComplete();
+    }
+  }, [quizDone]);
 
   // ── Fetch result gallery when quiz completes ──
   useEffect(() => {
@@ -2362,7 +2393,8 @@ const AIConceptsPage: React.FC = () => {
                         ✦ Upgrade plan
                       </button>
                       <a
-                        href="https://calendly.com/designature-studio-us/free_consultation"
+                        href={CALENDLY_URL}
+                        onClick={(e) => { e.preventDefault(); trackCalendly(CALENDLY_URL); }}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-6 py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all flex items-center gap-2"
@@ -3487,7 +3519,8 @@ const AIConceptsPage: React.FC = () => {
                           ✦ Upgrade plan
                         </button>
                         <a
-                          href="https://calendly.com/designature-studio-us/free_consultation"
+                          href={CALENDLY_URL}
+                          onClick={(e) => { e.preventDefault(); trackCalendly(CALENDLY_URL); }}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-6 py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all flex items-center gap-2"

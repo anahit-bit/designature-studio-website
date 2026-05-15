@@ -53,7 +53,10 @@
       "Bash(ls -la \"/c/Users/User/Downloads/\" | grep -E \"_square\" 2>&1)",
       "Bash(git -C \"E:\\\\Business\\\\Claude\\\\Website\\\\.claude\\\\worktrees\\\\agitated-nash-2b66d3\" add server/config/platforms.json)",
       "Bash(git -C 'E:\\\\Business\\\\Claude\\\\Website\\\\.claude\\\\worktrees\\\\agitated-nash-2b66d3' commit -m ' *)",
-      "Bash(git -C \"E:\\\\Business\\\\Claude\\\\Website\\\\.claude\\\\worktrees\\\\agitated-nash-2b66d3\" add -A)"
+      "Bash(git -C \"E:\\\\Business\\\\Claude\\\\Website\\\\.claude\\\\worktrees\\\\agitated-nash-2b66d3\" add -A)",
+      "Bash(git -C \"E:\\\\Business\\\\Claude\\\\Website\\\\.claude\\\\worktrees\\\\agitated-nash-2b66d3\" show --stat HEAD)",
+      "Bash(git -C \"E:\\\\Business\\\\Claude\\\\Website\\\\.claude\\\\worktrees\\\\agitated-nash-2b66d3\" show HEAD -- .claude/settings.local.json)",
+      "Bash(git -C \"E:\\\\Business\\\\Claude\\\\Website\\\\.claude\\\\worktrees\\\\agitated-nash-2b66d3\" status --short)"
     ]
   }
 }

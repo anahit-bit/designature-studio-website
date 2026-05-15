@@ -7,8 +7,10 @@ import { useLanguage, PortfolioFilter } from '../LanguageContext';
 import Header from './Header';
 import Footer from './Footer';
 import { cld, cldSrcSet, DEFAULT_WIDTHS } from '../lib/cld';
+import { trackCalendly } from '../lib/track';
 
 const SERVICES_HERO = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1771143071/services_1_oatiib.jpg';
+const CALENDLY_URL = 'https://calendly.com/designature-studio-us/free_consultation';
 
 const ServicesPage: React.FC = () => {
   const { t, language, navigateTo } = useLanguage();
@@ -338,8 +340,9 @@ const ServicesPage: React.FC = () => {
               </p>
               
               <div className="flex justify-center">
-                <a 
-                  href="https://calendly.com/designature-studio-us/free_consultation"
+                <a
+                  href={CALENDLY_URL}
+                  onClick={(e) => { e.preventDefault(); trackCalendly(CALENDLY_URL); }}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="group relative inline-flex items-center justify-center border border-white bg-transparent px-12 md:px-16 py-6 text-sm md:text-base font-bold tracking-[0.5em] uppercase transition-all duration-500 hover:bg-white hover:text-black overflow-hidden"

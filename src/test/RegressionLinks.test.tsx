@@ -43,9 +43,12 @@ describe('Regression: links and email flows', () => {
 
     fireEvent.click(screen.getAllByText(/Let's Talk/i)[0]);
 
+    // After I-016, the click goes through trackCalendly() which fires a tracker POST
+    // then opens the tab with noopener+noreferrer (security best practice).
     expect(openSpy).toHaveBeenCalledWith(
       'https://calendly.com/designature-studio-us/free_consultation',
-      '_blank'
+      '_blank',
+      'noopener,noreferrer'
     );
     openSpy.mockRestore();
   });

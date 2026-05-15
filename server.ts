@@ -182,6 +182,30 @@ function bumpApiCount(provider: string, delta: number = 1): void {
   }
 }
 
+/** Sentinel for logged-out visitors in the activity log. Rendered muted in the admin UI. */
+const ANON_USER = "anonymous";
+
+/**
+ * I-016 — append an activity log entry. Caps at 5000 entries (FIFO drop).
+ * Mutates `db.activityLog` in place; caller owns `writeDB(db)`.
+ */
+function logActivity(db: DB, userEmail: string, action: string): void {
+  if (!db.activityLog) db.activityLog = [];
+  db.activityLog.push({ ts: new Date().toISOString(), userEmail, action });
+  while (db.activityLog.length > 5000) db.activityLog.shift();
+}
+
+/** Convenience wrapper: read/log/write in one call. Used by routes that don't already touch the DB. */
+function recordActivity(userEmail: string, action: string): void {
+  try {
+    const db = readDB();
+    logActivity(db, userEmail, action);
+    writeDB(db);
+  } catch (err) {
+    console.error(`[activityLog] failed to record ${action}:`, err);
+  }
+}
+
 function readDB(): DB {
   if (!existsSync(DB_PATH)) {
     if (existsSync(DB_SEED_PATH)) {
@@ -480,6 +504,7 @@ async function startServer() {
       // Get or create user
       const db = readDB();
       let user = db.users[googleId];
+      const isNewUser = !user;
 
       if (!user) {
         // New user — give 3 free generations + 3 shopping list runs
@@ -494,7 +519,6 @@ async function startServer() {
           lastUsed: new Date().toISOString(),
         };
         db.users[googleId] = user;
-        writeDB(db);
         console.log(`New user registered: ${email}`);
       } else {
         // Existing user — update profile info
@@ -503,9 +527,12 @@ async function startServer() {
         user.picture = picture || user.picture;
         user.lastUsed = new Date().toISOString();
         db.users[googleId] = user;
-        writeDB(db);
         console.log(`Existing user logged in: ${email} (${user.generationsLeft} gens left)`);
       }
+
+      // I-016 — log signup or login; written together with the user record below.
+      logActivity(db, email, isNewUser ? "signup" : "login");
+      writeDB(db);
 
       // Clamp legacy accounts (e.g. admin-inflated concept counts) and migrate shoppingListsLeft
       {
@@ -550,6 +577,38 @@ async function startServer() {
       console.error("Auth error:", err);
       res.status(500).json({ error: "Authentication failed" });
     }
+  });
+
+  // ── Tracker endpoints (I-016) ─────────────────────────────────────────────
+  // Tiny endpoints that only log to activityLog. Anon-tolerant: when no session,
+  // userEmail is recorded as "anonymous". Never 5xx — tracking must not break UX.
+  function emailFromSession(req: any): string {
+    try {
+      const token = req.headers["x-session-token"] as string;
+      if (!token) return ANON_USER;
+      const googleId = getSession(token);
+      if (!googleId) return ANON_USER;
+      const db = readDB();
+      const user = db.users[googleId];
+      return user?.email || ANON_USER;
+    } catch {
+      return ANON_USER;
+    }
+  }
+
+  app.post("/api/track/calendly", (req, res) => {
+    recordActivity(emailFromSession(req), "calendly_click");
+    res.json({ ok: true });
+  });
+
+  app.post("/api/track/quiz-start", (req, res) => {
+    recordActivity(emailFromSession(req), "quiz_start");
+    res.json({ ok: true });
+  });
+
+  app.post("/api/track/quiz-complete", (req, res) => {
+    recordActivity(emailFromSession(req), "quiz_complete");
+    res.json({ ok: true });
   });
 
   // ── GET /api/auth/me — get current user info ──
@@ -736,6 +795,9 @@ async function startServer() {
         console.log(`[FEEDBACK] Write confirmed — invalidating testimonials cache`);
         testimonialsCache = null;
         bumpApiCount("sheets"); // I-010 — successful Apps Script → Sheets write
+        // I-016 — feedback submission. No auth on this endpoint; use submitted email or "anonymous".
+        const submitterEmail = (typeof email === "string" && email.trim()) ? email.trim().toLowerCase() : ANON_USER;
+        recordActivity(submitterEmail, "feedback_submit");
       } else {
         console.error(`[FEEDBACK] Apps Script returned ok=false:`, data.error);
       }
@@ -1072,6 +1134,9 @@ Output ONLY valid JSON with no markdown fences and no explanation:
         // I-010 — mirror into per-provider apiCounters for cross-provider parity.
         recordApiCall(dbShop, "serper", plannedSerperCalls);
       }
+
+      // I-016 — activity log (always, including mock mode — the user did "generate")
+      logActivity(dbShop, shopUser.email, "generate_shopping");
 
       writeDB(dbShop);
 
@@ -1411,6 +1476,7 @@ Output ONLY valid JSON with no markdown fences and no explanation:
       });
       // I-010 — concept image generation. Retries undercount in v1 (NOTE: services/aiVision/imageGeneration.ts retries up to 2× on quota errors; instrument inside the service to capture retries accurately).
       bumpApiCount("gemini");
+      recordActivity(user.email, "generate_vision"); // I-016
 
       return res.json({
         success: true,
@@ -1518,6 +1584,12 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         return res.status(422).json({ error: "Could not parse audit results." });
       }
       const parsed = JSON.parse(jsonMatch[0]);
+      // I-016 — log generate_audit with the user's email
+      try {
+        const auditDb = readDB();
+        const auditUser = auditDb.users[googleId];
+        if (auditUser) recordActivity(auditUser.email, "generate_audit");
+      } catch { /* non-fatal */ }
       return res.json({ result: parsed });
 
     } catch (err: any) {

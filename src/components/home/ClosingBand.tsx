@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLanguage } from '../../LanguageContext';
+import { trackCalendly } from '../../lib/track';
 
 const CALENDLY_URL = 'https://calendly.com/designature-studio-us/free_consultation';
 
@@ -34,6 +35,7 @@ const ClosingBand: React.FC = () => {
 
           <a
             href={CALENDLY_URL}
+            onClick={(e) => { e.preventDefault(); trackCalendly(CALENDLY_URL); }}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex flex-col items-center justify-center gap-1.5 px-10 md:px-12 py-6 md:py-7 rounded-full bg-white text-[#0B2240] font-bold tracking-[0.25em] uppercase text-[13px] transition-transform hover:-translate-y-0.5 min-w-[280px] md:min-w-[300px] no-underline"
