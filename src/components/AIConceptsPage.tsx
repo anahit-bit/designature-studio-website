@@ -1873,10 +1873,13 @@ const AIConceptsPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Tool 3 — Shopping List (LIVE) */}
+            {/* Tool 3 — Shopping List (LIVE / OFFLINE) */}
+            {(() => {
+              const shoppingDown = !!shoppingStatus?.disabled;
+              return (
             <div
               onClick={() => { if (!isProcessing) setActiveTool('shopping'); }}
-              className={`group relative p-4 border-r border-black/10 transition-all ${isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${activeTool === 'shopping' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
+              className={`group relative p-4 border-r border-black/10 transition-all ${isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${activeTool === 'shopping' ? 'bg-[#0047AB] text-white' : `bg-white text-black hover:bg-neutral-50${shoppingDown ? ' opacity-60' : ''}`}`}
               style={{ minHeight: '130px' }}
             >
               <div className={`text-[10px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'shopping' ? 'text-white/75' : 'text-black/55'}`}>03</div>
@@ -1895,9 +1898,20 @@ const AIConceptsPage: React.FC = () => {
                 )}
               </div>
               <div className="absolute bottom-3 right-3">
-                <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'shopping' ? 'text-blue-100 bg-blue-900/40' : 'text-green-700 bg-green-50'}`}>{t('ai.nowActive')}</span>
+                {shoppingDown ? (
+                  <span
+                    className={`text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'shopping' ? 'text-white/65 bg-black/20' : 'text-black/45 bg-black/[0.06]'}`}
+                    title={shoppingStatus?.code === 'daily_budget_exceeded' ? 'Daily limit reached — back tomorrow' : 'Shopping List is offline'}
+                  >
+                    offline
+                  </span>
+                ) : (
+                  <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'shopping' ? 'text-blue-100 bg-blue-900/40' : 'text-green-700 bg-green-50'}`}>{t('ai.nowActive')}</span>
+                )}
               </div>
             </div>
+              );
+            })()}
 
             {/* Tool 4 — Room Audit (LIVE for paid/owner only, SOON for everyone else) */}
             {user?.isPaid ? (
