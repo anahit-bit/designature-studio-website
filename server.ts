@@ -45,6 +45,15 @@ function isConceptTestAccountEmail(email: string): boolean {
   return UNLIMITED_ACCOUNT_EMAILS.includes(email.trim().toLowerCase());
 }
 
+/**
+ * I-011 — admin allowlist for /api/admin/* endpoints.
+ * Narrower than UNLIMITED_ACCOUNT_EMAILS: only the studio owner sees observability.
+ */
+const ADMIN_EMAILS = ["anahit@designature.studio"];
+function isAdminEmail(email: string): boolean {
+  return ADMIN_EMAILS.includes(email.trim().toLowerCase());
+}
+
 // ─── Simple JSON "database" stored in users.json ───────────────────────────
 const DB_PATH = "./users.json";
 const DB_SEED_PATH = "./users.seed.json";
@@ -221,6 +230,26 @@ function writeDB(db: DB) {
   writeFileSync(DB_PATH, JSON.stringify(db, null, 2));
 }
 
+// ─── Platform inventory (I-012) ─────────────────────────────────────────────
+// Loaded once at startup from server/config/platforms.json. Read-only after boot.
+interface Platform {
+  name: string;
+  owner_email: string;
+  monthly_cost: string;
+  free_tier_quota: string | null;
+  renewal_date: string | null;
+  powers: string;
+  criticality: number;
+}
+const PLATFORMS_PATH = "./server/config/platforms.json";
+let PLATFORMS: Platform[] = [];
+try {
+  PLATFORMS = JSON.parse(readFileSync(PLATFORMS_PATH, "utf-8")) as Platform[];
+  console.log(`[platforms] loaded ${PLATFORMS.length} entries from ${PLATFORMS_PATH}`);
+} catch (err) {
+  console.error(`[platforms] failed to load ${PLATFORMS_PATH}:`, err);
+}
+
 // ─── Session store (in-memory, keyed by session token) ─────────────────────
 const sessions: Record<string, string> = {}; // token → googleId
 
@@ -310,6 +339,22 @@ async function startServer() {
       return null;
     }
     return googleId;
+  }
+
+  // ── I-011: admin gate for /api/admin/* endpoints ────────────────────────────
+  // Layers on top of requireAuth: caller must have a valid session AND their
+  // email must be in ADMIN_EMAILS. Returns the User object on success, or null
+  // (with the response already sent: 401 unauth, 403 not authorized).
+  function requireAdmin(req: any, res: any): User | null {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return null;
+    const db = readDB();
+    const user = db.users[googleId];
+    if (!user || !isAdminEmail(user.email)) {
+      res.status(403).json({ error: "Not authorized" });
+      return null;
+    }
+    return user;
   }
 
   // ── Free-tier users Google Sheets upsert (best-effort) ──────────────────
@@ -1345,6 +1390,7 @@ Output ONLY valid JSON with no markdown fences and no explanation:
 
   // ── POST /api/admin/reset-user — reset generations for testing ──
   app.post("/api/admin/reset-user", (req, res) => {
+    if (!requireAdmin(req, res)) return; // I-011 drive-by: was unauthenticated, now admin-only
     const { email, count = 3 } = req.body;
     const db = readDB();
     const user = Object.values(db.users).find((u: User) => u.email === email);
@@ -1598,8 +1644,9 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     }
   });
 
-  // ── GET /api/admin/users — simple admin view (no auth for now) ──
+  // ── GET /api/admin/users — simple admin view (I-011: now admin-gated) ──
   app.get("/api/admin/users", (req, res) => {
+    if (!requireAdmin(req, res)) return; // I-011 drive-by: was unauthenticated, now admin-only
     const db = readDB();
     const users = Object.values(db.users).map((u) => ({
       email: u.email,
@@ -1609,6 +1656,58 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       lastUsed: u.lastUsed,
     }));
     res.json({ total: users.length, users });
+  });
+
+  // ── GET /api/admin/usage — observability aggregator (I-011) ──
+  // Powers the /admin dashboard. Single roundtrip returns API counters, recent
+  // activity, platform inventory, serper forensic log, user summary stats, and
+  // current shopping availability.
+  app.get("/api/admin/usage", (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const db = readDB();
+    const userList = Object.values(db.users);
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+
+    const signups7d = userList.filter((u) => {
+      const t = Date.parse(u.createdAt);
+      return Number.isFinite(t) && now - t < 7 * dayMs;
+    }).length;
+    const logins24h = (db.activityLog || []).filter((e) => {
+      if (e.action !== "login") return false;
+      const t = Date.parse(e.ts);
+      return Number.isFinite(t) && now - t < dayMs;
+    }).length;
+
+    // Shopping availability — mirror of /api/shopping/status logic.
+    const SHOPPING_DISABLED = (process.env.SHOPPING_DISABLED || "false").toLowerCase() === "true";
+    const SERPER_DAILY_BUDGET = (() => {
+      const parsed = parseInt((process.env.SERPER_DAILY_BUDGET || "200"), 10);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : 200;
+    })();
+    const todayUtc = utcDateString();
+    const usage = db.serperUsage && db.serperUsage.date === todayUtc ? db.serperUsage : { date: todayUtc, count: 0 };
+    const budgetExceeded = usage.count + 4 > SERPER_DAILY_BUDGET;
+    const shoppingStatus = SHOPPING_DISABLED
+      ? { disabled: true, code: "disabled" as const, dailyBudget: SERPER_DAILY_BUDGET, todayCount: usage.count }
+      : budgetExceeded
+        ? { disabled: true, code: "daily_budget_exceeded" as const, dailyBudget: SERPER_DAILY_BUDGET, todayCount: usage.count, resetAt: nextUtcMidnightIso() }
+        : { disabled: false, dailyBudget: SERPER_DAILY_BUDGET, todayCount: usage.count };
+
+    res.json({
+      counters: db.apiCounters || {},
+      activity: (db.activityLog || []).slice(-50).reverse(), // newest first
+      platforms: PLATFORMS,
+      serperLog: (db.serperLog || []).slice(-100).reverse(), // newest first
+      users: {
+        total: userList.length,
+        signups7d,
+        logins24h,
+        paid: userList.filter((u) => u.isPaid).length,
+        free: userList.filter((u) => !u.isPaid).length,
+      },
+      shoppingStatus,
+    });
   });
 
   // Vite middleware for development
