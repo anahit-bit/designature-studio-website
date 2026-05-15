@@ -755,6 +755,35 @@ Output ONLY valid JSON with no markdown fences and no explanation:
     }
   });
 
+  // ── GET /api/shopping/status — cheap probe for "is shopping available?" ──
+  //
+  // Used by the client to swap CTAs / show offline pills without committing to
+  // a search (which would burn auth/db work). Reflects both the env kill switch
+  // and the daily budget state. No auth required — public probe.
+  app.get("/api/shopping/status", (_req, res) => {
+    const SHOPPING_DISABLED = (process.env.SHOPPING_DISABLED || "false").toLowerCase() === "true";
+    if (SHOPPING_DISABLED) {
+      return res.json({ disabled: true, code: "disabled" });
+    }
+
+    const SERPER_DAILY_BUDGET = (() => {
+      const parsed = parseInt((process.env.SERPER_DAILY_BUDGET || "200"), 10);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : 200;
+    })();
+    const todayUtc = utcDateString();
+    const db = readDB();
+    const usage = db.serperUsage && db.serperUsage.date === todayUtc ? db.serperUsage : { date: todayUtc, count: 0 };
+    // Budget is exceeded when there isn't headroom for a typical 4-call list.
+    if (usage.count + 4 > SERPER_DAILY_BUDGET) {
+      return res.json({
+        disabled: true,
+        code: "daily_budget_exceeded",
+        resetAt: nextUtcMidnightIso(),
+      });
+    }
+    res.json({ disabled: false });
+  });
+
   // ── POST /api/shopping/search — Serper.dev Google Shopping API ──
   app.post("/api/shopping/search", async (req, res) => {
     try {
