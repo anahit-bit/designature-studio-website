@@ -12,9 +12,11 @@ import AIVisionShowcase from './AIVisionShowcase';
 import VisionExperience from './VisionExperience';
 import FeedbackBand from './FeedbackBand';
 import ShoppingListShowcase from './ShoppingListShowcase';
+import ShoppingOfflineCard from './ShoppingOfflineCard';
 import RetailerLogoStrip from './RetailerLogoStrip';
 import { QUIZ_IMAGE_WEIGHTS, TIER_POINTS } from '../data/quizImageWeights';
 import { cld, cldSrcSet, THUMB_WIDTHS } from '../lib/cld';
+import { useShoppingStatus } from '../lib/shoppingStatus';
 
 const QUIZ_VOTE_UNLOCK_MS = process.env.NODE_ENV === 'test' ? 10 : 1500;
 /** Free tier: max generated concepts in the UI row (paid tier can be raised later). */
@@ -410,6 +412,22 @@ const AIConceptsPage: React.FC = () => {
   const [shoppingLoading, setShoppingLoading] = useState(false);
   const [shoppingError, setShoppingError] = useState<string | null>(null);
   const [shoppingDone, setShoppingDone] = useState(false);
+  /** AI-027: when the search endpoint 503s with an "offline" code, swap the
+   *  whole shopping panel for ShoppingOfflineCard instead of the generic
+   *  red-text error row. Also seeded from /api/shopping/status on mount. */
+  const [shoppingOffline, setShoppingOffline] = useState<{
+    code: 'disabled' | 'daily_budget_exceeded';
+    resetAt?: string;
+  } | null>(null);
+  const shoppingStatus = useShoppingStatus();
+  useEffect(() => {
+    if (shoppingStatus?.disabled && shoppingStatus.code) {
+      setShoppingOffline({ code: shoppingStatus.code, resetAt: shoppingStatus.resetAt });
+    } else if (shoppingStatus && !shoppingStatus.disabled) {
+      // Status flipped back to online (e.g. budget reset) — clear stale offline state.
+      setShoppingOffline(null);
+    }
+  }, [shoppingStatus?.disabled, shoppingStatus?.code, shoppingStatus?.resetAt]);
   const [standaloneShoppingImage, setStandaloneShoppingImage] = useState<string | null>(null);
   const [forceStandaloneUpload, setForceStandaloneUpload] = useState(false);
   const [searchSourceImage, setSearchSourceImage] = useState<string | null>(null);
@@ -1618,7 +1636,16 @@ const AIConceptsPage: React.FC = () => {
         body: JSON.stringify({ items: itemsToSearch, country: shoppingCountry }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Search failed');
+      if (!res.ok) {
+        // I-009/AI-027: server returns 503 with { code: "disabled" |
+        // "daily_budget_exceeded", resetAt? } when the kill switch is on or
+        // the daily Serper budget is reached. Swap to the offline card.
+        if (res.status === 503 && (data?.code === 'disabled' || data?.code === 'daily_budget_exceeded')) {
+          setShoppingOffline({ code: data.code, resetAt: data.resetAt });
+          return;
+        }
+        throw new Error(data.error || 'Search failed');
+      }
       setShoppingResults(data.results || []);
       setShoppingDone(true);
       if (typeof data.shoppingListsLeft === 'number') {
@@ -3391,6 +3418,16 @@ const AIConceptsPage: React.FC = () => {
                 className={`scroll-mt-28 border-t-2 border-black/8${activeTool !== 'shopping' ? ' hidden' : ''}`}
               >
 
+                {/* AI-027: offline card — kill switch ON or daily budget exceeded.
+                 *  Takes priority over the sign-in gate / quota UI / search panel so a
+                 *  signed-in returning user sees the same graceful message as anyone
+                 *  else. Shown for both logged-out and logged-in to keep the surface
+                 *  consistent. */}
+                {shoppingOffline ? (
+                  <ShoppingOfflineCard code={shoppingOffline.code} resetAt={shoppingOffline.resetAt} />
+                ) : (
+                <>
+
                 {/* Sign-in gate */}
                 {!authLoading && !user && (
                   <div className="flex flex-col items-center justify-center gap-6 py-20 px-8 text-center flex-grow bg-white">
@@ -3921,6 +3958,9 @@ const AIConceptsPage: React.FC = () => {
                 )}
 
                   </>
+                )}
+
+                </>
                 )}
 
                 {/* Persistent feedback band — bottom of Shopping List (AI-023 G) */}

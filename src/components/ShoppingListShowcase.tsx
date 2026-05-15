@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { cld, cldSrcSet, THUMB_WIDTHS } from '../lib/cld';
+import { useShoppingStatus } from '../lib/shoppingStatus';
 
 // ─── Product data ─────────────────────────────────────────────────────────────
 const SHOWCASE_PRODUCTS = [
@@ -124,6 +126,11 @@ interface Props {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function ShoppingListShowcase({ onRequestLogin }: Props) {
+  // AI-027: when the tool is offline (kill switch or daily budget exhausted)
+  // swap the bottom CTA to a "get notified" form so the rest of the showcase
+  // still teaches the story. Probe fires async; page renders normally first.
+  const shoppingStatus = useShoppingStatus();
+  const isOffline = !!shoppingStatus?.disabled;
   return (
     <div className="w-full bg-white border-t border-black/10">
       <div className="flex flex-col items-center px-8 md:px-12 py-10 gap-7 w-full max-w-[900px] mx-auto">
@@ -247,21 +254,102 @@ export default function ShoppingListShowcase({ onRequestLogin }: Props) {
           className="flex flex-col items-center gap-3 w-full bg-black/[0.03] border-t border-black/[0.06] pt-6 pb-5 -mx-8 px-8"
           style={{ width: 'calc(100% + 4rem)' }}
         >
-          <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-black/65">
-            Shop any interior
-          </p>
-          <button
-            onClick={onRequestLogin}
-            className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[11px] font-bold uppercase tracking-[0.25em] px-7 py-4 hover:bg-[#003d99] transition-colors"
-          >
-            Start for free &#8212; no card needed &#8594;
-          </button>
-          <p className="text-[12px] text-black/70 uppercase tracking-[0.2em]">
-            Free &#183; 3 shopping lists &#183; PDF download
-          </p>
+          {isOffline ? <OfflineNotifyForm /> : (
+            <>
+              <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-black/65">
+                Shop any interior
+              </p>
+              <button
+                onClick={onRequestLogin}
+                className="inline-flex items-center gap-2 bg-[#0047AB] text-white text-[11px] font-bold uppercase tracking-[0.25em] px-7 py-4 hover:bg-[#003d99] transition-colors"
+              >
+                Start for free &#8212; no card needed &#8594;
+              </button>
+              <p className="text-[12px] text-black/70 uppercase tracking-[0.2em]">
+                Free &#183; 3 shopping lists &#183; PDF download
+              </p>
+            </>
+          )}
         </motion.div>
 
       </div>
+    </div>
+  );
+}
+
+// ─── Offline notify form (AI-027) ────────────────────────────────────────────
+// Compact email-capture replacement for the primary CTA when the Shopping List
+// tool is offline. Posts to the existing /api/newsletter/subscribe endpoint.
+function OfflineNotifyForm() {
+  const [email, setEmail] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (submitting || done) return;
+    const trimmed = email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setError('Enter a valid email address.');
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/newsletter/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimmed }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || 'Could not save your email — try again in a moment.');
+      }
+      setDone(true);
+    } catch (err: any) {
+      setError(err?.message || 'Could not save your email — try again in a moment.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-3 w-full max-w-md">
+      <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#0047AB]">
+        Shopping List is offline
+      </p>
+      <p className="text-[12px] text-black/70 uppercase tracking-[0.2em] text-center">
+        Get notified when it&apos;s back
+      </p>
+      {done ? (
+        <p className="mt-1 text-[12px] text-black/80 text-center">
+          You&apos;re on the list — we&apos;ll email <strong>{email.trim()}</strong>.
+        </p>
+      ) : (
+        <form onSubmit={handleSubmit} className="w-full flex flex-col sm:flex-row gap-2">
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            className="flex-1 border border-black/15 bg-white px-4 py-3 text-[13px] text-black placeholder:text-black/40 focus:outline-none focus:border-[#0047AB] transition-colors"
+            aria-label="Email address"
+            disabled={submitting}
+          />
+          <button
+            type="submit"
+            disabled={submitting}
+            className="bg-[#0047AB] text-white text-[10px] font-bold uppercase tracking-[0.25em] px-6 py-3 hover:bg-[#003d99] transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          >
+            {submitting ? 'Saving…' : 'Notify me →'}
+          </button>
+        </form>
+      )}
+      {error && (
+        <p className="text-[11px] text-red-600 uppercase tracking-widest font-bold">{error}</p>
+      )}
     </div>
   );
 }
