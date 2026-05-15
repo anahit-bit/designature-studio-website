@@ -92,8 +92,31 @@ function normalizeUserForFreeTier(user: User): { user: User; changed: boolean } 
   return { user: u, changed };
 }
 
+interface SerperLogEntry {
+  ts: string;
+  userEmail: string;
+  query: string;
+  count: number;
+  source: string;
+}
+
 interface DB {
   users: Record<string, User>; // keyed by googleId
+  /** Per-UTC-day Serper credit usage. Reset when `date` rolls over. */
+  serperUsage?: { date: string; count: number };
+  /** Append-only forensic log of Serper-burning calls. Capped at 1000 entries. */
+  serperLog?: SerperLogEntry[];
+}
+
+/** UTC YYYY-MM-DD for daily-budget bucketing. */
+function utcDateString(d: Date = new Date()): string {
+  return d.toISOString().slice(0, 10);
+}
+
+/** ISO timestamp for the next UTC midnight after `now`. */
+function nextUtcMidnightIso(now: Date = new Date()): string {
+  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0));
+  return next.toISOString();
 }
 
 function readDB(): DB {
@@ -735,6 +758,18 @@ Output ONLY valid JSON with no markdown fences and no explanation:
   // ── POST /api/shopping/search — Serper.dev Google Shopping API ──
   app.post("/api/shopping/search", async (req, res) => {
     try {
+      // ─── Kill switch (I-009) ────────────────────────────────────────────────
+      // Set SHOPPING_DISABLED=true in env to take the endpoint offline before
+      // any auth/db work. Used while serper.dev credits are exhausted or under
+      // investigation. The client renders a graceful "offline + notify me" UI.
+      const SHOPPING_DISABLED = (process.env.SHOPPING_DISABLED || "false").toLowerCase() === "true";
+      if (SHOPPING_DISABLED) {
+        return res.status(503).json({
+          error: "Shopping List is temporarily offline",
+          code: "disabled",
+        });
+      }
+
       const googleIdShopping = requireAuth(req, res);
       if (!googleIdShopping) return;
 
@@ -863,6 +898,34 @@ Output ONLY valid JSON with no markdown fences and no explanation:
         return matched.length >= 2 ? matched : ALL_SHOPS.filter(s => !["desenio","allposters"].includes(s.domain.split(".")[0]));
       };
 
+      // ─── Daily budget (I-009) ───────────────────────────────────────────────
+      // SERPER_DAILY_BUDGET caps Serper credits per UTC day. Mock mode bypasses
+      // the budget entirely (no real credits burned). The counter lives in
+      // db.serperUsage; rolls over at UTC midnight.
+      const SERPER_DAILY_BUDGET = (() => {
+        const parsed = parseInt((process.env.SERPER_DAILY_BUDGET || "200"), 10);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : 200;
+      })();
+      const plannedSerperCalls = items.slice(0, 4).length;
+      const todayUtc = utcDateString();
+      if (!MOCK_SERPER) {
+        const usage = dbShop.serperUsage && dbShop.serperUsage.date === todayUtc
+          ? dbShop.serperUsage
+          : { date: todayUtc, count: 0 };
+        if (usage.count + plannedSerperCalls > SERPER_DAILY_BUDGET) {
+          return res.status(503).json({
+            error: "Daily limit reached, back tomorrow",
+            code: "daily_budget_exceeded",
+            resetAt: nextUtcMidnightIso(),
+          });
+        }
+        // Persist the rollover even if no new calls happen below — keeps the
+        // counter honest across day boundaries.
+        if (!dbShop.serperUsage || dbShop.serperUsage.date !== todayUtc) {
+          dbShop.serperUsage = usage;
+        }
+      }
+
       // ── One category-aware OR query per item, top 3 results ─────────────────
       const searchResults = await Promise.all(
         items.slice(0, 4).map(async (item: any) => {
@@ -887,6 +950,28 @@ Output ONLY valid JSON with no markdown fences and no explanation:
       if (shopUser.shoppingListsLeft < 999) shopUser.shoppingListsLeft -= 1;
       shopUser.lastUsed = new Date().toISOString();
       dbShop.users[googleIdShopping] = shopUser;
+
+      // ─── Budget counter + forensic log (I-009) ──────────────────────────────
+      // Skip in mock mode — no real credits burned, no need to count.
+      if (!MOCK_SERPER && plannedSerperCalls > 0) {
+        const current = dbShop.serperUsage && dbShop.serperUsage.date === todayUtc
+          ? dbShop.serperUsage
+          : { date: todayUtc, count: 0 };
+        dbShop.serperUsage = { date: todayUtc, count: current.count + plannedSerperCalls };
+
+        const log: SerperLogEntry[] = Array.isArray(dbShop.serperLog) ? dbShop.serperLog : [];
+        log.push({
+          ts: new Date().toISOString(),
+          userEmail: shopUser.email,
+          query: items.slice(0, 4).map((i: any) => i.search_query).join(" | "),
+          count: plannedSerperCalls,
+          source: "shopping_search",
+        });
+        // Cap at 1000 entries — drop oldest when over.
+        while (log.length > 1000) log.shift();
+        dbShop.serperLog = log;
+      }
+
       writeDB(dbShop);
 
       res.json({ results: searchResults, shoppingListsLeft: shopUser.shoppingListsLeft });
