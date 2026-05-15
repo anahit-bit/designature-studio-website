@@ -56,13 +56,18 @@ describe('Shopping search — query format', () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. SERPER LIVE INTEGRATION — retailer-name queries return results
-//    Skipped if SERPER_API_KEY is not available in the test environment.
+//    Opt-in only: set LIVE_SERPER_TEST=1 AND provide SERPER_API_KEY to run.
+//    Default: skipped (no live HTTP, no credits burned). The 2026-05-04 ~875
+//    Serper credit burn (incident memo project_serper_credit_incident.md)
+//    made it clear we never want this file silently hitting the live API.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SERPER_KEY = '1c2017c137c2ddd471cbe86cd0badc785828e612';
+const LIVE_SERPER_TEST = process.env.LIVE_SERPER_TEST === '1';
+const SERPER_KEY = (process.env.SERPER_API_KEY || '').trim();
+const runLive = LIVE_SERPER_TEST && SERPER_KEY ? it : it.skip;
 
-describe('Serper API — live smoke test', () => {
-  it('retailer-name query returns at least 1 shopping result for Blu Dot', async () => {
+describe('Serper API — live smoke test (opt-in)', () => {
+  runLive('retailer-name query returns at least 1 shopping result for Blu Dot', async () => {
     const q = buildPaidQuery('modern sofa', 'Blu Dot');
     const res = await fetch('https://google.serper.dev/shopping', {
       method: 'POST',
@@ -75,7 +80,7 @@ describe('Serper API — live smoke test', () => {
     expect((data.shopping ?? []).length).toBeGreaterThan(0);
   }, 15_000);
 
-  it('site: query returns 0 results (confirming old approach was broken)', async () => {
+  runLive('site: query returns 0 results (confirming old approach was broken)', async () => {
     const q = 'modern sofa site:bludot.com';
     const res = await fetch('https://google.serper.dev/shopping', {
       method: 'POST',
