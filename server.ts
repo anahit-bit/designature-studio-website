@@ -256,6 +256,8 @@ interface Platform {
   name: string;
   owner_email: string;
   monthly_cost: string;
+  /** Annual cost when on an annual plan or computable from monthly (I-021d). */
+  annual_cost?: string | null;
   free_tier_quota: string | null;
   renewal_date: string | null;
   powers: string;
