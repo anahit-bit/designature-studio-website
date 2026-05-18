@@ -1325,12 +1325,17 @@ Output ONLY valid JSON with no markdown fences and no explanation:
   });
 
   // ── POST /api/newsletter/subscribe — append email to newsletter sheet ──
+  // Body: { email, source? }. source is a short slug identifying where the
+  // signup originated (I-021a): "home_footer", "shopping_offline", etc.
+  // Stored in column D ("Source") — header is added on first write if missing.
   app.post("/api/newsletter/subscribe", async (req, res) => {
-    const { email } = req.body || {};
+    const { email, source } = req.body || {};
 
     if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       return res.status(400).json({ error: "Invalid email" });
     }
+
+    const sourceSafe = typeof source === "string" ? source.trim().slice(0, 60) : "";
 
     const spreadsheetId = "1ADcawOqI2VElxwPSSuL-PGX3OjHehacod_ApDPRqFo4";
     const serviceAccountJson = (process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON || "").trim();
@@ -1385,10 +1390,33 @@ Output ONLY valid JSON with no markdown fences and no explanation:
         ipapiCalled = true; // attempted fetch failed mid-flight → still counts
       }
 
+      // I-021a — backfill "Source" column header on first newsletter write that
+      // carries a source. Reads row 1 (A1:D1); if D1 is empty, writes the full
+      // 4-column header in place. One-shot — runs only when sourceSafe is set
+      // AND the header isn't already there, so existing rows stay aligned.
+      if (sourceSafe) {
+        try {
+          const headerRange = `${sheetTitle}!A1:D1`;
+          const headerRes = await sheetsApi.spreadsheets.values.get({ spreadsheetId, range: headerRange });
+          const headerRow = headerRes.data.values?.[0] || [];
+          const hasSourceCol = (headerRow[3] || "").toString().trim().toLowerCase() === "source";
+          if (!hasSourceCol) {
+            await sheetsApi.spreadsheets.values.update({
+              spreadsheetId,
+              range: headerRange,
+              valueInputOption: "RAW",
+              requestBody: { values: [["created_at", "email", "country", "Source"]] },
+            });
+          }
+        } catch (e) {
+          console.warn("[newsletter] header backfill skipped:", e);
+        }
+      }
+
       const now = new Date().toISOString();
       await sheetsApi.spreadsheets.values.append({
         spreadsheetId,
-        range: `${sheetTitle}!A:C`,
+        range: `${sheetTitle}!A:D`,
         valueInputOption: "RAW",
         insertDataOption: "INSERT_ROWS",
         requestBody: {
@@ -1396,6 +1424,7 @@ Output ONLY valid JSON with no markdown fences and no explanation:
             now,                         // created_at
             email.trim().toLowerCase(),  // email
             detectedCountry,             // country (from IP)
+            sourceSafe,                  // source (I-021a)
           ]],
         },
       });

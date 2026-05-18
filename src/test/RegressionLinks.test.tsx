@@ -82,7 +82,8 @@ describe('Regression: links and email flows', () => {
         '/api/newsletter/subscribe',
         expect.objectContaining({
           method: 'POST',
-          body: JSON.stringify({ email: 'qa@example.com' }),
+          // I-021a — body includes the source slug for /admin attribution.
+          body: JSON.stringify({ email: 'qa@example.com', source: 'home_footer' }),
         })
       );
     });

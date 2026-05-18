@@ -62,7 +62,8 @@ export default function ShoppingOfflineCard({ code, resetAt }: Props) {
       const res = await fetch('/api/newsletter/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: trimmed }),
+        // I-021a — source slug surfaces in /admin newsletter section.
+        body: JSON.stringify({ email: trimmed, source: 'shopping_offline' }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
