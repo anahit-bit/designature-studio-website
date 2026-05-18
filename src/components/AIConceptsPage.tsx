@@ -17,7 +17,7 @@ import RetailerLogoStrip from './RetailerLogoStrip';
 import { QUIZ_IMAGE_WEIGHTS, TIER_POINTS } from '../data/quizImageWeights';
 import { cld, cldSrcSet, THUMB_WIDTHS } from '../lib/cld';
 import { useShoppingStatus } from '../lib/shoppingStatus';
-import { trackCalendly, trackQuizStart, trackQuizComplete } from '../lib/track';
+import { trackCalendly, trackQuizStart, trackQuizComplete, trackVisionStart, trackShoppingStart } from '../lib/track';
 
 const CALENDLY_URL = 'https://calendly.com/designature-studio-us/free_consultation';
 
@@ -767,6 +767,23 @@ const AIConceptsPage: React.FC = () => {
       trackQuizComplete();
     }
   }, [quizDone]);
+
+  // ── I-021b: shopping_started fires once when shoppingItems is first
+  // ──         populated (user uploaded a source image → items identified).
+  const shoppingStartFiredRef = useRef(false);
+  useEffect(() => {
+    if (shoppingItems.length === 0) {
+      shoppingStartFiredRef.current = false;
+      return;
+    }
+    if (!shoppingStartFiredRef.current) {
+      shoppingStartFiredRef.current = true;
+      trackShoppingStart();
+    }
+  }, [shoppingItems.length]);
+
+  // vision_started effect lives further down — needs isGenerateDisabled to be in scope.
+  const visionStartFiredRef = useRef(false);
 
   // ── Fetch result gallery when quiz completes ──
   useEffect(() => {
@@ -1751,6 +1768,19 @@ const AIConceptsPage: React.FC = () => {
     (inspirationImages.length === 0 && !selectedStyle) ||
     !user ||
     (user?.generationsLeft ?? 0) <= 0;
+
+  // I-021b: vision_started fires when the Generate button transitions
+  // disabled → enabled. One-shot per session; re-arms when results clear.
+  useEffect(() => {
+    if (isGenerateDisabled) {
+      if (results.length === 0 && !isProcessing) visionStartFiredRef.current = false;
+      return;
+    }
+    if (!visionStartFiredRef.current) {
+      visionStartFiredRef.current = true;
+      trackVisionStart();
+    }
+  }, [isGenerateDisabled, results.length, isProcessing]);
 
 
   // ─────────────────────────────────────────────────────────────────────────

@@ -34,3 +34,18 @@ export function trackQuizStart(): void {
 export function trackQuizComplete(): void {
   void fireAndForget('/api/track/quiz-complete');
 }
+
+/** I-021b — fires once when the AI Vision generate button transitions disabled → enabled. */
+export function trackVisionStart(): void {
+  void fireAndForget('/api/track/vision-start');
+}
+
+/** I-021b — fires once when the Shopping List search button transitions disabled → enabled. */
+export function trackShoppingStart(): void {
+  void fireAndForget('/api/track/shopping-start');
+}
+
+/** I-021b — fires once when the Room Audit analyze button transitions disabled → enabled. */
+export function trackAuditStart(): void {
+  void fireAndForget('/api/track/audit-start');
+}

@@ -110,12 +110,17 @@ interface SerperLogEntry {
   source: string;
 }
 
-/** Per-provider rolling counters across daily/weekly/monthly UTC windows (I-010). */
+/** Per-provider rolling counters across daily/weekly/monthly UTC windows (I-010, history[] added I-021b). */
 interface ProviderCounter {
   daily:   { date: string; count: number }; // YYYY-MM-DD
   weekly:  { date: string; count: number }; // YYYY-Www  (ISO week)
   monthly: { date: string; count: number }; // YYYY-MM
+  /** Per-day history, capped at 30 days. Powers sparklines in /admin. */
+  history?: Array<{ date: string; count: number }>;
 }
+
+/** Max days of per-provider per-day history we keep for sparklines (I-021b). */
+const PROVIDER_HISTORY_DAYS = 30;
 
 interface DB {
   users: Record<string, User>; // keyed by googleId
@@ -179,6 +184,20 @@ function recordApiCall(db: DB, provider: string, delta: number = 1): void {
   c.daily.count   += delta;
   c.weekly.count  += delta;
   c.monthly.count += delta;
+
+  // I-021b — per-day history for sparklines, capped at PROVIDER_HISTORY_DAYS.
+  if (!c.history) c.history = [];
+  const last = c.history.length > 0 ? c.history[c.history.length - 1] : null;
+  if (last && last.date === today) {
+    last.count += delta;
+  } else {
+    c.history.push({ date: today, count: delta });
+  }
+  // Trim entries older than the window — compute the cutoff string once.
+  const cutoffDate = new Date();
+  cutoffDate.setUTCDate(cutoffDate.getUTCDate() - PROVIDER_HISTORY_DAYS);
+  const cutoff = utcDateString(cutoffDate);
+  c.history = c.history.filter((h) => h.date >= cutoff);
 }
 
 /** Convenience wrapper: read/bump/write in one call. For routes that don't already touch the DB. */
@@ -361,6 +380,37 @@ async function startServer() {
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET,
   });
+
+  // ════════════════════════════════════════════════════════════════════════
+  // I-021b · Per-provider cost estimates (USD per call).
+  // ════════════════════════════════════════════════════════════════════════
+  // Rough estimates — refresh when provider pricing materially changes.
+  // Used to compute "API spend MTD" + "cost per active user" in /api/admin/usage.
+  //
+  // Gemini     : 2.5-flash text/image roughly $0.0001/call at our prompt sizes.
+  // Cloudinary : free tier (25 credits = ~25k transforms) — $0 within budget.
+  // Serper     : Shopping API at $0.02/credit on the $50/2,500 plan.
+  // Sheets     : Google Sheets API — free.
+  // IPApi      : free tier 1k/day — $0 within budget.
+  // EmailJS    : free tier 200/mo — $0 within budget.
+  // ════════════════════════════════════════════════════════════════════════
+  const CALL_COSTS: Record<string, number> = {
+    gemini:     0.0001,
+    cloudinary: 0,
+    serper:     0.02,
+    sheets:     0,
+    ipapi:      0,
+    emailjs:    0,
+  };
+  /** Free-tier hard caps per provider (monthly unless noted) — used for cost bars. */
+  const PROVIDER_FREE_CAPS: Record<string, { window: 'daily' | 'monthly'; limit: number; label: string }> = {
+    gemini:     { window: 'daily',   limit: 1500, label: '1,500 / day' },
+    cloudinary: { window: 'monthly', limit:   25, label: '25 credits / mo' },
+    serper:     { window: 'daily',   limit:  200, label: '200 / day' },
+    sheets:     { window: 'monthly', limit:    0, label: 'no fixed cap' },
+    ipapi:      { window: 'daily',   limit: 1000, label: '1,000 / day' },
+    emailjs:    { window: 'monthly', limit:  200, label: '200 / mo' },
+  };
 
   const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
@@ -616,6 +666,68 @@ async function startServer() {
     }
   }
 
+  // ── Newsletter sheet read (I-021b) ─────────────────────────────────────
+  // Pulls the live newsletter list for the /admin newsletter section.
+  // Returns the lifetime row count + the 5 newest rows.
+  const NEWSLETTER_SHEET_ID = "1ADcawOqI2VElxwPSSuL-PGX3OjHehacod_ApDPRqFo4";
+  async function readNewsletterFromSheet(): Promise<{ count: number; recent: Array<{ email: string; signupDate: string; source: string }>; error?: string }> {
+    const serviceAccountJson = (process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON || "").trim();
+    const keyFile = (process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_KEYFILE || "").trim();
+    if (!serviceAccountJson && !keyFile) {
+      return { count: 0, recent: [], error: "Sheet credentials not configured" };
+    }
+
+    let credentials: any;
+    try {
+      if (serviceAccountJson) {
+        credentials = JSON.parse(serviceAccountJson);
+      } else {
+        credentials = JSON.parse(readFileSync(keyFile, "utf-8"));
+      }
+      if (typeof credentials?.private_key === "string" && credentials.private_key.includes("\\n")) {
+        credentials.private_key = credentials.private_key.replace(/\\n/g, "\n");
+      }
+    } catch {
+      return { count: 0, recent: [], error: "Sheet credentials invalid" };
+    }
+
+    const jwtClient = new google.auth.JWT({
+      email: credentials.client_email,
+      key: credentials.private_key,
+      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
+    });
+    const sheetsApi = google.sheets({ version: "v4", auth: jwtClient });
+
+    const meta = await sheetsApi.spreadsheets.get({
+      spreadsheetId: NEWSLETTER_SHEET_ID,
+      fields: "sheets(properties(title))",
+    });
+    const sheetTitle = meta.data.sheets?.[0]?.properties?.title;
+    if (!sheetTitle) return { count: 0, recent: [], error: "Sheet has no tabs" };
+
+    const data = await sheetsApi.spreadsheets.values.get({
+      spreadsheetId: NEWSLETTER_SHEET_ID,
+      range: `${sheetTitle}!A:D`,
+      majorDimension: "ROWS",
+    });
+    bumpApiCount("sheets"); // I-010 — successful Sheets read
+    const rows = data.data.values || [];
+
+    // Detect header row: row 1 has 'email' in column B → skip it.
+    const headerOffset = rows[0] && String(rows[0][1] || "").trim().toLowerCase() === "email" ? 1 : 0;
+    const body = rows.slice(headerOffset);
+    const count = body.length;
+    const recent = body
+      .slice(-5)
+      .reverse()
+      .map((r) => ({
+        email: String(r[1] || ""),
+        signupDate: String(r[0] || ""),
+        source: String(r[3] || ""),
+      }));
+    return { count, recent };
+  }
+
   // ── POST /api/auth/google — exchange Google ID token for session ──
   app.post("/api/auth/google", async (req, res) => {
     try {
@@ -747,6 +859,23 @@ async function startServer() {
 
   app.post("/api/track/quiz-complete", (req, res) => {
     recordActivity(emailFromSession(req), "quiz_complete");
+    res.json({ ok: true });
+  });
+
+  // I-021b — "started" trackers for the other 3 tools so funnels show real data.
+  // Each fires once when the tool's generate button enters its ready state.
+  app.post("/api/track/vision-start", (req, res) => {
+    recordActivity(emailFromSession(req), "vision_started");
+    res.json({ ok: true });
+  });
+
+  app.post("/api/track/shopping-start", (req, res) => {
+    recordActivity(emailFromSession(req), "shopping_started");
+    res.json({ ok: true });
+  });
+
+  app.post("/api/track/audit-start", (req, res) => {
+    recordActivity(emailFromSession(req), "audit_started");
     res.json({ ok: true });
   });
 
@@ -1949,22 +2078,35 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     res.json({ users });
   });
 
-  // ── GET /api/admin/usage — observability aggregator (I-011) ──
-  // Powers the /admin dashboard. Single roundtrip returns API counters, recent
-  // activity, platform inventory, serper forensic log, user summary stats, and
-  // current shopping availability.
-  app.get("/api/admin/usage", (req, res) => {
+  // ── GET /api/admin/usage — observability aggregator (I-011 · I-021b) ──
+  // Powers the /admin dashboard. Single roundtrip returns:
+  //   counters         per-provider rolling counters + 30d history (I-010 + I-021b)
+  //   activity         last 50 activityLog entries (newest first)
+  //   platforms        platform inventory cards
+  //   serperLog        last 100 Serper forensic entries (newest first)
+  //   users            total + signups7d + logins24h + paid/free counts
+  //   shoppingStatus   mirror of /api/shopping/status
+  //   funnels          4 tools: started → completed counts + rate (last 7d)
+  //   activation       anon→signup rate + median time-to-first-tool + top trigger
+  //   newsletter       count + recent 5 (read live from the Sheet)
+  //   retention        D1/D7/D30 cohort return rates + DAU/WAU/MAU
+  //   cost             per-provider $ + MTD total + cost-per-active-user (est.)
+  app.get("/api/admin/usage", async (req, res) => {
     if (!requireAdmin(req, res)) return;
     const db = readDB();
     const userList = Object.values(db.users);
+    const allActivity = db.activityLog || [];
     const now = Date.now();
     const dayMs = 24 * 60 * 60 * 1000;
+    const sevenDaysAgo = now - 7 * dayMs;
+
+    const isPaidUser = (u: User) => !!u.isPaid || isConceptTestAccountEmail(u.email);
 
     const signups7d = userList.filter((u) => {
       const t = Date.parse(u.createdAt);
       return Number.isFinite(t) && now - t < 7 * dayMs;
     }).length;
-    const logins24h = (db.activityLog || []).filter((e) => {
+    const logins24h = allActivity.filter((e) => {
       if (e.action !== "login") return false;
       const t = Date.parse(e.ts);
       return Number.isFinite(t) && now - t < dayMs;
@@ -1985,19 +2127,165 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         ? { disabled: true, code: "daily_budget_exceeded" as const, dailyBudget: SERPER_DAILY_BUDGET, todayCount: usage.count, resetAt: nextUtcMidnightIso() }
         : { disabled: false, dailyBudget: SERPER_DAILY_BUDGET, todayCount: usage.count };
 
+    // ── Funnels (last 7d) ────────────────────────────────────────────────
+    // Quiz also accepts the older `quiz_start` action name for back-compat.
+    const recent = allActivity.filter((e) => {
+      const t = Date.parse(e.ts);
+      return Number.isFinite(t) && t >= sevenDaysAgo;
+    });
+    const cnt = (action: string | string[]) => {
+      const set = Array.isArray(action) ? new Set(action) : new Set([action]);
+      return recent.filter((e) => set.has(e.action)).length;
+    };
+    const mkFunnel = (name: string, status: 'live' | 'offline', startedActions: string | string[], completedAction: string) => {
+      const started = cnt(startedActions);
+      const completed = cnt(completedAction);
+      const pct = started > 0 ? Math.round((completed / started) * 100) : 0;
+      return { name, status, started, completed, pct };
+    };
+    const funnels = [
+      mkFunnel("Style Quiz",   "live",                                       ["quiz_start", "quiz_started"], "quiz_complete"),
+      mkFunnel("AI Vision",    "live",                                       "vision_started",              "generate_vision"),
+      mkFunnel("Shopping List", SHOPPING_DISABLED ? "offline" : "live",      "shopping_started",            "generate_shopping"),
+      mkFunnel("Room Audit",   "live",                                       "audit_started",               "generate_audit"),
+    ];
+
+    // ── Activation ───────────────────────────────────────────────────────
+    // Signup-rate: 7d signups ÷ 7d total anonymous-tracker hits (calendly/quiz/etc.)
+    // — rough proxy until GA4 sessions land (I-007).
+    const anonEvents7d = recent.filter((e) => e.userEmail === ANON_USER).length;
+    const anonToSignupRate = anonEvents7d > 0
+      ? Math.round((signups7d / (anonEvents7d + signups7d)) * 100)
+      : null;
+
+    // Median time-to-first-tool: across users who signed up AND fired a generate_* event later.
+    const TOOL_ACTIONS = new Set(["generate_vision", "generate_shopping", "generate_audit"]);
+    const ttftSecs: number[] = [];
+    for (const u of userList) {
+      const signupTs = Date.parse(u.createdAt);
+      if (!Number.isFinite(signupTs)) continue;
+      const firstTool = allActivity.find(
+        (e) => e.userEmail === u.email && TOOL_ACTIONS.has(e.action) && Date.parse(e.ts) >= signupTs,
+      );
+      if (firstTool) {
+        const dt = (Date.parse(firstTool.ts) - signupTs) / 1000;
+        if (dt >= 0 && Number.isFinite(dt)) ttftSecs.push(dt);
+      }
+    }
+    const medianTtftSec = ttftSecs.length === 0
+      ? null
+      : ttftSecs.slice().sort((a, b) => a - b)[Math.floor(ttftSecs.length / 2)];
+
+    // Top sign-up trigger: the most-common anon action that preceded a signup
+    // by ≤ 60min for the same eventual user. We don't yet track this with
+    // attribution — leave null until the signup tracker carries source (next).
+    const topSignupTrigger: string | null = null;
+
+    const activation = {
+      anonToSignupRatePct: anonToSignupRate,
+      medianTimeToFirstToolSec: medianTtftSec === null ? null : Math.round(medianTtftSec),
+      topSignupTrigger,
+      ttftSampleSize: ttftSecs.length,
+    };
+
+    // ── Newsletter (live read from the Sheet) ────────────────────────────
+    let newsletter: { count: number; recent: Array<{ email: string; signupDate: string; source: string }>; error?: string };
+    try {
+      newsletter = await readNewsletterFromSheet();
+    } catch (e: any) {
+      newsletter = { count: 0, recent: [], error: e?.message || "Sheet read failed" };
+    }
+
+    // ── Retention ────────────────────────────────────────────────────────
+    // Cohort logic: of users who signed up at least N days ago, what % had ANY
+    // activity-log event between their signup ts and now? For DXX we measure
+    // "any activity at least XX days after signup".
+    const cohortReturn = (minDaysOld: number, minGapDays: number): number | null => {
+      const cohort = userList.filter((u) => {
+        const t = Date.parse(u.createdAt);
+        return Number.isFinite(t) && now - t >= minDaysOld * dayMs;
+      });
+      if (cohort.length === 0) return null;
+      const returned = cohort.filter((u) => {
+        const signupTs = Date.parse(u.createdAt);
+        return allActivity.some(
+          (e) => e.userEmail === u.email && Date.parse(e.ts) >= signupTs + minGapDays * dayMs,
+        );
+      }).length;
+      return Math.round((returned / cohort.length) * 100);
+    };
+    const distinctActiveUsers = (windowMs: number): number => {
+      const cutoff = now - windowMs;
+      const set = new Set<string>();
+      for (const e of allActivity) {
+        const t = Date.parse(e.ts);
+        if (!Number.isFinite(t) || t < cutoff) continue;
+        if (e.userEmail === ANON_USER) continue;
+        set.add(e.userEmail);
+      }
+      return set.size;
+    };
+    const retention = {
+      d1ReturnPct:  cohortReturn(1, 1),
+      d7ReturnPct:  cohortReturn(7, 7),
+      d30ReturnPct: cohortReturn(30, 30),
+      dau: distinctActiveUsers(dayMs),
+      wau: distinctActiveUsers(7 * dayMs),
+      mau: distinctActiveUsers(30 * dayMs),
+    };
+
+    // ── Cost (estimated) ─────────────────────────────────────────────────
+    const counters = db.apiCounters || {};
+    const byProvider = (["gemini", "cloudinary", "serper", "sheets", "ipapi", "emailjs"] as const).map((p) => {
+      const c = counters[p];
+      const cap = PROVIDER_FREE_CAPS[p];
+      const todayCount = c?.daily?.date === todayUtc ? c.daily.count : 0;
+      const monthlyCount = c?.monthly?.date === utcMonthString() ? c.monthly.count : 0;
+      const windowCount = cap.window === 'daily' ? todayCount : monthlyCount;
+      const pct = cap.limit > 0 ? Math.round((windowCount / cap.limit) * 100) : 0;
+      const status: 'healthy' | 'watch' | 'critical' | 'offline' =
+        p === 'serper' && SHOPPING_DISABLED ? 'offline' :
+        cap.limit === 0 ? 'healthy' :
+        pct >= 80 ? 'critical' :
+        pct >= 50 ? 'watch' :
+                    'healthy';
+      const costPerCall = CALL_COSTS[p] ?? 0;
+      const mtdCost = monthlyCount * costPerCall;
+      return {
+        provider: p,
+        windowCount,
+        windowLimit: cap.limit,
+        windowLabel: cap.label,
+        pct,
+        status,
+        mtdCost,
+      };
+    });
+    const totalMtdCost = byProvider.reduce((acc, x) => acc + x.mtdCost, 0);
+    const cost = {
+      mtdSpendEst: totalMtdCost,
+      costPerActiveUserEst: retention.mau > 0 ? totalMtdCost / retention.mau : null,
+      byProvider,
+    };
+
     res.json({
-      counters: db.apiCounters || {},
-      activity: (db.activityLog || []).slice(-50).reverse(), // newest first
+      counters,
+      activity: allActivity.slice(-50).reverse(), // newest first
       platforms: PLATFORMS,
       serperLog: (db.serperLog || []).slice(-100).reverse(), // newest first
       users: {
         total: userList.length,
         signups7d,
         logins24h,
-        paid: userList.filter((u) => u.isPaid).length,
-        free: userList.filter((u) => !u.isPaid).length,
+        paid: userList.filter(isPaidUser).length,
+        free: userList.filter((u) => !isPaidUser(u)).length,
       },
       shoppingStatus,
+      funnels,
+      activation,
+      newsletter,
+      retention,
+      cost,
     });
   });
 
