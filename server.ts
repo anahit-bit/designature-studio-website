@@ -1388,6 +1388,26 @@ Output ONLY valid JSON with no markdown fences and no explanation:
     }
   });
 
+  // ════════════════════════════════════════════════════════════════════════
+  // I-018 · /api/admin/* AUTH AUDIT  (last reviewed 2026-05-18 · Phase C)
+  // ════════════════════════════════════════════════════════════════════════
+  // Every admin endpoint must call requireAdmin (current) / requireAdminAuth
+  // (post-I-019) at the top of its handler. If you add a new /api/admin/*
+  // route, add it to this list AND apply the gate.
+  //
+  //   METHOD  PATH                       LINE      GATE
+  //   POST    /api/admin/reset-user      ~1395     requireAdmin   ✓
+  //   GET     /api/admin/users           ~1655     requireAdmin   ✓
+  //   GET     /api/admin/usage           ~1675     requireAdmin   ✓
+  //
+  // History:
+  //   2026-05-15 (I-011 drive-by): reset-user + users were unauthenticated.
+  //                                Gated under the email-allowlist.
+  //   2026-05-18 (I-018):          audit re-confirmed all 3 routes gated;
+  //                                I-019 swaps the gate from email allowlist
+  //                                to bcrypt-password admin session cookie.
+  // ════════════════════════════════════════════════════════════════════════
+
   // ── POST /api/admin/reset-user — reset generations for testing ──
   app.post("/api/admin/reset-user", (req, res) => {
     if (!requireAdmin(req, res)) return; // I-011 drive-by: was unauthenticated, now admin-only
