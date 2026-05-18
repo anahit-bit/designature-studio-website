@@ -10,7 +10,7 @@
  * mount; redirects to /admin/login if not authed. No Google OAuth coupling.
  */
 import React, { useEffect, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, Link } from 'react-router-dom';
 import { useAdminMe, adminLogout } from '../lib/adminAuth';
 
 const POLL_MS = 30_000;
@@ -335,6 +335,12 @@ const AdminPage: React.FC = () => {
               {lastFetched && <p>Updated {relativeTime(lastFetched.toISOString())}</p>}
               <p>Polling every {Math.round(POLL_MS / 1000)}s</p>
             </div>
+            <Link
+              to="/admin/users"
+              className="text-[10px] tracking-[0.22em] uppercase font-bold text-[#0047AB] hover:underline"
+            >
+              View users →
+            </Link>
             <button
               type="button"
               onClick={onSignOut}
