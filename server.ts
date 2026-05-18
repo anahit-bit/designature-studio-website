@@ -2,7 +2,8 @@ import dotenv from "dotenv";
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import { readFileSync, writeFileSync, existsSync } from "fs";
-import { createHash } from "crypto";
+import { createHash, randomBytes } from "crypto";
+import bcrypt from "bcryptjs";
 import { v2 as cloudinary } from "cloudinary";
 import multer from "multer";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
@@ -265,6 +266,87 @@ function getSession(token: string): string | null {
   return sessions[token] || null;
 }
 
+// ─── Admin session store (I-019) ────────────────────────────────────────────
+// Separate from end-user sessions. Backed by an HttpOnly cookie. Lost on
+// process restart — acceptable for v1 (admin re-logs in).
+const ADMIN_SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12h per spec
+const ADMIN_COOKIE_NAME = "admin_session";
+const adminSessions: Record<string, { email: string; expiresAt: number }> = {};
+
+function createAdminSession(email: string): string {
+  const token = randomBytes(32).toString("hex");
+  adminSessions[token] = { email, expiresAt: Date.now() + ADMIN_SESSION_TTL_MS };
+  return token;
+}
+
+function getAdminSession(token: string): { email: string } | null {
+  const s = adminSessions[token];
+  if (!s) return null;
+  if (Date.now() > s.expiresAt) {
+    delete adminSessions[token];
+    return null;
+  }
+  return { email: s.email };
+}
+
+function destroyAdminSession(token: string): void {
+  delete adminSessions[token];
+}
+
+/** Tiny cookie parser — avoids pulling in cookie-parser for one cookie. */
+function parseCookies(req: any): Record<string, string> {
+  const raw = req.headers?.cookie;
+  if (!raw || typeof raw !== "string") return {};
+  const out: Record<string, string> = {};
+  for (const part of raw.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq < 0) continue;
+    const k = part.slice(0, eq).trim();
+    const v = part.slice(eq + 1).trim();
+    if (k) out[k] = decodeURIComponent(v);
+  }
+  return out;
+}
+
+// ─── Login rate limit (I-019) ───────────────────────────────────────────────
+// In-memory per-IP: 5 failed attempts → 15-minute lockout. Resets on success.
+const ADMIN_LOGIN_MAX_ATTEMPTS = 5;
+const ADMIN_LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
+const loginAttempts: Record<string, { count: number; lockedUntil: number }> = {};
+
+function clientIp(req: any): string {
+  return ((req.headers["x-forwarded-for"] as string) || req.ip || "unknown")
+    .split(",")[0]
+    .trim();
+}
+
+function isLockedOut(ip: string): { locked: boolean; resetIn: number; remaining: number } {
+  const rec = loginAttempts[ip];
+  if (!rec) return { locked: false, resetIn: 0, remaining: ADMIN_LOGIN_MAX_ATTEMPTS };
+  if (rec.lockedUntil > Date.now()) {
+    return { locked: true, resetIn: rec.lockedUntil - Date.now(), remaining: 0 };
+  }
+  if (rec.lockedUntil > 0) {
+    // lock expired — reset record
+    delete loginAttempts[ip];
+    return { locked: false, resetIn: 0, remaining: ADMIN_LOGIN_MAX_ATTEMPTS };
+  }
+  return { locked: false, resetIn: 0, remaining: ADMIN_LOGIN_MAX_ATTEMPTS - rec.count };
+}
+
+function recordLoginAttempt(ip: string, success: boolean): void {
+  if (success) {
+    delete loginAttempts[ip];
+    return;
+  }
+  const rec = loginAttempts[ip] || { count: 0, lockedUntil: 0 };
+  rec.count += 1;
+  if (rec.count >= ADMIN_LOGIN_MAX_ATTEMPTS) {
+    rec.lockedUntil = Date.now() + ADMIN_LOGIN_LOCKOUT_MS;
+  }
+  loginAttempts[ip] = rec;
+}
+
 // ─── Server ────────────────────────────────────────────────────────────────
 async function startServer() {
   const app = express();
@@ -341,20 +423,32 @@ async function startServer() {
     return googleId;
   }
 
-  // ── I-011: admin gate for /api/admin/* endpoints ────────────────────────────
-  // Layers on top of requireAuth: caller must have a valid session AND their
-  // email must be in ADMIN_EMAILS. Returns the User object on success, or null
-  // (with the response already sent: 401 unauth, 403 not authorized).
-  function requireAdmin(req: any, res: any): User | null {
-    const googleId = requireAuth(req, res);
-    if (!googleId) return null;
-    const db = readDB();
-    const user = db.users[googleId];
-    if (!user || !isAdminEmail(user.email)) {
-      res.status(403).json({ error: "Not authorized" });
+  // ── I-019: admin gate for /api/admin/* + /admin/* surfaces ──────────────────
+  // Replaces the Phase B email-allowlist gate. Reads the HttpOnly admin_session
+  // cookie (set by /api/admin/login), validates the token against adminSessions,
+  // returns {email} on success or null with 401 already sent.
+  //
+  // Old name `requireAdmin` is kept as an alias so the 3 pre-existing
+  // /api/admin/* endpoints (reset-user, users, usage) don't churn yet — they
+  // pick up the new gate transparently.
+  function requireAdminAuth(req: any, res: any): { email: string } | null {
+    const cookies = parseCookies(req);
+    const token = cookies[ADMIN_COOKIE_NAME];
+    if (!token) {
+      res.status(401).json({ error: "Not authenticated" });
       return null;
     }
-    return user;
+    const session = getAdminSession(token);
+    if (!session) {
+      res.status(401).json({ error: "Session expired" });
+      return null;
+    }
+    return session;
+  }
+
+  /** @deprecated alias preserved during the I-011 → I-019 migration. */
+  function requireAdmin(req: any, res: any): { email: string } | null {
+    return requireAdminAuth(req, res);
   }
 
   // ── Free-tier users Google Sheets upsert (best-effort) ──────────────────
@@ -1391,22 +1485,101 @@ Output ONLY valid JSON with no markdown fences and no explanation:
   // ════════════════════════════════════════════════════════════════════════
   // I-018 · /api/admin/* AUTH AUDIT  (last reviewed 2026-05-18 · Phase C)
   // ════════════════════════════════════════════════════════════════════════
-  // Every admin endpoint must call requireAdmin (current) / requireAdminAuth
-  // (post-I-019) at the top of its handler. If you add a new /api/admin/*
-  // route, add it to this list AND apply the gate.
+  // Every admin endpoint must call requireAdminAuth at the top of its handler.
+  // If you add a new /api/admin/* route, add it to this list AND apply the gate.
   //
-  //   METHOD  PATH                       LINE      GATE
-  //   POST    /api/admin/reset-user      ~1395     requireAdmin   ✓
-  //   GET     /api/admin/users           ~1655     requireAdmin   ✓
-  //   GET     /api/admin/usage           ~1675     requireAdmin   ✓
+  //   METHOD  PATH                       GATE
+  //   POST    /api/admin/login           PUBLIC (rate-limited)
+  //   POST    /api/admin/logout          PUBLIC (idempotent cookie clear)
+  //   POST    /api/admin/reset-user      requireAdminAuth (via requireAdmin alias)
+  //   GET     /api/admin/users           requireAdminAuth (via requireAdmin alias)
+  //   GET     /api/admin/usage           requireAdminAuth (via requireAdmin alias)
   //
   // History:
   //   2026-05-15 (I-011 drive-by): reset-user + users were unauthenticated.
   //                                Gated under the email-allowlist.
-  //   2026-05-18 (I-018):          audit re-confirmed all 3 routes gated;
-  //                                I-019 swaps the gate from email allowlist
-  //                                to bcrypt-password admin session cookie.
+  //   2026-05-18 (I-018):          audit confirmed 3 routes gated.
+  //   2026-05-18 (I-019):          swapped gate from email-allowlist (Google
+  //                                OAuth session) to bcrypt admin session
+  //                                cookie. Decouples admin from end-user auth.
   // ════════════════════════════════════════════════════════════════════════
+
+  // ── POST /api/admin/login — admin session bootstrap (I-019) ─────────────
+  app.post("/api/admin/login", async (req, res) => {
+    const ip = clientIp(req);
+    const lock = isLockedOut(ip);
+    if (lock.locked) {
+      const minutes = Math.ceil(lock.resetIn / 60_000);
+      return res.status(429).json({
+        error: `Too many attempts. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`,
+        lockedUntil: Date.now() + lock.resetIn,
+      });
+    }
+
+    const { email, password } = req.body || {};
+    if (typeof email !== "string" || typeof password !== "string") {
+      recordLoginAttempt(ip, false);
+      return res.status(400).json({ error: "Email and password required." });
+    }
+
+    const ok = (() => {
+      if (!isAdminEmail(email)) return false;
+      const hash = (process.env.ADMIN_PASSWORD_HASH || "").trim();
+      if (!hash) {
+        console.error("[admin/login] ADMIN_PASSWORD_HASH is not set");
+        return false;
+      }
+      try {
+        return bcrypt.compareSync(password, hash);
+      } catch (err) {
+        console.error("[admin/login] bcrypt.compare error:", err);
+        return false;
+      }
+    })();
+
+    if (!ok) {
+      recordLoginAttempt(ip, false);
+      const after = isLockedOut(ip);
+      return res.status(401).json({
+        error: "Invalid email or password.",
+        attemptsRemaining: after.remaining,
+      });
+    }
+
+    recordLoginAttempt(ip, true);
+    const token = createAdminSession(email.trim().toLowerCase());
+    const isProd = process.env.NODE_ENV === "production";
+    res.cookie(ADMIN_COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: "lax",
+      maxAge: ADMIN_SESSION_TTL_MS,
+      path: "/",
+    });
+    res.json({ ok: true, expiresIn: ADMIN_SESSION_TTL_MS });
+  });
+
+  // ── POST /api/admin/logout — clear admin cookie (I-019) ─────────────────
+  app.post("/api/admin/logout", (req, res) => {
+    const cookies = parseCookies(req);
+    const token = cookies[ADMIN_COOKIE_NAME];
+    if (token) destroyAdminSession(token);
+    res.clearCookie(ADMIN_COOKIE_NAME, { path: "/" });
+    res.json({ ok: true });
+  });
+
+  // ── GET /api/admin/me — current admin session info (I-019) ──────────────
+  // Used by the client on /admin/* mount to decide whether to redirect to
+  // /admin/login or render the page. Never throws — returns { authed: false }
+  // when no session is present.
+  app.get("/api/admin/me", (req, res) => {
+    const cookies = parseCookies(req);
+    const token = cookies[ADMIN_COOKIE_NAME];
+    if (!token) return res.json({ authed: false });
+    const session = getAdminSession(token);
+    if (!session) return res.json({ authed: false });
+    res.json({ authed: true, email: session.email });
+  });
 
   // ── POST /api/admin/reset-user — reset generations for testing ──
   app.post("/api/admin/reset-user", (req, res) => {
