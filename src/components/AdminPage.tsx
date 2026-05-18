@@ -1,19 +1,18 @@
 /**
- * /admin — owner-only observability dashboard (I-017).
+ * /admin — owner-only observability dashboard (I-017 · gate updated I-019).
  *
  * Polls /api/admin/usage every 30s and renders four sections: API credits
  * (per-provider rolling counters), recent activity (last 50 log entries),
  * platform inventory (cards from server/config/platforms.json), and a
  * Shopping incident view (status pill + last 100 Serper requests).
  *
- * Non-admins (or unauth visitors) are redirected to "/". Desktop-only —
- * no mobile breakpoints; this is an owner-only internal tool.
+ * Auth: admin_session HttpOnly cookie (I-019). Probes /api/admin/me on
+ * mount; redirects to /admin/login if not authed. No Google OAuth coupling.
  */
 import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '../AuthContext';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { useAdminMe, adminLogout } from '../lib/adminAuth';
 
-const ADMIN_EMAIL = 'anahit@designature.studio';
 const POLL_MS = 30_000;
 const SERPER_MONTHLY_CAP = 2500; // $50 plan — only counter with a hard cap configured
 
@@ -274,19 +273,24 @@ const ShoppingIncidentSection: React.FC<{ rows: SerperLogEntry[]; status: UsageR
 // ── Main page ──────────────────────────────────────────────────────────────
 
 const AdminPage: React.FC = () => {
-  const { user, isLoading, apiFetch } = useAuth();
+  const me = useAdminMe();
+  const navigate = useNavigate();
   const [data, setData] = useState<UsageResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
 
   useEffect(() => {
-    if (!user || user.email !== ADMIN_EMAIL) return;
+    if (!me?.authed) return; // wait for /me probe; redirect handled below
     let cancelled = false;
 
     const load = async () => {
       try {
-        const res = await apiFetch('/api/admin/usage');
+        const res = await fetch('/api/admin/usage', { credentials: 'include' });
         if (cancelled) return;
+        if (res.status === 401) {
+          navigate('/admin/login', { replace: true });
+          return;
+        }
         if (!res.ok) {
           setError(`Fetch failed (${res.status})`);
           return;
@@ -308,22 +312,36 @@ const AdminPage: React.FC = () => {
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [user?.email, apiFetch]);
+  }, [me?.authed, navigate]);
 
-  if (isLoading) return null;
-  if (!user || user.email !== ADMIN_EMAIL) return <Navigate to="/" replace />;
+  async function onSignOut() {
+    await adminLogout();
+    navigate('/admin/login', { replace: true });
+  }
+
+  if (me === null) return null; // probing
+  if (!me.authed) return <Navigate to="/admin/login" replace />;
 
   return (
-    <div className="min-h-screen bg-[#f7f6f4] font-body">
-      <main className="pt-24 pb-24 max-w-[1600px] mx-auto px-8 md:px-16">
+    <div className="min-h-screen bg-[#F4EFE7] font-body">
+      <main className="pt-12 pb-24 max-w-[1600px] mx-auto px-8 md:px-16">
         <header className="flex items-baseline justify-between mb-12 border-b border-black/10 pb-6">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#0047AB] mb-2">Observability</p>
             <h1 className="font-serif text-5xl text-black">Admin dashboard</h1>
           </div>
-          <div className="text-xs text-neutral-500 text-right">
-            {lastFetched && <p>Updated {relativeTime(lastFetched.toISOString())}</p>}
-            <p>Polling every {Math.round(POLL_MS / 1000)}s</p>
+          <div className="text-xs text-neutral-500 text-right flex items-baseline gap-6">
+            <div>
+              {lastFetched && <p>Updated {relativeTime(lastFetched.toISOString())}</p>}
+              <p>Polling every {Math.round(POLL_MS / 1000)}s</p>
+            </div>
+            <button
+              type="button"
+              onClick={onSignOut}
+              className="text-[10px] tracking-[0.22em] uppercase font-bold text-black hover:text-[#0047AB]"
+            >
+              Sign out
+            </button>
           </div>
         </header>
 
