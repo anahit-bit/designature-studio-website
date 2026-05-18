@@ -1491,9 +1491,11 @@ Output ONLY valid JSON with no markdown fences and no explanation:
   //   METHOD  PATH                       GATE
   //   POST    /api/admin/login           PUBLIC (rate-limited)
   //   POST    /api/admin/logout          PUBLIC (idempotent cookie clear)
+  //   GET     /api/admin/me              PUBLIC (session probe, returns {authed})
   //   POST    /api/admin/reset-user      requireAdminAuth (via requireAdmin alias)
   //   GET     /api/admin/users           requireAdminAuth (via requireAdmin alias)
   //   GET     /api/admin/usage           requireAdminAuth (via requireAdmin alias)
+  //   GET     /api/admin/users-detail    requireAdminAuth (via requireAdmin alias)
   //
   // History:
   //   2026-05-15 (I-011 drive-by): reset-user + users were unauthenticated.
@@ -1849,6 +1851,73 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       lastUsed: u.lastUsed,
     }));
     res.json({ total: users.length, users });
+  });
+
+  // ── GET /api/admin/users-detail — users page list + per-email history (I-020) ──
+  //
+  // No query param   → returns { users: UserDetail[] } where each entry is a
+  //                    lifetime view: email, name, signupDate, lastLogin,
+  //                    tier, totalActivityCount (count of activityLog entries
+  //                    keyed on this email).
+  // ?email=<urlenc>  → returns { user, activity } where activity is the user's
+  //                    full activityLog history (newest first).
+  //
+  // Tier rules:
+  //   "unlimited" — studio-owner allowlist (isConceptTestAccountEmail)
+  //   "paid"      — user.isPaid === true (non-owner)
+  //   "free"      — everyone else
+  app.get("/api/admin/users-detail", (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const db = readDB();
+    const allActivity = db.activityLog || [];
+
+    const tierOf = (u: User): "unlimited" | "paid" | "free" => {
+      if (isConceptTestAccountEmail(u.email)) return "unlimited";
+      if (u.isPaid) return "paid";
+      return "free";
+    };
+
+    const emailQuery = typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : null;
+
+    if (emailQuery) {
+      const user = Object.values(db.users).find(
+        (u) => u.email.trim().toLowerCase() === emailQuery,
+      );
+      if (!user) return res.status(404).json({ error: "User not found" });
+      const activity = allActivity
+        .filter((e) => e.userEmail.trim().toLowerCase() === emailQuery)
+        .slice()
+        .reverse(); // newest first
+      return res.json({
+        user: {
+          email: user.email,
+          name: user.name,
+          signupDate: user.createdAt,
+          lastLogin: user.lastUsed,
+          tier: tierOf(user),
+          generationsLeft: user.generationsLeft,
+          shoppingListsLeft: user.shoppingListsLeft ?? null,
+          totalActivityCount: activity.length,
+        },
+        activity,
+      });
+    }
+
+    // List view — single pass over activityLog to count per email.
+    const counts: Record<string, number> = {};
+    for (const e of allActivity) {
+      const key = e.userEmail.trim().toLowerCase();
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    const users = Object.values(db.users).map((u) => ({
+      email: u.email,
+      name: u.name,
+      signupDate: u.createdAt,
+      lastLogin: u.lastUsed,
+      tier: tierOf(u),
+      totalActivityCount: counts[u.email.trim().toLowerCase()] || 0,
+    }));
+    res.json({ users });
   });
 
   // ── GET /api/admin/usage — observability aggregator (I-011) ──
