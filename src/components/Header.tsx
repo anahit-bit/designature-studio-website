@@ -4,6 +4,7 @@ import { Menu, X, ArrowRight, LogOut } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 import { useAuth } from '../AuthContext';
 import { trackCalendly } from '../lib/track';
+import { setSigninSource } from '../lib/signinSource';
 import Logo from './Logo';
 
 const Header: React.FC = () => {
@@ -52,7 +53,7 @@ const Header: React.FC = () => {
     { name: t('nav.portfolio'), href: '#projects', page: 'portfolio', action: () => navigateTo('portfolio') },
     { name: t('nav.services'), href: '#services', page: 'services', action: () => navigateTo('services') },
     { name: t('nav.pricing'), href: '#pricing', page: 'pricing', action: () => navigateTo('pricing') },
-    { name: t('nav.aiStudio'), href: '#ai-concepts', page: 'ai-concepts', action: () => navigateTo('ai-concepts'), isHighlight: true },
+    { name: t('nav.aiStudio'), href: '#ai-concepts', page: 'ai-concepts', action: () => { setSigninSource('header_nav'); navigateTo('ai-concepts'); }, isHighlight: true },
   ];
 
   const LanguageSwitcher = () => (
@@ -105,6 +106,7 @@ const Header: React.FC = () => {
       return (
         <button
           onClick={() => {
+            setSigninSource('header_cta');
             navigateTo('ai-concepts');
             if (inMobileMenu) setIsMobileMenuOpen(false);
           }}

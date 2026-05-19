@@ -130,8 +130,9 @@ interface DB {
   serperLog?: SerperLogEntry[];
   /** Per-provider call counters (I-010). Lazy-initialized on first call. */
   apiCounters?: Record<string, ProviderCounter>;
-  /** Append-only user activity log (I-016). Capped at 5000 entries. */
-  activityLog?: Array<{ ts: string; userEmail: string; action: string }>;
+  /** Append-only user activity log (I-016). Capped at 5000 entries.
+   *  `source` is set on signup entries only (C-followup, 2026-05-19). */
+  activityLog?: Array<{ ts: string; userEmail: string; action: string; source?: string }>;
 }
 
 /** UTC YYYY-MM-DD for daily-budget bucketing. */
@@ -217,10 +218,18 @@ const ANON_USER = "anonymous";
 /**
  * I-016 — append an activity log entry. Caps at 5000 entries (FIFO drop).
  * Mutates `db.activityLog` in place; caller owns `writeDB(db)`.
+ * `source` (C-followup) is only meaningful on signup entries; pass undefined
+ * for everything else so the JSON stays compact.
  */
-function logActivity(db: DB, userEmail: string, action: string): void {
+function logActivity(db: DB, userEmail: string, action: string, source?: string): void {
   if (!db.activityLog) db.activityLog = [];
-  db.activityLog.push({ ts: new Date().toISOString(), userEmail, action });
+  const entry: { ts: string; userEmail: string; action: string; source?: string } = {
+    ts: new Date().toISOString(),
+    userEmail,
+    action,
+  };
+  if (source && source.trim()) entry.source = source.trim().slice(0, 60);
+  db.activityLog.push(entry);
   while (db.activityLog.length > 5000) db.activityLog.shift();
 }
 
@@ -784,7 +793,14 @@ async function startServer() {
       }
 
       // I-016 — log signup or login; written together with the user record below.
-      logActivity(db, email, isNewUser ? "signup" : "login");
+      // C-followup: signup entries carry a `source` slug for attribution. Empty / missing
+      // source falls back to "unknown" so the activation breakdown stays honest.
+      if (isNewUser) {
+        const signupSource = typeof source === "string" && source.trim() ? source.trim() : "unknown";
+        logActivity(db, email, "signup", signupSource);
+      } else {
+        logActivity(db, email, "login");
+      }
       writeDB(db);
 
       // Clamp legacy accounts (e.g. admin-inflated concept counts) and migrate shoppingListsLeft
@@ -2178,15 +2194,35 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       ? null
       : ttftSecs.slice().sort((a, b) => a - b)[Math.floor(ttftSecs.length / 2)];
 
-    // Top sign-up trigger: the most-common anon action that preceded a signup
-    // by ≤ 60min for the same eventual user. We don't yet track this with
-    // attribution — leave null until the signup tracker carries source (next).
-    const topSignupTrigger: string | null = null;
+    // C-followup — top sign-up trigger comes from the source slug stamped on
+    // each `signup` activityLog entry. Missing slug → "unknown".
+    const signupEntries = allActivity.filter((e) => e.action === "signup");
+    const sourceCounts: Record<string, number> = {};
+    for (const e of signupEntries) {
+      const s = e.source || "unknown";
+      sourceCounts[s] = (sourceCounts[s] || 0) + 1;
+    }
+    const allSources = Object.entries(sourceCounts)
+      .map(([source, count]) => ({ source, count }))
+      .sort((a, b) => b.count - a.count);
+    const topSignupSource = allSources.length === 0
+      ? null
+      : {
+          source: allSources[0].source,
+          count: allSources[0].count,
+          pctOfSignups: signupEntries.length > 0
+            ? Math.round((allSources[0].count / signupEntries.length) * 100)
+            : 0,
+        };
 
     const activation = {
       anonToSignupRatePct: anonToSignupRate,
       medianTimeToFirstToolSec: medianTtftSec === null ? null : Math.round(medianTtftSec),
-      topSignupTrigger,
+      // Legacy field kept for prior consumers; new clients should read topSignupSource.
+      topSignupTrigger: topSignupSource ? topSignupSource.source : null,
+      topSignupSource,
+      allSources,
+      totalSignups: signupEntries.length,
       ttftSampleSize: ttftSecs.length,
     };
 

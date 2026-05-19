@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../LanguageContext';
 import { cld, cldSrcSet, CARD_WIDTHS } from '../../lib/cld';
+import { setSigninSource } from '../../lib/signinSource';
 
 /**
  * AI Studio section — v3.1 with real Cloudinary imagery.
@@ -275,14 +276,14 @@ const AIToolsSection: React.FC = () => {
         <div className="flex flex-wrap gap-6 justify-center items-center">
           <button
             type="button"
-            onClick={() => navigateTo('ai-concepts')}
+            onClick={() => { setSigninSource('home_ai_section'); navigateTo('ai-concepts'); }}
             className="inline-flex items-center gap-3 px-9 py-[18px] bg-[#0047AB] text-white text-[13px] font-bold tracking-[0.25em] uppercase rounded-sm transition-transform duration-200 hover:-translate-y-0.5"
           >
             {t('home.ai.cta.tryFree')}
           </button>
           <button
             type="button"
-            onClick={() => navigateTo('ai-concepts')}
+            onClick={() => { setSigninSource('home_ai_section'); navigateTo('ai-concepts'); }}
             className="inline-flex items-center gap-3 px-4 py-[18px] text-white text-[13px] font-bold tracking-[0.25em] uppercase border-b border-white/60 transition-colors duration-200 hover:text-[#0047AB] hover:border-[#0047AB]"
           >
             {t('home.ai.cta.browseAll')}

@@ -71,6 +71,9 @@ interface UsageResponse {
     anonToSignupRatePct: number | null;
     medianTimeToFirstToolSec: number | null;
     topSignupTrigger: string | null;
+    topSignupSource: { source: string; count: number; pctOfSignups: number } | null;
+    allSources: Array<{ source: string; count: number }>;
+    totalSignups: number;
     ttftSampleSize: number;
   };
   newsletter: { count: number; recent: NewsletterRow[]; error?: string };
@@ -126,6 +129,20 @@ function daysUntil(dateStr: string | null): number | null {
 function readableSource(slug: string): string {
   if (!slug) return '—';
   return slug.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Humanize signup-source slugs for display (C-followup).
+ * snake_case → Title Case; first word capitalised, rest lowercased
+ * (e.g. "home_ai_section" → "Home ai section"). The "unknown" sentinel
+ * (used when a signup arrived without a stamped slug) gets a clearer label.
+ */
+function humanizeSignupSource(slug: string): string {
+  if (!slug) return 'Unknown / pre-attribution';
+  if (slug === 'unknown') return 'Unknown / pre-attribution';
+  const words = slug.split(/[_\s-]+/).filter(Boolean).map((w) => w.toLowerCase());
+  if (words.length === 0) return slug;
+  return words[0].charAt(0).toUpperCase() + words[0].slice(1) + (words.length > 1 ? ' ' + words.slice(1).join(' ') : '');
 }
 
 const ANON = 'anonymous';
@@ -260,10 +277,35 @@ const ActivationSection: React.FC<{ data: UsageResponse['activation']; counters:
           </div>
           <div className="bg-white border border-[#DAD2C3] p-6">
             <p className="text-[10px] tracking-[0.28em] uppercase text-neutral-500 font-bold mb-3">Top sign-up trigger</p>
-            <p className="font-serif text-[22px] leading-tight text-black">
-              {data.topSignupTrigger || <span className="text-neutral-500 italic">awaiting attribution</span>}
-            </p>
-            <p className="text-[11px] font-semibold text-neutral-500 mt-2">Needs source param on /api/auth/google</p>
+            {(() => {
+              const total = data.totalSignups;
+              const top = data.topSignupSource;
+              if (total === 0 || !top) {
+                return (
+                  <>
+                    <p className="font-serif text-[22px] leading-tight text-neutral-500 italic">No signups yet</p>
+                    <p className="text-[11px] font-semibold text-neutral-500 mt-2">First sign-in will appear here</p>
+                  </>
+                );
+              }
+              if (total === 1) {
+                return (
+                  <>
+                    <p className="font-serif text-[22px] leading-tight text-black">{humanizeSignupSource(top.source)}</p>
+                    <p className="text-[11px] font-semibold text-neutral-500 mt-2">1 signup</p>
+                  </>
+                );
+              }
+              return (
+                <>
+                  <p className="font-serif text-[22px] leading-tight text-black">{humanizeSignupSource(top.source)}</p>
+                  <p className="text-[11px] font-semibold text-neutral-500 mt-2">
+                    {top.pctOfSignups}% of {total} signups
+                    {data.allSources.length > 1 && ` · ${data.allSources.length} sources tracked`}
+                  </p>
+                </>
+              );
+            })()}
           </div>
         </div>
       </div>

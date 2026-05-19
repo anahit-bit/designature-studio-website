@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../LanguageContext';
+import { setSigninSource } from '../lib/signinSource';
 
 const CHECK = () => (
   <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="flex-shrink-0 mt-0.5">
@@ -115,7 +116,7 @@ const PricingSection: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
               </div>
             </div>
             <div className="pt-4 mt-4 border-t border-black/8">
-              <button onClick={() => navigateTo('ai-concepts')} className="w-full py-3.5 bg-[#0047AB] text-white text-[11px] font-bold uppercase tracking-[0.2em] hover:bg-[#003d99] transition-colors">
+              <button onClick={() => { setSigninSource('pricing_cta'); navigateTo('ai-concepts'); }} className="w-full py-3.5 bg-[#0047AB] text-white text-[11px] font-bold uppercase tracking-[0.2em] hover:bg-[#003d99] transition-colors">
                 {t('pricing.free.ctaFull')}
               </button>
               <p className="text-[12px] text-black/65 text-center mt-3 leading-snug">{t('pricing.free.note')}</p>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useLanguage } from '../../LanguageContext';
 import { trackCalendly } from '../../lib/track';
+import { setSigninSource } from '../../lib/signinSource';
 
 const CALENDLY_URL = 'https://calendly.com/designature-studio-us/free_consultation';
 
@@ -24,7 +25,7 @@ const ClosingBand: React.FC = () => {
         <div className="flex flex-col md:flex-row gap-5 md:gap-6 justify-center items-center flex-wrap">
           <button
             type="button"
-            onClick={() => navigateTo('ai-concepts')}
+            onClick={() => { setSigninSource('closing_band'); navigateTo('ai-concepts'); }}
             className="inline-flex flex-col items-center justify-center gap-1.5 px-10 md:px-12 py-6 md:py-7 rounded-full bg-white text-[#0B2240] font-bold tracking-[0.25em] uppercase text-[13px] transition-transform hover:-translate-y-0.5 min-w-[280px] md:min-w-[300px]"
           >
             <span>{t('home.closing.ai.label')}</span>
