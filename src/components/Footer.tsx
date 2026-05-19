@@ -79,7 +79,8 @@ const Footer: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email: normalizedEmail }),
+        // I-021a — source slug surfaces in /admin newsletter section.
+        body: JSON.stringify({ email: normalizedEmail, source: 'home_footer' }),
       });
 
       if (response.ok) {

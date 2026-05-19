@@ -1,7 +1,8 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { AlertCircle, RefreshCw, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getStoredToken } from '../sessionClient';
+import { trackAuditStart } from '../lib/track';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 interface AuditDimension {
@@ -250,6 +251,20 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
 
   // ── Logged in: full 2-column layout ──
   const isDisabled = !roomImage || isProcessing || !canAudit;
+
+  // I-021b: audit_started fires when the Analyze button transitions
+  // disabled → enabled. One-shot per session; re-arms when result clears.
+  const auditStartFiredRef = useRef(false);
+  useEffect(() => {
+    if (isDisabled) {
+      if (!result && !isProcessing) auditStartFiredRef.current = false;
+      return;
+    }
+    if (!auditStartFiredRef.current) {
+      auditStartFiredRef.current = true;
+      trackAuditStart();
+    }
+  }, [isDisabled, result, isProcessing]);
 
   return (
     <div className="flex w-full min-h-0 flex-grow">

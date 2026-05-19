@@ -3,6 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Menu, X, ArrowRight, LogOut } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 import { useAuth } from '../AuthContext';
+import { trackCalendly } from '../lib/track';
+import { setSigninSource } from '../lib/signinSource';
 import Logo from './Logo';
 
 const Header: React.FC = () => {
@@ -51,7 +53,7 @@ const Header: React.FC = () => {
     { name: t('nav.portfolio'), href: '#projects', page: 'portfolio', action: () => navigateTo('portfolio') },
     { name: t('nav.services'), href: '#services', page: 'services', action: () => navigateTo('services') },
     { name: t('nav.pricing'), href: '#pricing', page: 'pricing', action: () => navigateTo('pricing') },
-    { name: t('nav.aiStudio'), href: '#ai-concepts', page: 'ai-concepts', action: () => navigateTo('ai-concepts'), isHighlight: true },
+    { name: t('nav.aiStudio'), href: '#ai-concepts', page: 'ai-concepts', action: () => { setSigninSource('header_nav'); navigateTo('ai-concepts'); }, isHighlight: true },
   ];
 
   const LanguageSwitcher = () => (
@@ -68,7 +70,7 @@ const Header: React.FC = () => {
   const CTAButton = ({ className = "" }: { className?: string }) => (
     <div className={`flex flex-col items-center gap-1.5 ${className}`}>
       <button
-        onClick={() => window.open("https://calendly.com/designature-studio-us/free_consultation", "_blank")}
+        onClick={() => trackCalendly("https://calendly.com/designature-studio-us/free_consultation")}
         className="group flex items-center justify-center gap-3 bg-black border border-black text-white px-6 py-2.5 text-[11px] font-bold font-body tracking-[0.25em] uppercase rounded-none transition-all duration-500 hover:bg-white hover:text-black hover:scale-[1.02] active:scale-[0.98]"
       >
         {t('btn.bookCall')}
@@ -104,6 +106,7 @@ const Header: React.FC = () => {
       return (
         <button
           onClick={() => {
+            setSigninSource('header_cta');
             navigateTo('ai-concepts');
             if (inMobileMenu) setIsMobileMenuOpen(false);
           }}

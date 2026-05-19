@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLanguage } from '../LanguageContext';
+import { trackCalendly } from '../lib/track';
 
 const WhyChooseUs: React.FC = () => {
   const { t, language, navigateTo } = useLanguage();
@@ -109,7 +110,7 @@ const WhyChooseUs: React.FC = () => {
                 : t('why.aiDesc')}
             </p>
             <button
-              onClick={() => window.open('https://calendly.com/designature-studio-us/free_consultation', '_blank')}
+              onClick={() => trackCalendly('https://calendly.com/designature-studio-us/free_consultation')}
               className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#0047AB] hover:text-white transition-colors duration-200 text-left w-fit mt-2"
             >
               {t('btn.bookCall')} →

@@ -2,7 +2,8 @@ import dotenv from "dotenv";
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import { readFileSync, writeFileSync, existsSync } from "fs";
-import { createHash } from "crypto";
+import { createHash, randomBytes } from "crypto";
+import bcrypt from "bcryptjs";
 import { v2 as cloudinary } from "cloudinary";
 import multer from "multer";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
@@ -43,6 +44,15 @@ const CONCEPT_TEST_ACCOUNT_EMAIL = UNLIMITED_ACCOUNT_EMAILS[0];
 
 function isConceptTestAccountEmail(email: string): boolean {
   return UNLIMITED_ACCOUNT_EMAILS.includes(email.trim().toLowerCase());
+}
+
+/**
+ * I-011 — admin allowlist for /api/admin/* endpoints.
+ * Narrower than UNLIMITED_ACCOUNT_EMAILS: only the studio owner sees observability.
+ */
+const ADMIN_EMAILS = ["anahit@designature.studio"];
+function isAdminEmail(email: string): boolean {
+  return ADMIN_EMAILS.includes(email.trim().toLowerCase());
 }
 
 // ─── Simple JSON "database" stored in users.json ───────────────────────────
@@ -100,12 +110,29 @@ interface SerperLogEntry {
   source: string;
 }
 
+/** Per-provider rolling counters across daily/weekly/monthly UTC windows (I-010, history[] added I-021b). */
+interface ProviderCounter {
+  daily:   { date: string; count: number }; // YYYY-MM-DD
+  weekly:  { date: string; count: number }; // YYYY-Www  (ISO week)
+  monthly: { date: string; count: number }; // YYYY-MM
+  /** Per-day history, capped at 30 days. Powers sparklines in /admin. */
+  history?: Array<{ date: string; count: number }>;
+}
+
+/** Max days of per-provider per-day history we keep for sparklines (I-021b). */
+const PROVIDER_HISTORY_DAYS = 30;
+
 interface DB {
   users: Record<string, User>; // keyed by googleId
   /** Per-UTC-day Serper credit usage. Reset when `date` rolls over. */
   serperUsage?: { date: string; count: number };
   /** Append-only forensic log of Serper-burning calls. Capped at 1000 entries. */
   serperLog?: SerperLogEntry[];
+  /** Per-provider call counters (I-010). Lazy-initialized on first call. */
+  apiCounters?: Record<string, ProviderCounter>;
+  /** Append-only user activity log (I-016). Capped at 5000 entries.
+   *  `source` is set on signup entries only (C-followup, 2026-05-19). */
+  activityLog?: Array<{ ts: string; userEmail: string; action: string; source?: string }>;
 }
 
 /** UTC YYYY-MM-DD for daily-budget bucketing. */
@@ -117,6 +144,104 @@ function utcDateString(d: Date = new Date()): string {
 function nextUtcMidnightIso(now: Date = new Date()): string {
   const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0));
   return next.toISOString();
+}
+
+/** ISO-week key like "2026-W19" (UTC). */
+function utcWeekString(d: Date = new Date()): string {
+  // ISO week: Thursday of the same week determines the week-year.
+  const dt = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const day = dt.getUTCDay() || 7;
+  dt.setUTCDate(dt.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(dt.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((dt.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return `${dt.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+}
+
+/** Month key "YYYY-MM" (UTC). */
+function utcMonthString(d: Date = new Date()): string {
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+/**
+ * I-010 — bump per-provider counters in rolling daily/weekly/monthly UTC windows.
+ * Mutates `db.apiCounters` in place; caller is responsible for `writeDB(db)`.
+ */
+function recordApiCall(db: DB, provider: string, delta: number = 1): void {
+  if (!db.apiCounters) db.apiCounters = {};
+  const today = utcDateString();
+  const week = utcWeekString();
+  const month = utcMonthString();
+  if (!db.apiCounters[provider]) {
+    db.apiCounters[provider] = {
+      daily:   { date: today, count: 0 },
+      weekly:  { date: week,  count: 0 },
+      monthly: { date: month, count: 0 },
+    };
+  }
+  const c = db.apiCounters[provider];
+  if (c.daily.date   !== today) c.daily   = { date: today, count: 0 };
+  if (c.weekly.date  !== week)  c.weekly  = { date: week,  count: 0 };
+  if (c.monthly.date !== month) c.monthly = { date: month, count: 0 };
+  c.daily.count   += delta;
+  c.weekly.count  += delta;
+  c.monthly.count += delta;
+
+  // I-021b — per-day history for sparklines, capped at PROVIDER_HISTORY_DAYS.
+  if (!c.history) c.history = [];
+  const last = c.history.length > 0 ? c.history[c.history.length - 1] : null;
+  if (last && last.date === today) {
+    last.count += delta;
+  } else {
+    c.history.push({ date: today, count: delta });
+  }
+  // Trim entries older than the window — compute the cutoff string once.
+  const cutoffDate = new Date();
+  cutoffDate.setUTCDate(cutoffDate.getUTCDate() - PROVIDER_HISTORY_DAYS);
+  const cutoff = utcDateString(cutoffDate);
+  c.history = c.history.filter((h) => h.date >= cutoff);
+}
+
+/** Convenience wrapper: read/bump/write in one call. For routes that don't already touch the DB. */
+function bumpApiCount(provider: string, delta: number = 1): void {
+  try {
+    const db = readDB();
+    recordApiCall(db, provider, delta);
+    writeDB(db);
+  } catch (err) {
+    console.error(`[apiCounters] failed to bump ${provider}:`, err);
+  }
+}
+
+/** Sentinel for logged-out visitors in the activity log. Rendered muted in the admin UI. */
+const ANON_USER = "anonymous";
+
+/**
+ * I-016 — append an activity log entry. Caps at 5000 entries (FIFO drop).
+ * Mutates `db.activityLog` in place; caller owns `writeDB(db)`.
+ * `source` (C-followup) is only meaningful on signup entries; pass undefined
+ * for everything else so the JSON stays compact.
+ */
+function logActivity(db: DB, userEmail: string, action: string, source?: string): void {
+  if (!db.activityLog) db.activityLog = [];
+  const entry: { ts: string; userEmail: string; action: string; source?: string } = {
+    ts: new Date().toISOString(),
+    userEmail,
+    action,
+  };
+  if (source && source.trim()) entry.source = source.trim().slice(0, 60);
+  db.activityLog.push(entry);
+  while (db.activityLog.length > 5000) db.activityLog.shift();
+}
+
+/** Convenience wrapper: read/log/write in one call. Used by routes that don't already touch the DB. */
+function recordActivity(userEmail: string, action: string): void {
+  try {
+    const db = readDB();
+    logActivity(db, userEmail, action);
+    writeDB(db);
+  } catch (err) {
+    console.error(`[activityLog] failed to record ${action}:`, err);
+  }
 }
 
 function readDB(): DB {
@@ -134,6 +259,28 @@ function writeDB(db: DB) {
   writeFileSync(DB_PATH, JSON.stringify(db, null, 2));
 }
 
+// ─── Platform inventory (I-012) ─────────────────────────────────────────────
+// Loaded once at startup from server/config/platforms.json. Read-only after boot.
+interface Platform {
+  name: string;
+  owner_email: string;
+  monthly_cost: string;
+  /** Annual cost when on an annual plan or computable from monthly (I-021d). */
+  annual_cost?: string | null;
+  free_tier_quota: string | null;
+  renewal_date: string | null;
+  powers: string;
+  criticality: number;
+}
+const PLATFORMS_PATH = "./server/config/platforms.json";
+let PLATFORMS: Platform[] = [];
+try {
+  PLATFORMS = JSON.parse(readFileSync(PLATFORMS_PATH, "utf-8")) as Platform[];
+  console.log(`[platforms] loaded ${PLATFORMS.length} entries from ${PLATFORMS_PATH}`);
+} catch (err) {
+  console.error(`[platforms] failed to load ${PLATFORMS_PATH}:`, err);
+}
+
 // ─── Session store (in-memory, keyed by session token) ─────────────────────
 const sessions: Record<string, string> = {}; // token → googleId
 
@@ -147,6 +294,87 @@ function createSession(googleId: string): string {
 
 function getSession(token: string): string | null {
   return sessions[token] || null;
+}
+
+// ─── Admin session store (I-019) ────────────────────────────────────────────
+// Separate from end-user sessions. Backed by an HttpOnly cookie. Lost on
+// process restart — acceptable for v1 (admin re-logs in).
+const ADMIN_SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12h per spec
+const ADMIN_COOKIE_NAME = "admin_session";
+const adminSessions: Record<string, { email: string; expiresAt: number }> = {};
+
+function createAdminSession(email: string): string {
+  const token = randomBytes(32).toString("hex");
+  adminSessions[token] = { email, expiresAt: Date.now() + ADMIN_SESSION_TTL_MS };
+  return token;
+}
+
+function getAdminSession(token: string): { email: string } | null {
+  const s = adminSessions[token];
+  if (!s) return null;
+  if (Date.now() > s.expiresAt) {
+    delete adminSessions[token];
+    return null;
+  }
+  return { email: s.email };
+}
+
+function destroyAdminSession(token: string): void {
+  delete adminSessions[token];
+}
+
+/** Tiny cookie parser — avoids pulling in cookie-parser for one cookie. */
+function parseCookies(req: any): Record<string, string> {
+  const raw = req.headers?.cookie;
+  if (!raw || typeof raw !== "string") return {};
+  const out: Record<string, string> = {};
+  for (const part of raw.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq < 0) continue;
+    const k = part.slice(0, eq).trim();
+    const v = part.slice(eq + 1).trim();
+    if (k) out[k] = decodeURIComponent(v);
+  }
+  return out;
+}
+
+// ─── Login rate limit (I-019) ───────────────────────────────────────────────
+// In-memory per-IP: 5 failed attempts → 15-minute lockout. Resets on success.
+const ADMIN_LOGIN_MAX_ATTEMPTS = 5;
+const ADMIN_LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
+const loginAttempts: Record<string, { count: number; lockedUntil: number }> = {};
+
+function clientIp(req: any): string {
+  return ((req.headers["x-forwarded-for"] as string) || req.ip || "unknown")
+    .split(",")[0]
+    .trim();
+}
+
+function isLockedOut(ip: string): { locked: boolean; resetIn: number; remaining: number } {
+  const rec = loginAttempts[ip];
+  if (!rec) return { locked: false, resetIn: 0, remaining: ADMIN_LOGIN_MAX_ATTEMPTS };
+  if (rec.lockedUntil > Date.now()) {
+    return { locked: true, resetIn: rec.lockedUntil - Date.now(), remaining: 0 };
+  }
+  if (rec.lockedUntil > 0) {
+    // lock expired — reset record
+    delete loginAttempts[ip];
+    return { locked: false, resetIn: 0, remaining: ADMIN_LOGIN_MAX_ATTEMPTS };
+  }
+  return { locked: false, resetIn: 0, remaining: ADMIN_LOGIN_MAX_ATTEMPTS - rec.count };
+}
+
+function recordLoginAttempt(ip: string, success: boolean): void {
+  if (success) {
+    delete loginAttempts[ip];
+    return;
+  }
+  const rec = loginAttempts[ip] || { count: 0, lockedUntil: 0 };
+  rec.count += 1;
+  if (rec.count >= ADMIN_LOGIN_MAX_ATTEMPTS) {
+    rec.lockedUntil = Date.now() + ADMIN_LOGIN_LOCKOUT_MS;
+  }
+  loginAttempts[ip] = rec;
 }
 
 // ─── Server ────────────────────────────────────────────────────────────────
@@ -164,6 +392,37 @@ async function startServer() {
     api_secret: process.env.CLOUDINARY_API_SECRET,
   });
 
+  // ════════════════════════════════════════════════════════════════════════
+  // I-021b · Per-provider cost estimates (USD per call).
+  // ════════════════════════════════════════════════════════════════════════
+  // Rough estimates — refresh when provider pricing materially changes.
+  // Used to compute "API spend MTD" + "cost per active user" in /api/admin/usage.
+  //
+  // Gemini     : 2.5-flash text/image roughly $0.0001/call at our prompt sizes.
+  // Cloudinary : free tier (25 credits = ~25k transforms) — $0 within budget.
+  // Serper     : Shopping API at $0.02/credit on the $50/2,500 plan.
+  // Sheets     : Google Sheets API — free.
+  // IPApi      : free tier 1k/day — $0 within budget.
+  // EmailJS    : free tier 200/mo — $0 within budget.
+  // ════════════════════════════════════════════════════════════════════════
+  const CALL_COSTS: Record<string, number> = {
+    gemini:     0.0001,
+    cloudinary: 0,
+    serper:     0.02,
+    sheets:     0,
+    ipapi:      0,
+    emailjs:    0,
+  };
+  /** Free-tier hard caps per provider (monthly unless noted) — used for cost bars. */
+  const PROVIDER_FREE_CAPS: Record<string, { window: 'daily' | 'monthly'; limit: number; label: string }> = {
+    gemini:     { window: 'daily',   limit: 1500, label: '1,500 / day' },
+    cloudinary: { window: 'monthly', limit:   25, label: '25 credits / mo' },
+    serper:     { window: 'daily',   limit:  200, label: '200 / day' },
+    sheets:     { window: 'monthly', limit:    0, label: 'no fixed cap' },
+    ipapi:      { window: 'daily',   limit: 1000, label: '1,000 / day' },
+    emailjs:    { window: 'monthly', limit:  200, label: '200 / mo' },
+  };
+
   const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
@@ -177,6 +436,7 @@ async function startServer() {
   // ── POST /api/upload — upload image to Cloudinary ──
   app.post("/api/upload", upload.single("image"), (req, res) => {
     if (!req.file) return res.status(400).json({ error: "No image uploaded" });
+    bumpApiCount("cloudinary"); // I-010
     res.json({ url: req.file.path });
   });
 
@@ -222,6 +482,34 @@ async function startServer() {
       return null;
     }
     return googleId;
+  }
+
+  // ── I-019: admin gate for /api/admin/* + /admin/* surfaces ──────────────────
+  // Replaces the Phase B email-allowlist gate. Reads the HttpOnly admin_session
+  // cookie (set by /api/admin/login), validates the token against adminSessions,
+  // returns {email} on success or null with 401 already sent.
+  //
+  // Old name `requireAdmin` is kept as an alias so the 3 pre-existing
+  // /api/admin/* endpoints (reset-user, users, usage) don't churn yet — they
+  // pick up the new gate transparently.
+  function requireAdminAuth(req: any, res: any): { email: string } | null {
+    const cookies = parseCookies(req);
+    const token = cookies[ADMIN_COOKIE_NAME];
+    if (!token) {
+      res.status(401).json({ error: "Not authenticated" });
+      return null;
+    }
+    const session = getAdminSession(token);
+    if (!session) {
+      res.status(401).json({ error: "Session expired" });
+      return null;
+    }
+    return session;
+  }
+
+  /** @deprecated alias preserved during the I-011 → I-019 migration. */
+  function requireAdmin(req: any, res: any): { email: string } | null {
+    return requireAdminAuth(req, res);
   }
 
   // ── Free-tier users Google Sheets upsert (best-effort) ──────────────────
@@ -362,6 +650,7 @@ async function startServer() {
         valueInputOption: "RAW",
         requestBody: { values: [rowUpdate] },
       });
+      bumpApiCount("sheets"); // I-010 — free-tier user upsert (update)
     } else {
       const newRow = [
         createdAt,
@@ -384,7 +673,70 @@ async function startServer() {
         insertDataOption: "INSERT_ROWS",
         requestBody: { values: [newRow] },
       });
+      bumpApiCount("sheets"); // I-010 — free-tier user upsert (insert)
     }
+  }
+
+  // ── Newsletter sheet read (I-021b) ─────────────────────────────────────
+  // Pulls the live newsletter list for the /admin newsletter section.
+  // Returns the lifetime row count + the 5 newest rows.
+  const NEWSLETTER_SHEET_ID = "1ADcawOqI2VElxwPSSuL-PGX3OjHehacod_ApDPRqFo4";
+  async function readNewsletterFromSheet(): Promise<{ count: number; recent: Array<{ email: string; signupDate: string; source: string }>; error?: string }> {
+    const serviceAccountJson = (process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON || "").trim();
+    const keyFile = (process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_KEYFILE || "").trim();
+    if (!serviceAccountJson && !keyFile) {
+      return { count: 0, recent: [], error: "Sheet credentials not configured" };
+    }
+
+    let credentials: any;
+    try {
+      if (serviceAccountJson) {
+        credentials = JSON.parse(serviceAccountJson);
+      } else {
+        credentials = JSON.parse(readFileSync(keyFile, "utf-8"));
+      }
+      if (typeof credentials?.private_key === "string" && credentials.private_key.includes("\\n")) {
+        credentials.private_key = credentials.private_key.replace(/\\n/g, "\n");
+      }
+    } catch {
+      return { count: 0, recent: [], error: "Sheet credentials invalid" };
+    }
+
+    const jwtClient = new google.auth.JWT({
+      email: credentials.client_email,
+      key: credentials.private_key,
+      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
+    });
+    const sheetsApi = google.sheets({ version: "v4", auth: jwtClient });
+
+    const meta = await sheetsApi.spreadsheets.get({
+      spreadsheetId: NEWSLETTER_SHEET_ID,
+      fields: "sheets(properties(title))",
+    });
+    const sheetTitle = meta.data.sheets?.[0]?.properties?.title;
+    if (!sheetTitle) return { count: 0, recent: [], error: "Sheet has no tabs" };
+
+    const data = await sheetsApi.spreadsheets.values.get({
+      spreadsheetId: NEWSLETTER_SHEET_ID,
+      range: `${sheetTitle}!A:D`,
+      majorDimension: "ROWS",
+    });
+    bumpApiCount("sheets"); // I-010 — successful Sheets read
+    const rows = data.data.values || [];
+
+    // Detect header row: row 1 has 'email' in column B → skip it.
+    const headerOffset = rows[0] && String(rows[0][1] || "").trim().toLowerCase() === "email" ? 1 : 0;
+    const body = rows.slice(headerOffset);
+    const count = body.length;
+    const recent = body
+      .slice(-5)
+      .reverse()
+      .map((r) => ({
+        email: String(r[1] || ""),
+        signupDate: String(r[0] || ""),
+        source: String(r[3] || ""),
+      }));
+    return { count, recent };
   }
 
   // ── POST /api/auth/google — exchange Google ID token for session ──
@@ -414,6 +766,7 @@ async function startServer() {
       // Get or create user
       const db = readDB();
       let user = db.users[googleId];
+      const isNewUser = !user;
 
       if (!user) {
         // New user — give 3 free generations + 3 shopping list runs
@@ -428,7 +781,6 @@ async function startServer() {
           lastUsed: new Date().toISOString(),
         };
         db.users[googleId] = user;
-        writeDB(db);
         console.log(`New user registered: ${email}`);
       } else {
         // Existing user — update profile info
@@ -437,9 +789,19 @@ async function startServer() {
         user.picture = picture || user.picture;
         user.lastUsed = new Date().toISOString();
         db.users[googleId] = user;
-        writeDB(db);
         console.log(`Existing user logged in: ${email} (${user.generationsLeft} gens left)`);
       }
+
+      // I-016 — log signup or login; written together with the user record below.
+      // C-followup: signup entries carry a `source` slug for attribution. Empty / missing
+      // source falls back to "unknown" so the activation breakdown stays honest.
+      if (isNewUser) {
+        const signupSource = typeof source === "string" && source.trim() ? source.trim() : "unknown";
+        logActivity(db, email, "signup", signupSource);
+      } else {
+        logActivity(db, email, "login");
+      }
+      writeDB(db);
 
       // Clamp legacy accounts (e.g. admin-inflated concept counts) and migrate shoppingListsLeft
       {
@@ -484,6 +846,55 @@ async function startServer() {
       console.error("Auth error:", err);
       res.status(500).json({ error: "Authentication failed" });
     }
+  });
+
+  // ── Tracker endpoints (I-016) ─────────────────────────────────────────────
+  // Tiny endpoints that only log to activityLog. Anon-tolerant: when no session,
+  // userEmail is recorded as "anonymous". Never 5xx — tracking must not break UX.
+  function emailFromSession(req: any): string {
+    try {
+      const token = req.headers["x-session-token"] as string;
+      if (!token) return ANON_USER;
+      const googleId = getSession(token);
+      if (!googleId) return ANON_USER;
+      const db = readDB();
+      const user = db.users[googleId];
+      return user?.email || ANON_USER;
+    } catch {
+      return ANON_USER;
+    }
+  }
+
+  app.post("/api/track/calendly", (req, res) => {
+    recordActivity(emailFromSession(req), "calendly_click");
+    res.json({ ok: true });
+  });
+
+  app.post("/api/track/quiz-start", (req, res) => {
+    recordActivity(emailFromSession(req), "quiz_start");
+    res.json({ ok: true });
+  });
+
+  app.post("/api/track/quiz-complete", (req, res) => {
+    recordActivity(emailFromSession(req), "quiz_complete");
+    res.json({ ok: true });
+  });
+
+  // I-021b — "started" trackers for the other 3 tools so funnels show real data.
+  // Each fires once when the tool's generate button enters its ready state.
+  app.post("/api/track/vision-start", (req, res) => {
+    recordActivity(emailFromSession(req), "vision_started");
+    res.json({ ok: true });
+  });
+
+  app.post("/api/track/shopping-start", (req, res) => {
+    recordActivity(emailFromSession(req), "shopping_started");
+    res.json({ ok: true });
+  });
+
+  app.post("/api/track/audit-start", (req, res) => {
+    recordActivity(emailFromSession(req), "audit_started");
+    res.json({ ok: true });
   });
 
   // ── GET /api/auth/me — get current user info ──
@@ -588,6 +999,7 @@ async function startServer() {
       const data = await r.json();
       if (data.ok) {
         testimonialsCache = { data, expires: Date.now() + TESTIMONIALS_CACHE_MS };
+        bumpApiCount("sheets"); // I-010 — successful Apps Script → Sheets read
       }
       res.json(data);
     } catch (err) {
@@ -668,6 +1080,10 @@ async function startServer() {
       if (data.ok) {
         console.log(`[FEEDBACK] Write confirmed — invalidating testimonials cache`);
         testimonialsCache = null;
+        bumpApiCount("sheets"); // I-010 — successful Apps Script → Sheets write
+        // I-016 — feedback submission. No auth on this endpoint; use submitted email or "anonymous".
+        const submitterEmail = (typeof email === "string" && email.trim()) ? email.trim().toLowerCase() : ANON_USER;
+        recordActivity(submitterEmail, "feedback_submit");
       } else {
         console.error(`[FEEDBACK] Apps Script returned ok=false:`, data.error);
       }
@@ -735,6 +1151,7 @@ Output ONLY valid JSON with no markdown fences and no explanation:
           ],
         },
       });
+      bumpApiCount("gemini"); // I-010 — identify call consumed
 
       const rawText: string =
         (geminiRes as any).text ??
@@ -999,7 +1416,13 @@ Output ONLY valid JSON with no markdown fences and no explanation:
         // Cap at 1000 entries — drop oldest when over.
         while (log.length > 1000) log.shift();
         dbShop.serperLog = log;
+
+        // I-010 — mirror into per-provider apiCounters for cross-provider parity.
+        recordApiCall(dbShop, "serper", plannedSerperCalls);
       }
+
+      // I-016 — activity log (always, including mock mode — the user did "generate")
+      logActivity(dbShop, shopUser.email, "generate_shopping");
 
       writeDB(dbShop);
 
@@ -1049,12 +1472,17 @@ Output ONLY valid JSON with no markdown fences and no explanation:
   });
 
   // ── POST /api/newsletter/subscribe — append email to newsletter sheet ──
+  // Body: { email, source? }. source is a short slug identifying where the
+  // signup originated (I-021a): "home_footer", "shopping_offline", etc.
+  // Stored in column D ("Source") — header is added on first write if missing.
   app.post("/api/newsletter/subscribe", async (req, res) => {
-    const { email } = req.body || {};
+    const { email, source } = req.body || {};
 
     if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       return res.status(400).json({ error: "Invalid email" });
     }
+
+    const sourceSafe = typeof source === "string" ? source.trim().slice(0, 60) : "";
 
     const spreadsheetId = "1ADcawOqI2VElxwPSSuL-PGX3OjHehacod_ApDPRqFo4";
     const serviceAccountJson = (process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON || "").trim();
@@ -1096,19 +1524,46 @@ Output ONLY valid JSON with no markdown fences and no explanation:
 
       // Detect country server-side from IP (accurate, not browser language)
       let detectedCountry = '';
+      let ipapiCalled = false;
       try {
         const rawIp = (req.headers['x-forwarded-for'] as string || req.ip || '').split(',')[0].trim();
         const isLocal = !rawIp || rawIp === '127.0.0.1' || rawIp === '::1' || rawIp.startsWith('192.168.') || rawIp.startsWith('10.');
         if (!isLocal) {
           const geoRes = await fetch(`https://ipapi.co/${rawIp}/country/`);
+          ipapiCalled = true; // I-010 — credit was consumed regardless of HTTP status
           if (geoRes.ok) detectedCountry = (await geoRes.text()).trim();
         }
-      } catch { /* non-fatal — country stays empty */ }
+      } catch {
+        ipapiCalled = true; // attempted fetch failed mid-flight → still counts
+      }
+
+      // I-021a — backfill "Source" column header on first newsletter write that
+      // carries a source. Reads row 1 (A1:D1); if D1 is empty, writes the full
+      // 4-column header in place. One-shot — runs only when sourceSafe is set
+      // AND the header isn't already there, so existing rows stay aligned.
+      if (sourceSafe) {
+        try {
+          const headerRange = `${sheetTitle}!A1:D1`;
+          const headerRes = await sheetsApi.spreadsheets.values.get({ spreadsheetId, range: headerRange });
+          const headerRow = headerRes.data.values?.[0] || [];
+          const hasSourceCol = (headerRow[3] || "").toString().trim().toLowerCase() === "source";
+          if (!hasSourceCol) {
+            await sheetsApi.spreadsheets.values.update({
+              spreadsheetId,
+              range: headerRange,
+              valueInputOption: "RAW",
+              requestBody: { values: [["created_at", "email", "country", "Source"]] },
+            });
+          }
+        } catch (e) {
+          console.warn("[newsletter] header backfill skipped:", e);
+        }
+      }
 
       const now = new Date().toISOString();
       await sheetsApi.spreadsheets.values.append({
         spreadsheetId,
-        range: `${sheetTitle}!A:C`,
+        range: `${sheetTitle}!A:D`,
         valueInputOption: "RAW",
         insertDataOption: "INSERT_ROWS",
         requestBody: {
@@ -1116,9 +1571,20 @@ Output ONLY valid JSON with no markdown fences and no explanation:
             now,                         // created_at
             email.trim().toLowerCase(),  // email
             detectedCountry,             // country (from IP)
+            sourceSafe,                  // source (I-021a)
           ]],
         },
       });
+
+      // I-010 — bump sheets + (conditionally) ipapi in one DB write.
+      try {
+        const db = readDB();
+        recordApiCall(db, "sheets");
+        if (ipapiCalled) recordApiCall(db, "ipapi");
+        writeDB(db);
+      } catch (err) {
+        console.error("[apiCounters] newsletter bump failed:", err);
+      }
 
       res.json({ ok: true });
     } catch (err: any) {
@@ -1183,6 +1649,7 @@ Output ONLY valid JSON with no markdown fences and no explanation:
           values: [[now, email.trim().toLowerCase(), plan || ""]],
         },
       });
+      bumpApiCount("sheets"); // I-010
 
       res.json({ ok: true });
     } catch (err: any) {
@@ -1191,8 +1658,110 @@ Output ONLY valid JSON with no markdown fences and no explanation:
     }
   });
 
+  // ════════════════════════════════════════════════════════════════════════
+  // I-018 · /api/admin/* AUTH AUDIT  (last reviewed 2026-05-18 · Phase C)
+  // ════════════════════════════════════════════════════════════════════════
+  // Every admin endpoint must call requireAdminAuth at the top of its handler.
+  // If you add a new /api/admin/* route, add it to this list AND apply the gate.
+  //
+  //   METHOD  PATH                       GATE
+  //   POST    /api/admin/login           PUBLIC (rate-limited)
+  //   POST    /api/admin/logout          PUBLIC (idempotent cookie clear)
+  //   GET     /api/admin/me              PUBLIC (session probe, returns {authed})
+  //   POST    /api/admin/reset-user      requireAdminAuth (via requireAdmin alias)
+  //   GET     /api/admin/users           requireAdminAuth (via requireAdmin alias)
+  //   GET     /api/admin/usage           requireAdminAuth (via requireAdmin alias)
+  //   GET     /api/admin/users-detail    requireAdminAuth (via requireAdmin alias)
+  //
+  // History:
+  //   2026-05-15 (I-011 drive-by): reset-user + users were unauthenticated.
+  //                                Gated under the email-allowlist.
+  //   2026-05-18 (I-018):          audit confirmed 3 routes gated.
+  //   2026-05-18 (I-019):          swapped gate from email-allowlist (Google
+  //                                OAuth session) to bcrypt admin session
+  //                                cookie. Decouples admin from end-user auth.
+  // ════════════════════════════════════════════════════════════════════════
+
+  // ── POST /api/admin/login — admin session bootstrap (I-019) ─────────────
+  app.post("/api/admin/login", async (req, res) => {
+    const ip = clientIp(req);
+    const lock = isLockedOut(ip);
+    if (lock.locked) {
+      const minutes = Math.ceil(lock.resetIn / 60_000);
+      return res.status(429).json({
+        error: `Too many attempts. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`,
+        lockedUntil: Date.now() + lock.resetIn,
+      });
+    }
+
+    const { email, password } = req.body || {};
+    if (typeof email !== "string" || typeof password !== "string") {
+      recordLoginAttempt(ip, false);
+      return res.status(400).json({ error: "Email and password required." });
+    }
+
+    const ok = (() => {
+      if (!isAdminEmail(email)) return false;
+      const hash = (process.env.ADMIN_PASSWORD_HASH || "").trim();
+      if (!hash) {
+        console.error("[admin/login] ADMIN_PASSWORD_HASH is not set");
+        return false;
+      }
+      try {
+        return bcrypt.compareSync(password, hash);
+      } catch (err) {
+        console.error("[admin/login] bcrypt.compare error:", err);
+        return false;
+      }
+    })();
+
+    if (!ok) {
+      recordLoginAttempt(ip, false);
+      const after = isLockedOut(ip);
+      return res.status(401).json({
+        error: "Invalid email or password.",
+        attemptsRemaining: after.remaining,
+      });
+    }
+
+    recordLoginAttempt(ip, true);
+    const token = createAdminSession(email.trim().toLowerCase());
+    const isProd = process.env.NODE_ENV === "production";
+    res.cookie(ADMIN_COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: "lax",
+      maxAge: ADMIN_SESSION_TTL_MS,
+      path: "/",
+    });
+    res.json({ ok: true, expiresIn: ADMIN_SESSION_TTL_MS });
+  });
+
+  // ── POST /api/admin/logout — clear admin cookie (I-019) ─────────────────
+  app.post("/api/admin/logout", (req, res) => {
+    const cookies = parseCookies(req);
+    const token = cookies[ADMIN_COOKIE_NAME];
+    if (token) destroyAdminSession(token);
+    res.clearCookie(ADMIN_COOKIE_NAME, { path: "/" });
+    res.json({ ok: true });
+  });
+
+  // ── GET /api/admin/me — current admin session info (I-019) ──────────────
+  // Used by the client on /admin/* mount to decide whether to redirect to
+  // /admin/login or render the page. Never throws — returns { authed: false }
+  // when no session is present.
+  app.get("/api/admin/me", (req, res) => {
+    const cookies = parseCookies(req);
+    const token = cookies[ADMIN_COOKIE_NAME];
+    if (!token) return res.json({ authed: false });
+    const session = getAdminSession(token);
+    if (!session) return res.json({ authed: false });
+    res.json({ authed: true, email: session.email });
+  });
+
   // ── POST /api/admin/reset-user — reset generations for testing ──
   app.post("/api/admin/reset-user", (req, res) => {
+    if (!requireAdmin(req, res)) return; // I-011 drive-by: was unauthenticated, now admin-only
     const { email, count = 3 } = req.body;
     const db = readDB();
     const user = Object.values(db.users).find((u: User) => u.email === email);
@@ -1303,6 +1872,7 @@ Output ONLY valid JSON with no markdown fences and no explanation:
           fallbackPreset: hasRefs ? undefined : resolvedPreset,
         });
         setCachedBrief(cacheKey, styleBrief);
+        bumpApiCount("gemini"); // I-010 — style-brief extraction (skipped on cache hit)
       }
 
       // ── Step 2: Concept image ────────────────────────────────────────────────
@@ -1321,6 +1891,9 @@ Output ONLY valid JSON with no markdown fences and no explanation:
         roomType: resolvedRoomType,
         variationSeed: typeof variationSeed === "number" ? variationSeed : undefined,
       });
+      // I-010 — concept image generation. Retries undercount in v1 (NOTE: services/aiVision/imageGeneration.ts retries up to 2× on quota errors; instrument inside the service to capture retries accurately).
+      bumpApiCount("gemini");
+      recordActivity(user.email, "generate_vision"); // I-016
 
       return res.json({
         success: true,
@@ -1415,6 +1988,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
           ],
         },
       });
+      bumpApiCount("gemini"); // I-010 — room audit consumed
 
       const rawText: string =
         (geminiRes as any).text ??
@@ -1427,6 +2001,12 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         return res.status(422).json({ error: "Could not parse audit results." });
       }
       const parsed = JSON.parse(jsonMatch[0]);
+      // I-016 — log generate_audit with the user's email
+      try {
+        const auditDb = readDB();
+        const auditUser = auditDb.users[googleId];
+        if (auditUser) recordActivity(auditUser.email, "generate_audit");
+      } catch { /* non-fatal */ }
       return res.json({ result: parsed });
 
     } catch (err: any) {
@@ -1435,8 +2015,9 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     }
   });
 
-  // ── GET /api/admin/users — simple admin view (no auth for now) ──
+  // ── GET /api/admin/users — simple admin view (I-011: now admin-gated) ──
   app.get("/api/admin/users", (req, res) => {
+    if (!requireAdmin(req, res)) return; // I-011 drive-by: was unauthenticated, now admin-only
     const db = readDB();
     const users = Object.values(db.users).map((u) => ({
       email: u.email,
@@ -1446,6 +2027,304 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       lastUsed: u.lastUsed,
     }));
     res.json({ total: users.length, users });
+  });
+
+  // ── GET /api/admin/users-detail — users page list + per-email history (I-020) ──
+  //
+  // No query param   → returns { users: UserDetail[] } where each entry is a
+  //                    lifetime view: email, name, signupDate, lastLogin,
+  //                    tier, totalActivityCount (count of activityLog entries
+  //                    keyed on this email).
+  // ?email=<urlenc>  → returns { user, activity } where activity is the user's
+  //                    full activityLog history (newest first).
+  //
+  // Tier rules:
+  //   "unlimited" — studio-owner allowlist (isConceptTestAccountEmail)
+  //   "paid"      — user.isPaid === true (non-owner)
+  //   "free"      — everyone else
+  app.get("/api/admin/users-detail", (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const db = readDB();
+    const allActivity = db.activityLog || [];
+
+    const tierOf = (u: User): "unlimited" | "paid" | "free" => {
+      if (isConceptTestAccountEmail(u.email)) return "unlimited";
+      if (u.isPaid) return "paid";
+      return "free";
+    };
+
+    const emailQuery = typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : null;
+
+    if (emailQuery) {
+      const user = Object.values(db.users).find(
+        (u) => u.email.trim().toLowerCase() === emailQuery,
+      );
+      if (!user) return res.status(404).json({ error: "User not found" });
+      const activity = allActivity
+        .filter((e) => e.userEmail.trim().toLowerCase() === emailQuery)
+        .slice()
+        .reverse(); // newest first
+      return res.json({
+        user: {
+          email: user.email,
+          name: user.name,
+          signupDate: user.createdAt,
+          lastLogin: user.lastUsed,
+          tier: tierOf(user),
+          generationsLeft: user.generationsLeft,
+          shoppingListsLeft: user.shoppingListsLeft ?? null,
+          totalActivityCount: activity.length,
+        },
+        activity,
+      });
+    }
+
+    // List view — single pass over activityLog to count per email.
+    const counts: Record<string, number> = {};
+    for (const e of allActivity) {
+      const key = e.userEmail.trim().toLowerCase();
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    const users = Object.values(db.users).map((u) => ({
+      email: u.email,
+      name: u.name,
+      signupDate: u.createdAt,
+      lastLogin: u.lastUsed,
+      tier: tierOf(u),
+      totalActivityCount: counts[u.email.trim().toLowerCase()] || 0,
+    }));
+    res.json({ users });
+  });
+
+  // ── GET /api/admin/usage — observability aggregator (I-011 · I-021b) ──
+  // Powers the /admin dashboard. Single roundtrip returns:
+  //   counters         per-provider rolling counters + 30d history (I-010 + I-021b)
+  //   activity         last 50 activityLog entries (newest first)
+  //   platforms        platform inventory cards
+  //   serperLog        last 100 Serper forensic entries (newest first)
+  //   users            total + signups7d + logins24h + paid/free counts
+  //   shoppingStatus   mirror of /api/shopping/status
+  //   funnels          4 tools: started → completed counts + rate (last 7d)
+  //   activation       anon→signup rate + median time-to-first-tool + top trigger
+  //   newsletter       count + recent 5 (read live from the Sheet)
+  //   retention        D1/D7/D30 cohort return rates + DAU/WAU/MAU
+  //   cost             per-provider $ + MTD total + cost-per-active-user (est.)
+  app.get("/api/admin/usage", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const db = readDB();
+    const userList = Object.values(db.users);
+    const allActivity = db.activityLog || [];
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const sevenDaysAgo = now - 7 * dayMs;
+
+    const isPaidUser = (u: User) => !!u.isPaid || isConceptTestAccountEmail(u.email);
+
+    const signups7d = userList.filter((u) => {
+      const t = Date.parse(u.createdAt);
+      return Number.isFinite(t) && now - t < 7 * dayMs;
+    }).length;
+    const logins24h = allActivity.filter((e) => {
+      if (e.action !== "login") return false;
+      const t = Date.parse(e.ts);
+      return Number.isFinite(t) && now - t < dayMs;
+    }).length;
+
+    // Shopping availability — mirror of /api/shopping/status logic.
+    const SHOPPING_DISABLED = (process.env.SHOPPING_DISABLED || "false").toLowerCase() === "true";
+    const SERPER_DAILY_BUDGET = (() => {
+      const parsed = parseInt((process.env.SERPER_DAILY_BUDGET || "200"), 10);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : 200;
+    })();
+    const todayUtc = utcDateString();
+    const usage = db.serperUsage && db.serperUsage.date === todayUtc ? db.serperUsage : { date: todayUtc, count: 0 };
+    const budgetExceeded = usage.count + 4 > SERPER_DAILY_BUDGET;
+    const shoppingStatus = SHOPPING_DISABLED
+      ? { disabled: true, code: "disabled" as const, dailyBudget: SERPER_DAILY_BUDGET, todayCount: usage.count }
+      : budgetExceeded
+        ? { disabled: true, code: "daily_budget_exceeded" as const, dailyBudget: SERPER_DAILY_BUDGET, todayCount: usage.count, resetAt: nextUtcMidnightIso() }
+        : { disabled: false, dailyBudget: SERPER_DAILY_BUDGET, todayCount: usage.count };
+
+    // ── Funnels (last 7d) ────────────────────────────────────────────────
+    // Quiz also accepts the older `quiz_start` action name for back-compat.
+    const recent = allActivity.filter((e) => {
+      const t = Date.parse(e.ts);
+      return Number.isFinite(t) && t >= sevenDaysAgo;
+    });
+    const cnt = (action: string | string[]) => {
+      const set = Array.isArray(action) ? new Set(action) : new Set([action]);
+      return recent.filter((e) => set.has(e.action)).length;
+    };
+    const mkFunnel = (name: string, status: 'live' | 'offline', startedActions: string | string[], completedAction: string) => {
+      const started = cnt(startedActions);
+      const completed = cnt(completedAction);
+      const pct = started > 0 ? Math.round((completed / started) * 100) : 0;
+      return { name, status, started, completed, pct };
+    };
+    const funnels = [
+      mkFunnel("Style Quiz",   "live",                                       ["quiz_start", "quiz_started"], "quiz_complete"),
+      mkFunnel("AI Vision",    "live",                                       "vision_started",              "generate_vision"),
+      mkFunnel("Shopping List", SHOPPING_DISABLED ? "offline" : "live",      "shopping_started",            "generate_shopping"),
+      mkFunnel("Room Audit",   "live",                                       "audit_started",               "generate_audit"),
+    ];
+
+    // ── Activation ───────────────────────────────────────────────────────
+    // Signup-rate: 7d signups ÷ 7d total anonymous-tracker hits (calendly/quiz/etc.)
+    // — rough proxy until GA4 sessions land (I-007).
+    const anonEvents7d = recent.filter((e) => e.userEmail === ANON_USER).length;
+    const anonToSignupRate = anonEvents7d > 0
+      ? Math.round((signups7d / (anonEvents7d + signups7d)) * 100)
+      : null;
+
+    // Median time-to-first-tool: across users who signed up AND fired a generate_* event later.
+    const TOOL_ACTIONS = new Set(["generate_vision", "generate_shopping", "generate_audit"]);
+    const ttftSecs: number[] = [];
+    for (const u of userList) {
+      const signupTs = Date.parse(u.createdAt);
+      if (!Number.isFinite(signupTs)) continue;
+      const firstTool = allActivity.find(
+        (e) => e.userEmail === u.email && TOOL_ACTIONS.has(e.action) && Date.parse(e.ts) >= signupTs,
+      );
+      if (firstTool) {
+        const dt = (Date.parse(firstTool.ts) - signupTs) / 1000;
+        if (dt >= 0 && Number.isFinite(dt)) ttftSecs.push(dt);
+      }
+    }
+    const medianTtftSec = ttftSecs.length === 0
+      ? null
+      : ttftSecs.slice().sort((a, b) => a - b)[Math.floor(ttftSecs.length / 2)];
+
+    // C-followup — top sign-up trigger comes from the source slug stamped on
+    // each `signup` activityLog entry. Missing slug → "unknown".
+    const signupEntries = allActivity.filter((e) => e.action === "signup");
+    const sourceCounts: Record<string, number> = {};
+    for (const e of signupEntries) {
+      const s = e.source || "unknown";
+      sourceCounts[s] = (sourceCounts[s] || 0) + 1;
+    }
+    const allSources = Object.entries(sourceCounts)
+      .map(([source, count]) => ({ source, count }))
+      .sort((a, b) => b.count - a.count);
+    const topSignupSource = allSources.length === 0
+      ? null
+      : {
+          source: allSources[0].source,
+          count: allSources[0].count,
+          pctOfSignups: signupEntries.length > 0
+            ? Math.round((allSources[0].count / signupEntries.length) * 100)
+            : 0,
+        };
+
+    const activation = {
+      anonToSignupRatePct: anonToSignupRate,
+      medianTimeToFirstToolSec: medianTtftSec === null ? null : Math.round(medianTtftSec),
+      // Legacy field kept for prior consumers; new clients should read topSignupSource.
+      topSignupTrigger: topSignupSource ? topSignupSource.source : null,
+      topSignupSource,
+      allSources,
+      totalSignups: signupEntries.length,
+      ttftSampleSize: ttftSecs.length,
+    };
+
+    // ── Newsletter (live read from the Sheet) ────────────────────────────
+    let newsletter: { count: number; recent: Array<{ email: string; signupDate: string; source: string }>; error?: string };
+    try {
+      newsletter = await readNewsletterFromSheet();
+    } catch (e: any) {
+      newsletter = { count: 0, recent: [], error: e?.message || "Sheet read failed" };
+    }
+
+    // ── Retention ────────────────────────────────────────────────────────
+    // Cohort logic: of users who signed up at least N days ago, what % had ANY
+    // activity-log event between their signup ts and now? For DXX we measure
+    // "any activity at least XX days after signup".
+    const cohortReturn = (minDaysOld: number, minGapDays: number): number | null => {
+      const cohort = userList.filter((u) => {
+        const t = Date.parse(u.createdAt);
+        return Number.isFinite(t) && now - t >= minDaysOld * dayMs;
+      });
+      if (cohort.length === 0) return null;
+      const returned = cohort.filter((u) => {
+        const signupTs = Date.parse(u.createdAt);
+        return allActivity.some(
+          (e) => e.userEmail === u.email && Date.parse(e.ts) >= signupTs + minGapDays * dayMs,
+        );
+      }).length;
+      return Math.round((returned / cohort.length) * 100);
+    };
+    const distinctActiveUsers = (windowMs: number): number => {
+      const cutoff = now - windowMs;
+      const set = new Set<string>();
+      for (const e of allActivity) {
+        const t = Date.parse(e.ts);
+        if (!Number.isFinite(t) || t < cutoff) continue;
+        if (e.userEmail === ANON_USER) continue;
+        set.add(e.userEmail);
+      }
+      return set.size;
+    };
+    const retention = {
+      d1ReturnPct:  cohortReturn(1, 1),
+      d7ReturnPct:  cohortReturn(7, 7),
+      d30ReturnPct: cohortReturn(30, 30),
+      dau: distinctActiveUsers(dayMs),
+      wau: distinctActiveUsers(7 * dayMs),
+      mau: distinctActiveUsers(30 * dayMs),
+    };
+
+    // ── Cost (estimated) ─────────────────────────────────────────────────
+    const counters = db.apiCounters || {};
+    const byProvider = (["gemini", "cloudinary", "serper", "sheets", "ipapi", "emailjs"] as const).map((p) => {
+      const c = counters[p];
+      const cap = PROVIDER_FREE_CAPS[p];
+      const todayCount = c?.daily?.date === todayUtc ? c.daily.count : 0;
+      const monthlyCount = c?.monthly?.date === utcMonthString() ? c.monthly.count : 0;
+      const windowCount = cap.window === 'daily' ? todayCount : monthlyCount;
+      const pct = cap.limit > 0 ? Math.round((windowCount / cap.limit) * 100) : 0;
+      const status: 'healthy' | 'watch' | 'critical' | 'offline' =
+        p === 'serper' && SHOPPING_DISABLED ? 'offline' :
+        cap.limit === 0 ? 'healthy' :
+        pct >= 80 ? 'critical' :
+        pct >= 50 ? 'watch' :
+                    'healthy';
+      const costPerCall = CALL_COSTS[p] ?? 0;
+      const mtdCost = monthlyCount * costPerCall;
+      return {
+        provider: p,
+        windowCount,
+        windowLimit: cap.limit,
+        windowLabel: cap.label,
+        pct,
+        status,
+        mtdCost,
+      };
+    });
+    const totalMtdCost = byProvider.reduce((acc, x) => acc + x.mtdCost, 0);
+    const cost = {
+      mtdSpendEst: totalMtdCost,
+      costPerActiveUserEst: retention.mau > 0 ? totalMtdCost / retention.mau : null,
+      byProvider,
+    };
+
+    res.json({
+      counters,
+      activity: allActivity.slice(-50).reverse(), // newest first
+      platforms: PLATFORMS,
+      serperLog: (db.serperLog || []).slice(-100).reverse(), // newest first
+      users: {
+        total: userList.length,
+        signups7d,
+        logins24h,
+        paid: userList.filter(isPaidUser).length,
+        free: userList.filter((u) => !isPaidUser(u)).length,
+      },
+      shoppingStatus,
+      funnels,
+      activation,
+      newsletter,
+      retention,
+      cost,
+    });
   });
 
   // Vite middleware for development

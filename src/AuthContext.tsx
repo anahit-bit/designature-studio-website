@@ -14,6 +14,7 @@ import {
   touchActivity,
   SESSION_EXPIRED_EVENT,
 } from './sessionClient';
+import { clearSigninSource } from './lib/signinSource';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 
@@ -231,6 +232,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       /* still clear client-side */
     }
     clearSessionLocal();
+    clearSigninSource(); // C-followup — no stale signup attribution after sign-out
     setUser(null);
   }, []);
 

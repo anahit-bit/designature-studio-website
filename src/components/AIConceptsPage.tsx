@@ -17,6 +17,10 @@ import RetailerLogoStrip from './RetailerLogoStrip';
 import { QUIZ_IMAGE_WEIGHTS, TIER_POINTS } from '../data/quizImageWeights';
 import { cld, cldSrcSet, THUMB_WIDTHS } from '../lib/cld';
 import { useShoppingStatus } from '../lib/shoppingStatus';
+import { trackCalendly, trackQuizStart, trackQuizComplete, trackVisionStart, trackShoppingStart } from '../lib/track';
+import { popSigninSource } from '../lib/signinSource';
+
+const CALENDLY_URL = 'https://calendly.com/designature-studio-us/free_consultation';
 
 const QUIZ_VOTE_UNLOCK_MS = process.env.NODE_ENV === 'test' ? 10 : 1500;
 /** Free tier: max generated concepts in the UI row (paid tier can be raised later). */
@@ -737,6 +741,51 @@ const AIConceptsPage: React.FC = () => {
     }
   }, [currentQuizImage.url, quizDone]);
 
+  // ── I-016: activity log — quiz_start fires once when room 1 appears in a fresh quiz ──
+  const quizStartFiredRef = useRef(false);
+  useEffect(() => {
+    if (quizDone) {
+      quizStartFiredRef.current = false; // reset so a retake fires again
+      return;
+    }
+    if (sharedInit) return; // viewing a shared DNA result — not a real quiz session
+    if (quizStep === 0 && currentQuizImage.url && !quizStartFiredRef.current) {
+      quizStartFiredRef.current = true;
+      trackQuizStart();
+    }
+  }, [quizStep, quizDone, currentQuizImage.url]); // sharedInit is a ref — intentionally omitted
+
+  // ── I-016: activity log — quiz_complete fires when DNA screen renders ──
+  const quizCompleteFiredRef = useRef(false);
+  useEffect(() => {
+    if (!quizDone) {
+      quizCompleteFiredRef.current = false;
+      return;
+    }
+    if (sharedInit) return; // shared DNA viewer never "completed" a quiz here
+    if (!quizCompleteFiredRef.current) {
+      quizCompleteFiredRef.current = true;
+      trackQuizComplete();
+    }
+  }, [quizDone]);
+
+  // ── I-021b: shopping_started fires once when shoppingItems is first
+  // ──         populated (user uploaded a source image → items identified).
+  const shoppingStartFiredRef = useRef(false);
+  useEffect(() => {
+    if (shoppingItems.length === 0) {
+      shoppingStartFiredRef.current = false;
+      return;
+    }
+    if (!shoppingStartFiredRef.current) {
+      shoppingStartFiredRef.current = true;
+      trackShoppingStart();
+    }
+  }, [shoppingItems.length]);
+
+  // vision_started effect lives further down — needs isGenerateDisabled to be in scope.
+  const visionStartFiredRef = useRef(false);
+
   // ── Fetch result gallery when quiz completes ──
   useEffect(() => {
     const topStyle = quizResult[0]?.style;
@@ -821,9 +870,23 @@ const AIConceptsPage: React.FC = () => {
     };
   }, [googleReady, user, authLoading]);
 
-  /** Trigger the Google sign-in flow with current page context. */
-  const triggerGoogleSignIn = useCallback(() => {
-    signIn({ toolUsed: activeTool, source: 'ai-concepts' });
+  /**
+   * Trigger the Google sign-in flow. Source attribution rules (C-followup):
+   *   1) If an off-page CTA stamped a slug (header_cta / home_hero /
+   *      home_ai_section / closing_band), use that — it's the "where did
+   *      they come from" signal across navigation.
+   *   2) Otherwise an explicit toolSourceSlug arg wins (rare; reserved for
+   *      future non-tool surfaces inside this page).
+   *   3) Default: derive from the currently-active tool tab
+   *      → "quiz_signin" / "vision_signin" / "shopping_signin" / "audit_signin".
+   *      Existing in-page sign-in buttons rely on this default — they're
+   *      always rendered within the matching tool's panel.
+   */
+  const triggerGoogleSignIn = useCallback((toolSourceSlug?: string) => {
+    const navSource = popSigninSource();
+    const derivedFromTool = `${activeTool}_signin`;
+    const source = navSource || toolSourceSlug || derivedFromTool;
+    signIn({ toolUsed: activeTool, source });
   }, [signIn, activeTool]);
 
   /** Sign out and clear page-local concept state. */
@@ -1721,6 +1784,19 @@ const AIConceptsPage: React.FC = () => {
     !user ||
     (user?.generationsLeft ?? 0) <= 0;
 
+  // I-021b: vision_started fires when the Generate button transitions
+  // disabled → enabled. One-shot per session; re-arms when results clear.
+  useEffect(() => {
+    if (isGenerateDisabled) {
+      if (results.length === 0 && !isProcessing) visionStartFiredRef.current = false;
+      return;
+    }
+    if (!visionStartFiredRef.current) {
+      visionStartFiredRef.current = true;
+      trackVisionStart();
+    }
+  }, [isGenerateDisabled, results.length, isProcessing]);
+
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -2015,7 +2091,7 @@ const AIConceptsPage: React.FC = () => {
 
       {/* ── AI VISION SHOWCASE (logged-out) ── */}
       {!authLoading && !user && activeTool === 'vision' && (
-        <AIVisionShowcase onRequestLogin={triggerGoogleSignIn} onOpenFeedback={() => setFeedbackOpen(true)} />
+        <AIVisionShowcase onRequestLogin={() => triggerGoogleSignIn()} onOpenFeedback={() => setFeedbackOpen(true)} />
       )}
 
       {/* ── AI VISION EXPERIENCE (logged-in, AI-023 Variant D) ── */}
@@ -2073,7 +2149,7 @@ const AIConceptsPage: React.FC = () => {
 
       {/* ── SHOPPING LIST SHOWCASE (logged-out) ── */}
       {!authLoading && !user && activeTool === 'shopping' && (
-        <ShoppingListShowcase onRequestLogin={triggerGoogleSignIn} />
+        <ShoppingListShowcase onRequestLogin={() => triggerGoogleSignIn()} />
       )}
 
       {/* ── MAIN TWO-COLUMN ──
@@ -2362,7 +2438,8 @@ const AIConceptsPage: React.FC = () => {
                         ✦ Upgrade plan
                       </button>
                       <a
-                        href="https://calendly.com/designature-studio-us/free_consultation"
+                        href={CALENDLY_URL}
+                        onClick={(e) => { e.preventDefault(); trackCalendly(CALENDLY_URL); }}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-6 py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all flex items-center gap-2"
@@ -2425,7 +2502,7 @@ const AIConceptsPage: React.FC = () => {
                   setAuditComplete(true);
                   await refreshQuota();
                 }}
-                onRequestLogin={triggerGoogleSignIn}
+                onRequestLogin={() => triggerGoogleSignIn()}
               />
               {/* Persistent feedback band — bottom of Room Audit (AI-023 G) */}
               <FeedbackBand onOpenFeedback={() => setFeedbackOpen(true)} />
@@ -2876,9 +2953,9 @@ const AIConceptsPage: React.FC = () => {
                           {/* Bottom overlay */}
                           <div className="absolute bottom-0 left-0 right-0 px-5 pt-12 pb-5 bg-gradient-to-t from-black/70 to-transparent">
                             <div className="flex gap-2.5">
-                              <button type="button" onClick={triggerGoogleSignIn} className="flex-1 py-3 text-center text-[10px] font-bold uppercase tracking-[0.22em] text-white border border-white/70 bg-transparent backdrop-blur-sm">Not for me</button>
-                              <button type="button" onClick={triggerGoogleSignIn} className="flex-1 py-3 text-center text-[10px] font-bold uppercase tracking-[0.22em] text-white border border-white/70 bg-transparent backdrop-blur-sm">Skip</button>
-                              <button type="button" onClick={triggerGoogleSignIn} className="flex-1 py-3 text-center text-[10px] font-bold uppercase tracking-[0.22em] text-black bg-white border border-white">✦ Love it</button>
+                              <button type="button" onClick={() => triggerGoogleSignIn()} className="flex-1 py-3 text-center text-[10px] font-bold uppercase tracking-[0.22em] text-white border border-white/70 bg-transparent backdrop-blur-sm">Not for me</button>
+                              <button type="button" onClick={() => triggerGoogleSignIn()} className="flex-1 py-3 text-center text-[10px] font-bold uppercase tracking-[0.22em] text-white border border-white/70 bg-transparent backdrop-blur-sm">Skip</button>
+                              <button type="button" onClick={() => triggerGoogleSignIn()} className="flex-1 py-3 text-center text-[10px] font-bold uppercase tracking-[0.22em] text-black bg-white border border-white">✦ Love it</button>
                             </div>
                           </div>
                         </div>
@@ -2904,7 +2981,7 @@ const AIConceptsPage: React.FC = () => {
                           <div className="flex flex-col gap-3.5 border-t border-[#DAD2C3] pt-7">
                             <button
                               type="button"
-                              onClick={triggerGoogleSignIn}
+                              onClick={() => triggerGoogleSignIn()}
                               className="inline-flex items-center justify-center gap-3 px-7 py-[18px] bg-[#0047AB] text-white text-[12px] font-bold uppercase tracking-[0.25em] hover:bg-[#003d99] transition-colors"
                             >
                               {t('ai.quiz.signInCta')} →
@@ -2934,7 +3011,7 @@ const AIConceptsPage: React.FC = () => {
                           <button
                             key={style}
                             type="button"
-                            onClick={triggerGoogleSignIn}
+                            onClick={() => triggerGoogleSignIn()}
                             className="group relative overflow-hidden bg-[#DAD2C3] hover:-translate-y-1 transition-transform duration-300 focus:outline-none"
                             style={{ aspectRatio: '3/4' }}
                           >
@@ -3487,7 +3564,8 @@ const AIConceptsPage: React.FC = () => {
                           ✦ Upgrade plan
                         </button>
                         <a
-                          href="https://calendly.com/designature-studio-us/free_consultation"
+                          href={CALENDLY_URL}
+                          onClick={(e) => { e.preventDefault(); trackCalendly(CALENDLY_URL); }}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-6 py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all flex items-center gap-2"

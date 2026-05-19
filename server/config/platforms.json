@@ -1,0 +1,103 @@
+[
+  {
+    "name": "Railway",
+    "owner_email": "anahit@designature.studio",
+    "monthly_cost": "~$5 + usage",
+    "annual_cost": "~$60 + usage",
+    "free_tier_quota": null,
+    "renewal_date": null,
+    "powers": "hosts Express + React",
+    "criticality": 5
+  },
+  {
+    "name": "Hosting.com",
+    "owner_email": "designature.studio.us@gmail.com",
+    "monthly_cost": "$4.83",
+    "annual_cost": "$58.00 (annual plan)",
+    "free_tier_quota": null,
+    "renewal_date": "2026-11-21",
+    "powers": "DNS for designature.studio",
+    "criticality": 4
+  },
+  {
+    "name": "Google Cloud",
+    "owner_email": "anahit@designature.studio",
+    "monthly_cost": "$0-10",
+    "free_tier_quota": "variable",
+    "renewal_date": null,
+    "powers": "Gemini API",
+    "criticality": 5
+  },
+  {
+    "name": "Serper.dev",
+    "owner_email": "anahit@designature.studio",
+    "monthly_cost": "$0 → $50",
+    "free_tier_quota": "2,500/mo at $50",
+    "renewal_date": null,
+    "powers": "Shopping API",
+    "criticality": 4
+  },
+  {
+    "name": "Cloudinary",
+    "owner_email": "anahit.ghasabyan@gmail.com",
+    "monthly_cost": "$0",
+    "free_tier_quota": "25 credits",
+    "renewal_date": null,
+    "powers": "Image CDN",
+    "criticality": 4
+  },
+  {
+    "name": "Sanity.io",
+    "owner_email": "anahit@designature.studio",
+    "monthly_cost": "$0",
+    "free_tier_quota": "free tier",
+    "renewal_date": null,
+    "powers": "Portfolio CMS",
+    "criticality": 3
+  },
+  {
+    "name": "EmailJS",
+    "owner_email": "hello@designature.studio",
+    "monthly_cost": "$0",
+    "free_tier_quota": "200/mo",
+    "renewal_date": null,
+    "powers": "Contact form (see I-015 — owner never set up personally)",
+    "criticality": 3
+  },
+  {
+    "name": "Google Sheets",
+    "owner_email": "anahit@designature.studio",
+    "monthly_cost": "$0",
+    "free_tier_quota": null,
+    "renewal_date": null,
+    "powers": "User tracking, testimonials, newsletter",
+    "criticality": 4
+  },
+  {
+    "name": "Google OAuth",
+    "owner_email": "anahit@designature.studio",
+    "monthly_cost": "$0",
+    "free_tier_quota": null,
+    "renewal_date": null,
+    "powers": "Login",
+    "criticality": 5
+  },
+  {
+    "name": "IPApi.co",
+    "owner_email": "n/a",
+    "monthly_cost": "$0",
+    "free_tier_quota": "1,000/day",
+    "renewal_date": null,
+    "powers": "IP geolocation",
+    "criticality": 2
+  },
+  {
+    "name": "GitHub",
+    "owner_email": "anahit@designature.studio",
+    "monthly_cost": "$0",
+    "free_tier_quota": null,
+    "renewal_date": null,
+    "powers": "Source hosting",
+    "criticality": 5
+  }
+]
