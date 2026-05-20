@@ -28,7 +28,8 @@ export type RoomType =
   | "bathroom"
   | "home_office"
   | "kids_room"
-  | "outdoor";
+  | "outdoor"
+  | "hallway";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Hardcoded style briefs (skips the Gemini text-extraction call for presets)
@@ -169,6 +170,7 @@ export const ROOM_TYPE_LABELS: Record<RoomType, string> = {
   home_office:  "HOME OFFICE",
   kids_room:    "KIDS ROOM",
   outdoor:      "OUTDOOR SPACE",
+  hallway:      "HALLWAY",
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -198,4 +200,5 @@ export const ROOM_NAME_TO_TYPE: Record<string, RoomType> = {
   "Home Office": "home_office",
   "Kids Room":   "kids_room",
   "Outdoor":     "outdoor",
+  "Hallway":     "hallway",
 };

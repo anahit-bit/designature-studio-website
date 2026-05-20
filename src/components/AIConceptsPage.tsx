@@ -95,7 +95,7 @@ const INSPIRATION_GALLERY = {
 
 const ROOM_TYPES = [
   'Living Room', 'Dining Room', 'Bedroom', 'Kitchen',
-  'Bathroom', 'Home Office', 'Kids Room', 'Outdoor',
+  'Bathroom', 'Home Office', 'Hallway', 'Kids Room', 'Outdoor',
 ];
 
 type QuizRoom = { url: string; credit: string };
