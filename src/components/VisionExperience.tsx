@@ -26,7 +26,7 @@ export const VISION_STYLES_FULL = [
 
 export const ROOM_TYPES_FULL = [
   'Living', 'Dining', 'Bedroom', 'Kitchen', 'Bathroom',
-  'Home Office', 'Kids Room', 'Outdoor',
+  'Home Office', 'Hallway', 'Kids Room', 'Outdoor',
 ] as const;
 
 const SAMPLE_BEFORE = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776281427/photo_t1vo5h.png';
@@ -145,6 +145,23 @@ export default function VisionExperience(p: VisionExperienceProps) {
   const roomFileRef = useRef<HTMLInputElement>(null);
   const replaceFileRef = useRef<HTMLInputElement>(null);
   const [pinterestPanelOpen, setPinterestPanelOpen] = useState(false);
+
+  // ── Generate click — fires generation, then smooth-scrolls to the hero
+  //    (where the processing animation is shown). Scroll is deferred via
+  //    setTimeout so React's re-render from setIsProcessing(true) doesn't
+  //    clobber the smooth animation — same pattern as AIConceptsPage:2457.
+  //    Used by BOTH the hero overlay button and the bottom-of-strip button.
+  const heroRef = useRef<HTMLElement>(null);
+  const handleGenerateClick = () => {
+    p.handleGenerate(false, false);
+    setTimeout(() => {
+      if (heroRef.current) {
+        heroRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 80);
+  };
 
   // ── Hidden file inputs (one shared for room) ──
   const renderHiddenFileInputs = () => (
@@ -295,7 +312,7 @@ export default function VisionExperience(p: VisionExperienceProps) {
     const roomLabel = p.selectedRoom || 'Auto-detect room';
 
     return (
-      <section className="relative w-full bg-black overflow-hidden vision-hero-section" style={{ height: '78vh', minHeight: 560 }}>
+      <section ref={heroRef} className="relative w-full bg-black overflow-hidden vision-hero-section" style={{ height: '78vh', minHeight: 560 }}>
         {/* User's room — object-fit:contain (no crop).
             roomImage is a data: URL (from upload) so cld() / srcset are no-ops
             and pass through; sizes attribute is set for any future cdn-backed flow. */}
@@ -343,7 +360,7 @@ export default function VisionExperience(p: VisionExperienceProps) {
             <>
               <button
                 type="button"
-                onClick={() => p.handleGenerate(false, false)}
+                onClick={handleGenerateClick}
                 disabled={p.isGenerateDisabled}
                 className="bg-[#0047AB] text-white px-12 py-5 text-[12px] font-bold uppercase tracking-[0.3em] inline-flex items-center gap-3 hover:bg-[#003d99] transition-colors rounded-sm disabled:opacity-40 disabled:cursor-not-allowed"
               >
@@ -690,6 +707,25 @@ export default function VisionExperience(p: VisionExperienceProps) {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Bottom Generate concept — mirrors the hero-overlay button so users
+            who scroll past the chips don't have to scroll back up. Shares the
+            same handler and disabled binding. */}
+        <div className="flex flex-col items-center gap-3 pt-2">
+          {p.isGenerateDisabled && p.inspirationImages.length === 0 && !p.selectedStyle && (
+            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#6B6B6B]">
+              Add 2–3 inspirations or pick a style to generate
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={handleGenerateClick}
+            disabled={p.isGenerateDisabled || p.isProcessing}
+            className="bg-[#0047AB] text-white px-12 py-5 text-[12px] font-bold uppercase tracking-[0.3em] inline-flex items-center gap-3 hover:bg-[#003d99] transition-colors rounded-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            ✦ Generate concept
+          </button>
         </div>
 
         {/* Quota counter (compact) */}
