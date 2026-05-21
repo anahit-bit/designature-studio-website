@@ -54,7 +54,7 @@ const baseProps = {
 };
 
 describe('VisionExperience · AI-030 adaptive result hero', () => {
-  it('defaults to landscape mode (30/70, object-cover, 78vh) before the concept image loads', () => {
+  it('defaults to landscape mode (30/70, object-contain, 78vh) before the concept image loads', () => {
     const { container } = render(<VisionExperience {...baseProps} />);
     const section = container.querySelector('section.vision-result-hero') as HTMLElement | null;
     expect(section).not.toBeNull();
@@ -67,9 +67,11 @@ describe('VisionExperience · AI-030 adaptive result hero', () => {
     expect(beforePane.style.width).toBe('30%');
     expect(afterPane.style.width).toBe('70%');
 
+    // AI-030g: object-contain is now used in BOTH modes — never crop the
+    // generated concept; letterbox if pane aspect doesn't match image aspect.
     const conceptImg = afterPane.querySelector('img');
-    expect(conceptImg?.className).toMatch(/object-cover/);
-    expect(conceptImg?.className).not.toMatch(/object-contain/);
+    expect(conceptImg?.className).toMatch(/object-contain/);
+    expect(conceptImg?.className).not.toMatch(/object-cover/);
   });
 
   it('switches to portrait mode (50/50, object-contain, explicit width/height) when concept image is portrait', () => {
@@ -85,17 +87,21 @@ describe('VisionExperience · AI-030 adaptive result hero', () => {
     });
 
     expect(section.getAttribute('aria-label')).toBe('Result · portrait layout');
-    // AI-030f: portrait uses explicit calc()/min() width + height + maxWidth: 100vw
-    // (not aspectRatio + maxHeight, which collapses to landscape when combined with
-    // w-full). The section is centered with the Tailwind `mx-auto` class rather than
-    // inline margins. jsdom 27's CSS parser accepts min() inside calc() but is
-    // inconsistent about top-level min(), so the most reliable inline-style check
-    // is the width expression. The class + wrapper assertions confirm the rest.
+    // AI-030h: portrait section width is computed from sideBySideAspect = aspect × 2
+    // (so two abutting portrait images fit perfectly, no internal letterboxing). For
+    // a 0.5625 concept aspect, sideBySideAspect = 1.125 — that's the outer multiplier
+    // in the width calc. jsdom 27 accepts min() inside calc() but is inconsistent
+    // about top-level min(), so we assert on the width expression (where the formula
+    // survives) plus class + maxWidth + data-attrs.
     const styleAttr = section.getAttribute('style') ?? '';
-    expect(styleAttr).toMatch(/width:\s*calc\(min\(90vh[\s\S]*?\)\s*\*\s*0\.5625\)/);
+    expect(styleAttr).toMatch(/width:\s*calc\(min\(90vh[\s\S]*?\)\s*\*\s*1\.125\)/);
     expect(styleAttr).toMatch(/max-width:\s*100vw/);
     expect(section.className).toMatch(/\bmx-auto\b/);
     expect(section.className).not.toMatch(/\bw-full\b/);
+    // AI-030h debug data-attrs:
+    expect(section.getAttribute('data-is-portrait')).toBe('true');
+    expect(section.getAttribute('data-concept-aspect')).toBe('0.5625');
+    expect(section.getAttribute('data-side-by-side-aspect')).toBe('1.125');
 
     // Outer wrapper provides the full-width black background for letterboxing.
     const wrapper = section.parentElement as HTMLElement;
@@ -130,7 +136,7 @@ describe('VisionExperience · AI-030 adaptive result hero', () => {
     expect(section.style.aspectRatio).toBe('');
   });
 
-  it('treats wide landscape (aspect > 1) as landscape', () => {
+  it('treats wide landscape (aspect > 1) as landscape with object-contain', () => {
     const { container } = render(<VisionExperience {...baseProps} />);
     const section = container.querySelector('section.vision-result-hero') as HTMLElement;
     const conceptImg = section.querySelector('.vision-pane-after img') as HTMLImageElement;
@@ -144,5 +150,8 @@ describe('VisionExperience · AI-030 adaptive result hero', () => {
     expect(section.getAttribute('aria-label')).toBe('Result · landscape layout');
     const beforePane = section.querySelector('.vision-pane-before') as HTMLElement;
     expect(beforePane.style.width).toBe('30%');
+    const reReadImg = section.querySelector('.vision-pane-after img');
+    expect(reReadImg?.className).toMatch(/object-contain/);
+    expect(reReadImg?.className).not.toMatch(/object-cover/);
   });
 });

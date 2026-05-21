@@ -87,9 +87,31 @@ export async function generateConceptImage(
   // retry once with the default config so generation isn't blocked.
   let useImageConfig = true;
 
-  const generateOne = async (retryCount = 0): Promise<string> => {
+  // AI-030g: server-side aspect guarantee. Gemini sometimes ignores
+  // imageConfig.aspectRatio and returns landscape regardless. Up to two
+  // retries with a stronger CRITICAL constraint appended to the prompt.
+  // Outputs within ±15% of the input aspect are accepted as a match.
+  const MAX_ASPECT_RETRIES = 2;
+  const ASPECT_TOLERANCE = 0.15;
+
+  // AI-030g: upscale Gemini outputs (typically ~1024–1280px) to ~1800px
+  // on the longest edge so the hero stays crisp on high-DPR displays.
+  const TARGET_LONG_EDGE = 1800;
+
+  const generateOne = async (
+    retryCount = 0,
+    aspectRetryCount = 0
+  ): Promise<string> => {
     let response: any;
     try {
+      // AI-030g: on aspect-retry, append a strong final constraint to the
+      // prompt so Gemini knows the previous output was wrong-aspect and
+      // the new attempt must respect chosenAspect.
+      const effectivePrompt =
+        aspectRetryCount > 0
+          ? `${prompt}\n\nCRITICAL FINAL CONSTRAINT: the output image MUST be ${chosenAspect} aspect ratio. The previous attempt produced the wrong aspect. Do NOT change the room's orientation. Output format: ${chosenAspect}.`
+          : prompt;
+
       const config: any = {
         temperature: 0.4,
         responseModalities: ["IMAGE"],
@@ -107,7 +129,7 @@ export async function generateConceptImage(
                 data: roomPhotoData,
               },
             },
-            { text: prompt },
+            { text: effectivePrompt },
           ],
         },
         config,
@@ -127,7 +149,7 @@ export async function generateConceptImage(
           `[ai-vision] imageConfig.aspectRatio rejected — falling back to default aspect. Error: ${err?.message}`
         );
         useImageConfig = false;
-        return generateOne(retryCount);
+        return generateOne(retryCount, aspectRetryCount);
       }
       console.error("[ai-vision] Step 2 FAILED:", err?.message ?? err);
       console.error("[ai-vision] Step 2 error details:", JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
@@ -140,6 +162,67 @@ export async function generateConceptImage(
     for (const part of parts) {
       if (part?.inlineData?.data) {
         const mime = part.inlineData.mimeType ?? "image/png";
+        const outputBuffer = Buffer.from(part.inlineData.data, "base64");
+
+        // AI-030g: measure output aspect for the retry decision + upscale.
+        // Gemini's PNGs usually have no EXIF, but we account for orientation
+        // anyway in case a future model returns rotated metadata.
+        let ow = 1;
+        let oh = 1;
+        let outputAspect = 1.0;
+        try {
+          const md = await sharp(outputBuffer).metadata();
+          ow = md.width ?? 1;
+          oh = md.height ?? 1;
+          if (md.orientation && md.orientation >= 5 && md.orientation <= 8) {
+            [ow, oh] = [oh, ow];
+          }
+          if (ow > 0 && oh > 0) outputAspect = ow / oh;
+        } catch (err: any) {
+          console.warn(`[ai-vision] Could not read output aspect: ${err?.message}`);
+        }
+        console.log(
+          `[ai-vision] Step 2 output aspect=${outputAspect.toFixed(2)} (wanted ${inputAspect.toFixed(2)})`
+        );
+
+        const aspectMatches =
+          Math.abs(outputAspect - inputAspect) / inputAspect <= ASPECT_TOLERANCE;
+        if (!aspectMatches && aspectRetryCount < MAX_ASPECT_RETRIES) {
+          console.warn(
+            `[ai-vision] Output aspect ${outputAspect.toFixed(2)} != input ${inputAspect.toFixed(2)}, retrying (attempt ${aspectRetryCount + 1}/${MAX_ASPECT_RETRIES})`
+          );
+          return generateOne(retryCount, aspectRetryCount + 1);
+        }
+        if (!aspectMatches) {
+          console.warn(
+            `[ai-vision] Aspect retry budget exhausted (${MAX_ASPECT_RETRIES}), accepting output aspect ${outputAspect.toFixed(2)}`
+          );
+        }
+
+        // AI-030g: upscale to TARGET_LONG_EDGE for crisp hero rendering on
+        // high-DPR displays. Lanczos3 gives a sharper resample than the
+        // default bilinear; fit:'inside' preserves the actual output aspect.
+        const longest = Math.max(ow, oh);
+        if (longest > 0 && longest < TARGET_LONG_EDGE) {
+          try {
+            const upscaled = await sharp(outputBuffer)
+              .resize({
+                width: ow >= oh ? TARGET_LONG_EDGE : undefined,
+                height: oh > ow ? TARGET_LONG_EDGE : undefined,
+                kernel: "lanczos3",
+                fit: "inside",
+              })
+              .png({ compressionLevel: 6 })
+              .toBuffer();
+            console.log(
+              `[ai-vision] Upscaled output: ${outputBuffer.length} -> ${upscaled.length} bytes`
+            );
+            return `data:image/png;base64,${upscaled.toString("base64")}`;
+          } catch (err: any) {
+            console.warn(`[ai-vision] Upscale failed, returning original: ${err?.message}`);
+          }
+        }
+
         return `data:${mime};base64,${part.inlineData.data}`;
       }
     }
@@ -147,7 +230,7 @@ export async function generateConceptImage(
     // If no image part found, retry on transient failures
     if (retryCount < 2) {
       await delay(2000 * (retryCount + 1));
-      return generateOne(retryCount + 1);
+      return generateOne(retryCount + 1, aspectRetryCount);
     }
 
     throw new Error(

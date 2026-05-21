@@ -388,9 +388,40 @@ export default function VisionExperience(p: VisionExperienceProps) {
   // ── AI-030: detect concept image aspect on load, swap result hero layout
   //    for portrait inputs (50/50 + object-contain) vs landscape (30/70 + object-cover).
   //    Reset on selectedConceptUrl change so variant swaps re-measure. ──
+  // AI-030i: the JSX <img onLoad> handler doesn't reliably fire when React
+  // reuses the same DOM element across selectedConceptUrl changes (especially
+  // for browser-cached images). Measure via `new Image()` in an effect
+  // instead — fires synchronously for cached images and on load for fresh
+  // ones, in both cases independent of React reconciliation. Owner DevTools
+  // 2026-05-22 confirmed data-concept-aspect="null" despite the concept
+  // being visibly portrait — onLoad never reached the setter.
   const [conceptAspect, setConceptAspect] = useState<number | null>(null);
   useEffect(() => {
+    if (!p.selectedConceptUrl) {
+      setConceptAspect(null);
+      return;
+    }
+    let cancelled = false;
     setConceptAspect(null);
+    const probe = new Image();
+    probe.onload = () => {
+      if (cancelled) return;
+      if (probe.naturalWidth > 0 && probe.naturalHeight > 0) {
+        setConceptAspect(probe.naturalWidth / probe.naturalHeight);
+      }
+    };
+    probe.onerror = () => {
+      if (cancelled) return;
+      // leave conceptAspect null → defaults to landscape layout (safe fallback)
+      console.warn('[ai-vision] concept image aspect probe failed to load');
+    };
+    probe.src = p.selectedConceptUrl;
+    // If the image is already in cache, complete may already be true at
+    // this point — fire the handler synchronously rather than waiting.
+    if (probe.complete && probe.naturalWidth > 0 && probe.naturalHeight > 0) {
+      setConceptAspect(probe.naturalWidth / probe.naturalHeight);
+    }
+    return () => { cancelled = true; };
   }, [p.selectedConceptUrl]);
 
   // ── Share concept — native share where available, otherwise copy to clipboard ──
@@ -420,17 +451,22 @@ export default function VisionExperience(p: VisionExperienceProps) {
     // default to landscape to avoid layout shift. Square (>= 1.0) is also
     // treated as landscape since object-cover handles 1:1 fine.
     const isPortrait = conceptAspect !== null && conceptAspect < 1.0;
-    // AI-030f: in portrait mode the section needs explicit width + height
-    // derived from aspect, so the parent's full width doesn't pin the
-    // section landscape-shaped. Height = min(90vh, viewport-width × inverse-aspect)
-    // (whichever fits the viewport); width = height × aspect. The wrapper
-    // <div className="w-full bg-black"> then provides the side letterbox
-    // bars on screens wider than the section. mx-auto on the section
-    // centers it horizontally inside the wrapper.
+    // AI-030f + h: in portrait mode the section holds TWO portrait images
+    // side-by-side (50/50 split). So the section aspect is 2 × image_aspect,
+    // not image_aspect alone — otherwise each pane is half as wide as the
+    // image needs and the image letterboxes left/right inside each pane,
+    // creating black space BETWEEN the two images. With sideBySideAspect:
+    //   - section width = 2 × image_width, fitting two abutting images
+    //   - each pane = section_width / 2 = image_width, exact fit
+    //   - no internal letterboxing; black bars only on outer edges (from
+    //     the wrapper bg-black) so the layout reads
+    //     [black] [original] [concept] [black]
+    // Owner direction 2026-05-21: "two images must abut to each other".
+    const sideBySideAspect = isPortrait ? conceptAspect! * 2 : 1;
     const sectionStyle: React.CSSProperties = isPortrait
       ? {
-          height: `min(90vh, calc(100vw * ${1 / conceptAspect!}))`,
-          width: `calc(min(90vh, calc(100vw * ${1 / conceptAspect!})) * ${conceptAspect})`,
+          height: `min(90vh, calc(100vw * ${1 / sideBySideAspect}))`,
+          width: `calc(min(90vh, calc(100vw * ${1 / sideBySideAspect})) * ${sideBySideAspect})`,
           minHeight: 560,
           maxWidth: '100vw',
         }
@@ -438,7 +474,12 @@ export default function VisionExperience(p: VisionExperienceProps) {
     const beforeWidth = isPortrait ? '50%' : '30%';
     const afterWidth = isPortrait ? '50%' : '70%';
     const dividerLeft = isPortrait ? '50%' : '30%';
-    const imgFit = isPortrait ? 'object-contain' : 'object-cover';
+    // AI-030g: always object-contain so the full generated image is visible.
+    // Letterboxing is acceptable; cropping pixels from the generated concept
+    // is not (owner direction 2026-05-21). For landscape concepts inside
+    // landscape panes the panes are roughly matched-aspect, so letterboxing
+    // is mostly invisible — it only shows when image aspect ≠ pane aspect.
+    const imgFit = 'object-contain';
     const ariaLabel = isPortrait ? 'Result · portrait layout' : 'Result · landscape layout';
 
     return (
@@ -447,6 +488,9 @@ export default function VisionExperience(p: VisionExperienceProps) {
         className={`relative bg-black overflow-hidden vision-hero-section vision-result-hero ${isPortrait ? 'mx-auto' : 'w-full'}`}
         style={sectionStyle}
         aria-label={ariaLabel}
+        data-concept-aspect={conceptAspect ?? 'null'}
+        data-side-by-side-aspect={sideBySideAspect}
+        data-is-portrait={String(isPortrait)}
       >
         {/* 30/70 (landscape) or 50/50 (portrait) split — desktop. Mobile collapses to single after pane (CSS). */}
         <div className="absolute inset-y-0 left-0 vision-pane-before overflow-hidden" style={{ width: beforeWidth }}>
