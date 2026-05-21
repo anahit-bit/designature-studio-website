@@ -4,10 +4,13 @@ import { cld, cldSrcSet } from '../lib/cld';
 import FeedbackBand from './FeedbackBand';
 
 // Responsive ladders matched to the surfaces they serve.
-const HERO_FULL_WIDTHS = [768, 1024, 1440, 1920];   // 78vh full-bleed slider
-const HERO_USER_WIDTHS = [768, 1280, 1600];          // user's room as hero
-const RESULT_AFTER_WIDTHS = [600, 900, 1400];        // 70% pane (and the 30% before pane reuses same ladder)
-const VARIANT_THUMB_WIDTH = 200;                     // 64×48 thumbs — small fixed
+// AI-030f: HERO_FULL + RESULT_AFTER ladders widened so high-DPR / 4K
+// displays can pick a higher-res Cloudinary delivery and avoid browser
+// upscaling on the showcase slider and the result hero.
+const HERO_FULL_WIDTHS = [768, 1024, 1440, 1920, 2400, 2880]; // 78vh full-bleed slider
+const HERO_USER_WIDTHS = [768, 1280, 1600];                   // user's room as hero
+const RESULT_AFTER_WIDTHS = [768, 1024, 1400, 1920, 2400];    // 70% pane (and the 30% before pane reuses same ladder)
+const VARIANT_THUMB_WIDTH = 200;                              // 64×48 thumbs — small fixed
 
 // Image quality split — Cloudinary's e_upscale rejects sources >4.2 MP,
 // so we only enhance the small AI-rendered "after" images. "Before" images
@@ -382,6 +385,14 @@ export default function VisionExperience(p: VisionExperienceProps) {
     );
   };
 
+  // ── AI-030: detect concept image aspect on load, swap result hero layout
+  //    for portrait inputs (50/50 + object-contain) vs landscape (30/70 + object-cover).
+  //    Reset on selectedConceptUrl change so variant swaps re-measure. ──
+  const [conceptAspect, setConceptAspect] = useState<number | null>(null);
+  useEffect(() => {
+    setConceptAspect(null);
+  }, [p.selectedConceptUrl]);
+
   // ── Share concept — native share where available, otherwise copy to clipboard ──
   const [shareToast, setShareToast] = useState<string | null>(null);
   const handleShare = async () => {
@@ -403,43 +414,85 @@ export default function VisionExperience(p: VisionExperienceProps) {
     }
   };
 
-  // ── State 3 — results (30/70 split + variant thumbs + meta-bar) ──
+  // ── State 3 — results (30/70 landscape OR 50/50 portrait + variant thumbs + meta-bar) ──
   const renderState3Hero = () => {
+    // AI-030: while conceptAspect is null (still measuring on first paint),
+    // default to landscape to avoid layout shift. Square (>= 1.0) is also
+    // treated as landscape since object-cover handles 1:1 fine.
+    const isPortrait = conceptAspect !== null && conceptAspect < 1.0;
+    // AI-030f: in portrait mode the section needs explicit width + height
+    // derived from aspect, so the parent's full width doesn't pin the
+    // section landscape-shaped. Height = min(90vh, viewport-width × inverse-aspect)
+    // (whichever fits the viewport); width = height × aspect. The wrapper
+    // <div className="w-full bg-black"> then provides the side letterbox
+    // bars on screens wider than the section. mx-auto on the section
+    // centers it horizontally inside the wrapper.
+    const sectionStyle: React.CSSProperties = isPortrait
+      ? {
+          height: `min(90vh, calc(100vw * ${1 / conceptAspect!}))`,
+          width: `calc(min(90vh, calc(100vw * ${1 / conceptAspect!})) * ${conceptAspect})`,
+          minHeight: 560,
+          maxWidth: '100vw',
+        }
+      : { height: '78vh', minHeight: 560 };
+    const beforeWidth = isPortrait ? '50%' : '30%';
+    const afterWidth = isPortrait ? '50%' : '70%';
+    const dividerLeft = isPortrait ? '50%' : '30%';
+    const imgFit = isPortrait ? 'object-contain' : 'object-cover';
+    const ariaLabel = isPortrait ? 'Result · portrait layout' : 'Result · landscape layout';
+
     return (
-      <section className="relative w-full bg-black overflow-hidden vision-hero-section vision-result-hero" style={{ height: '78vh', minHeight: 560 }}>
-        {/* 30/70 split — desktop. Mobile collapses to single after pane (CSS). */}
-        <div className="absolute inset-y-0 left-0 vision-pane-before overflow-hidden" style={{ width: '30%' }}>
+      <div className="w-full bg-black">
+      <section
+        className={`relative bg-black overflow-hidden vision-hero-section vision-result-hero ${isPortrait ? 'mx-auto' : 'w-full'}`}
+        style={sectionStyle}
+        aria-label={ariaLabel}
+      >
+        {/* 30/70 (landscape) or 50/50 (portrait) split — desktop. Mobile collapses to single after pane (CSS). */}
+        <div className="absolute inset-y-0 left-0 vision-pane-before overflow-hidden" style={{ width: beforeWidth }}>
           {p.roomImage && (
             <img
               src={cld(p.roomImage, 900, BEFORE_OPTS)}
               srcSet={cldSrcSet(p.roomImage, RESULT_AFTER_WIDTHS, BEFORE_OPTS)}
-              sizes="(min-width: 1024px) 30vw, 100vw"
+              sizes={isPortrait ? '(min-width: 1024px) 50vw, 100vw' : '(min-width: 1024px) 30vw, 100vw'}
               alt="Original room"
               loading="eager"
               decoding="async"
-              className="absolute inset-0 w-full h-full object-cover"
+              className={`absolute inset-0 w-full h-full ${imgFit}`}
             />
           )}
         </div>
         <div
           className="absolute inset-y-0 right-0 vision-pane-after overflow-hidden"
-          style={{ width: '70%', cursor: p.selectedConceptUrl ? 'zoom-in' : 'default' }}
+          style={{ width: afterWidth, cursor: p.selectedConceptUrl ? 'zoom-in' : 'default' }}
           onClick={() => p.selectedConceptUrl && p.setIsLightboxOpen(true)}
         >
+          {/* NOTE: cld() passes data URLs through unchanged (cld.ts:71), so
+              e_upscale in AFTER_OPTS never applies to Gemini outputs (which
+              arrive as data:image/png;base64,...). For higher quality at hero
+              size, the right fix is uploading the Gemini result to Cloudinary
+              first, then resizing through cld() — separate ticket, since it
+              adds latency + Cloudinary credit cost. */}
           {p.selectedConceptUrl && (
             <img
               src={cld(p.selectedConceptUrl, 1400, AFTER_OPTS)}
               srcSet={cldSrcSet(p.selectedConceptUrl, RESULT_AFTER_WIDTHS, AFTER_OPTS)}
-              sizes="(min-width: 1024px) 70vw, 100vw"
+              sizes={isPortrait ? '(min-width: 1024px) 50vw, 100vw' : '(min-width: 1024px) 70vw, 100vw'}
               alt="Concept"
               loading="eager"
               decoding="async"
-              className="absolute inset-0 w-full h-full object-cover"
+              className={`absolute inset-0 w-full h-full ${imgFit}`}
+              onLoad={(e) => {
+                const img = e.currentTarget;
+                if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+                  setConceptAspect(img.naturalWidth / img.naturalHeight);
+                }
+              }}
             />
           )}
         </div>
         {/* Divider */}
-        <div className="absolute inset-y-0 vision-divider z-[3]" style={{ left: '30%', width: 2, background: 'rgba(255,255,255,0.6)', transform: 'translateX(-1px)' }} />
+        <div className="absolute inset-y-0 vision-divider z-[3]" style={{ left: dividerLeft, width: 2, background: 'rgba(255,255,255,0.6)', transform: 'translateX(-1px)' }} />
 
         {/* Pane labels */}
         <div className="absolute top-6 left-6 z-[3] vision-label-before">
@@ -539,6 +592,7 @@ export default function VisionExperience(p: VisionExperienceProps) {
           </div>
         )}
       </section>
+      </div>
     );
   };
 
