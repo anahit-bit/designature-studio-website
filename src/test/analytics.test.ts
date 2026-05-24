@@ -4,7 +4,9 @@ const GTAG_SELECTOR = 'script[src^="https://www.googletagmanager.com/gtag/js"]';
 
 function resetAnalyticsState(): void {
   document.head.querySelectorAll(GTAG_SELECTOR).forEach((el) => el.remove());
-  delete (window as unknown as { dataLayer?: unknown[] }).dataLayer;
+  const w = window as unknown as { dataLayer?: unknown[]; gtag?: unknown };
+  delete w.dataLayer;
+  delete w.gtag;
 }
 
 describe('analytics · initGA (I-007 Track B)', () => {
@@ -26,9 +28,10 @@ describe('analytics · initGA (I-007 Track B)', () => {
 
     expect(document.head.querySelector(GTAG_SELECTOR)).toBeNull();
     expect((window as unknown as { dataLayer?: unknown[] }).dataLayer).toBeUndefined();
+    expect((window as unknown as { gtag?: unknown }).gtag).toBeUndefined();
   });
 
-  it('injects the gtag.js script and seeds dataLayer when the env var is set', async () => {
+  it('injects the gtag.js script, seeds dataLayer, and exposes window.gtag when the env var is set', async () => {
     vi.stubEnv('VITE_GA4_MEASUREMENT_ID', 'G-TESTID123');
     const { initGA } = await import('../lib/analytics');
 
@@ -42,6 +45,10 @@ describe('analytics · initGA (I-007 Track B)', () => {
     const dataLayer = (window as unknown as { dataLayer?: unknown[] }).dataLayer;
     expect(Array.isArray(dataLayer)).toBe(true);
     expect(dataLayer!.length).toBe(2); // gtag('js', Date) + gtag('config', ID)
+
+    // I-022 — initGA now exposes window.gtag so trackPageView (and future
+    // custom-event helpers) can find it.
+    expect(typeof (window as unknown as { gtag?: unknown }).gtag).toBe('function');
   });
 
   it('is idempotent — calling initGA twice injects only one script', async () => {
@@ -52,5 +59,38 @@ describe('analytics · initGA (I-007 Track B)', () => {
     initGA();
 
     expect(document.head.querySelectorAll(GTAG_SELECTOR).length).toBe(1);
+  });
+});
+
+describe('analytics · trackPageView (I-022)', () => {
+  beforeEach(() => {
+    resetAnalyticsState();
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    resetAnalyticsState();
+  });
+
+  it('is a no-op when window.gtag is unavailable (env-gated dev/localhost)', async () => {
+    const { trackPageView } = await import('../lib/analytics');
+
+    expect(() => trackPageView('/some/path', 'Some Title')).not.toThrow();
+    // No window.gtag → nothing to assert on; the contract is "no throw, no side effect".
+  });
+
+  it('calls window.gtag with the GA4 page_view shape when gtag is available', async () => {
+    const gtagSpy = vi.fn();
+    (window as unknown as { gtag: typeof gtagSpy }).gtag = gtagSpy;
+
+    const { trackPageView } = await import('../lib/analytics');
+    trackPageView('/portfolio?ref=home', 'Portfolio · Designature Studio');
+
+    expect(gtagSpy).toHaveBeenCalledTimes(1);
+    expect(gtagSpy).toHaveBeenCalledWith('event', 'page_view', {
+      page_path: '/portfolio?ref=home',
+      page_location: window.location.href,
+      page_title: 'Portfolio · Designature Studio',
+    });
   });
 });
