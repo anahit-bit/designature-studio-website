@@ -15,6 +15,7 @@ import AdminPage from './components/AdminPage';
 import AdminLoginPage from './components/AdminLoginPage';
 import AdminUsersPage from './components/AdminUsersPage';
 import Footer from './components/Footer';
+import RouteTracker from './components/RouteTracker';
 import HomeHeroText from './components/home/HomeHeroText';
 import HomeImageBand from './components/home/HomeImageBand';
 import HowItWorks from './components/home/HowItWorks';
@@ -89,6 +90,7 @@ const DeliverablesRoute: React.FC = () => (
 
 const App: React.FC = () => (
   <BrowserRouter>
+    <RouteTracker />
     <LanguageProvider>
       <AuthProvider>
         <ProjectsProvider>
