@@ -30,7 +30,7 @@ const HowItWorks: React.FC = () => {
           {steps.map((step) => (
             <div key={step.n} className="relative pt-11 border-t border-black/10">
               <span
-                className="absolute -top-4 left-0 bg-white pr-3 font-display font-medium text-[28px] md:text-[30px] text-[#0047AB]"
+                className="absolute -top-4 left-0 bg-white pr-3 font-display font-medium text-[28px] md:text-[30px] text-[#8E3F2D]"
               >
                 {step.n}
               </span>

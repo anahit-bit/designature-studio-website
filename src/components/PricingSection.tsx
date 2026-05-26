@@ -115,18 +115,18 @@ const PricingSection: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
                 <div className="flex items-start gap-2"><CROSS /><span className="text-[13px] text-black/55 leading-relaxed">Room Audit · Design Brief · Cultural Advisor</span></div>
               </div>
             </div>
-            <div className="pt-4 mt-4 border-t border-black/8">
+            <div className="pt-4 mt-auto border-t border-black/8">
+              <p className="text-[12px] text-black/65 text-center mb-3 leading-snug">{t('pricing.free.note')}</p>
               <button onClick={() => { setSigninSource('pricing_cta'); navigateTo('ai-concepts'); }} className="w-full py-3.5 bg-[#0047AB] text-white text-[11px] font-bold uppercase tracking-[0.2em] hover:bg-[#003d99] transition-colors">
                 {t('pricing.free.ctaFull')}
               </button>
-              <p className="text-[12px] text-black/65 text-center mt-3 leading-snug">{t('pricing.free.note')}</p>
             </div>
           </div>
 
           {/* DESIGN */}
           <div className="bg-[#0a0a0a] p-8 flex flex-col">
             <div className="md:min-h-[420px]">
-              <span className="text-[10px] font-bold uppercase tracking-[0.15em] px-2 py-1 bg-[#0047AB] text-white w-fit mb-5 block">{t('pricing.popular')}</span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.15em] px-2 py-1 bg-[#8E3F2D] text-white w-fit mb-5 block">{t('pricing.popular')}</span>
               <div className="mb-4">
                 <span className="text-[34px] font-bold tracking-tight leading-none text-white">$19</span>
                 <span className="text-[13px] text-white/70 ml-1">{t('pricing.month')}</span>
@@ -149,7 +149,7 @@ const PricingSection: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
                 <div className="flex items-start gap-2"><CHECK_W /><span className="text-[13px] text-white/80 leading-relaxed">{t('pricing.10off')}</span></div>
               </div>
             </div>
-            <div className="pt-4 mt-4 border-t border-white/15">
+            <div className="pt-4 mt-auto border-t border-white/15">
               <NotifyButton dark plan="Design $19" />
             </div>
           </div>
@@ -181,7 +181,7 @@ const PricingSection: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
                 <div className="flex items-start gap-2"><CHECK /><span className="text-[13px] text-black/75 leading-relaxed">{t('pricing.20off')}</span></div>
               </div>
             </div>
-            <div className="pt-4 mt-4 border-t border-black/8">
+            <div className="pt-4 mt-auto border-t border-black/8">
               <NotifyButton plan="Studio $49" />
             </div>
           </div>

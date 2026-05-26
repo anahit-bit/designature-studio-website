@@ -574,7 +574,7 @@ const translations = {
     'pricing.notify.btn': 'Notify me',
 
     // S-013 Home narrative — Section 1 (Hero text)
-    'home.hero.eyebrow': 'Interior Design Studio · Yerevan',
+    'home.hero.eyebrow': 'Online interior design studio',
     'home.hero.headline.l1': 'Bring us a space.',
     'home.hero.headline.l2': "We'll bring it to life.",
     'home.hero.tagline': "Apartments. Houses. Commercial. Designature Studio designs the space you've imagined — and the parts you haven't yet.",
@@ -1193,7 +1193,7 @@ const translations = {
     'ai.vision.cta': 'Ծանոթացեք մեր փիլիսոփայությանը',
 
     // S-013 Home narrative — Section 1 (Hero text) [AM placeholders — refine later]
-    'home.hero.eyebrow': 'Ինտերիեր Դիզայնի Ստուդիա · Երևան',
+    'home.hero.eyebrow': 'Առցանց ինտերիեր դիզայնի ստուդիա',
     'home.hero.headline.l1': 'Բերեք մեզ տարածք:',
     'home.hero.headline.l2': 'Մենք կկենդանացնենք այն:',
     'home.hero.tagline': 'Բնակարաններ: Տներ: Կոմերցիոն: Designature Studio-ն նախագծում է Ձեր երազած տարածքը — և այն, ինչը դեռ չեք պատկերացրել:',
