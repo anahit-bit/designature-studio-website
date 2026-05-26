@@ -46,6 +46,7 @@ const PortfolioPage: React.FC = () => {
               <h1 className="text-3xl md:text-5xl lg:text-[5.5vw] font-bold font-display tracking-architectural leading-[0.85] uppercase animate-in fade-in slide-in-from-bottom duration-1000">
                 {t('portfolio.title')}
               </h1>
+              <span aria-hidden className="block w-20 h-[2px] bg-[#8E3F2D] mt-7" />
             </div>
 
             {/* Filter Navigation */}

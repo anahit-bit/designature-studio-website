@@ -198,7 +198,7 @@ const Header: React.FC = () => {
       >
         <div className="max-w-[1800px] mx-auto px-8 md:px-16 flex items-center">
           <div onClick={() => navigateTo('home')} className="cursor-pointer mr-auto">
-            <Logo invert={!(isDarkTextNeeded && !useLightNav)} className="h-8 md:h-10" />
+            <Logo invert={!(isDarkTextNeeded && !useLightNav)} className="h-12 md:h-14" />
           </div>
 
           <nav className="hidden lg:flex items-center gap-8 mr-12">
@@ -235,7 +235,7 @@ const Header: React.FC = () => {
                   }} />
                 )}
                 {isActive && !link.isHighlight && (
-                  <span className={`absolute -bottom-1 left-0 w-full h-[1.5px] ${(isDarkTextNeeded && !useLightNav) ? 'bg-black' : 'bg-white'}`} />
+                  <span className={`absolute -bottom-1 left-0 w-full h-[1.5px] ${(isDarkTextNeeded && !useLightNav) ? 'bg-[#8E3F2D]' : 'bg-[#C97A60]'}`} />
                 )}
               </a>
             );

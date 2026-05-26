@@ -42,9 +42,10 @@ const PricingPage: React.FC = () => {
               <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
               {t('pricing.backHome')}
             </button>
-            <h1 className="text-3xl md:text-5xl lg:text-[5.5vw] font-bold font-display text-white tracking-architectural leading-[0.85] uppercase mb-8 animate-in fade-in slide-in-from-bottom duration-1000">
+            <h1 className="text-3xl md:text-5xl lg:text-[5.5vw] font-bold font-display text-white tracking-architectural leading-[0.85] uppercase animate-in fade-in slide-in-from-bottom duration-1000">
               {t('pricing.hero')}
             </h1>
+            <span aria-hidden className="block w-20 h-[2px] bg-[#C97A60] my-7" />
             <p className="text-white/80 text-base md:text-lg font-light leading-relaxed animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
               {t('pricing.subtitle')}
             </p>

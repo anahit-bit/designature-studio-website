@@ -1817,9 +1817,10 @@ const AIConceptsPage: React.FC = () => {
             <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/60 mb-4">
               {t('ai.engine')}
             </p>
-            <h1 className="font-display text-6xl md:text-8xl font-bold tracking-tight leading-[0.88] uppercase text-white mb-6">
+            <h1 className="font-display text-6xl md:text-8xl font-bold tracking-tight leading-[0.88] uppercase text-white">
               <span>AI {t('ai.design')}</span><br /><span className="italic font-light text-white/50">{t('ai.studio')}</span>
             </h1>
+            <span aria-hidden className="block w-20 h-[2px] bg-[#C97A60] my-7" />
             <p className="text-[11px] text-white/60 uppercase tracking-[0.18em] leading-[2.2] max-w-md mb-8">
               {t('ai.desc')}
             </p>
