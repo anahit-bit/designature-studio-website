@@ -228,7 +228,7 @@ const Header: React.FC = () => {
                     width: '5px',
                     height: '5px',
                     borderRadius: '50%',
-                    background: '#0047AB',
+                    background: '#8E3F2D',
                     marginLeft: '5px',
                     verticalAlign: 'middle',
                     animation: 'dot-pulse 2.5s ease-in-out infinite',

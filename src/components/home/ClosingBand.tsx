@@ -11,7 +11,7 @@ const ClosingBand: React.FC = () => {
   return (
     <section className="py-24 md:py-28 bg-[#0B2240] text-white text-center">
       <div className="max-w-[1280px] mx-auto px-6 md:px-14">
-        <div className="w-12 h-px bg-white/30 mx-auto mb-5" aria-hidden="true" />
+        <div className="w-12 h-px bg-[#C97A60] mx-auto mb-5" aria-hidden="true" />
         <span className="inline-block text-[13px] md:text-[15px] font-bold uppercase tracking-[0.26em] text-white/60 mb-5">
           {t('home.closing.eyebrow')}
         </span>

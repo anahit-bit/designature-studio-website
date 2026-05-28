@@ -264,7 +264,7 @@ const AIToolsSection: React.FC = () => {
           className="flex flex-wrap items-center gap-x-5 gap-y-2 mb-14 px-6 md:px-7 py-5 bg-white/[0.025] rounded-r-sm"
           style={{ borderLeft: '2px solid #0047AB' }}
         >
-          <span className="text-[10px] font-bold tracking-[0.32em] uppercase text-[#0047AB] whitespace-nowrap">
+          <span className="text-[10px] font-bold tracking-[0.32em] uppercase text-[#C97A60] whitespace-nowrap">
             {t('home.ai.comingSoonLabel')}
           </span>
           <span className="text-[13px] leading-[1.6] text-white/60 tracking-[0.04em]">
