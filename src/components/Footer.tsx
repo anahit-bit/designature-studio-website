@@ -222,7 +222,7 @@ const Footer: React.FC = () => {
               {t('footer.rights')}
             </div>
 
-            <Logo invert={true} className="h-7" />
+            <Logo variant="mark" invert={true} className="h-10" />
 
             <div className="flex items-center gap-10">
               <a
