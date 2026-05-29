@@ -15,6 +15,7 @@ import {
   SESSION_EXPIRED_EVENT,
 } from './sessionClient';
 import { clearSigninSource } from './lib/signinSource';
+import { trackEvent } from './lib/analytics';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 
@@ -135,6 +136,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (!res.ok) throw new Error(data.error || 'Auth failed');
         storeToken(data.token);
         setUser(data.user);
+        // I-023 — GA4 signup event for first-time accounts (client-side, env-gated).
+        if (data.isNewUser) {
+          trackEvent('signup', { source: opts.source ?? 'unknown' });
+        }
         try {
           window.google?.accounts?.id?.cancel?.();
           requestAnimationFrame(() => {

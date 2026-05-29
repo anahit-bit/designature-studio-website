@@ -110,7 +110,7 @@ const WhyChooseUs: React.FC = () => {
                 : t('why.aiDesc')}
             </p>
             <button
-              onClick={() => trackCalendly('https://calendly.com/designature-studio-us/free_consultation')}
+              onClick={() => trackCalendly('https://calendly.com/designature-studio-us/free_consultation', 'why_choose_us')}
               className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#0047AB] hover:text-white transition-colors duration-200 text-left w-fit mt-2"
             >
               {t('btn.bookCall')} →

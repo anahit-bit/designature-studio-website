@@ -3,6 +3,7 @@ import { AlertCircle, RefreshCw, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getStoredToken } from '../sessionClient';
 import { trackAuditStart } from '../lib/track';
+import { trackEvent } from '../lib/analytics';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 interface AuditDimension {
@@ -145,6 +146,7 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
     setResult(null);
 
     let quotaConsumed = false;
+    let remainingAfterUse: number | undefined;
     try {
       if (!isPaid) {
         const token = getStoredToken();
@@ -157,6 +159,7 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
         const useData = await useRes.json().catch(() => ({}));
         if (!useRes.ok) throw new Error(useData?.error || 'No generations left');
         quotaConsumed = true;
+        remainingAfterUse = typeof useData?.generationsLeft === 'number' ? useData.generationsLeft : undefined;
       }
 
       const token = getStoredToken();
@@ -184,6 +187,12 @@ const RoomAudit: React.FC<RoomAuditProps> = ({
 
       setResult(parsed);
       onAuditComplete?.();
+
+      // A-004/I-023 — GA4 engagement events (client-side, env-gated).
+      trackEvent('ai_audit_completed', { score: parsed.overallScore });
+      if (!isPaid && remainingAfterUse === 0) {
+        trackEvent('quota_burned', { tool: 'ai_audit' });
+      }
 
     } catch (err: unknown) {
       if (quotaConsumed && !isPaid) {

@@ -342,7 +342,7 @@ const ServicesPage: React.FC = () => {
               <div className="flex justify-center">
                 <a
                   href={CALENDLY_URL}
-                  onClick={(e) => { e.preventDefault(); trackCalendly(CALENDLY_URL); }}
+                  onClick={(e) => { e.preventDefault(); trackCalendly(CALENDLY_URL, 'services'); }}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="group relative inline-flex items-center justify-center border border-white bg-transparent px-12 md:px-16 py-6 text-sm md:text-base font-bold tracking-[0.5em] uppercase transition-all duration-500 hover:bg-white hover:text-black overflow-hidden"

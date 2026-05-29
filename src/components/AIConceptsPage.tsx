@@ -18,6 +18,7 @@ import { QUIZ_IMAGE_WEIGHTS, TIER_POINTS } from '../data/quizImageWeights';
 import { cld, cldSrcSet, THUMB_WIDTHS } from '../lib/cld';
 import { useShoppingStatus } from '../lib/shoppingStatus';
 import { trackCalendly, trackQuizStart, trackQuizComplete, trackVisionStart, trackShoppingStart } from '../lib/track';
+import { trackEvent } from '../lib/analytics';
 import { popSigninSource } from '../lib/signinSource';
 
 const CALENDLY_URL = 'https://calendly.com/designature-studio-us/free_consultation';
@@ -765,7 +766,7 @@ const AIConceptsPage: React.FC = () => {
     if (sharedInit) return; // shared DNA viewer never "completed" a quiz here
     if (!quizCompleteFiredRef.current) {
       quizCompleteFiredRef.current = true;
-      trackQuizComplete();
+      trackQuizComplete(quizResult[0]?.style);
     }
   }, [quizDone]);
 
@@ -1167,6 +1168,13 @@ const AIConceptsPage: React.FC = () => {
       } else {
         setResults([generatedImage]);
         setSelectedConceptIndex(0);
+      }
+
+      // A-004/I-023 — GA4 engagement events (client-side, env-gated). Sample runs
+      // don't consume quota, so they can't have "burned" the user to 0.
+      trackEvent('ai_vision_completed');
+      if (!isSampleRun && data.generationsLeft === 0) {
+        trackEvent('quota_burned', { tool: 'ai_vision' });
       }
 
     } catch (err: any) {
@@ -1714,6 +1722,9 @@ const AIConceptsPage: React.FC = () => {
       if (typeof data.shoppingListsLeft === 'number') {
         setUser((prev) => (prev ? { ...prev, shoppingListsLeft: data.shoppingListsLeft } : null));
       }
+      // A-004/I-023 — GA4 engagement events (client-side, env-gated).
+      trackEvent('ai_shopping_completed', { item_count: Array.isArray(data.results) ? data.results.length : 0 });
+      if (data.shoppingListsLeft === 0) trackEvent('quota_burned', { tool: 'ai_shopping' });
     } catch (err: any) {
       console.error("Shopping search error:", err);
       setShoppingError(err.message || t('ai.searchFailed'));
@@ -2440,7 +2451,7 @@ const AIConceptsPage: React.FC = () => {
                       </button>
                       <a
                         href={CALENDLY_URL}
-                        onClick={(e) => { e.preventDefault(); trackCalendly(CALENDLY_URL); }}
+                        onClick={(e) => { e.preventDefault(); trackCalendly(CALENDLY_URL, 'ai_vision_quota'); }}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-6 py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all flex items-center gap-2"
@@ -3566,7 +3577,7 @@ const AIConceptsPage: React.FC = () => {
                         </button>
                         <a
                           href={CALENDLY_URL}
-                          onClick={(e) => { e.preventDefault(); trackCalendly(CALENDLY_URL); }}
+                          onClick={(e) => { e.preventDefault(); trackCalendly(CALENDLY_URL, 'ai_shopping_quota'); }}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-6 py-3 border border-black/15 text-[10px] font-bold uppercase tracking-[0.25em] text-black/50 hover:border-black/40 hover:text-black transition-all flex items-center gap-2"

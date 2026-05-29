@@ -832,6 +832,9 @@ async function startServer() {
       const ownerLogin = isConceptTestAccountEmail(user.email);
       res.json({
         token,
+        // I-023 — lets the client fire a GA4 `signup` event for first-time accounts.
+        // Independent of the server-side activityLog signup entry written above.
+        isNewUser,
         user: {
           email: user.email,
           name: user.name,
