@@ -4,19 +4,19 @@ import React from 'react';
 const LOGO_URLS = {
   horizontal: {
     light:    'https://res.cloudinary.com/dys2k5muv/image/upload/v1779686901/brand/designature-horizontal-oxide-rust.svg',
-    reversed: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1779686903/brand/designature-horizontal-oxide-rust-reversed.svg',
+    reversed: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1780032116/brand/designature-horizontal-oxide-rust-reversed.svg',
   },
   stacked: {
     light:    'https://res.cloudinary.com/dys2k5muv/image/upload/v1779971459/designature-stacked-oxide-rust_o0lzcb.svg',
-    reversed: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1779971460/designature-stacked-oxide-rust-reversed_ygsu1z.svg',
+    reversed: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1780032118/designature-stacked-oxide-rust-reversed_ygsu1z.svg',
   },
   mark: {
     light:    'https://res.cloudinary.com/dys2k5muv/image/upload/v1779971453/designature-mark-oxide-rust_r2k2lc.svg',
-    reversed: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1779971452/designature-mark-oxide-rust-reversed_piewmu.svg',
+    reversed: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1780032121/designature-mark-oxide-rust-reversed_piewmu.svg',
   },
   wordmark: {
     light:    'https://res.cloudinary.com/dys2k5muv/image/upload/v1779971461/designature-wordmark-oxide-rust_jauo5p.svg',
-    reversed: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1779971459/designature-wordmark-oxide-rust-reversed_cm3vav.svg',
+    reversed: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1780032123/designature-wordmark-oxide-rust-reversed_cm3vav.svg',
   },
 } as const;
 
