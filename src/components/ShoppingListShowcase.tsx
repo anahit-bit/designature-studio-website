@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { cld, cldSrcSet, THUMB_WIDTHS } from '../lib/cld';
 import { useShoppingStatus } from '../lib/shoppingStatus';
+import { trackEvent } from '../lib/analytics';
 
 // ─── Product data ─────────────────────────────────────────────────────────────
 const SHOWCASE_PRODUCTS = [
@@ -308,6 +309,7 @@ function OfflineNotifyForm() {
         throw new Error(data?.error || 'Could not save your email — try again in a moment.');
       }
       setDone(true);
+      trackEvent('newsletter_signup', { source: 'shopping_offline' });
     } catch (err: any) {
       setError(err?.message || 'Could not save your email — try again in a moment.');
     } finally {

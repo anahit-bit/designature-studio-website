@@ -94,3 +94,54 @@ describe('analytics · trackPageView (I-022)', () => {
     });
   });
 });
+
+describe('analytics · trackEvent (A-004/A-005/I-023)', () => {
+  beforeEach(() => {
+    resetAnalyticsState();
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    resetAnalyticsState();
+    vi.restoreAllMocks();
+  });
+
+  it('is a no-op and does not throw when window.gtag is unavailable', async () => {
+    const { trackEvent } = await import('../lib/analytics');
+
+    expect(() => trackEvent('calendly_open', { source: 'header' })).not.toThrow();
+  });
+
+  it('calls window.gtag once with (name, params) when gtag is available', async () => {
+    const gtagSpy = vi.fn();
+    (window as unknown as { gtag: typeof gtagSpy }).gtag = gtagSpy;
+
+    const { trackEvent } = await import('../lib/analytics');
+    trackEvent('ai_quiz_completed', { dna_top_style: 'Japandi' });
+
+    expect(gtagSpy).toHaveBeenCalledTimes(1);
+    expect(gtagSpy).toHaveBeenCalledWith('event', 'ai_quiz_completed', { dna_top_style: 'Japandi' });
+  });
+
+  it('defaults params to an empty object when none are passed', async () => {
+    const gtagSpy = vi.fn();
+    (window as unknown as { gtag: typeof gtagSpy }).gtag = gtagSpy;
+
+    const { trackEvent } = await import('../lib/analytics');
+    trackEvent('ai_vision_started');
+
+    expect(gtagSpy).toHaveBeenCalledWith('event', 'ai_vision_started', {});
+  });
+
+  it('warns but does not propagate when gtag throws', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    (window as unknown as { gtag: () => void }).gtag = () => {
+      throw new Error('gtag boom');
+    };
+
+    const { trackEvent } = await import('../lib/analytics');
+
+    expect(() => trackEvent('signup', { source: 'header' })).not.toThrow();
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+  });
+});

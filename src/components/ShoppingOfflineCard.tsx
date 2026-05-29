@@ -7,6 +7,7 @@
  * Cormorant heading. Subscribes to the existing newsletter endpoint.
  */
 import { useState } from 'react';
+import { trackEvent } from '../lib/analytics';
 
 interface Props {
   code: 'disabled' | 'daily_budget_exceeded';
@@ -70,6 +71,7 @@ export default function ShoppingOfflineCard({ code, resetAt }: Props) {
         throw new Error(data?.error || 'Could not save your email — try again in a moment.');
       }
       setDone(true);
+      trackEvent('newsletter_signup', { source: 'shopping_offline' });
     } catch (err: any) {
       setError(err?.message || 'Could not save your email — try again in a moment.');
     } finally {

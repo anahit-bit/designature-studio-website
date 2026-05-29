@@ -28,7 +28,7 @@ const CTABanner: React.FC = () => {
         {/* Right — CTA */}
         <a
           href={CALENDLY_URL}
-          onClick={(e) => { e.preventDefault(); trackCalendly(CALENDLY_URL); }}
+          onClick={(e) => { e.preventDefault(); trackCalendly(CALENDLY_URL, 'cta_banner'); }}
           target="_blank"
           rel="noopener noreferrer"
           className="group flex-shrink-0 inline-flex items-center gap-4 bg-white text-black px-10 py-5 text-[12px] font-bold uppercase tracking-[0.4em] hover:bg-[#0047AB] hover:text-white transition-all duration-300"

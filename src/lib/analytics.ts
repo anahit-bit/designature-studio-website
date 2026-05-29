@@ -1,12 +1,33 @@
 /**
- * GA4 (gtag.js) bootstrap — I-007 Track B + I-022 SPA page_view.
+ * GA4 (gtag.js) bootstrap — I-007 Track B + I-022 SPA page_view + A-004/A-005/I-023 custom events.
  *
  * Injects the gtag.js script and initializes GA4 only when
  * VITE_GA4_MEASUREMENT_ID is set. Localhost (no env var) is a no-op so
  * dev sessions don't pollute production analytics.
  *
  * Idempotent: a second initGA() call after the script has been injected
- * is a no-op. trackPageView() is a no-op when gtag isn't loaded.
+ * is a no-op. trackPageView() / trackEvent() are no-ops when gtag isn't loaded.
+ *
+ * ── GA4 event registry ──────────────────────────────────────────────────────
+ * Every custom event fired from the client. All are client-side only (gtag is
+ * browser-only) and env-gated — when VITE_GA4_MEASUREMENT_ID is unset, initGA()
+ * never loads gtag.js, so window.gtag is undefined and every helper here no-ops.
+ * These run ALONGSIDE the internal /api/track/* activityLog writes (which power
+ * /admin) — the two are independent; this file never touches the internal log.
+ *
+ *   page_view             — SPA route change (trackPageView; I-022). Fired by RouteTracker.
+ *   ai_quiz_started       — Style Quiz room 1 appeared.
+ *   ai_quiz_completed     — DNA result screen reached. params: { dna_top_style }
+ *   ai_vision_started     — AI Vision Generate button became ready.
+ *   ai_vision_completed   — AI Vision generation resolved successfully.
+ *   ai_shopping_started   — Shopping List items first identified.
+ *   ai_shopping_completed — Shopping search resolved. params: { item_count }
+ *   ai_audit_started      — Room Audit Analyze button became ready.
+ *   ai_audit_completed    — Room Audit returned a result. params: { score }
+ *   calendly_open         — "Let's chat" / book-a-call click. params: { source }
+ *   signup                — New user created via Google auth. params: { source }
+ *   newsletter_signup     — Newsletter subscribe succeeded. params: { source }
+ *   quota_burned          — A generate response left the user at 0 remaining. params: { tool }
  */
 
 declare global {
@@ -66,6 +87,22 @@ export function trackPageView(path: string, title: string): void {
     page_location: window.location.href,
     page_title: title,
   });
+}
+
+/**
+ * A-004/A-005/I-023 — Fire a GA4 custom event.
+ *
+ * No-op when gtag isn't loaded (env-gated dev/localhost). Swallows errors so a
+ * failed analytics call never propagates into the user flow. See the event
+ * registry at the top of this file for the names + params in use.
+ */
+export function trackEvent(name: string, params: Record<string, unknown> = {}): void {
+  if (typeof window.gtag !== 'function') return;
+  try {
+    window.gtag('event', name, params);
+  } catch (err) {
+    console.warn('[analytics] trackEvent failed:', err);
+  }
 }
 
 export {};

@@ -3,6 +3,7 @@ import { Mail, Instagram, Facebook, X } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 import Logo from './Logo';
 import PolicyModal, { type PolicyKind } from './PolicyModal';
+import { trackEvent } from '../lib/analytics';
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
   <svg 
@@ -87,6 +88,7 @@ const Footer: React.FC = () => {
         setStatus('success');
         setEmail('');
         setIsModalOpen(true);
+        trackEvent('newsletter_signup', { source: 'home_footer' });
         setTimeout(() => setStatus('idle'), 5000);
       } else {
         const errorText = await response.text();
