@@ -8,10 +8,13 @@
  *   - "trust"  (logged-out sign-in gate): compact horizontal logo row
  *     framed as social proof
  *
- * Both render the same FREE_TIER_RETAILERS list — the difference is framing.
+ * Both render the same retailer list — the difference is framing. The list
+ * comes from Sanity via useRetailers() (falls back to the bundled
+ * FREE_TIER_RETAILERS when Sanity is unreachable).
  */
 import React from 'react';
-import { FREE_TIER_RETAILERS, getLogoUrl } from '../data/retailers';
+import { getLogoUrl } from '../data/retailers';
+import { useRetailers } from '../RetailersContext';
 
 interface Props {
   variant: 'banner' | 'trust';
@@ -19,9 +22,11 @@ interface Props {
   onUpgradeClick?: () => void;
 }
 
-const Logos: React.FC<{ alignment?: 'start' | 'center' }> = ({ alignment = 'start' }) => (
+const Logos: React.FC<{ alignment?: 'start' | 'center' }> = ({ alignment = 'start' }) => {
+  const { retailers } = useRetailers();
+  return (
   <div className={`flex items-center gap-3 flex-wrap ${alignment === 'center' ? 'justify-center' : ''}`}>
-    {FREE_TIER_RETAILERS.map(r => (
+    {retailers.map(r => (
       <img
         key={r.domain}
         src={getLogoUrl(r.domain)}
@@ -35,7 +40,8 @@ const Logos: React.FC<{ alignment?: 'start' | 'center' }> = ({ alignment = 'star
       />
     ))}
   </div>
-);
+  );
+};
 
 const RetailerLogoStrip: React.FC<Props> = ({ variant, onUpgradeClick }) => {
   if (variant === 'trust') {

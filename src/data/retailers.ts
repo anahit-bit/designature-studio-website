@@ -1,4 +1,8 @@
 /**
+ * FALLBACK ONLY — live data comes from Sanity (see src/lib/sanity.ts
+ * fetchRetailers + RetailersContext). Update only if Sanity becomes
+ * permanently unavailable or for v1 dev when Sanity isn't seeded yet.
+ *
  * Retailer registry for the shopping list feature.
  *
  * For free tier we ship a fixed list of 10 designer-favorite US retailers,

@@ -25,6 +25,7 @@ import Voices from './components/home/Voices';
 import ClosingBand from './components/home/ClosingBand';
 import { LanguageProvider } from './LanguageContext';
 import { ProjectsProvider } from './ProjectsContext';
+import { RetailersProvider } from './RetailersContext';
 import { AuthProvider } from './AuthContext';
 import SessionInactivityGuard from './components/SessionInactivityGuard';
 
@@ -94,6 +95,7 @@ const App: React.FC = () => (
     <LanguageProvider>
       <AuthProvider>
         <ProjectsProvider>
+          <RetailersProvider>
           <SessionInactivityGuard />
           <Routes>
             <Route path="/" element={<HomePage />} />
@@ -111,6 +113,7 @@ const App: React.FC = () => (
             <Route path="/admin" element={<AdminPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </RetailersProvider>
         </ProjectsProvider>
       </AuthProvider>
     </LanguageProvider>

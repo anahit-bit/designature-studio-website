@@ -5,6 +5,7 @@ import AIConceptsPage from '../components/AIConceptsPage';
 import SessionInactivityGuard from '../components/SessionInactivityGuard';
 import { LanguageProvider } from '../LanguageContext';
 import { AuthProvider } from '../AuthContext';
+import { RetailersProvider } from '../RetailersContext';
 
 // Mock GoogleGenAI
 vi.mock('@google/genai', () => ({
@@ -28,8 +29,10 @@ const renderWithProvider = (ui: React.ReactElement) => {
     <MemoryRouter>
       <LanguageProvider>
         <AuthProvider>
-          <SessionInactivityGuard />
-          {ui}
+          <RetailersProvider>
+            <SessionInactivityGuard />
+            {ui}
+          </RetailersProvider>
         </AuthProvider>
       </LanguageProvider>
     </MemoryRouter>

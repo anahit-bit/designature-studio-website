@@ -106,3 +106,65 @@ export async function fetchProjects(): Promise<ProjectData[]> {
 export function getCachedProjects(): ProjectData[] | null {
   return cache
 }
+
+// ── Retailers (I-026) ───────────────────────────────────────────────────────
+// The curated Shopping List catalog lives in Sanity as `retailer` documents,
+// editable in Studio. The website reads only active retailers. The bundled
+// FREE_TIER_RETAILERS in src/data/retailers.ts is the offline fallback.
+
+export interface Retailer {
+  name: string
+  domain: string
+  categories: string[]
+  budget: string
+  tier: 'free' | 'design' | 'studio'
+  regions: string[]
+  order: number
+  notes?: string
+}
+
+const RETAILERS_QUERY = `*[_type == "retailer" && active == true] | order(order asc, name asc) {
+  name,
+  domain,
+  categories,
+  budget,
+  tier,
+  regions,
+  order,
+  notes
+}`
+
+let retailerCache: Retailer[] | null = null
+let retailerInflight: Promise<Retailer[]> | null = null
+
+/**
+ * Fetches active retailers from Sanity. Deduped + cached at module level, same
+ * pattern as fetchProjects() — one network request per page lifetime.
+ */
+export async function fetchRetailers(): Promise<Retailer[]> {
+  if (retailerCache) return retailerCache
+  if (retailerInflight) return retailerInflight
+  retailerInflight = (async () => {
+    const docs = await sanityClient.fetch<Retailer[]>(RETAILERS_QUERY)
+    // Normalize optional array fields so consumers never hit undefined.
+    const retailers = docs.map((d) => ({
+      ...d,
+      categories: d.categories ?? [],
+      regions: d.regions ?? [],
+      budget: d.budget ?? '',
+      tier: d.tier ?? 'free',
+    }))
+    retailerCache = retailers
+    return retailers
+  })()
+  try {
+    return await retailerInflight
+  } finally {
+    retailerInflight = null // allow retry if it failed
+  }
+}
+
+/** Cached synchronous peek — returns null until the first fetch resolves. */
+export function getCachedRetailers(): Retailer[] | null {
+  return retailerCache
+}
