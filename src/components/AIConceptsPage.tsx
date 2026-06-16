@@ -266,8 +266,10 @@ const AIConceptsPage: React.FC = () => {
     return () => clearTimeout(t);
   }, []);
 
-  // ── Reset all ephemeral tool state on every mount (fresh start on load / navigate) ──
-  useEffect(() => {
+  // ── Reset ALL ephemeral tool state. Used on mount (fresh start) AND whenever
+  //    the signed-in identity changes, so one user's concepts / shopping list
+  //    never leak to the next account (the latter was a real cross-account bug).
+  const resetEphemeralState = useCallback(() => {
     // AI Vision
     setInspirationImages([]);
     setRoomImage(null);
@@ -291,6 +293,9 @@ const AIConceptsPage: React.FC = () => {
     setShoppingItems([]);
     setShoppingDone(false);
     setShoppingError(null);
+    setShoppingTeaser([]);
+    setShoppingTotalIdentified(0);
+    setShoppingOffline(null);
     setStandaloneShoppingImage(null);
     setForceStandaloneUpload(false);
     setSearchSourceImage(null);
@@ -303,6 +308,9 @@ const AIConceptsPage: React.FC = () => {
     // NOTE: user / authLoading / session token are intentionally NOT touched here.
     // NOTE: downloadCount (ds_download_count) is intentionally NOT reset.
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fresh start on mount (load / navigate).
+  useEffect(() => { resetEphemeralState(); }, [resetEphemeralState]);
 
   // ── Two-phase loading indicator ──
   // Phase 1: "Analyzing references…" for ~4.5 s (only when there are reference images).
@@ -351,15 +359,18 @@ const AIConceptsPage: React.FC = () => {
   // vision_started effect lives further down — needs isGenerateDisabled to be in scope.
   const visionStartFiredRef = useRef(false);
 
-  // ── Clear page-local concept state when AuthContext clears the user ──
-  // (Google script load + /api/auth/me probe + SESSION_EXPIRED handling all live in AuthContext.)
+  // ── Clear ALL per-user tool state whenever the signed-in IDENTITY changes
+  //    (login, logout, OR switching accounts). Keyed on email — NOT the `user`
+  //    object, which also changes on every quota refresh (that must not wipe a
+  //    live result). Fixes one account's shopping list leaking to the next.
+  const lastIdentityRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
-    if (user) return;
-    setResults([]);
-    setSessionConceptArchive([]);
-    setRoomImage(null);
-    setInspirationImages([]);
-  }, [user]);
+    const identity = user?.email ?? null;
+    if (lastIdentityRef.current === undefined) { lastIdentityRef.current = identity; return; }
+    if (lastIdentityRef.current === identity) return;
+    lastIdentityRef.current = identity;
+    resetEphemeralState();
+  }, [user, resetEphemeralState]);
 
   // ── Warn before leaving if unsaved concepts ──
   useEffect(() => {
@@ -440,12 +451,9 @@ const AIConceptsPage: React.FC = () => {
   /** Sign out and clear page-local concept state. */
   const handleLogout = useCallback(async () => {
     await signOut();
-    // The user-cleared effect above also clears these, but we call here for immediacy.
-    setResults([]);
-    setSessionConceptArchive([]);
-    setRoomImage(null);
-    setInspirationImages([]);
-  }, [signOut]);
+    // The identity-change effect also clears state, but reset here for immediacy.
+    resetEphemeralState();
+  }, [signOut, resetEphemeralState]);
 
 
   // ── Escape key for lightbox ──
