@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import { useLocation, useNavigate } from 'react-router-dom';
 
 export type Language = 'en' | 'am';
-export type Page = 'home' | 'portfolio' | 'project-detail' | 'services' | 'studio' | 'ai-concepts' | 'ai-vision' | 'pricing' | 'faq';
+export type Page = 'home' | 'portfolio' | 'project-detail' | 'services' | 'studio' | 'ai-concepts' | 'ai-vision' | 'pricing' | 'faq' | 'terms' | 'privacy' | 'refund';
 export type PortfolioFilter = 'All' | 'Residential' | 'Commercial';
 
 // URL ⇄ page-state mapping. URL is the source of truth; localStorage persistence
@@ -19,6 +19,9 @@ function pathToPageState(pathname: string): { page: Page; projectId: string | nu
   if (pathname === '/ai-vision') return { page: 'ai-vision', projectId: null };
   if (pathname === '/pricing') return { page: 'pricing', projectId: null };
   if (pathname === '/faq') return { page: 'faq', projectId: null };
+  if (pathname === '/terms') return { page: 'terms', projectId: null };
+  if (pathname === '/privacy') return { page: 'privacy', projectId: null };
+  if (pathname === '/refund') return { page: 'refund', projectId: null };
   return { page: 'home', projectId: null };
 }
 
@@ -42,6 +45,12 @@ function pageToPath(page: Page, projectId?: string | null, filter?: PortfolioFil
       return '/pricing';
     case 'faq':
       return '/faq';
+    case 'terms':
+      return '/terms';
+    case 'privacy':
+      return '/privacy';
+    case 'refund':
+      return '/refund';
   }
 }
 
@@ -808,6 +817,7 @@ const translations = {
     'footer.about': 'About Us',
     'footer.terms': 'Terms of Service',
     'footer.privacy': 'Privacy Policy',
+    'footer.refund': 'Refund Policy',
     'footer.usOffice': 'US Office',
     'footer.amOffice': 'Armenia Office',
     'footer.rights': '© 2026 Designature Studio. All Rights Reserved.',
@@ -1743,6 +1753,7 @@ const translations = {
     'footer.about': 'Մեր Մասին',
     'footer.terms': 'Օգտագործման Պայմաններ',
     'footer.privacy': 'Գաղտնիության Քաղաքականություն',
+    'footer.refund': 'Վերադարձի Քաղաքականություն',
     'footer.usOffice': 'ԱՄՆ Գրասենյակ',
     'footer.amOffice': 'Հայաստանի Գրասենյակ',
     'footer.rights': '© 2026 Բոլոր իրավունքները պաշտպանված են:',

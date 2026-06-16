@@ -10,6 +10,9 @@ import AIVisionPage from './components/AIVisionPage';
 import AIConceptsPage from './components/AIConceptsPage';
 import PricingPage from './components/PricingPage';
 import FAQPage from './components/FAQPage';
+import TermsPage from './components/TermsPage';
+import PrivacyPage from './components/PrivacyPage';
+import RefundPage from './components/RefundPage';
 import DeliverablesPage from './components/DeliverablesPage';
 import AdminPage from './components/AdminPage';
 import AdminLoginPage from './components/AdminLoginPage';
@@ -107,6 +110,9 @@ const App: React.FC = () => (
             <Route path="/ai-vision" element={<AIVisionRoute />} />
             <Route path="/pricing" element={<PricingRoute />} />
             <Route path="/faq" element={<FAQPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/refund" element={<RefundPage />} />
             <Route path="/deliverables" element={<DeliverablesRoute />} />
             <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route path="/admin/users" element={<AdminUsersPage />} />
