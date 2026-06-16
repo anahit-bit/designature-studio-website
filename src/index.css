@@ -58,3 +58,138 @@
   .vision-overlay-bottom-ttl { font-size: 30px !important; }
   .vision-meta-bar { padding-bottom: 18px !important; padding-top: 28px !important; }
 }
+
+/* ============================================================================
+   STUDIO design system — LOCKED (2026-06-03). Shared frame + components for the
+   AI tool cards (Style Quiz now; AI Vision / Shopping List later). Everything is
+   scoped under `.studio-frame` so these generic class names cannot collide with
+   the rest of the app. Transcribed from the v4 mockups; do not re-token.
+   See _Memory\2026-06-03-website-ui-design-system-LOCKED.md.
+   ============================================================================ */
+.studio-frame {
+  --cobalt: #0047AB;
+  --oxide: #8E3F2D;
+  --oxide-soft: #C97A60;
+  --sand: #DAD2C3;
+}
+
+/* serif display + emphasis */
+.studio-frame .hl { font-family: 'Cormorant Garamond', serif; color: #fff; font-weight: 500; }
+.studio-frame .hl em { font-style: italic; font-weight: 600; }
+/* Black-headline contexts (setup/titlehdr) — scoping .hl raised its specificity
+   above the Tailwind `text-black` utility, so restore the override explicitly. */
+.studio-frame .hl.text-black,
+.studio-frame .hl .text-black { color: #000; }
+
+/* hero band */
+.studio-frame .hero { position: relative; width: 100%; height: 74vh; min-height: 520px; max-height: 860px; overflow: hidden; background: #000; }
+.studio-frame .hero-media { position: absolute; inset: 0; }
+.studio-frame .hero-media > img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Style Quiz landing uses the slightly darker scrim per the readability audit (.42/.14/.66). */
+.studio-frame .hero-scrim { position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(0,0,0,.42) 0%, rgba(0,0,0,.14) 35%, rgba(0,0,0,.66) 100%); }
+.studio-frame .hero-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 24px; pointer-events: none; }
+
+/* glass card */
+.studio-frame .glass { background: rgba(16,18,22,.46); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,.16); box-shadow: 0 40px 90px rgba(0,0,0,.5); max-width: 560px; }
+.studio-frame .glass * { pointer-events: auto; }
+
+/* buttons + badges */
+.studio-frame .cta-primary { background: var(--cobalt); color: #fff; box-shadow: 0 14px 30px rgba(0,71,171,.45); }
+.studio-frame .cta-primary:hover { background: #0036a0; }
+.studio-frame .badge-dark { background: rgba(0,0,0,.62); color: #fff; }
+.studio-frame .badge-cobalt { background: var(--cobalt); color: #fff; }
+.studio-frame .cap { background: rgba(0,0,0,.55); color: #fff; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+
+/* section headers */
+.studio-frame .statushdr { display: flex; align-items: center; justify-content: space-between; padding: 14px 40px; border-bottom: 1px solid rgba(0,0,0,.08); }
+.studio-frame .titlehdr  { display: flex; align-items: flex-end; justify-content: space-between; padding: 22px 40px; border-bottom: 1px solid rgba(0,0,0,.08); gap: 20px; }
+@media (max-width: 640px) {
+  .studio-frame .statushdr { padding: 12px 20px; }
+  .studio-frame .titlehdr  { padding: 18px 20px; }
+}
+
+/* oxide accent helpers (sparingly) */
+.studio-frame .kicker { color: var(--oxide); }
+.studio-frame .rule-oxide { background: var(--oxide); }
+.studio-frame .num-oxide { color: var(--oxide); }
+.studio-frame .tag-oxide { background: var(--oxide); color: #fff; }
+
+/* logged-out-only drifting style MOSAIC hero (distinct from the single-image landing hero) */
+.studio-frame .hero-mosaic { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(6, 1fr); grid-auto-rows: 1fr; gap: 5px;
+  transform: scale(1.08); animation: sxMosaicDrift 46s ease-in-out infinite alternate; }
+.studio-frame .hero-mosaic img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.92) brightness(.74); }
+.studio-frame .hero-mosaic-scrim { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 45%, rgba(0,0,0,.30) 0%, rgba(0,0,0,.58) 55%, rgba(0,0,0,.82) 100%); }
+@media (max-width: 640px) { .studio-frame .hero-mosaic { grid-template-columns: repeat(4, 1fr); } }
+@keyframes sxMosaicDrift { from { transform: scale(1.08) translate3d(0,0,0); } to { transform: scale(1.16) translate3d(-2%,-3%,0); } }
+
+/* marquee */
+.studio-frame .marquee { -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
+.studio-frame .marquee-track { display: inline-flex; align-items: center; gap: 3rem; white-space: nowrap; animation: sxMarquee 30s linear infinite; }
+.studio-frame .marquee:hover .marquee-track { animation-play-state: paused; }
+@keyframes sxMarquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* card-stack peek (quiz deck) */
+.studio-frame .deck { position: relative; }
+.studio-frame .deck .peek { position: absolute; inset: 0; background: #0e0e0e; }
+.studio-frame .deck .peek.p1 { transform: translateY(10px) scale(.97); opacity: .55; }
+.studio-frame .deck .peek.p2 { transform: translateY(20px) scale(.94); opacity: .3; }
+.studio-frame .card-in { animation: sxCardIn .28s ease; }
+@keyframes sxCardIn { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+
+/* result breakdown bars */
+.studio-frame .bar { height: 8px; background: rgba(255,255,255,.16); overflow: hidden; }
+.studio-frame .bar > span { display: block; height: 100%; }
+
+/* reveal + veil-phrase motion */
+.studio-frame .reveal-up { animation: sxRevealUp .5s ease both; }
+@keyframes sxRevealUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+.studio-frame .veilphrase { animation: sxVeilphrase 1.6s ease-in-out infinite; }
+@keyframes sxVeilphrase { 0%,100% { opacity: .4; } 50% { opacity: 1; } }
+
+/* image cold-start shimmer (deck card) */
+.studio-frame .quiz-shimmer { background: linear-gradient(110deg, rgba(255,255,255,.04) 0%, rgba(255,255,255,.10) 45%, rgba(255,255,255,.04) 90%);
+  background-size: 200% 100%; animation: sxQuizShimmer 1.6s ease-in-out infinite; }
+@keyframes sxQuizShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* paid-gating: same UI for everyone, greyed + locked for free (driven by .as-free on the frame) */
+.studio-frame .lockchip { display: none; position: absolute; top: 6px; right: 6px; z-index: 8; align-items: center; gap: 3px;
+  background: var(--oxide); color: #fff; font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; padding: 3px 7px; }
+.studio-frame .paid { position: relative; }
+.studio-frame.as-free .paid > :not(.lockchip) { filter: grayscale(1); opacity: .45; pointer-events: none; }
+.studio-frame.as-free .paid .lockchip { display: inline-flex; }
+
+/* before/after slider (.ba) — ported from the AI Vision logged-in mockup for reuse */
+.studio-frame .ba { position: relative; overflow: hidden; }
+.studio-frame .ba img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.studio-frame .ba .ba-before { z-index: 2; }
+.studio-frame .ba .ba-divider { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; z-index: 3; transform: translateX(-1px); pointer-events: none; }
+.studio-frame .ba .ba-handle { position: absolute; top: 50%; z-index: 4; width: 36px; height: 36px; border-radius: 9999px; background: var(--cobalt); color: #fff;
+  display: flex; align-items: center; justify-content: center; transform: translate(-50%, -50%); box-shadow: 0 6px 18px rgba(0,0,0,.35); pointer-events: none; font-size: 13px; }
+.studio-frame .ba input[type="range"] { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; z-index: 5; }
+
+/* collapsible "Optional refinements" (AI Vision setup) */
+.studio-frame .opt { max-height: 0; overflow: hidden; transition: max-height .35s ease; }
+.studio-frame .opt.open { max-height: 900px; }
+
+/* scanning sweep (Shopping List logged-in · State 2) */
+.studio-frame .scanline { position: absolute; left: 0; right: 0; height: 2px; z-index: 3;
+  background: linear-gradient(90deg, transparent, rgba(0,71,171,.9), transparent); animation: sxScan 2.4s linear infinite; }
+@keyframes sxScan { 0% { top: 4%; } 100% { top: 96%; } }
+
+/* before|after switcher tiles (AI Vision logged-out explorer) */
+.studio-frame .ctab { position: relative; overflow: hidden; cursor: pointer; transition: .2s; background: #f0ece4; }
+.studio-frame .ctab.active { outline: 3px solid var(--cobalt); outline-offset: -3px; }
+.studio-frame .ctab.active .ctab-veil { opacity: 0; }
+.studio-frame .ctab-veil { position: absolute; inset: 0; background: rgba(255,255,255,.5); transition: opacity .2s; }
+
+/* sign-in veil (logged-out account-action prompt) */
+.studio-signin-veil { position: fixed; inset: 0; z-index: 90; display: none; align-items: center; justify-content: center; padding: 24px;
+  background: rgba(8,9,12,.66); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.studio-signin-veil.on { display: flex; }
+.studio-signin-veil .signin-card { background: #fff; max-width: 430px; width: 100%; box-shadow: 0 50px 120px rgba(0,0,0,.5); }
+.studio-signin-veil .gbtn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; border: 1px solid rgba(0,0,0,.18);
+  font-size: 13px; font-weight: 700; letter-spacing: .04em; padding: 14px 16px; transition: .15s; }
+.studio-signin-veil .gbtn:hover { border-color: rgba(0,0,0,.5); background: rgba(0,0,0,.02); }

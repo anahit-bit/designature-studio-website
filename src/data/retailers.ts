@@ -37,9 +37,22 @@ export const FREE_TIER_RETAILERS: Retailer[] = [
 ];
 
 /**
- * Returns the favicon URL for a retailer at 64px. The browser-rendered tile
- * sits at 32px, so 64px gives us a 2x sharpness margin without wasting bytes.
+ * Retailer logos are now SELF-HOSTED on Cloudinary (asset_folder "Retailers",
+ * public_id `retailer-<slug>`, slug = first domain label). This drops the live
+ * Google-favicon dependency (B5 audit). Uploaded via scripts/upload-shopping-assets.mjs.
+ * Unknown domains fall back to the Google favicon so the strip never breaks;
+ * RetailerLogoStrip additionally text-falls-back on <img> error.
  */
+const CLOUDINARY_LOGO_BASE = 'https://res.cloudinary.com/dys2k5muv/image/upload';
+/** Retailer slugs with a self-hosted Cloudinary logo. */
+const SELF_HOSTED_LOGOS = new Set([
+  'westelm', 'crateandbarrel', 'article', 'kavehome', 'bludot', 'allmodern',
+  'cb2', 'potterybarn', 'ikea', 'wayfair', 'desenio', 'society6',
+]);
+
 export function getLogoUrl(domain: string): string {
+  const slug = domain.split('.')[0];
+  if (SELF_HOSTED_LOGOS.has(slug)) return `${CLOUDINARY_LOGO_BASE}/retailer-${slug}.png`;
+  // Fallback for any retailer we haven't self-hosted yet.
   return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
 }

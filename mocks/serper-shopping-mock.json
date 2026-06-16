@@ -59,6 +59,18 @@
     { "title": "Set of 3 Ceramic Candle Holders", "price": "$68.00", "source": "potterybarn.com", "link": "https://www.potterybarn.com/decor-mock-3", "imageUrl": "https://placehold.co/400x400/e8d8c0/333?text=Candle+Set", "rating": 4.4, "ratingCount": 98 }
   ],
 
+  "storage": [
+    { "title": "Light Oak Sideboard with Glass Doors", "price": "$1,199.00", "source": "westelm.com", "link": "https://www.westelm.com/sideboard-mock-1", "imageUrl": "https://placehold.co/400x400/d8c4a0/333?text=Sideboard", "rating": 4.5, "ratingCount": 142 },
+    { "title": "Modern Media Cabinet, Walnut", "price": "$899.00", "source": "article.com", "link": "https://www.article.com/cabinet-mock-2", "imageUrl": "https://placehold.co/400x400/8a5a3a/fff?text=Cabinet", "rating": 4.6, "ratingCount": 207 },
+    { "title": "Tall Bookcase, White Oak", "price": "$749.00", "source": "cb2.com", "link": "https://www.cb2.com/bookcase-mock-3", "imageUrl": "https://placehold.co/400x400/e0d4c0/333?text=Bookcase", "rating": 4.4, "ratingCount": 118 }
+  ],
+
+  "textiles": [
+    { "title": "Sheer Linen Curtain Panel, Set of 2", "price": "$98.00", "source": "potterybarn.com", "link": "https://www.potterybarn.com/curtain-mock-1", "imageUrl": "https://placehold.co/400x400/efe9dc/333?text=Curtains", "rating": 4.5, "ratingCount": 318 },
+    { "title": "Velvet Throw Pillow, Sage", "price": "$39.00", "source": "westelm.com", "link": "https://www.westelm.com/pillow-mock-2", "imageUrl": "https://placehold.co/400x400/9aab7a/fff?text=Pillow", "rating": 4.6, "ratingCount": 256 },
+    { "title": "Chunky Knit Throw Blanket, Cream", "price": "$79.00", "source": "cb2.com", "link": "https://www.cb2.com/throw-mock-3", "imageUrl": "https://placehold.co/400x400/efe6d6/333?text=Throw", "rating": 4.7, "ratingCount": 184 }
+  ],
+
   "default": [
     { "title": "Sample Product 1", "price": "$199.00", "source": "westelm.com", "link": "https://example.com/mock-1", "imageUrl": "https://placehold.co/400x400/cccccc/333?text=Mock+1", "rating": 4.3, "ratingCount": 50 },
     { "title": "Sample Product 2", "price": "$249.00", "source": "cb2.com", "link": "https://example.com/mock-2", "imageUrl": "https://placehold.co/400x400/bbbbbb/333?text=Mock+2", "rating": 4.5, "ratingCount": 75 },

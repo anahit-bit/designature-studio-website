@@ -42,6 +42,9 @@ const renderWithProvider = (ui: React.ReactElement) => {
 describe('AIConceptsPage - Style Quiz', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // The quiz persists its DNA result to sessionStorage; clear it so each test
+    // starts from the Landing state instead of restoring a prior test's result.
+    try { window.sessionStorage.clear(); } catch { /* not available */ }
     // Mock fetch for auth/me and other endpoints
     global.fetch = vi.fn().mockImplementation((url) => {
       if (url === '/api/auth/me') {
@@ -96,6 +99,15 @@ describe('AIConceptsPage - Style Quiz', () => {
   // Quiz length is 18 as of the current build
   const QUIZ_LENGTH = 18;
 
+  // Logged-in flow now opens on the locked Landing state (state 0). Click
+  // "Start the quiz" to reach the swipe deck (state 1) before voting.
+  const enterQuiz = async () => {
+    // Auth resolution + this heavy page can take a bit past the 1s default.
+    const start = await screen.findByText(/Start the quiz/i, undefined, { timeout: 4000 });
+    fireEvent.click(start);
+    await screen.findByText(new RegExp(`Room 1 of ${QUIZ_LENGTH}`, 'i'), undefined, { timeout: 4000 });
+  };
+
   const voteMany = async (count: number) => {
     for (let i = 0; i < count; i++) {
       const loveButton = await screen.findByRole('button', { name: /Love it/i });
@@ -107,25 +119,28 @@ describe('AIConceptsPage - Style Quiz', () => {
     }
   };
 
-  it('renders the quiz initial state', async () => {
+  it('renders the landing state then the quiz deck', async () => {
     renderWithProvider(<AIConceptsPage />);
     expect((await screen.findAllByText(/Style Quiz/i))[0]).toBeInTheDocument();
-    expect(await screen.findByText(/Love it/i)).toBeInTheDocument();
-    expect(await screen.findByText(/Skip/i)).toBeInTheDocument();
-    expect(await screen.findByText(/Not my style/i)).toBeInTheDocument();
+    await enterQuiz();
+    expect(await screen.findByRole('button', { name: /Love it/i })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Skip/i })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Not my style/i })).toBeInTheDocument();
   });
 
   it('shows correct quiz length (18 rooms)', async () => {
     renderWithProvider(<AIConceptsPage />);
+    await enterQuiz();
     expect(await screen.findByText(new RegExp(`Room 1 of ${QUIZ_LENGTH}`, 'i'))).toBeInTheDocument();
   });
 
   it('renders a quiz image from Cloudinary API when available', async () => {
     renderWithProvider(<AIConceptsPage />);
+    await enterQuiz();
     await waitFor(() => {
       const imgs = screen.getAllByRole('img');
-      // Voting image is rendered with object-contain (Direction B: full room visible).
-      const quizImg = imgs.find((i) => (i as HTMLImageElement).className.includes('object-contain')) as HTMLImageElement | undefined;
+      // Swipe-deck card image uses object-cover (locked mockup).
+      const quizImg = imgs.find((i) => (i as HTMLImageElement).className.includes('object-cover')) as HTMLImageElement | undefined;
       expect(quizImg).toBeTruthy();
       expect(quizImg!.getAttribute('src')).toMatch(/^https:\/\/example\.com\/mock-/);
     });
@@ -133,6 +148,7 @@ describe('AIConceptsPage - Style Quiz', () => {
 
   it('progresses through the quiz when voting', async () => {
     renderWithProvider(<AIConceptsPage />);
+    await enterQuiz();
     expect(await screen.findByText(new RegExp(`Room 1 of ${QUIZ_LENGTH}`, 'i'))).toBeInTheDocument();
     await voteMany(1);
     expect(await screen.findByText(new RegExp(`Room 2 of ${QUIZ_LENGTH}`, 'i'))).toBeInTheDocument();
@@ -140,6 +156,7 @@ describe('AIConceptsPage - Style Quiz', () => {
 
   it('shows back button after first vote', async () => {
     renderWithProvider(<AIConceptsPage />);
+    await enterQuiz();
     // Back button hidden on room 1
     expect(screen.queryByText(/Previous room/i)).not.toBeInTheDocument();
     await voteMany(1);
@@ -149,7 +166,8 @@ describe('AIConceptsPage - Style Quiz', () => {
 
   it('early-end link hidden before room 5, visible at room 5+', async () => {
     renderWithProvider(<AIConceptsPage />);
-    // Not visible before 4 votes (quizStep 0-3 < 4)
+    await enterQuiz();
+    // Not visible before 4 loves (quizStep 0-3 < 4)
     await voteMany(3);
     expect(screen.queryByText(/Have enough/i)).not.toBeInTheDocument();
     // Appears at step 4 (room 5)
@@ -159,22 +177,29 @@ describe('AIConceptsPage - Style Quiz', () => {
 
   it('early-end produces result page immediately', async () => {
     renderWithProvider(<AIConceptsPage />);
+    await enterQuiz();
     await voteMany(5); // reach room 6 (quizStep 5 >= 4)
     const earlyEnd = await screen.findByText(/Have enough/i);
     fireEvent.click(earlyEnd);
     expect((await screen.findAllByText(/Your design DNA/i))[0]).toBeInTheDocument();
-    expect(await screen.findByText(/Apply.*style.*AI Vision/i)).toBeInTheDocument();
+    // Tightened so it matches the result's apply CTA ("Apply {style} style to AI Vision")
+    // and NOT the active-tool-bar description ("…Apply to AI Vision").
+    expect(await screen.findByText(/Apply .+ style to AI Vision/i)).toBeInTheDocument();
   }, 30_000);
 
   it('completes the quiz and shows results after 18 votes', async () => {
     renderWithProvider(<AIConceptsPage />);
+    await enterQuiz();
     await voteMany(QUIZ_LENGTH);
     expect(await screen.findByText(/^Your design DNA$/i)).toBeInTheDocument();
-    expect(await screen.findByText(/Apply.*style.*AI Vision/i)).toBeInTheDocument();
+    // Tightened so it matches the result's apply CTA ("Apply {style} style to AI Vision")
+    // and NOT the active-tool-bar description ("…Apply to AI Vision").
+    expect(await screen.findByText(/Apply .+ style to AI Vision/i)).toBeInTheDocument();
   }, 30_000);
 
   it('result page shows style breakdown with percentages', async () => {
     renderWithProvider(<AIConceptsPage />);
+    await enterQuiz();
     await voteMany(QUIZ_LENGTH);
     expect(await screen.findByText(/Your style breakdown/i)).toBeInTheDocument();
     // At least one percentage value should be visible
@@ -183,8 +208,9 @@ describe('AIConceptsPage - Style Quiz', () => {
 
   it('switches to vision tool when clicking Apply Style', async () => {
     renderWithProvider(<AIConceptsPage />);
+    await enterQuiz();
     await voteMany(QUIZ_LENGTH);
-    const applyButton = await screen.findByText(/Apply .* style to AI Vision/i);
+    const applyButton = await screen.findByText(/Apply .* to AI Vision/i);
     fireEvent.click(applyButton);
     expect((await screen.findAllByText(/AI Vision/i))[0]).toBeInTheDocument();
     expect(screen.queryByText(new RegExp(`Room 1 of ${QUIZ_LENGTH}`, 'i'))).not.toBeInTheDocument();
@@ -196,7 +222,8 @@ describe('AIConceptsPage - Style Quiz', () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
 
       renderWithProvider(<AIConceptsPage />);
-      expect(await screen.findByText(/test@example.com/i)).toBeInTheDocument();
+      // Logged-in users land on the quiz Landing state ("Start the quiz").
+      expect(await screen.findByText(/Start the quiz/i, undefined, { timeout: 4000 })).toBeInTheDocument();
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(15 * 60 * 1000 + 5000);
@@ -211,8 +238,9 @@ describe('AIConceptsPage - Style Quiz', () => {
         },
         { timeout: 10_000 }
       );
+      // After logout the screen drops to the logged-out one-pager (no Landing CTA).
       await waitFor(() => {
-        expect(screen.queryByText(/test@example.com/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Start the quiz/i)).not.toBeInTheDocument();
       });
 
       vi.useRealTimers();

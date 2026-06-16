@@ -15,4 +15,8 @@ users.json
 .claude/scheduled_tasks.lock
 
 # Sanity Studio lives in its own repo at E:/Business/Claude/Portfolio/studio
-studio/
+# Anchored to repo root so it does NOT swallow src/components/studio/ (AI Studio UI).
+/studio/
+
+# #12 identify test fixtures (dev-only, large binaries)
+scripts/identify-test-images/

@@ -53,7 +53,7 @@ const Header: React.FC = () => {
     { name: t('nav.portfolio'), href: '#projects', page: 'portfolio', action: () => navigateTo('portfolio') },
     { name: t('nav.services'), href: '#services', page: 'services', action: () => navigateTo('services') },
     { name: t('nav.pricing'), href: '#pricing', page: 'pricing', action: () => navigateTo('pricing') },
-    { name: t('nav.aiStudio'), href: '#ai-concepts', page: 'ai-concepts', action: () => { setSigninSource('header_nav'); navigateTo('ai-concepts'); }, isHighlight: true },
+    { name: t('nav.aiStudio'), href: '#ai-concepts', page: 'ai-concepts', action: () => { setSigninSource('header_nav'); navigateTo('ai-concepts'); window.scrollTo({ top: 0 }); }, isHighlight: true },
   ];
 
   const LanguageSwitcher = () => (
@@ -108,6 +108,7 @@ const Header: React.FC = () => {
           onClick={() => {
             setSigninSource('header_cta');
             navigateTo('ai-concepts');
+            window.scrollTo({ top: 0 });
             if (inMobileMenu) setIsMobileMenuOpen(false);
           }}
           className={`group flex items-center gap-1.5 text-[10px] font-bold tracking-[0.25em] uppercase transition-colors ${baseColor}`}
@@ -139,6 +140,7 @@ const Header: React.FC = () => {
         <button
           onClick={() => {
             navigateTo('ai-concepts');
+            window.scrollTo({ top: 0 });
             if (inMobileMenu) setIsMobileMenuOpen(false);
           }}
           className={`group flex items-center gap-1.5 text-[10px] font-bold tracking-[0.25em] uppercase transition-colors ${textColor} hover:opacity-70`}

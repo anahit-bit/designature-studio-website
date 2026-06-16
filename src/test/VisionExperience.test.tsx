@@ -1,6 +1,14 @@
-import { render, act } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { render, screen, fireEvent, act } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import VisionExperience from '../components/VisionExperience';
+import { LanguageProvider } from '../LanguageContext';
+
+// VisionExperience now reads copy via useLanguage(), so it must render inside a
+// LanguageProvider (which itself needs a Router for useLocation()).
+const renderVE = () => render(
+  <MemoryRouter><LanguageProvider><VisionExperience {...baseProps} /></LanguageProvider></MemoryRouter>
+);
 
 // Minimal stub props — only what State 3 (renderState3Hero) actually reads.
 const baseProps = {
@@ -45,6 +53,7 @@ const baseProps = {
   navigateTo: () => {},
   setFeedbackOpen: () => {},
   shopCurrentConcept: () => {},
+  onShopThisRoom: () => {},
   validationError: null,
   error: null,
   setError: () => {},
@@ -53,9 +62,32 @@ const baseProps = {
   translateStyle: (s: string) => s,
 };
 
+describe('VisionExperience · Shop-this-room handoff (#22)', () => {
+  it('"Shop this room" CTA calls onShopThisRoom with the selected concept URL', () => {
+    const onShopThisRoom = vi.fn();
+    render(
+      <MemoryRouter><LanguageProvider>
+        <VisionExperience {...baseProps} onShopThisRoom={onShopThisRoom} />
+      </LanguageProvider></MemoryRouter>
+    );
+    fireEvent.click(screen.getByText(/Shop this room/i));
+    expect(onShopThisRoom).toHaveBeenCalledTimes(1);
+    expect(onShopThisRoom).toHaveBeenCalledWith(baseProps.selectedConceptUrl);
+  });
+
+  it('"Get this designed" is demoted to the end-of-funnel conversion band (still present)', () => {
+    render(
+      <MemoryRouter><LanguageProvider>
+        <VisionExperience {...baseProps} />
+      </LanguageProvider></MemoryRouter>
+    );
+    expect(screen.getByText(/Get this designed/i)).toBeInTheDocument();
+  });
+});
+
 describe('VisionExperience · AI-030 adaptive result hero', () => {
   it('defaults to landscape mode (30/70, object-contain, 78vh) before the concept image loads', () => {
-    const { container } = render(<VisionExperience {...baseProps} />);
+    const { container } = renderVE();
     const section = container.querySelector('section.vision-result-hero') as HTMLElement | null;
     expect(section).not.toBeNull();
     expect(section!.getAttribute('aria-label')).toBe('Result · landscape layout');
@@ -75,7 +107,7 @@ describe('VisionExperience · AI-030 adaptive result hero', () => {
   });
 
   it('switches to portrait mode (50/50, object-contain, explicit width/height) when concept image is portrait', () => {
-    const { container } = render(<VisionExperience {...baseProps} />);
+    const { container } = renderVE();
     const section = container.querySelector('section.vision-result-hero') as HTMLElement;
     const conceptImg = section.querySelector('.vision-pane-after img') as HTMLImageElement;
 
@@ -121,7 +153,7 @@ describe('VisionExperience · AI-030 adaptive result hero', () => {
   });
 
   it('treats square (aspect = 1.0) as landscape — no break', () => {
-    const { container } = render(<VisionExperience {...baseProps} />);
+    const { container } = renderVE();
     const section = container.querySelector('section.vision-result-hero') as HTMLElement;
     const conceptImg = section.querySelector('.vision-pane-after img') as HTMLImageElement;
 
@@ -137,7 +169,7 @@ describe('VisionExperience · AI-030 adaptive result hero', () => {
   });
 
   it('treats wide landscape (aspect > 1) as landscape with object-contain', () => {
-    const { container } = render(<VisionExperience {...baseProps} />);
+    const { container } = renderVE();
     const section = container.querySelector('section.vision-result-hero') as HTMLElement;
     const conceptImg = section.querySelector('.vision-pane-after img') as HTMLImageElement;
 

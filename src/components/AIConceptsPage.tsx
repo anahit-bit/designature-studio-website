@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle2, X, Download, AlertCircle, RefreshCw, LogOut, FileDown, Heart } from 'lucide-react';
+import { ArrowRight, CheckCircle2, X, Download, AlertCircle, RefreshCw, FileDown, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // GoogleGenAI removed — AI Vision generation is now handled server-side.
 import { useLanguage } from '../LanguageContext';
@@ -12,65 +12,20 @@ import AIVisionShowcase from './AIVisionShowcase';
 import VisionExperience from './VisionExperience';
 import FeedbackBand from './FeedbackBand';
 import ShoppingListShowcase from './ShoppingListShowcase';
+import ShoppingExperience from './ShoppingExperience';
+import StyleQuizScreen from './StyleQuizScreen';
 import ShoppingOfflineCard from './ShoppingOfflineCard';
 import RetailerLogoStrip from './RetailerLogoStrip';
-import { QUIZ_IMAGE_WEIGHTS, TIER_POINTS } from '../data/quizImageWeights';
-import { cld, cldSrcSet, THUMB_WIDTHS } from '../lib/cld';
+import { cld, cldSrcSet } from '../lib/cld';
 import { useShoppingStatus } from '../lib/shoppingStatus';
-import { trackCalendly, trackQuizStart, trackQuizComplete, trackVisionStart, trackShoppingStart } from '../lib/track';
+import { trackCalendly, trackVisionStart, trackShoppingStart } from '../lib/track';
 import { trackEvent } from '../lib/analytics';
 import { popSigninSource } from '../lib/signinSource';
 
 const CALENDLY_URL = 'https://calendly.com/designature-studio-us/free_consultation';
 
-const QUIZ_VOTE_UNLOCK_MS = process.env.NODE_ENV === 'test' ? 10 : 1500;
 /** Free tier: max generated concepts in the UI row (paid tier can be raised later). */
 const FREE_TIER_MAX_CONCEPT_SLOTS = 3;
-
-const STYLES = [
-  'Japandi', 'Modern', 'Mid-Century', 'Bohemian', 'Rustic', 'Art Deco',
-  'Industrial', 'Coastal'
-];
-
-// Synchronously parse `?dna=Mid-Century-Coastal&pcts=62-24-8-4-2` style URLs.
-// Used for INITIAL state so a shared link opens straight to the results screen
-// — no flash of the logged-out hero between first paint and the on-mount effect.
-function parseSharedQuizFromUrl(): { quizResult: { style: string; pct: number }[] } | null {
-  if (typeof window === 'undefined') return null;
-  const params = new URLSearchParams(window.location.search);
-  const dna = params.get('dna');
-  const pcts = params.get('pcts');
-  if (!dna || !pcts) return null;
-  const styleSlugs = dna.split('-').reduce<string[]>((acc, part) => {
-    const candidate = acc.length > 0 ? `${acc[acc.length - 1]} ${part}` : part;
-    const candHyphen = acc.length > 0 ? `${acc[acc.length - 1]}-${part}` : part;
-    const match = STYLES.find(s => s === candidate || s === candHyphen || s === part);
-    if (match && match !== acc[acc.length - 1]) {
-      if (acc.length > 0 && (match === candidate || match === candHyphen)) {
-        acc[acc.length - 1] = match;
-      } else {
-        acc.push(match);
-      }
-    } else {
-      acc.push(part);
-    }
-    return acc;
-  }, []);
-  const validStyles = styleSlugs.filter(s => STYLES.includes(s));
-  const pctVals = pcts.split('-').map(n => parseInt(n, 10)).filter(n => !isNaN(n));
-  if (validStyles.length === 0 || pctVals.length === 0) return null;
-  const synthResult: { style: string; pct: number }[] = [];
-  const used = new Set<string>();
-  for (let i = 0; i < pctVals.length; i++) {
-    let style = validStyles[i];
-    if (!style || used.has(style)) {
-      style = STYLES.find(s => !used.has(s)) ?? STYLES[0];
-    }
-    used.add(style);
-    synthResult.push({ style, pct: pctVals[i] });
-  }
-  return { quizResult: synthResult };
-}
 
 // All styles available in AI Vision chip selector (superset of quiz styles)
 const VISION_STYLES = [
@@ -98,201 +53,6 @@ const ROOM_TYPES = [
   'Living Room', 'Dining Room', 'Bedroom', 'Kitchen',
   'Bathroom', 'Home Office', 'Hallway', 'Kids Room', 'Outdoor',
 ];
-
-type QuizRoom = { url: string; credit: string };
-type QuizRooms = Record<string, QuizRoom[]>;
-
-// ─── Style education descriptions ────────────────────────────────────────────
-const STYLE_DESCRIPTIONS: Record<string, { summary: string; elements: string[] }> = {
-  'Japandi':     { summary: 'A fusion of Japanese wabi-sabi and Scandinavian hygge. Celebrates imperfection, natural materials, and quiet beauty — everything earns its place.', elements: ['Neutral tones', 'Natural textures', 'Low furniture', 'Negative space'] },
-  'Modern':      { summary: 'Clean geometry, minimal ornament, honest materials. Form follows function — every line is intentional, every surface purposeful.', elements: ['Clean lines', 'Open layout', 'Monochrome palette', 'Statement lighting'] },
-  'Mid-Century': { summary: 'Born in the 1950s–60s, it balances organic forms with geometric precision. Warm woods and bold accents meet sculptural furniture.', elements: ['Tapered legs', 'Warm wood', 'Pops of colour', 'Organic shapes'] },
-  'Bohemian':    { summary: 'Layered, personal, and free-spirited. A curated mix of textiles, cultures, and eras that feels lived-in and full of stories.', elements: ['Mixed textiles', 'Plants & greenery', 'Global artefacts', 'Rich colour'] },
-  'Rustic':      { summary: 'Rooted in nature and craftsmanship. Raw edges, weathered surfaces, and handmade quality bring warmth and authenticity.', elements: ['Reclaimed wood', 'Stone & brick', 'Earthy tones', 'Handmade details'] },
-  'Art Deco':    { summary: 'Glamour, geometry, and opulence from the 1920s. Bold symmetry, luxe materials, and rich contrast make every room feel like a statement.', elements: ['Gold accents', 'Geometric patterns', 'Velvet & marble', 'High contrast'] },
-  'Industrial':  { summary: 'Celebrates the beauty of raw, unfinished spaces. Exposed structure and utilitarian materials are the decoration.', elements: ['Exposed brick', 'Raw metal', 'Concrete', 'Edison bulbs'] },
-  'Coastal':     { summary: 'Light, airy, and unhurried. Inspired by shorelines — bleached woods, sandy tones, and ocean blues create effortless calm.', elements: ['Sandy neutrals', 'Ocean blues', 'Natural linen', 'Weathered wood'] },
-};
-
-const QUIZ_ROOMS_FALLBACK: QuizRooms = {
-  'Art Deco': [
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775713417/14_uwyjdr.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775713416/19_eify7o.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775713413/17_gmhspd.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775713412/18_e1hgg2.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775713411/16_udhqsu.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775713411/15_udxfac.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775713410/13_v9ewcf.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775711587/12_jvapje.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774939182/10_ng0u6i.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774939181/9_byfcww.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774939181/7_pgjj4k.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774939181/11_ibhacx.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774939180/8_ky76uo.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774939179/6_slhnwf.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774939178/4_nx2j48.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774939178/5_uwjq3d.png', credit: 'Art Deco' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774939177/3_ozxssy.png', credit: 'Art Deco' },
-  ],
-  'Bohemian': [
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Bohemian/3_cx1pmd.jpg', credit: 'Bohemian' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Bohemian/15.png', credit: 'Bohemian' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Bohemian/16.png', credit: 'Bohemian' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Bohemian/8_r7zpqa.jpg', credit: 'Bohemian' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Bohemian/10_u56vvx.jpg', credit: 'Bohemian' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Bohemian/11_nmiukp.jpg', credit: 'Bohemian' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Bohemian/8_zlqizk.jpg', credit: 'Bohemian' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Bohemian/9_zppiat.jpg', credit: 'Bohemian' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Bohemian/6_iaacnq.png', credit: 'Bohemian' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Bohemian/8_idxggx.png', credit: 'Bohemian' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Bohemian/9_x7chne.png', credit: 'Bohemian' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Bohemian/7_simdl2.png', credit: 'Bohemian' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Bohemian/3_ljbjoe.png', credit: 'Bohemian' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Bohemian/5_luq9rd.png', credit: 'Bohemian' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Bohemian/4_xfn3sh.png', credit: 'Bohemian' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Bohemian/2_mrxc9z.png', credit: 'Bohemian' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Bohemian/1_piprtp.png', credit: 'Bohemian' },
-  ],
-  'Coastal': [
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Coastal/1_fhcew.png', credit: 'Coastal' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Coastal/3_plpqea.png', credit: 'Coastal' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Coastal/2_wtzdsm.png', credit: 'Coastal' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Coastal/5fh_efe33o.png', credit: 'Coastal' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Coastal/5fh_1_d1hmni.png', credit: 'Coastal' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Coastal/14_mwuyw1.jpg', credit: 'Coastal' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Coastal/11_apahvb.jpg', credit: 'Coastal' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Coastal/11_vyzuiy.jpg', credit: 'Coastal' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Coastal/9_cbgmet.jpg', credit: 'Coastal' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Coastal/6_hzsje7.jpg', credit: 'Coastal' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Coastal/10_ezelfi.jpg', credit: 'Coastal' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Coastal/11_yfryd9.jpg', credit: 'Coastal' },
-  ],
-  'Industrial': [
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Industrial/5_an8tny.jpg', credit: 'Industrial' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Industrial/4_mihws1.jpg', credit: 'Industrial' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Industrial/4_epdhym.jpg', credit: 'Industrial' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Industrial/7_sbp5pc.png', credit: 'Industrial' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Industrial/6_xibejv.png', credit: 'Industrial' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Industrial/5_rmcho6.png', credit: 'Industrial' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Industrial/4_zzbp3n.png', credit: 'Industrial' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Industrial/3_lfjbhw.png', credit: 'Industrial' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Industrial/1_rnka7n.png', credit: 'Industrial' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Industrial/8_sida3r.png', credit: 'Industrial' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Industrial/2_tsbxx2.png', credit: 'Industrial' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Industrial/8_o9nuyt.jpg', credit: 'Industrial' },
-  ],
-  'Japandi': [
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Japandi/14_valixc.png', credit: 'Japandi' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Japandi/11_k5sz1q.png', credit: 'Japandi' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Japandi/10_ckvfbb.png', credit: 'Japandi' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Japandi/9_ti0qtx.png', credit: 'Japandi' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Japandi/8_owqlmt.png', credit: 'Japandi' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Japandi/17_becbvz.jpg', credit: 'Japandi' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Japandi/16_ukufep.jpg', credit: 'Japandi' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Japandi/15_nvboc4.jpg', credit: 'Japandi' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Japandi/13_logbtm.png', credit: 'Japandi' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Japandi/12_x6grrv.png', credit: 'Japandi' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Japandi/7_kbo8v1.png', credit: 'Japandi' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Japandi/6_ymmkyd.png', credit: 'Japandi' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Japandi/5_fvirnlt.jpg', credit: 'Japandi' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Japandi/4_auhnju.jpg', credit: 'Japandi' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Japandi/3_to5j9q.jpg', credit: 'Japandi' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Japandi/2_ktrshs.jpg', credit: 'Japandi' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Japandi/1_rd3oyx.jpg', credit: 'Japandi' },
-  ],
-  'Mid-Century': [
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Mid-Century/12_iwshvs.jpg', credit: 'Mid-Century' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Mid-Century/5_nkuudl.jpg', credit: 'Mid-Century' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Mid-Century/8_rfjourv.jpg', credit: 'Mid-Century' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Mid-Century/Gemini_Generated_Image_io4kabio4kabio4k_n1tjqa.png', credit: 'Mid-Century' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Mid-Century/Gemini_Generated_Image_7ns4o37ns4o37ns4_gfdnte.png', credit: 'Mid-Century' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Mid-Century/2_ogcvop.jpg', credit: 'Mid-Century' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Mid-Century/1_jfs2a7.jpg', credit: 'Mid-Century' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Mid-Century/6_diegbi.jpg', credit: 'Mid-Century' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Mid-Century/6_2_mtair9.jpg', credit: 'Mid-Century' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Mid-Century/8_gclcpl.jpg', credit: 'Mid-Century' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Mid-Century/5_sqgqmb.jpg', credit: 'Mid-Century' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Mid-Century/1_oxqle4.png', credit: 'Mid-Century' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Mid-Century/14_zulrwj.jpg', credit: 'Mid-Century' },
-  ],
-  'Modern': [
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/8_wx5fmy.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/5_bcvep0.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/3_1_vpngnt.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/8_qclh6h.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/2_migzxd.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/6_osgjgd.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/5_1_zrmyds.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/12_huqew7.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/7_kon4yg.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/4_2_lfsljx.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/2_1_gking2.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/4_3_saxtc0.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/4_1_kwicvd.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/11_2_o8cxz7.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/3_2_be2ubl.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/6_1_bdhwcl.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/9_yushkk.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/11_1_ebcyvz.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/5_ffa6z6.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/11_yurrki.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/3_3_zxgulv.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/3_fqpec6.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/2_2_lf3zss.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/4_ruo09.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/12_1_agand7.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Modern/10_y7ods9.jpg', credit: 'Modern' },
-  ],
-  'Rustic': [
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Rustic/10_ihohiz.png', credit: 'Rustic' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Rustic/6_wyobu1.png', credit: 'Rustic' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Rustic/11_pa7qji.png', credit: 'Rustic' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Rustic/8_aree19.png', credit: 'Rustic' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Rustic/9_bydnws.png', credit: 'Rustic' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Rustic/7_npozre.png', credit: 'Rustic' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Rustic/4_qj7ywn.png', credit: 'Rustic' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Rustic/5_yttv7z.png', credit: 'Rustic' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Rustic/3_vhnnz5.png', credit: 'Rustic' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Rustic/2_tunzxu.png', credit: 'Rustic' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Rustic/11_hjofyz.jpg', credit: 'Rustic' },
-  ],
-  'Transitional': [
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Transitional/10_tuag7j.jpg', credit: 'Transitional' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Transitional/9_jad8jv.png', credit: 'Transitional' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Transitional/5_qdrpo2.png', credit: 'Transitional' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Transitional/8_k1yvsw.png', credit: 'Transitional' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Transitional/7_ymzvd2.png', credit: 'Transitional' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Transitional/6_pieo5y.png', credit: 'Transitional' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Transitional/4_cpzxfn.png', credit: 'Transitional' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Transitional/3_h0vafs.png', credit: 'Transitional' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Transitional/1_jxbeef.png', credit: 'Transitional' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Transitional/2_qoojzc.png', credit: 'Transitional' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/w_1000,h_1000,c_fill,g_auto/Quiz/Transitional/2_2_kdupyu.jpg', credit: 'Transitional' },
-  ],
-};
-
-/** Largest-remainder rounding so displayed percentages always sum to exactly 100.0.
- *  @param values  Raw percentage values in the 0–100 range (need not sum to 100 before call).
- *  @param decimals Number of decimal places (default 1).
- */
-function roundPercentages(values: number[], decimals = 1): number[] {
-  const multiplier = Math.pow(10, decimals);
-  const target = 100 * multiplier;
-  const scaled = values.map(v => v * multiplier);
-  const floored = scaled.map(Math.floor);
-  const diff = target - floored.reduce((a, b) => a + b, 0);
-  const remainders = scaled.map((v, i) => ({ index: i, remainder: v - floored[i] }));
-  remainders.sort((a, b) => b.remainder - a.remainder);
-  for (let i = 0; i < diff; i++) {
-    floored[remainders[i % remainders.length].index]++;
-  }
-  return floored.map(v => v / multiplier);
-}
-
-function styleToCloudinaryFolderName(style: string): string {
-  // Cloudinary folders in this project use hyphens for spaces (e.g. "Art-Deco")
-  return style.trim().replace(/\s+/g, '-');
-}
 
 // ─── Google Sign-In + AI Studio integration globals ───────────────────────
 declare global {
@@ -373,9 +133,6 @@ const AIConceptsPage: React.FC = () => {
   /** Index into `allSessionConcepts` (current results first, then pre-reset archive). */
   const [selectedConceptIndex, setSelectedConceptIndex] = useState<number>(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
-  /** When the quiz "More rooms in your style" gallery opens the lightbox, the
-      URL of the clicked thumb lives here. Cleared when the lightbox closes. */
-  const [lightboxQuizUrl, setLightboxQuizUrl] = useState<string | null>(null);
   /** Data URLs from resets — session-only (cleared on logout); not sent to server. */
   const [sessionConceptArchive, setSessionConceptArchive] = useState<string[]>([]);
 
@@ -413,6 +170,10 @@ const AIConceptsPage: React.FC = () => {
 
   // ── Shopping state ──
   const [shoppingResults, setShoppingResults] = useState<any[]>([]);
+  /** Free-tier: identified-but-not-searched items (names only) → upgrade teaser. */
+  const [shoppingTeaser, setShoppingTeaser] = useState<{ category: string; label: string }[]>([]);
+  /** Total items identify enumerated (searched + teaser). */
+  const [shoppingTotalIdentified, setShoppingTotalIdentified] = useState<number>(0);
   const [shoppingItems, setShoppingItems] = useState<any[]>([]);
   const [shoppingLoading, setShoppingLoading] = useState(false);
   const [shoppingError, setShoppingError] = useState<string | null>(null);
@@ -443,51 +204,21 @@ const AIConceptsPage: React.FC = () => {
   // path is collapsed by default and revealed by clicking the link below the primary action.
   const [showAlternateUpload, setShowAlternateUpload] = useState(false);
 
-  // ── Style Quiz state ──
-  const [quizStep, setQuizStep] = useState<number>(0);
-  const [quizSeed, setQuizSeed] = useState<number>(() => Math.floor(Math.random() * 100));
-  const QUIZ_LENGTH = 18;
-  const generateQuizSequence = () => {
-    const seq: string[] = [];
-    // Each style appears at least once, then fill to QUIZ_LENGTH randomly
-    const shuffled = [...STYLES].sort(() => Math.random() - 0.5);
-    seq.push(...shuffled);
-    while (seq.length < QUIZ_LENGTH) {
-      seq.push(STYLES[Math.floor(Math.random() * STYLES.length)]);
-    }
-    return seq.slice(0, QUIZ_LENGTH).sort(() => Math.random() - 0.5);
-  };
-  const [quizSequence, setQuizSequence] = useState<string[]>(() => generateQuizSequence());
-  const [quizVotes, setQuizVotes] = useState<Record<string, number>>({});
-  // Synchronous URL parse for shared-link arrivals — populates initial state so the
-  // results screen renders on first paint instead of flashing the logged-out hero.
-  const sharedInitRef = useRef<{ quizResult: { style: string; pct: number }[] } | null | undefined>(undefined);
-  if (sharedInitRef.current === undefined) sharedInitRef.current = parseSharedQuizFromUrl();
-  const sharedInit = sharedInitRef.current;
-  const [quizDone, setQuizDone] = useState<boolean>(!!sharedInit);
-  const [quizResult, setQuizResult] = useState<{ style: string; pct: number }[]>(sharedInit?.quizResult ?? []);
-  const [quizImageReady, setQuizImageReady] = useState<boolean>(false);
-  const [quizHistory, setQuizHistory] = useState<{ style: string; pct: number }[][]>([]);
-  const [selectedPrevResult, setSelectedPrevResult] = useState<number | null>(null);
-  const [showQuizResults, setShowQuizResults] = useState(false);
-  const quizResultSavedRef = useRef(false);
-  /** Tracks the last-seen user email so we can detect identity changes without firing on mount */
-  const prevUserEmailRef = useRef<string | undefined>(user?.email);
-  /** Per-step vote log — enables undo (back button) */
-  const [voteHistory, setVoteHistory] = useState<Array<{
-    step: number; vote: 'love'|'skip'|'no'; imageUrl: string;
-    styleChanges: Record<string, number>; // style → points added (multi-attribute)
-  }>>([]);
-  /** Loved rooms moodboard — only love votes */
-  const [lovedRooms, setLovedRooms] = useState<Array<{
-    step: number; imageUrl: string; styleChanges: Record<string, number>;
-  }>>([]);
-  /** Ref for moodboard scroll container — used for auto-scroll to newest card */
-  const moodboardRef = useRef<HTMLDivElement>(null);
-  /** URLs shown during this quiz session — excluded from result gallery */
-  const [seenQuizImages, setSeenQuizImages] = useState<Set<string>>(new Set());
-  /** Unseen images of the top result style — shown in result gallery */
-  const [resultGalleryImages, setResultGalleryImages] = useState<string[]>([]);
+  // ── Quiz → AI Vision DNA handoff ──
+  // The Style Quiz screen owns its own state but persists the DNA result to
+  // sessionStorage. The parent reads it from there so VisionExperience can show
+  // the "apply your DNA" banner + pre-highlight the matching style chip.
+  const readPersistedQuizResult = useCallback((): { style: string; pct: number }[] => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = sessionStorage.getItem('ds_quiz_results_v1');
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed?.quizResult) ? parsed.quizResult : [];
+    } catch { return []; }
+  }, []);
+  const [quizResultForVision, setQuizResultForVision] = useState<{ style: string; pct: number }[]>(() => readPersistedQuizResult());
+
   // Initial tool can be deep-linked from the home AI section via URL hash
   // (e.g. /ai-concepts#vision). Falls back to the default 'quiz' otherwise.
   const [activeTool, setActiveTool] = useState<'quiz' | 'vision' | 'shopping' | 'audit'>(() => {
@@ -498,23 +229,12 @@ const AIConceptsPage: React.FC = () => {
     const h = window.location.hash.replace(/^#/, '');
     return h === 'vision' || h === 'shopping' || h === 'audit' || h === 'quiz' ? h : 'quiz';
   });
-  // ── Direction B drawer + toast + share + save-modal state ──
-  const [quizDrawerOpen, setQuizDrawerOpen] = useState(false);
-  const [quizToast, setQuizToast] = useState<string | null>(null);
-  const [quizSharedView, setQuizSharedView] = useState<boolean>(!!sharedInit);
-  const [quizSaveModalOpen, setQuizSaveModalOpen] = useState(false);
-  const quizToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const showQuizToast = useCallback((msg: string) => {
-    setQuizToast(msg);
-    if (quizToastTimerRef.current) clearTimeout(quizToastTimerRef.current);
-    quizToastTimerRef.current = setTimeout(() => setQuizToast(null), 3200);
-  }, []);
-
-  // ── Quiz state persistence (survives navigation away/back) ──
-  const QUIZ_PERSIST_KEY = 'ds_quiz_results_v1';
+  // Refresh the Quiz→Vision DNA snapshot whenever the user lands on AI Vision.
+  useEffect(() => {
+    if (activeTool === 'vision') setQuizResultForVision(readPersistedQuizResult());
+  }, [activeTool, readPersistedQuizResult]);
   const [auditComplete, setAuditComplete] = useState(false);
   const [auditProcessing, setAuditProcessing] = useState(false);
-  const [quizRooms, setQuizRooms] = useState<QuizRooms>(QUIZ_ROOMS_FALLBACK);
   const [downloadCount, setDownloadCount] = useState<number>(() => {
     const saved = localStorage.getItem('ds_download_count');
     return saved ? parseInt(saved, 10) : 0;
@@ -548,26 +268,6 @@ const AIConceptsPage: React.FC = () => {
 
   // ── Reset all ephemeral tool state on every mount (fresh start on load / navigate) ──
   useEffect(() => {
-    // Style Quiz — skip the destructive resets when arriving via a shared-DNA URL,
-    // otherwise the state we already initialized synchronously gets clobbered.
-    if (!sharedInit) {
-      setQuizStep(0);
-      setQuizVotes({});
-      setQuizDone(false);
-      setQuizResult([]);
-      setQuizImageReady(false);
-      setQuizHistory([]);
-      setSelectedPrevResult(null);
-      setShowQuizResults(false);
-      quizResultSavedRef.current = false;
-      setVoteHistory([]);
-      setLovedRooms([]);
-      setSeenQuizImages(new Set());
-      setResultGalleryImages([]);
-    }
-    setQuizSeed(Math.floor(Math.random() * 100));
-    setQuizSequence(generateQuizSequence());
-
     // AI Vision
     setInspirationImages([]);
     setRoomImage(null);
@@ -604,35 +304,6 @@ const AIConceptsPage: React.FC = () => {
     // NOTE: downloadCount (ds_download_count) is intentionally NOT reset.
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Reset quiz state when the signed-in identity changes (sign-out / sign-in / account switch) ──
-  // The mount-time reset above handles initial page load. This effect covers the case where the
-  // component stays mounted but the user signs out and back in without a full page reload.
-  useEffect(() => {
-    const email = user?.email;
-    if (email === prevUserEmailRef.current) return; // no change, skip
-    const isFirstResolve = prevUserEmailRef.current === undefined;
-    prevUserEmailRef.current = email;
-    // First time auth resolves on a shared-DNA arrival: keep the synthesized
-    // results in place — don't reset quiz state from under the friend.
-    if (isFirstResolve && sharedInit) return;
-
-    setQuizStep(0);
-    setQuizVotes({});
-    setQuizDone(false);
-    setQuizResult([]);
-    setQuizImageReady(false);
-    setQuizHistory([]);
-    setSelectedPrevResult(null);
-    setShowQuizResults(false);
-    setQuizSeed(Math.floor(Math.random() * 100));
-    setQuizSequence(generateQuizSequence());
-    quizResultSavedRef.current = false;
-    setVoteHistory([]);
-    setLovedRooms([]);
-    setSeenQuizImages(new Set());
-    setResultGalleryImages([]);
-  }, [user?.email]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // ── Two-phase loading indicator ──
   // Phase 1: "Analyzing references…" for ~4.5 s (only when there are reference images).
   // Phase 2: cycle through PROCESSING_PHASES for the remainder of the generation.
@@ -663,113 +334,6 @@ const AIConceptsPage: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isProcessing]);
 
-  // ── Load Quiz images automatically from Cloudinary ──
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      try {
-        const styles = Object.keys(QUIZ_ROOMS_FALLBACK);
-        const entries = await Promise.all(
-          styles.map(async (style) => {
-            const folder = `Quiz/${styleToCloudinaryFolderName(style)}`;
-            const res = await fetch(`/api/images?folder=${encodeURIComponent(folder)}`);
-            if (!res.ok) return [style, null] as const;
-            const data = await res.json();
-            if (!Array.isArray(data) || data.length === 0) return [style, null] as const;
-
-            // Sort deterministically so the rotation is stable between reloads
-            const sorted = [...data].sort((a: any, b: any) => String(a.public_id || '').localeCompare(String(b.public_id || '')));
-            const rooms: QuizRoom[] = sorted
-              .map((r: any) => ({
-                url: String(r.secure_url || r.url || ''),
-                credit: style,
-              }))
-              .filter((r: QuizRoom) => !!r.url);
-
-            return [style, rooms.length ? rooms : null] as const;
-          })
-        );
-
-        if (cancelled) return;
-
-        setQuizRooms((prev) => {
-          const next: QuizRooms = { ...prev };
-          for (const [style, rooms] of entries) {
-            if (rooms && rooms.length) next[style] = rooms;
-          }
-          return next;
-        });
-      } catch {
-        // Ignore — fallback stays in place
-      }
-    }
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Pick image by style + step offset for variety across the session
-  const getQuizImage = useCallback((style: string, sessionSeed: number, step: number): QuizRoom => {
-    const imgs = quizRooms[style] || [];
-    if (!imgs.length) return { url: '', credit: '' };
-    return imgs[(sessionSeed + step * 7) % imgs.length];
-  }, [quizRooms]);
-
-  const currentQuizStyle = quizSequence[quizStep] || STYLES[0];
-  const currentQuizImage = getQuizImage(currentQuizStyle, quizSeed, quizStep);
-
-  // Lock voting until the current quiz image is fully loaded.
-  useEffect(() => {
-    if (quizDone) return;
-    if (!currentQuizImage.url) {
-      setQuizImageReady(true);
-      return;
-    }
-    setQuizImageReady(false);
-
-    // Safety fallback: if browser/image event is delayed, re-enable controls after a short timeout.
-    const unlockTimer = setTimeout(() => setQuizImageReady(true), QUIZ_VOTE_UNLOCK_MS);
-    return () => clearTimeout(unlockTimer);
-  }, [quizStep, quizSeed, quizSequence, currentQuizImage.url, quizDone]);
-
-  // ── Track seen quiz images (for result gallery exclusion) ──
-  useEffect(() => {
-    if (currentQuizImage.url && !quizDone) {
-      setSeenQuizImages(prev => new Set(prev).add(currentQuizImage.url));
-    }
-  }, [currentQuizImage.url, quizDone]);
-
-  // ── I-016: activity log — quiz_start fires once when room 1 appears in a fresh quiz ──
-  const quizStartFiredRef = useRef(false);
-  useEffect(() => {
-    if (quizDone) {
-      quizStartFiredRef.current = false; // reset so a retake fires again
-      return;
-    }
-    if (sharedInit) return; // viewing a shared DNA result — not a real quiz session
-    if (quizStep === 0 && currentQuizImage.url && !quizStartFiredRef.current) {
-      quizStartFiredRef.current = true;
-      trackQuizStart();
-    }
-  }, [quizStep, quizDone, currentQuizImage.url]); // sharedInit is a ref — intentionally omitted
-
-  // ── I-016: activity log — quiz_complete fires when DNA screen renders ──
-  const quizCompleteFiredRef = useRef(false);
-  useEffect(() => {
-    if (!quizDone) {
-      quizCompleteFiredRef.current = false;
-      return;
-    }
-    if (sharedInit) return; // shared DNA viewer never "completed" a quiz here
-    if (!quizCompleteFiredRef.current) {
-      quizCompleteFiredRef.current = true;
-      trackQuizComplete(quizResult[0]?.style);
-    }
-  }, [quizDone]);
-
   // ── I-021b: shopping_started fires once when shoppingItems is first
   // ──         populated (user uploaded a source image → items identified).
   const shoppingStartFiredRef = useRef(false);
@@ -786,23 +350,6 @@ const AIConceptsPage: React.FC = () => {
 
   // vision_started effect lives further down — needs isGenerateDisabled to be in scope.
   const visionStartFiredRef = useRef(false);
-
-  // ── Fetch result gallery when quiz completes ──
-  useEffect(() => {
-    const topStyle = quizResult[0]?.style;
-    if (!quizDone || !topStyle) return;
-    const folderName = `Quiz/${styleToCloudinaryFolderName(topStyle)}`;
-    fetch(`/api/images?folder=${encodeURIComponent(folderName)}`)
-      .then(r => r.ok ? r.json() : [])
-      .then((data: any[]) => {
-        if (!Array.isArray(data)) return;
-        const allUrls = data.map((r: any) => String(r.secure_url || r.url || '')).filter(Boolean);
-        const unseen = allUrls.filter(url => !seenQuizImages.has(url));
-        const pool = unseen.length >= 4 ? unseen : allUrls;
-        setResultGalleryImages([...pool].sort(() => Math.random() - 0.5).slice(0, 6));
-      })
-      .catch(() => {});
-  }, [quizDone, quizResult[0]?.style]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Clear page-local concept state when AuthContext clears the user ──
   // (Google script load + /api/auth/me probe + SESSION_EXPIRED handling all live in AuthContext.)
@@ -900,9 +447,6 @@ const AIConceptsPage: React.FC = () => {
     setInspirationImages([]);
   }, [signOut]);
 
-  // Clear the quiz-gallery lightbox URL whenever the lightbox closes,
-  // so opening it again (from any source) doesn't reuse a stale URL.
-  useEffect(() => { if (!isLightboxOpen) setLightboxQuizUrl(null); }, [isLightboxOpen]);
 
   // ── Escape key for lightbox ──
   useEffect(() => {
@@ -1319,22 +863,15 @@ const AIConceptsPage: React.FC = () => {
         }
         y += 4;
 
-        // Link
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7);
-        doc.setTextColor(196, 97, 58);
+        // Link — clean clickable label (no raw URL), cobalt like the web UI.
         if (product.link && product.link !== '#') {
-          // Show clean domain name only
-          let displayLink = product.link;
-          try {
-            const u = new URL(product.link);
-            const domain = u.hostname.replace(/^www\./, '');
-            const path = u.pathname !== '/' ? u.pathname.substring(0, 30) : '';
-            displayLink = domain + (path ? (path.length > 27 ? path + '...' : path) : '');
-          } catch {}
-          doc.textWithLink(displayLink.substring(0, 70), margin + 3, y, { url: product.link });
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7);
+          doc.setTextColor(0, 71, 171);
+          const label = `View at ${product.source || 'retailer'} →`;
+          doc.textWithLink(label, margin + 3, y, { url: product.link });
+          y += 5;
         }
-        y += 5;
 
         // Divider
         doc.setDrawColor(220, 220, 220);
@@ -1354,327 +891,19 @@ const AIConceptsPage: React.FC = () => {
     doc.save('Designature_Shopping_List.pdf');
   };
 
-  // Auto-scroll moodboard to top (newest card) whenever a room is loved
-  useEffect(() => {
-    const el = moodboardRef.current;
-    if (!el || lovedRooms.length === 0) return;
-    // scrollTo not available in jsdom — fall back to direct assignment
-    if (typeof el.scrollTo === 'function') {
-      el.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      el.scrollTop = 0;
+  // ── Apply the quiz's top style to AI Vision (handoff target for StyleQuizScreen) ──
+  const handleApplyQuizStyle = useCallback((style: string, navigate: boolean) => {
+    if (style) setSelectedStyle(style);
+    setQuizResultForVision(readPersistedQuizResult());
+    if (navigate) {
+      setActiveTool('vision');
+      setTimeout(() => {
+        document.getElementById('ai-concepts-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
     }
-  }, [lovedRooms.length]);
+  }, []);
 
-  // ── Style Quiz helpers ──
-
-  /** Strip Cloudinary host + transform params, return the Quiz/… path key */
-  const extractCloudinaryPath = (url: string): string => {
-    const match = url.match(/Quiz\/[^?]+/);
-    return match ? match[0] : '';
-  };
-
-  // ── Style Quiz handlers ──
-  const handleQuizVote = (vote: 'love' | 'skip' | 'no') => {
-    if (!quizImageReady) return;
-
-    const newVotes = { ...quizVotes };
-    const styleChanges: Record<string, number> = {};
-
-    if (vote === 'love') {
-      const imagePath = extractCloudinaryPath(currentQuizImage.url);
-      const weights = QUIZ_IMAGE_WEIGHTS[imagePath];
-
-      if (weights) {
-        // Multi-attribute: distribute points across primary, strong, hint tiers
-        styleChanges[weights.primary] = (styleChanges[weights.primary] || 0) + TIER_POINTS.primary;
-        for (const s of weights.strong) {
-          styleChanges[s] = (styleChanges[s] || 0) + TIER_POINTS.strong;
-        }
-        for (const s of weights.hint) {
-          styleChanges[s] = (styleChanges[s] || 0) + TIER_POINTS.hint;
-        }
-      } else {
-        // Fallback: untagged image — award primary points to the folder style
-        const folderStyle = quizSequence[quizStep];
-        styleChanges[folderStyle] = TIER_POINTS.primary;
-        console.warn(`Quiz image not in weights file: ${imagePath}`);
-      }
-
-      // Apply all style changes to the vote tally
-      for (const [s, pts] of Object.entries(styleChanges)) {
-        newVotes[s] = (newVotes[s] || 0) + pts;
-      }
-    }
-
-    // Record for undo — store all style changes so back can reverse them exactly
-    setVoteHistory(prev => [...prev, {
-      step: quizStep, vote, imageUrl: currentQuizImage.url, styleChanges,
-    }]);
-
-    // Track loved rooms for moodboard (includes styleChanges for micro-stat)
-    if (vote === 'love') {
-      setLovedRooms(prev => [...prev, {
-        step: quizStep, imageUrl: currentQuizImage.url, styleChanges,
-      }]);
-    }
-
-    if (quizStep >= QUIZ_LENGTH - 1) {
-      const total = Object.values(newVotes).reduce((a, b) => a + b, 0) || 1;
-      const stylesWithVotes = STYLES.filter(s => (newVotes[s] || 0) > 0);
-      const rounded = roundPercentages(stylesWithVotes.map(s => ((newVotes[s] || 0) / total) * 100));
-      const sorted = stylesWithVotes
-        .map((s, i) => ({ style: s, pct: rounded[i] }))
-        .sort((a, b) => b.pct - a.pct);
-      setQuizVotes(newVotes);
-      setQuizResult(sorted);
-      setQuizDone(true);
-    } else {
-      setQuizImageReady(false);
-      setQuizVotes(newVotes);
-      setQuizStep(prev => prev + 1);
-    }
-  };
-
-  /** Undo the last vote and go back one room */
-  const handleQuizBack = () => {
-    if (voteHistory.length === 0) return;
-    const last = voteHistory[voteHistory.length - 1];
-    const newVotes = { ...quizVotes };
-
-    // Reverse all style changes from the last vote
-    for (const [s, pts] of Object.entries(last.styleChanges)) {
-      newVotes[s] = Math.max(0, (newVotes[s] || 0) - pts);
-      if (newVotes[s] === 0) delete newVotes[s];
-    }
-
-    setVoteHistory(prev => prev.slice(0, -1));
-    // If the undone vote was a love, pop it from the moodboard too
-    if (last.vote === 'love') {
-      setLovedRooms(prev => prev.slice(0, -1));
-    }
-    setQuizVotes(newVotes);
-    setQuizStep(last.step);
-    setQuizImageReady(false);
-  };
-
-  /** End quiz early (available from step 9 onward) */
-  const handleQuizEarlyEnd = () => {
-    const total = Object.values(quizVotes).reduce((a: number, b: number) => a + b, 0) || 1;
-    const stylesWithVotes = STYLES.filter(s => (quizVotes[s] || 0) > 0);
-    const rounded = roundPercentages(stylesWithVotes.map(s => ((quizVotes[s] || 0) / total) * 100));
-    const sorted = stylesWithVotes
-      .map((s, i) => ({ style: s, pct: rounded[i] }))
-      .sort((a, b) => b.pct - a.pct);
-    setQuizResult(sorted);
-    setQuizDone(true);
-  };
-
-  const handleQuizReset = () => {
-    if (quizDone && quizResult.length > 0 && !quizResultSavedRef.current) {
-      setQuizHistory(prev => [quizResult, ...prev].slice(0, 3));
-    }
-    quizResultSavedRef.current = false;
-    setSelectedPrevResult(null);
-    setShowQuizResults(false);
-    setQuizStep(0);
-    setQuizVotes({});
-    setQuizDone(false);
-    setQuizResult([]);
-    setQuizImageReady(false);
-    setQuizSeed(Math.floor(Math.random() * 100));
-    setQuizSequence(generateQuizSequence());
-    setVoteHistory([]);
-    setLovedRooms([]);
-    setSeenQuizImages(new Set());
-    setResultGalleryImages([]);
-    // Clear persisted results on explicit Retake.
-    if (typeof window !== 'undefined') {
-      try { sessionStorage.removeItem(QUIZ_PERSIST_KEY); } catch { /* sessionStorage blocked */ }
-    }
-  };
-
-  const handleApplyQuizStyle = () => {
-    if (quizResult.length > 0) {
-      setSelectedStyle(quizResult[0].style);
-      if (!quizResultSavedRef.current) {
-        setQuizHistory(prev => [quizResult, ...prev].slice(0, 3));
-        quizResultSavedRef.current = true;
-      }
-    }
-    setActiveTool('vision');
-    setTimeout(() => {
-      const el = document.getElementById('ai-concepts-tools');
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 50);
-  };
-
-  // Share URL uses window.location.origin so it works correctly in production
-  // (https://www.designature.studio) AND lets us test the URL-parsing logic
-  // in localhost incognito tabs on the same machine.
-  //
-  // Cross-device friend testing requires deployment to production first.
-  /** Build a shareable URL with DNA + percentages baked in. */
-  const buildShareUrl = useCallback((): string => {
-    if (typeof window === 'undefined' || quizResult.length === 0) return '';
-    const primary = quizResult[0]?.style ?? '';
-    const secondary = quizResult[1]?.style ?? '';
-    const dna = secondary
-      ? `${primary.replace(/\s+/g, '-')}-${secondary.replace(/\s+/g, '-')}`
-      : primary.replace(/\s+/g, '-');
-    const pcts = quizResult.slice(0, 5).map(r => Math.round(r.pct)).join('-');
-    const params = new URLSearchParams({ dna, pcts });
-    return `${window.location.origin}/ai-concepts?${params.toString()}`;
-  }, [quizResult]);
-
-  /** Share handler — copies URL or invokes native share on mobile. */
-  const handleShareDna = useCallback(async () => {
-    const url = buildShareUrl();
-    if (!url) return;
-    const title = 'My design DNA — Designature Studio';
-    const text = quizResult[0]
-      ? `My design style is ${quizResult[0].style}${quizResult[1] ? ` + ${quizResult[1].style}` : ''}.`
-      : 'Check out my design DNA.';
-    try {
-      if (typeof navigator !== 'undefined' && (navigator as any).share && /Mobi|Android/i.test(navigator.userAgent)) {
-        await (navigator as any).share({ title, text, url });
-        return;
-      }
-      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url);
-      }
-      showQuizToast(t('ai.quiz.shareToast'));
-    } catch {
-      // user cancelled native share or clipboard blocked — silently no-op
-    }
-  }, [buildShareUrl, quizResult, showQuizToast, t]);
-
-  /** Save handler — paid users get a toast, free users get a confirmation modal. */
-  const handleSaveStyle = useCallback(() => {
-    if (!user?.isPaid) {
-      setQuizSaveModalOpen(true);
-      return;
-    }
-    console.log('save style', quizResult[0]?.style);
-    showQuizToast(t('ai.quiz.savedToast'));
-  }, [user?.isPaid, quizResult, showQuizToast, t]);
-
-  // ── On-load handler: parse ?dna=...&pcts=... URL params and skip to results ──
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const dna = params.get('dna');
-    const pcts = params.get('pcts');
-    if (!dna || !pcts) return;
-    const styleSlugs = dna.split('-').reduce<string[]>((acc, part) => {
-      // Re-stitch hyphenated styles like "Mid-Century" by checking the canonical STYLES list.
-      const candidate = acc.length > 0 ? `${acc[acc.length - 1]} ${part}` : part;
-      const candHyphen = acc.length > 0 ? `${acc[acc.length - 1]}-${part}` : part;
-      const match = STYLES.find(s => s === candidate || s === candHyphen || s === part);
-      if (match && match !== acc[acc.length - 1]) {
-        if (acc.length > 0 && (match === candidate || match === candHyphen)) {
-          acc[acc.length - 1] = match;
-        } else {
-          acc.push(match);
-        }
-      } else {
-        acc.push(part);
-      }
-      return acc;
-    }, []);
-    const validStyles = styleSlugs.filter(s => STYLES.includes(s));
-    const pctVals = pcts.split('-').map(n => parseInt(n, 10)).filter(n => !isNaN(n));
-    if (validStyles.length === 0 || pctVals.length === 0) return;
-    const synthResult: { style: string; pct: number }[] = [];
-    const used = new Set<string>();
-    for (let i = 0; i < pctVals.length; i++) {
-      let style = validStyles[i];
-      if (!style || used.has(style)) {
-        style = STYLES.find(s => !used.has(s)) ?? STYLES[0];
-      }
-      used.add(style);
-      synthResult.push({ style, pct: pctVals[i] });
-    }
-    setQuizResult(synthResult);
-    setQuizDone(true);
-    setQuizSharedView(true);
-    setActiveTool('quiz');
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  /** Clear shared-view state and start a fresh quiz for the user. */
-  const exitSharedView = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      const url = `${window.location.origin}${window.location.pathname}#quiz`;
-      window.history.replaceState({}, '', url);
-      try { sessionStorage.removeItem(QUIZ_PERSIST_KEY); } catch { /* sessionStorage blocked */ }
-    }
-    setQuizSharedView(false);
-    handleQuizReset();
-  }, [handleQuizReset]);
-
-  // ── Persist results to sessionStorage so navigation away/back keeps the DNA visible ──
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (!quizDone || quizResult.length === 0 || quizSharedView) return;
-    try {
-      sessionStorage.setItem(QUIZ_PERSIST_KEY, JSON.stringify({
-        quizResult,
-        quizVotes,
-        lovedRooms,
-        ts: Date.now(),
-      }));
-    } catch {
-      // sessionStorage blocked / quota — non-fatal
-    }
-  }, [quizDone, quizResult, quizVotes, lovedRooms, quizSharedView]);
-
-  // ── Restore persisted results on mount when no shared-link params present ──
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('dna') && params.get('pcts')) return; // shared view takes precedence
-    try {
-      const raw = sessionStorage.getItem(QUIZ_PERSIST_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed?.quizResult) || parsed.quizResult.length === 0) return;
-      setQuizResult(parsed.quizResult);
-      if (parsed.quizVotes) setQuizVotes(parsed.quizVotes);
-      if (Array.isArray(parsed.lovedRooms)) setLovedRooms(parsed.lovedRooms);
-      setQuizDone(true);
-    } catch {
-      // bad JSON / blocked — ignore
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Clear persisted results on logout (transition from signed-in to signed-out only,
-  //     NOT on initial mount where user is null from the start) ──
-  const wasSignedInRef = useRef(false);
-  useEffect(() => {
-    if (user) {
-      wasSignedInRef.current = true;
-      return;
-    }
-    if (!wasSignedInRef.current) return;
-    wasSignedInRef.current = false;
-    if (typeof window === 'undefined') return;
-    try { sessionStorage.removeItem(QUIZ_PERSIST_KEY); } catch { /* blocked */ }
-  }, [user]);
-
-  // ── Escape-key closes save-style modal + drawer ──
-  useEffect(() => {
-    if (!quizSaveModalOpen && !quizDrawerOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setQuizSaveModalOpen(false);
-        setQuizDrawerOpen(false);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [quizSaveModalOpen, quizDrawerOpen]);
-
-  const handleShoppingSearch = async (overrideItems?: any[], forceStandalone?: boolean) => {
+  const handleShoppingSearch = async (overrideItems?: any[], forceStandalone?: boolean, budgetOpts?: { budgetLevel?: string; roomCap?: number | null; scopeIds?: string[] | null }) => {
     const imageToAnalyse = forceStandalone
       ? standaloneShoppingImage
       : allSessionConcepts[selectedConceptIndex] || standaloneShoppingImage;
@@ -1704,7 +933,16 @@ const AIConceptsPage: React.FC = () => {
 
       const res = await apiFetch('/api/shopping/search', {
         method: 'POST',
-        body: JSON.stringify({ items: itemsToSearch, country: shoppingCountry }),
+        // budgetLevel + roomCap are passed through for the search session (#12) to act on
+        // (retailer-tier routing); the server currently accepts + ignores them.
+        body: JSON.stringify({
+          items: itemsToSearch,
+          country: shoppingCountry,
+          budgetLevel: budgetOpts?.budgetLevel,
+          roomCap: budgetOpts?.roomCap ?? null,
+          // #12 P3d — PAID "Find" pre-search scope (taxonomy ids, or null = all).
+          scopeIds: budgetOpts?.scopeIds ?? null,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -1717,7 +955,9 @@ const AIConceptsPage: React.FC = () => {
         }
         throw new Error(data.error || 'Search failed');
       }
-      setShoppingResults(data.results || []);
+      setShoppingResults(data.searched || data.results || []);
+      setShoppingTeaser(Array.isArray(data.teaser) ? data.teaser : []);
+      setShoppingTotalIdentified(typeof data.totalIdentified === 'number' ? data.totalIdentified : (data.searched || data.results || []).length);
       setShoppingDone(true);
       if (typeof data.shoppingListsLeft === 'number') {
         setUser((prev) => (prev ? { ...prev, shoppingListsLeft: data.shoppingListsLeft } : null));
@@ -1814,55 +1054,34 @@ const AIConceptsPage: React.FC = () => {
     <div className="min-h-screen bg-white flex flex-col font-body text-black">
       <Header />
 
-      {/* ── PAGE HERO ── */}
+      {/* ── PAGE HERO (compact ~248px — interim hub until AI-021 journey) ── */}
       <div className="pt-24 bg-[#0a0a0a]">
-        <div className="max-w-[1600px] mx-auto px-8 md:px-16 py-12 flex flex-col md:flex-row items-start justify-between gap-12">
+        <div className="max-w-[1600px] mx-auto px-8 md:px-16 py-7 flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="flex-1">
-            <button
-              onClick={() => navigateTo('home')}
-              className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/50 hover:text-white transition-colors flex items-center gap-2 group mb-10"
-            >
-              <ArrowLeft className="w-3 h-3 transition-transform group-hover:-translate-x-1" />
-              {t('nav.backToHome')}
-            </button>
-            <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/60 mb-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/60 mb-3">
               {t('ai.engine')}
             </p>
-            <h1 className="font-display text-6xl md:text-8xl font-bold tracking-tight leading-[0.88] uppercase text-white">
-              <span>AI {t('ai.design')}</span><br /><span className="italic font-light text-white/50">{t('ai.studio')}</span>
+            <h1 className="font-display text-4xl md:text-[56px] font-bold tracking-tight leading-[0.92] uppercase text-white">
+              AI {t('ai.design')} <span className="italic font-light text-white/50">{t('ai.studio')}</span>
             </h1>
-            <span aria-hidden className="block w-20 h-[2px] bg-[#C97A60] my-7" />
-            <p className="text-[11px] text-white/60 uppercase tracking-[0.18em] leading-[2.2] max-w-md mb-8">
+            <span aria-hidden className="block w-16 h-[2px] bg-[#C97A60] mt-4 mb-4" />
+            <p className="text-[11px] text-white/60 uppercase tracking-[0.18em] mb-5">
               {t('ai.desc')}
             </p>
             <button
               onClick={() => {
                 if (!user) {
                   triggerGoogleSignIn();
-                } else if (activeTool === 'quiz') {
-                  document.getElementById('style-quiz-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                } else if (activeTool === 'vision') {
-                  document.getElementById('ai-vision-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                } else if (activeTool === 'audit') {
-                  document.getElementById('room-audit-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 } else {
-                  document.getElementById('shop-this-look')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  document.getElementById('ai-concepts-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
               }}
-              className="inline-flex items-center gap-3 bg-[#0047AB] text-white text-[10px] font-bold uppercase tracking-[0.25em] px-7 py-4 hover:bg-[#003d99] transition-colors"
+              className="inline-flex items-center gap-3 bg-[#0047AB] text-white text-[10px] font-bold uppercase tracking-[0.25em] px-6 py-3.5 hover:bg-[#003d99] transition-colors"
             >
-              {!user
-                ? `${t('ai.signInToStart')} →`
-                : activeTool === 'quiz'
-                  ? `${t('ai.heroCtaQuiz')} →`
-                  : activeTool === 'vision'
-                    ? `${t('ai.heroCtaVision')} →`
-                    : activeTool === 'audit'
-                      ? 'Score My Room →'
-                      : `${t('ai.heroCtaShopping')} →`}
+              {t('ai.signInToStart')} →
             </button>
           </div>
-          <div className="w-full md:w-[240px] flex-shrink-0">
+          <div className="w-full md:w-[300px] flex-shrink-0">
             {authLoading ? (
               <div className="w-full h-[100px]" />
             ) : (
@@ -1879,37 +1098,37 @@ const AIConceptsPage: React.FC = () => {
                         <LogOut className="w-3.5 h-3.5 text-white/65 hover:text-white transition-colors" />
                       </button>
                     </div>
-                    <div className="text-[11px] text-white/85 uppercase tracking-[0.15em] text-right font-bold">
+                    <div className="text-[11px] text-white/85 uppercase tracking-[0.15em] text-left font-bold">
                       {user.generationsLeft >= 999 ? t('ai.unlimited') : `${user.generationsLeft} ${t('ai.remaining')}`}
                     </div>
                   </div>
                 )}
                 <div className={user ? 'hidden' : 'block'}>
-                  <p className="text-[11px] text-white/80 uppercase tracking-[0.2em] text-right mb-2">
+                  <p className="text-[11px] text-white/80 uppercase tracking-[0.2em] text-left mb-2.5">
                     {t('ai.unlockAll')}
                   </p>
                   <div id="google-signin-btn" className="w-full min-h-[42px]" />
-                  <p className="text-[11px] text-white/75 uppercase tracking-[0.15em] text-right mt-2">
+                  <p className="text-[10px] text-white/65 uppercase tracking-[0.18em] text-left mt-2.5">
                     {t('ai.noCard')}
                   </p>
                 </div>
               </>
             )}
-            <div className="flex gap-0 mt-8 pt-6 border-t border-white/8">
-              <div className="flex-1 pr-5 border-r border-white/8">
-                <div className="text-3xl font-bold text-white tracking-tight">Free</div>
-                <div className="text-[11px] text-white/70 uppercase tracking-[0.18em] mt-1">{t('ai.toExplore')}</div>
+            <div className="flex gap-0 mt-5 pt-4 border-t border-white/10">
+              <div className="flex-1 pr-5 border-r border-white/10">
+                <div className="font-display text-2xl font-medium text-white leading-none">Free</div>
+                <div className="text-[10px] text-white/70 uppercase tracking-[0.18em] mt-1.5">{t('ai.toExplore')}</div>
               </div>
               <div className="flex-1 pl-5 text-right">
-                <div className="text-3xl font-bold text-white tracking-tight">3</div>
-                <div className="text-[11px] text-white/70 uppercase tracking-[0.18em] mt-1">{t('ai.liveTools')}</div>
+                <div className="font-display text-2xl font-medium text-[#C97A60] leading-none">3</div>
+                <div className="text-[10px] text-white/70 uppercase tracking-[0.18em] mt-1.5">{t('ai.liveTools')}</div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── TOOL SELECTOR GRID (full-bleed) ── */}
+      {/* ── TOOL SELECTOR GRID (full-bleed, 6 tools) ── */}
       <div>
         <div>
           <div id="ai-concepts-tools" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 border-y-2 border-black">
@@ -2001,45 +1220,32 @@ const AIConceptsPage: React.FC = () => {
               );
             })()}
 
-            {/* Tool 4 — Room Audit (LIVE for paid/owner only, SOON for everyone else) */}
-            {user?.isPaid ? (
-              <div
-                onClick={() => { if (!(isProcessing || auditProcessing)) setActiveTool('audit'); }}
-                className={`group relative p-4 border-r border-black/10 transition-all ${
-                  (isProcessing || auditProcessing) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-                } ${activeTool === 'audit' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
-                style={{ minHeight: '130px' }}
-              >
-                <div className={`text-[10px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'audit' ? 'text-white/75' : 'text-black/55'}`}>04</div>
-                <div className={`font-display text-base font-bold leading-tight mb-1 ${activeTool === 'audit' ? 'text-white' : 'text-black'}`}>{t('ai.roomAudit')}</div>
-                <div className={`text-[11px] leading-relaxed uppercase tracking-wide ${activeTool === 'audit' ? 'text-white/85' : 'text-black/70'}`}>
-                  {t('ai.scoreSpace')}
+            {/* Tool 4 — Room Audit (Design+ · non-paid opens the in-studio paid landing, NOT a pricing redirect) */}
+            <div
+              onClick={() => { if (!(isProcessing || auditProcessing)) setActiveTool('audit'); }}
+              className={`group relative p-4 border-r border-black/10 transition-all ${
+                (isProcessing || auditProcessing) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+              } ${activeTool === 'audit' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
+              style={{ minHeight: '130px' }}
+            >
+              <div className={`text-[10px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'audit' ? 'text-white/75' : 'text-black/55'}`}>04</div>
+              <div className={`font-display text-base font-bold leading-tight mb-1 ${activeTool === 'audit' ? 'text-white' : 'text-black'}`}>{t('ai.roomAudit')}</div>
+              <div className={`text-[11px] leading-relaxed uppercase tracking-wide ${activeTool === 'audit' ? 'text-white/85' : 'text-black/70'}`}>
+                {t('ai.scoreSpace')}
+                {user?.isPaid && (
                   <span className={`block mt-1 font-bold ${activeTool === 'audit' ? 'text-white' : 'text-black'}`}>
                     · {user.auditsLeft === 999 ? 'Unlimited' : user.auditsLeft} {t('ai.remaining')}
                   </span>
-                </div>
-                <div className="absolute bottom-3 right-3">
-                  <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'audit' ? 'text-blue-100 bg-blue-900/40' : 'text-green-700 bg-green-50'}`}>
-                    {t('ai.nowActive')}
-                  </span>
-                </div>
+                )}
               </div>
-            ) : (
-              <div
-                onClick={() => navigateTo('pricing')}
-                className="group relative p-4 border-r border-black/8 cursor-pointer transition-all duration-200 opacity-70 hover:opacity-100 vf-locked-tile vf-locked-design"
-                style={{ minHeight: '130px' }}
-              >
-                <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/55 mb-3">04</div>
-                <div className="font-display text-base font-bold leading-tight mb-1 text-black/80">{t('ai.roomAudit')}</div>
-                <div className="text-[11px] text-black/65 leading-relaxed uppercase tracking-wide">
-                  {t('ai.scoreSpace')}
-                </div>
-                <div className="absolute bottom-3 right-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-white bg-[#0047AB] px-1.5 py-0.5">DESIGN+</span>
-                </div>
+              <div className="absolute bottom-3 right-3">
+                {user?.isPaid ? (
+                  <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'audit' ? 'text-blue-100 bg-blue-900/40' : 'text-green-700 bg-green-50'}`}>{t('ai.nowActive')}</span>
+                ) : (
+                  <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'audit' ? 'text-white bg-white/20' : 'text-white bg-[#0047AB]'}`}>DESIGN+</span>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Tool 5 — Design Brief (SOON) */}
             <div
@@ -2091,7 +1297,7 @@ const AIConceptsPage: React.FC = () => {
                   ? t('ai.visionDesc')
                   : activeTool === 'shopping'
                   ? t('ai.shopDesc')
-                  : 'Get a scored report card for any room with actionable fixes'}
+                  : t('ai.auditDesc')}
               </div>
             </div>
             <div className="text-[11px] font-bold uppercase tracking-[0.15em] text-white/75 hidden md:block">
@@ -2144,12 +1350,30 @@ const AIConceptsPage: React.FC = () => {
           generationsLeft={user?.generationsLeft ?? 3}
           unlimitedLabel={t('ai.unlimited')}
           remainingLabel={t('ai.remaining')}
-          quizResult={quizResult}
-          quizDone={quizDone}
+          quizResult={quizResultForVision}
+          quizDone={quizResultForVision.length > 0}
           isPaid={user?.isPaid ?? false}
           navigateTo={navigateTo}
           setFeedbackOpen={setFeedbackOpen}
           shopCurrentConcept={shopCurrentConcept}
+          onShopThisRoom={(conceptUrl) => {
+            if (!user) { triggerGoogleSignIn(); return; }
+            // Reset Shopping to a fresh ENTRY (no results, no auto-search)…
+            setShoppingResults([]);
+            setShoppingItems([]);
+            setShoppingTeaser([]);
+            setShoppingTotalIdentified(0);
+            setShoppingDone(false);
+            setShoppingError(null);
+            setShoppingLoading(false);
+            setForceStandaloneUpload(false);
+            // …then load the generated concept as the Shopping source image.
+            setStandaloneShoppingImage(conceptUrl);
+            setSearchSourceImage(conceptUrl);
+            setSearchSourceIsStandalone(false);
+            setActiveTool('shopping');
+            setTimeout(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }), 50);
+          }}
           validationError={validationError}
           error={error}
           setError={setError}
@@ -2164,12 +1388,184 @@ const AIConceptsPage: React.FC = () => {
         <ShoppingListShowcase onRequestLogin={() => triggerGoogleSignIn()} />
       )}
 
+      {/* ── SHOPPING LIST EXPERIENCE (logged-in, locked 4-state) ──
+           Self-contained panel; the identify→search→PDF pipeline + offline
+           guardrails stay in this file and are passed in as handlers/state. */}
+      {!authLoading && user && activeTool === 'shopping' && (
+        <ShoppingExperience
+          user={user}
+          shoppingResults={shoppingResults}
+          shoppingTeaser={shoppingTeaser}
+          shoppingTotalIdentified={shoppingTotalIdentified}
+          shoppingItems={shoppingItems}
+          shoppingLoading={shoppingLoading}
+          shoppingError={shoppingError}
+          shoppingDone={shoppingDone}
+          shoppingOffline={shoppingOffline}
+          standaloneShoppingImage={standaloneShoppingImage}
+          searchSourceImage={searchSourceImage}
+          searchSourceIsStandalone={searchSourceIsStandalone}
+          selectedConceptUrl={selectedConceptUrl}
+          shoppingCountry={shoppingCountry}
+          setShoppingCountry={setShoppingCountry}
+          onStartOver={() => {
+            setShoppingResults([]);
+            setShoppingTeaser([]);
+            setShoppingTotalIdentified(0);
+            setShoppingItems([]);
+            setShoppingDone(false);
+            setShoppingError(null);
+            setStandaloneShoppingImage(null);
+            setForceStandaloneUpload(false);
+            setSearchSourceImage(null);
+          }}
+          onEditSearch={() => {
+            // Return to Step-1 (Entry) preserving inputs (image, country, Find cats,
+            // budget — Find/budget are local to ShoppingExperience so they persist).
+            // The Entry "Find products" button then does a FULL re-run (costs a list).
+            // TODO(#12/#11): incremental re-search of only newly-added categories.
+            setShoppingDone(false);
+          }}
+          processShoppingFile={processShoppingFile}
+          handleShopDrop={handleShopDrop}
+          runSearch={(opts) => {
+            const standalone = !!standaloneShoppingImage && !selectedConceptUrl;
+            setSearchSourceImage(standaloneShoppingImage || selectedConceptUrl);
+            setSearchSourceIsStandalone(standalone);
+            void handleShoppingSearch(undefined, standalone, opts);
+          }}
+          fetchAlternate={async (item, excludeSources) => {
+            try {
+              const r = await apiFetch('/api/shopping/alternate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ item, country: shoppingCountry, excludeSources }),
+              });
+              const d = await r.json();
+              if (!r.ok) return null;
+              return d.product ?? null;
+            } catch { return null; }
+          }}
+          handleDownloadShoppingPDF={handleDownloadShoppingPDF}
+          navigateTo={navigateTo}
+        />
+      )}
+
+      {/* ── ROOM AUDIT — in-studio paid landing (free OR logged-out; NOT a pricing redirect) ──
+           Matches WEBSITE-PLAN-room-audit-paid-landing.html. Design+ users get the real tool
+           (rendered in the main two-column below). */}
+      {!authLoading && activeTool === 'audit' && !user?.isPaid && (
+        <div className="bg-[#0a0a0a] text-white border-t border-black/10">
+          <div className="max-w-[1600px] mx-auto px-8 md:px-16 py-12">
+            <div className="grid lg:grid-cols-[1fr_440px] gap-12 items-start">
+
+              {/* LEFT — sample audit output (sells the value) */}
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#C97A60] mb-4">{t('ai.audit.sampleKicker')}</p>
+                <div className="relative overflow-hidden border border-white/10" style={{ aspectRatio: '4/3' }}>
+                  <img
+                    src={cld('https://res.cloudinary.com/dys2k5muv/image/upload/v1774950187/12_iwshvs.jpg', 1200, { crop: 'fill', aspectRatio: '4/3' })}
+                    alt={t('ai.audit.sampleKicker')}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg,rgba(0,0,0,.15),rgba(0,0,0,.35))' }} />
+                  {/* overall score */}
+                  <div className="absolute top-4 left-4 bg-black/70 backdrop-blur px-4 py-3 flex items-center gap-3">
+                    <div className="font-display text-[34px] leading-none text-white">7.4</div>
+                    <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/70 leading-tight">{t('ai.audit.overallScore')}</div>
+                  </div>
+                  {/* annotation pins */}
+                  <span className="absolute flex items-center justify-center w-[26px] h-[26px] rounded-full bg-[#0047AB] text-white text-[12px] font-bold border-2 border-white/85 shadow-[0_6px_18px_rgba(0,0,0,.5)]" style={{ top: '30%', left: '22%' }}>1</span>
+                  <span className="absolute flex items-center justify-center w-[26px] h-[26px] rounded-full bg-[#0047AB] text-white text-[12px] font-bold border-2 border-white/85 shadow-[0_6px_18px_rgba(0,0,0,.5)]" style={{ top: '58%', left: '62%' }}>2</span>
+                  <span className="absolute flex items-center justify-center w-[26px] h-[26px] rounded-full bg-[#0047AB] text-white text-[12px] font-bold border-2 border-white/85 shadow-[0_6px_18px_rgba(0,0,0,.5)]" style={{ top: '74%', left: '34%' }}>3</span>
+                </div>
+                {/* pin notes */}
+                <div className="grid sm:grid-cols-3 gap-3 mt-4">
+                  <div className="border border-white/10 p-3">
+                    <div className="text-[10px] font-bold text-[#C97A60] mb-1">① {t('ai.audit.pin1Title')}</div>
+                    <div className="text-[12px] text-white/70 leading-snug">{t('ai.audit.pin1Note')}</div>
+                  </div>
+                  <div className="border border-white/10 p-3">
+                    <div className="text-[10px] font-bold text-[#C97A60] mb-1">② {t('ai.audit.pin2Title')}</div>
+                    <div className="text-[12px] text-white/70 leading-snug">{t('ai.audit.pin2Note')}</div>
+                  </div>
+                  <div className="border border-white/10 p-3">
+                    <div className="text-[10px] font-bold text-[#C97A60] mb-1">③ {t('ai.audit.pin3Title')}</div>
+                    <div className="text-[12px] text-white/70 leading-snug">{t('ai.audit.pin3Note')}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* RIGHT — the pitch + CTAs */}
+              <div>
+                <span className="inline-block text-[9px] font-bold uppercase tracking-[0.22em] bg-[#0047AB] text-white px-3 py-1.5 mb-5">{t('ai.audit.badge')}</span>
+                <h2 className="font-display text-[48px] md:text-[56px] leading-[0.95] mb-3">{t('ai.roomAudit')}</h2>
+                <p className="text-[15px] text-white/75 leading-relaxed mb-6">
+                  {t('ai.audit.valueLine')}<span className="text-white font-semibold">{t('ai.audit.valueLineBold')}</span>
+                </p>
+
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/55 mb-3">{t('ai.audit.scoredAcross')}</p>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2.5 mb-8">
+                  {[
+                    [t('ai.audit.metricLayout'), 6],
+                    [t('ai.audit.metricLighting'), 8],
+                    [t('ai.audit.metricColour'), 7],
+                    [t('ai.audit.metricProportion'), 6],
+                    [t('ai.audit.metricMaterials'), 8],
+                    [t('ai.audit.metricStyling'), 7],
+                  ].map(([label, score]) => (
+                    <div key={label as string} className="flex items-center gap-2.5">
+                      <span className="text-[12px] text-white/80 flex-1">{label}</span>
+                      <span className="w-16 h-[5px] bg-white/15 overflow-hidden">
+                        <span className="block h-full" style={{ width: `${(score as number) * 10}%`, background: (score as number) >= 8 ? '#0047AB' : '#C97A60' }} />
+                      </span>
+                      <span className="text-[11px] font-bold text-white/60 w-7 text-right">{score}/10</span>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => navigateTo('pricing')}
+                  className="inline-flex items-center justify-center gap-3 w-full bg-[#0047AB] text-white text-[12px] font-bold uppercase tracking-[0.22em] px-7 py-4 mb-3 hover:bg-[#003d99] transition-colors"
+                >
+                  {user ? t('ai.audit.upgradeCta') : t('ai.audit.unlockCta')} →
+                </button>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => navigateTo('pricing')}
+                    className="flex-1 border border-white/25 text-white/80 text-[11px] font-bold uppercase tracking-[0.16em] py-3.5 hover:border-white/60 hover:text-white transition"
+                  >
+                    {t('ai.audit.seeSample')}
+                  </button>
+                </div>
+                <p className="text-[11px] text-white/50 mt-4 leading-relaxed">
+                  {user ? (
+                    t('ai.audit.ctaNoteFree')
+                  ) : (
+                    <>
+                      {t('ai.audit.ctaNoteOut')}{' '}
+                      <button type="button" onClick={() => triggerGoogleSignIn()} className="text-white font-semibold hover:underline">
+                        {t('ai.audit.alreadyMember')}
+                      </button>
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── MAIN TWO-COLUMN ──
            During the quiz RATING step, drop flex-grow and minHeight so the
            working area sizes to its content and the feedback CTA sits close
            below it. For ALL quiz steps (rating and result) drop the viewport
            height chain — other tools keep flex-grow + minHeight:'75vh'. */}
-      <div className={`flex flex-col border-t border-black/10${(activeTool === 'vision' || (!authLoading && !user && activeTool === 'shopping')) ? ' hidden' : ''}${activeTool !== 'quiz' ? ' flex-grow' : ''}`}>
+      <div className={`flex flex-col border-t border-black/10${(activeTool === 'vision' || activeTool === 'shopping' || (activeTool === 'audit' && !user?.isPaid)) ? ' hidden' : ''}${activeTool !== 'quiz' ? ' flex-grow' : ''}`}>
         {/* Quiz uses full-bleed sections (its own backgrounds + paddings); other tools keep the centered 1600px shell. */}
         <div className={activeTool === 'quiz' ? 'w-full' : 'max-w-[1600px] w-full mx-auto px-8 md:px-16 flex flex-col lg:flex-row flex-grow'} style={activeTool !== 'quiz' ? { minHeight: '75vh' } : undefined}>
 
@@ -2904,620 +2300,15 @@ const AIConceptsPage: React.FC = () => {
 
               </>) }
 
-              {/* ══ STYLE QUIZ ══ */}
+              {/* ══ STYLE QUIZ (self-contained screen — PHASE 1 redesign) ══ */}
               {activeTool === 'quiz' && (
-              <div id="style-quiz-section" className="flex flex-col bg-white">
-
-                {/* ── State 1 — Logged-out hero (Direction B) ── */}
-                {!authLoading && !user && !quizSharedView && !quizDone && (
-                  <div className="bg-white py-16 md:py-20">
-                    <div className="px-8 md:px-16">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#0047AB] mb-5">Style Quiz</p>
-                      <h1 className="font-display font-normal tracking-tight leading-[1.05] text-black mb-5 max-w-[720px]" style={{ fontSize: 'clamp(40px, 5vw, 64px)' }}>
-                        {t('ai.quiz.heroTitle')}
-                      </h1>
-                      <p className="text-[17px] text-black/75 max-w-[560px] leading-relaxed mb-12">
-                        {t('ai.quiz.heroLead')}
-                      </p>
-
-                      {/* 2-col layout: voting preview + 3-step explainer.
-                          Hero preview matches AI Vision logged-out: 1:1 square,
-                          capped at 950 wide, centered in its column. Same cap
-                          on both heroes for parity. */}
-                      <div className="grid lg:grid-cols-[1.4fr_1fr] gap-10 lg:gap-14 items-stretch">
-                        {/* LEFT — paused voting preview */}
-                        <div
-                          className="relative w-full max-w-[950px] mx-auto bg-black overflow-hidden shadow-[0_28px_60px_rgba(0,0,0,0.18)]"
-                          style={{
-                            aspectRatio: '1/1',
-                            backgroundImage: `url('${cld('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', 50, { crop: 'fill', aspectRatio: '1/1', quality: 'eco', effect: 'blur:1000' })}')`,
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                          }}
-                        >
-                          <img
-                            src={cld('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', 960, { crop: 'fill', aspectRatio: '1/1', quality: 'best', sharpen: 60 })}
-                            srcSet={cldSrcSet('https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg', [640, 960, 1280, 1920], { crop: 'fill', aspectRatio: '1/1', quality: 'best', sharpen: 60 })}
-                            sizes="(min-width: 1024px) min(950px, 60vw), 100vw"
-                            alt="Quiz preview"
-                            className="absolute inset-0 w-full h-full object-cover"
-                            loading="eager"
-                            decoding="async"
-                            fetchPriority="high"
-                          />
-                          {/* Top overlay */}
-                          <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-5 py-4 bg-gradient-to-b from-black/55 to-transparent text-white">
-                            <div className="flex items-center gap-3">
-                              <span className="text-[10px] font-bold uppercase tracking-[0.22em]">Room 03 / 18</span>
-                              <div className="w-[110px] h-[3px] bg-white/25 rounded-full overflow-hidden">
-                                <div className="h-full bg-[#0047AB]" style={{ width: '17%' }} />
-                              </div>
-                            </div>
-                            <div className="inline-flex items-center gap-2 bg-white/95 text-black px-3 py-1.5 rounded-full">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#9E5E41]" />
-                              <span className="text-[10px] font-bold uppercase tracking-[0.22em]">Favorites · 2</span>
-                            </div>
-                          </div>
-                          {/* Style tag */}
-                          <div className="absolute top-[70px] left-5 bg-white/95 text-black px-3 py-1.5">
-                            <span className="text-[10px] font-bold uppercase tracking-[0.22em]">Mid-Century</span>
-                          </div>
-                          {/* Bottom overlay */}
-                          <div className="absolute bottom-0 left-0 right-0 px-5 pt-12 pb-5 bg-gradient-to-t from-black/70 to-transparent">
-                            <div className="flex gap-2.5">
-                              <button type="button" onClick={() => triggerGoogleSignIn()} className="flex-1 py-3 text-center text-[10px] font-bold uppercase tracking-[0.22em] text-white border border-white/70 bg-transparent backdrop-blur-sm">Not for me</button>
-                              <button type="button" onClick={() => triggerGoogleSignIn()} className="flex-1 py-3 text-center text-[10px] font-bold uppercase tracking-[0.22em] text-white border border-white/70 bg-transparent backdrop-blur-sm">Skip</button>
-                              <button type="button" onClick={() => triggerGoogleSignIn()} className="flex-1 py-3 text-center text-[10px] font-bold uppercase tracking-[0.22em] text-black bg-white border border-white">✦ Love it</button>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* RIGHT — 3 steps + CTA */}
-                        <div className="flex flex-col gap-10 justify-between">
-                          <div className="flex flex-col gap-7">
-                            {[
-                              { n: '1', title: t('ai.quiz.step1Title'), body: t('ai.quiz.step1Body') },
-                              { n: '2', title: t('ai.quiz.step2Title'), body: t('ai.quiz.step2Body') },
-                              { n: '3', title: t('ai.quiz.step3Title'), body: t('ai.quiz.step3Body') },
-                            ].map(s => (
-                              <div key={s.n} className="grid grid-cols-[36px_1fr] gap-5 items-start">
-                                <div className="w-8 h-8 rounded-full border-[1.5px] border-[#0047AB] text-[#0047AB] font-display text-lg flex items-center justify-center">{s.n}</div>
-                                <div>
-                                  <h4 className="text-[13px] font-bold uppercase tracking-[0.18em] text-black mb-1.5">{s.title}</h4>
-                                  <p className="text-[14px] text-black/75 leading-relaxed">{s.body}</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          <div className="flex flex-col gap-3.5 border-t border-[#DAD2C3] pt-7">
-                            <button
-                              type="button"
-                              onClick={() => triggerGoogleSignIn()}
-                              className="inline-flex items-center justify-center gap-3 px-7 py-[18px] bg-[#0047AB] text-white text-[12px] font-bold uppercase tracking-[0.25em] hover:bg-[#003d99] transition-colors"
-                            >
-                              {t('ai.quiz.signInCta')} →
-                            </button>
-                            <p className="text-[11px] text-black/65 uppercase tracking-[0.18em] text-center">
-                              {t('ai.quiz.heroMeta')}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 8-style preview strip */}
-                    <div className="px-8 md:px-16 mt-20">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-black/65 mb-4">{t('ai.quiz.eightStyles')}</p>
-                      <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
-                        {([
-                          { style: 'Japandi',      url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774954444/9_ti0qtx.png' },
-                          { style: 'Modern',       url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950422/3_2_be2ubi.jpg' },
-                          { style: 'Mid-Century',  url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774949502/5_sqgqmb.jpg' },
-                          { style: 'Bohemian',     url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774949549/1_piprtp.png' },
-                          { style: 'Rustic',       url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950455/11_hjofyz.jpg' },
-                          { style: 'Art Deco',     url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775713416/19_eify7o.png' },
-                          { style: 'Industrial',   url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774954018/6_xibejv.png' },
-                          { style: 'Coastal',      url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950150/10_ezeifi.jpg' },
-                        ] as const).map(({ style, url }) => (
-                          <button
-                            key={style}
-                            type="button"
-                            onClick={() => triggerGoogleSignIn()}
-                            className="group relative overflow-hidden bg-[#DAD2C3] hover:-translate-y-1 transition-transform duration-300 focus:outline-none"
-                            style={{ aspectRatio: '3/4' }}
-                          >
-                            <img
-                              src={cld(url, 360, { crop: 'fill', aspectRatio: '3/4' })}
-                              srcSet={cldSrcSet(url, THUMB_WIDTHS, { crop: 'fill', aspectRatio: '3/4' })}
-                              sizes="(min-width: 768px) 12vw, 25vw"
-                              width={360} height={480}
-                              loading="lazy" decoding="async"
-                              alt={style}
-                              className="w-full h-full object-cover"
-                            />
-                            <span className="absolute bottom-0 left-0 right-0 px-2.5 py-2 bg-gradient-to-t from-black/70 to-transparent text-white text-[9px] font-bold uppercase tracking-[0.22em]">
-                              {style}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* ── States 2 & 4 — Voting + Results (logged-in OR shared-view OR persisted results) ── */}
-                {!authLoading && (user || quizSharedView || quizDone) && (<>
-
-                {/* Shared-style banner — only when arriving from a share URL */}
-                {quizSharedView && quizDone && (
-                  <div className="bg-[#0047AB] text-white px-8 md:px-16 py-3 flex flex-wrap items-center gap-x-4 gap-y-2 justify-between">
-                    <span className="text-[11px] font-bold uppercase tracking-[0.22em]">
-                      {t('ai.quiz.sharedBanner')}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={exitSharedView}
-                      className="text-[11px] font-bold uppercase tracking-[0.18em] underline underline-offset-4 hover:text-white/85 transition-colors"
-                    >
-                      {t('ai.quiz.takeYourQuiz')}
-                    </button>
-                  </div>
-                )}
-
-                {/* ── State 2 — Voting (cinematic single-pane) ── */}
-                {!quizDone && (
-                  <div className="bg-[#0a0a0a]">
-                    <div className="mx-auto px-6 md:px-14 pt-12 pb-16" style={{ maxWidth: '1280px' }}>
-                      <div className="relative w-full overflow-hidden bg-black shadow-[0_32px_80px_rgba(0,0,0,0.4)]" style={{ aspectRatio: '16/10' }}>
-                        {/* Room image — object-fit contain so the whole room is visible */}
-                        <img
-                          src={cld(currentQuizImage.url, 1600)}
-                          srcSet={cldSrcSet(currentQuizImage.url, [768, 1280, 1600])}
-                          sizes="(min-width: 1024px) 1100px, 100vw"
-                          width={1600} height={1000}
-                          decoding="async"
-                          fetchPriority="high"
-                          alt={currentQuizStyle}
-                          onLoad={() => { if (!quizDone) setQuizImageReady(true); }}
-                          onError={() => { if (!quizDone) setQuizImageReady(true); }}
-                          className="absolute inset-0 w-full h-full object-contain"
-                          loading="eager"
-                        />
-                        {/* Loading shimmer — masks Cloudinary cold-start latency on first visit. */}
-                        <div
-                          aria-hidden="true"
-                          className={`absolute inset-0 transition-opacity duration-500 pointer-events-none ${quizImageReady ? 'opacity-0' : 'opacity-100'}`}
-                          style={{
-                            background: 'linear-gradient(110deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.10) 45%, rgba(255,255,255,0.04) 90%)',
-                            backgroundSize: '200% 100%',
-                            animation: 'quizShimmer 1.6s ease-in-out infinite',
-                          }}
-                        />
-                        <style>{`@keyframes quizShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
-
-                        {/* Top overlay bar */}
-                        <div className="absolute top-0 left-0 right-0 flex flex-wrap items-center justify-between gap-3 px-5 md:px-7 py-5 bg-gradient-to-b from-black/65 to-transparent text-white z-[5]">
-                          <div className="flex items-center gap-5 flex-wrap">
-                            <span className="text-[10px] font-bold uppercase tracking-[0.22em]">
-                              {t('ai.quiz.roomOf').replace('{current}', (quizStep + 1).toString()).replace('{total}', QUIZ_LENGTH.toString())}
-                            </span>
-                            <div className="w-[140px] md:w-[180px] h-[3px] bg-white/22 rounded-full overflow-hidden">
-                              <div className="h-full bg-[#0047AB] transition-all duration-500" style={{ width: `${((quizStep + 1) / QUIZ_LENGTH) * 100}%` }} />
-                            </div>
-                            {voteHistory.length > 0 && (
-                              <button
-                                type="button"
-                                onClick={handleQuizBack}
-                                className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/80 hover:text-white transition-colors"
-                              >
-                                ← Previous room
-                              </button>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setQuizDrawerOpen(true)}
-                            className="inline-flex items-center gap-2.5 bg-white/95 text-black px-4 py-2.5 rounded-full hover:scale-[1.04] transition-transform"
-                          >
-                            <Heart size={12} strokeWidth={2.5} className="text-[#9E5E41] fill-[#9E5E41]" />
-                            <span className="text-[10px] font-bold uppercase tracking-[0.22em]">
-                              {t('ai.quiz.favorites')} · {lovedRooms.length}
-                            </span>
-                          </button>
-                        </div>
-
-                        {/* Style tag (top-left, below the bar) */}
-                        <div className="absolute top-[78px] md:top-[90px] left-5 md:left-7 bg-white/95 text-black px-3.5 py-2 z-[5]">
-                          <span className="text-[10px] font-bold uppercase tracking-[0.22em]">
-                            {t(`ai.style.${currentQuizStyle.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}
-                          </span>
-                        </div>
-
-                        {/* Bottom overlay — voting buttons + early-end link */}
-                        <div className="absolute bottom-0 left-0 right-0 px-5 md:px-7 pt-14 pb-6 bg-gradient-to-t from-black/80 to-transparent z-[5]">
-                          <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 max-w-[760px] mx-auto">
-                            <button
-                              type="button"
-                              onClick={() => handleQuizVote('no')}
-                              disabled={!quizImageReady}
-                              className="flex-1 py-4 px-2 text-center text-[11px] sm:text-[12px] font-bold uppercase tracking-[0.22em] sm:tracking-[0.28em] text-white border-[1.5px] border-white/60 bg-black/35 backdrop-blur-md hover:bg-black/55 hover:border-white/85 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              ✕ {t('ai.quiz.notMyStyle')}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleQuizVote('skip')}
-                              disabled={!quizImageReady}
-                              className="flex-1 py-4 px-2 text-center text-[11px] sm:text-[12px] font-bold uppercase tracking-[0.22em] sm:tracking-[0.28em] text-white border-[1.5px] border-white/60 bg-black/35 backdrop-blur-md hover:bg-black/55 hover:border-white/85 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {t('ai.quiz.skip')}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleQuizVote('love')}
-                              disabled={!quizImageReady}
-                              className="flex-1 py-4 px-2 text-center text-[11px] sm:text-[12px] font-bold uppercase tracking-[0.22em] sm:tracking-[0.28em] text-black bg-white border-[1.5px] border-white hover:bg-[#f4f4f4] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              ✦ {t('ai.quiz.loveIt')}
-                            </button>
-                          </div>
-                          {lovedRooms.length >= 4 && (
-                            <button
-                              type="button"
-                              onClick={handleQuizEarlyEnd}
-                              className="block mx-auto mt-4 text-[11px] font-bold uppercase tracking-[0.22em] text-white/85 underline underline-offset-4 hover:text-white transition-colors"
-                            >
-                              Have enough — show me my style →
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      <p className="text-center mt-6 text-[11px] font-bold uppercase tracking-[0.22em] text-white/55">
-                        {t('ai.quiz.stageCaption')}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* ── State 4 — Results (cinematic DNA reveal) ── */}
-                {quizDone && (() => {
-                  const top = quizResult[0];
-                  const rawHero = top ? (quizRooms[top.style]?.[0]?.url || '') : '';
-                  // Smart-cropped wide hero via cld helper (c_fill, g_auto, 16:9).
-                  const heroBg = rawHero ? cld(rawHero, 1920, { crop: 'fill', aspectRatio: '16/9' }) : '';
-                  const desc = top ? STYLE_DESCRIPTIONS[top.style] : null;
-                  return (
-                    <>
-                      {/* Full-bleed cinematic results stage */}
-                      <section
-                        className="relative overflow-hidden bg-cover bg-center"
-                        style={{
-                          backgroundImage: heroBg ? `url('${heroBg}')` : undefined,
-                          minHeight: '720px',
-                        }}
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-br from-black/75 via-black/40 to-black/15" />
-                        <div className="relative z-10 px-8 md:px-16 py-20 md:py-24">
-                          <div className="grid lg:grid-cols-[1.2fr_1fr] gap-12 lg:gap-20 items-end" style={{ minHeight: '540px' }}>
-                            {/* LEFT — DNA reveal */}
-                            <div className="text-white">
-                              <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-white/80 mb-5">
-                                {t('ai.quiz.designDNA')}
-                              </p>
-                              <h2 className="font-display font-normal leading-[0.95] tracking-tight text-white mb-4" style={{ fontSize: 'clamp(56px, 7vw, 110px)', letterSpacing: '-0.02em' }}>
-                                {top ? t(`ai.style.${top.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`) : ''}
-                                {quizResult[1] && (
-                                  <span className="block italic text-white/55 mt-2" style={{ fontSize: '0.55em', letterSpacing: '-0.01em' }}>
-                                    + {t(`ai.style.${quizResult[1].style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}
-                                  </span>
-                                )}
-                              </h2>
-                              {desc && (
-                                <p className="text-[17px] md:text-[18px] font-light text-white/85 leading-relaxed max-w-[480px] mb-9">
-                                  {desc.summary}
-                                </p>
-                              )}
-                              {desc && (
-                                <div className="flex flex-wrap gap-2">
-                                  {desc.elements.map(el => (
-                                    <span key={el} className="px-3.5 py-1.5 border border-white/40 rounded-full text-[10px] font-bold uppercase tracking-[0.18em] text-white/85">
-                                      {el}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* RIGHT — breakdown panel */}
-                            <div className="bg-white/[0.08] border border-white/[0.12] rounded-md p-7 md:p-8" style={{ backdropFilter: 'blur(20px)' }}>
-                              <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-white/65 mb-5">
-                                {t('ai.quiz.styleBreakdown')}
-                              </p>
-                              <div className="flex flex-col gap-3.5">
-                                {quizResult.filter(r => r.pct > 0).slice(0, 5).map((r, i) => (
-                                  <div key={r.style} className="flex items-center gap-3.5">
-                                    <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-white truncate" style={{ flex: '0 0 110px' }}>
-                                      {t(`ai.style.${r.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)}
-                                    </span>
-                                    <div className="flex-1 h-1 bg-white/[0.18] rounded-full overflow-hidden">
-                                      <div
-                                        className={`h-full rounded-full transition-all duration-700 ${i < 2 ? 'bg-[#0047AB]' : 'bg-white/55'}`}
-                                        style={{ width: `${r.pct}%` }}
-                                      />
-                                    </div>
-                                    <span className="text-[14px] font-display font-medium text-white text-right" style={{ flex: '0 0 56px' }}>
-                                      {Math.round(r.pct)}%
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </section>
-
-                      {/* Action bar */}
-                      <section className="bg-[#0a0a0a] text-white py-9">
-                        <div className="px-8 md:px-16 flex flex-wrap items-center justify-between gap-5">
-                          <div className="flex-1 min-w-[260px]">
-                            <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-white/55 mb-1.5">
-                              {t('ai.quiz.whatNext')}
-                            </p>
-                            <p className="font-display text-[22px] font-medium">
-                              {t('ai.quiz.actionsTitle')}
-                            </p>
-                          </div>
-                          <div className="flex flex-wrap gap-3">
-                            <button
-                              type="button"
-                              onClick={handleApplyQuizStyle}
-                              className="px-5 py-3.5 bg-[#0047AB] border border-[#0047AB] text-white text-[11px] font-bold uppercase tracking-[0.22em] hover:bg-[#003d99] transition-colors inline-flex items-center gap-2.5"
-                            >
-                              {t('ai.quiz.applyStyle').replace('{style}', t(`ai.style.${(top?.style || '').toLowerCase().replace(/-/g, '').replace(/ /g, '')}`))}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleShareDna}
-                              className="px-5 py-3.5 border border-white/35 text-white text-[11px] font-bold uppercase tracking-[0.22em] hover:bg-white/10 hover:border-white transition-all"
-                            >
-                              {t('ai.quiz.share')}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={quizSharedView ? exitSharedView : handleQuizReset}
-                              className="px-5 py-3.5 border border-white/35 text-white text-[11px] font-bold uppercase tracking-[0.22em] hover:bg-white/10 hover:border-white transition-all"
-                            >
-                              {t('ai.quiz.retake')}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleSaveStyle}
-                              className={`px-5 py-3.5 border border-white/35 text-[11px] font-bold uppercase tracking-[0.22em] inline-flex items-center gap-2 transition-all ${user?.isPaid ? 'text-white hover:bg-white/10 hover:border-white' : 'text-white/60 hover:text-white/85 hover:border-white/55'}`}
-                              title={user?.isPaid ? '' : t('ai.quiz.upgradeToSave')}
-                            >
-                              {t('ai.quiz.saveStyle')} {!user?.isPaid && <span aria-hidden>🔒</span>}
-                            </button>
-                          </div>
-                        </div>
-                      </section>
-
-                      {/* ── More rooms in your style — gallery of unseen rooms in
-                          dominant style. Hides cleanly if the API failed or no
-                          unseen images are available (resultGalleryImages stays []).
-                          Background stays dark to continue the cinematic hero. */}
-                      {resultGalleryImages.length > 0 && top && (
-                        <section className="bg-[#0a0a0a] text-white pb-16 md:pb-20">
-                          <div className="px-8 md:px-16">
-                            <h3 className="font-display text-[26px] md:text-[28px] leading-tight mb-1">
-                              {t('ai.quiz.moreInStyle')}
-                            </h3>
-                            <p className="text-[12px] uppercase tracking-[0.22em] text-white/55 mb-7">
-                              {t('ai.quiz.moreInStyleCount')
-                                .replace('{count}', String(resultGalleryImages.length))
-                                .replace('{style}', t(`ai.style.${top.style.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`))}
-                            </p>
-                            {/* Single row at md+ (6 cols), 3 cols below md so
-                                mobile thumbs stay tappable. */}
-                            <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-3">
-                              {resultGalleryImages.map((url, i) => (
-                                <button
-                                  key={`gallery-${i}`}
-                                  type="button"
-                                  onClick={() => { setLightboxQuizUrl(url); setIsLightboxOpen(true); }}
-                                  className="relative overflow-hidden aspect-square group focus:outline-none focus:ring-2 focus:ring-[#0047AB]"
-                                  aria-label={`Open ${top.style} room ${i + 1} full size`}
-                                >
-                                  <img
-                                    src={cld(url, 320, { crop: 'fill', aspectRatio: '1/1', quality: 'best' })}
-                                    srcSet={cldSrcSet(url, [240, 360, 480, 640], { crop: 'fill', aspectRatio: '1/1', quality: 'best' })}
-                                    sizes="(min-width: 768px) 16vw, 33vw"
-                                    width={320} height={320}
-                                    alt={`${top.style} room ${i + 1}`}
-                                    loading="lazy" decoding="async"
-                                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                                  />
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </section>
-                      )}
-                    </>
-                  );
-                })()}
-
-                </> )}
-
-                {/* ── Drawer (slide-out from right) ── */}
-                <AnimatePresence>
-                  {quizDrawerOpen && (
-                    <>
-                      <motion.div
-                        key="drawer-overlay"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.18 }}
-                        className="fixed inset-0 bg-black/55 z-[60]"
-                        onClick={() => setQuizDrawerOpen(false)}
-                      />
-                      <motion.aside
-                        key="drawer-panel"
-                        initial={{ x: '100%' }}
-                        animate={{ x: 0 }}
-                        exit={{ x: '100%' }}
-                        transition={{ type: 'tween', ease: 'easeOut', duration: 0.28 }}
-                        className="fixed top-0 right-0 bottom-0 w-full sm:w-[400px] bg-white z-[61] flex flex-col shadow-[-22px_28px_70px_rgba(0,0,0,0.4)]"
-                        role="dialog"
-                        aria-label={t('ai.quiz.drawerTitle')}
-                      >
-                        <header className="px-6 py-5 border-b border-black/8 flex items-baseline justify-between">
-                          <h3 className="font-display text-[22px] font-medium text-black">{t('ai.quiz.drawerTitle')}</h3>
-                          <div className="flex items-center gap-4">
-                            <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
-                              {t('ai.quiz.drawerCount').replace('{loved}', String(lovedRooms.length)).replace('{total}', String(voteHistory.length))}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setQuizDrawerOpen(false)}
-                              aria-label="Close"
-                              className="text-black/55 hover:text-black transition-colors"
-                            >
-                              <X size={18} />
-                            </button>
-                          </div>
-                        </header>
-                        {lovedRooms.length >= 1 && (
-                          <div className="px-6 py-4 bg-[#F4EFE7] border-b border-black/8">
-                            <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-[#0047AB] mb-1">
-                              {t('ai.quiz.leadingStyles')}
-                            </p>
-                            <p className="text-[12px] text-black font-medium">
-                              {(() => {
-                                const total = Object.values(quizVotes).reduce((a: number, b: number) => a + b, 0) || 1;
-                                return STYLES
-                                  .filter(s => (quizVotes[s] || 0) > 0)
-                                  .sort((a, b) => (quizVotes[b] || 0) - (quizVotes[a] || 0))
-                                  .slice(0, 3)
-                                  .map(s => `${t(`ai.style.${s.toLowerCase().replace(/-/g, '').replace(/ /g, '')}`)} ${Math.round(((quizVotes[s] || 0) / total) * 100)}%`)
-                                  .join(' · ');
-                              })()}
-                            </p>
-                          </div>
-                        )}
-                        <div className="flex-1 overflow-y-auto px-6 py-5">
-                          {lovedRooms.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center gap-2 text-center py-12 text-black/55">
-                              <Heart size={20} strokeWidth={1.5} />
-                              <p className="text-[12px]">Love rooms to build your moodboard</p>
-                            </div>
-                          ) : (
-                            <div ref={moodboardRef} className="grid grid-cols-2 gap-2.5">
-                              {[...lovedRooms].reverse().map((room) => (
-                                <div key={`drawer-${room.step}`} className="relative aspect-square overflow-hidden rounded-[4px] bg-neutral-100">
-                                  <img
-                                    src={cld(room.imageUrl, 360, { crop: 'fill', aspectRatio: '1/1' })}
-                                    srcSet={cldSrcSet(room.imageUrl, [240, 360, 480], { crop: 'fill', aspectRatio: '1/1' })}
-                                    sizes="160px"
-                                    width={360} height={360}
-                                    loading="lazy" decoding="async"
-                                    alt="Loved room"
-                                    className="absolute inset-0 w-full h-full object-cover"
-                                  />
-                                  <span className="absolute bottom-0 left-0 right-0 px-2 py-1.5 bg-gradient-to-t from-black/70 to-transparent text-white text-[8px] font-bold uppercase tracking-[0.2em]">
-                                    {Object.keys(room.styleChanges)[0] ?? ''}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </motion.aside>
-                    </>
-                  )}
-                </AnimatePresence>
-
-                {/* ── Save my style modal (free user upgrade prompt) ── */}
-                <AnimatePresence>
-                  {quizSaveModalOpen && (
-                    <>
-                      <motion.div
-                        key="save-modal-overlay"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.18 }}
-                        className="fixed inset-0 bg-black/60 z-[80]"
-                        onClick={() => setQuizSaveModalOpen(false)}
-                      />
-                      <motion.div
-                        key="save-modal-panel"
-                        initial={{ opacity: 0, y: 12, scale: 0.97 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 12, scale: 0.97 }}
-                        transition={{ duration: 0.22, ease: 'easeOut' }}
-                        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-[480px] bg-white z-[81] shadow-2xl"
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="save-modal-title"
-                      >
-                        <div className="p-7 md:p-8">
-                          <h3 id="save-modal-title" className="font-display text-[26px] md:text-[28px] font-medium text-black mb-3 leading-tight">
-                            Save your style — Design tier feature
-                          </h3>
-                          <p className="text-[14px] text-black/75 leading-relaxed mb-7">
-                            Saving your design DNA to your dashboard is part of the Design tier ($19/mo). Want to review pricing?
-                          </p>
-                          <div className="flex flex-col sm:flex-row gap-3">
-                            <button
-                              type="button"
-                              onClick={() => { setQuizSaveModalOpen(false); navigateTo('pricing'); }}
-                              className="flex-1 px-5 py-3.5 bg-[#0047AB] text-white text-[11px] font-bold uppercase tracking-[0.22em] hover:bg-[#003d99] transition-colors"
-                            >
-                              View pricing →
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setQuizSaveModalOpen(false)}
-                              className="flex-1 sm:flex-none px-5 py-3.5 text-[11px] font-bold uppercase tracking-[0.22em] text-black/65 hover:text-black transition-colors"
-                            >
-                              Maybe later
-                            </button>
-                          </div>
-                        </div>
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
-
-                {/* ── Toast (share / save feedback) ── */}
-                <AnimatePresence>
-                  {quizToast && (
-                    <motion.div
-                      key="quiz-toast"
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 16 }}
-                      transition={{ duration: 0.2 }}
-                      className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-black text-white px-5 py-3 z-[70] text-[11px] font-bold uppercase tracking-[0.22em] shadow-2xl"
-                      role="status"
-                    >
-                      {quizToast}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Persistent feedback band — bottom of Style Quiz (AI-023 G) */}
-                <FeedbackBand onOpenFeedback={() => setFeedbackOpen(true)} />
-              </div>
+                <StyleQuizScreen onApplyStyle={handleApplyQuizStyle} onSignIn={triggerGoogleSignIn} />
               )}
 
-
-              {/* ══ SHOP THIS LOOK ══ */}
+              {/* ══ SHOP THIS LOOK (legacy inline flow — superseded by <ShoppingExperience/>;
+                   always hidden now since the container is hidden for activeTool==='shopping'.
+                   id removed to avoid colliding with ShoppingExperience's #shop-this-look. ══ */}
               <div
-                id="shop-this-look"
                 className={`scroll-mt-28 border-t-2 border-black/8${activeTool !== 'shopping' ? ' hidden' : ''}`}
               >
 
@@ -4121,7 +2912,7 @@ const AIConceptsPage: React.FC = () => {
           Download button is gated on selectedConceptUrl — quiz thumbs are
           public Cloudinary URLs the user can save via right-click. */}
       <AnimatePresence>
-        {isLightboxOpen && (selectedConceptUrl || lightboxQuizUrl) && (
+        {isLightboxOpen && selectedConceptUrl && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsLightboxOpen(false)} className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 md:p-12 cursor-zoom-out">
             <div className="absolute top-8 right-8 flex gap-4 z-[110]">
               {selectedConceptUrl && (
@@ -4134,7 +2925,7 @@ const AIConceptsPage: React.FC = () => {
               </button>
             </div>
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} transition={{ type: 'spring', damping: 25, stiffness: 300 }} className="relative max-w-full max-h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-              <img src={selectedConceptUrl || lightboxQuizUrl || ''} className="max-w-full max-h-[90vh] object-contain shadow-2xl" alt="Full resolution" />
+              <img src={selectedConceptUrl || ''} className="max-w-full max-h-[90vh] object-contain shadow-2xl" alt="Full resolution" />
             </motion.div>
           </motion.div>
         )}
