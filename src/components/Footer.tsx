@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Mail, Instagram, Facebook, X } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 import Logo from './Logo';
-import PolicyModal, { type PolicyKind } from './PolicyModal';
 import { trackEvent } from '../lib/analytics';
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
@@ -56,7 +55,6 @@ const Footer: React.FC = () => {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [policyModal, setPolicyModal] = useState<PolicyKind | null>(null);
 
   const validateEmail = (emailStr: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -111,8 +109,9 @@ const Footer: React.FC = () => {
       { name: t('footer.about'), action: () => navigateTo('studio') },
     ],
     useful: [
-      { name: t('footer.terms'), policy: 'terms' as const },
-      { name: t('footer.privacy'), policy: 'privacy' as const },
+      { name: t('footer.terms'), action: () => navigateTo('terms') },
+      { name: t('footer.privacy'), action: () => navigateTo('privacy') },
+      { name: t('footer.refund'), action: () => navigateTo('refund') },
     ],
     faq: { name: 'FAQ', action: () => navigateTo('faq') },
   };
@@ -157,7 +156,7 @@ const Footer: React.FC = () => {
                   <button
                     key={link.name}
                     type="button"
-                    onClick={() => setPolicyModal(link.policy)}
+                    onClick={link.action}
                     className="text-left text-xs font-bold uppercase tracking-widest text-white/80 hover:text-[#0047AB] transition-colors duration-300"
                   >
                     {link.name}
@@ -248,11 +247,10 @@ const Footer: React.FC = () => {
         </div>
       </footer>
       
-      <SuccessModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+      <SuccessModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
       />
-      <PolicyModal open={policyModal} onClose={() => setPolicyModal(null)} />
     </>
   );
 };
