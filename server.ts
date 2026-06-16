@@ -20,6 +20,15 @@ import { generateConceptImage } from "./services/aiVision/imageGeneration.js";
 import { getCacheKey, getCachedBrief, setCachedBrief } from "./services/aiVision/styleCache.js";
 import { STYLE_NAME_TO_PRESET, ROOM_NAME_TO_TYPE } from "./services/aiVision/stylePresets.js";
 
+// ─── Shopping List search-accuracy (#12): price + direct-link + match helpers ─
+import { normalizePrice } from "./src/lib/priceParse.js";
+import { extractDirectLink, cleanSource, retailerSearchUrl, cleanProductTitle } from "./services/shopping/links.js";
+import { buildShoppingQuery, pickMatches } from "./services/shopping/match.js";
+import { dedupeItems, pickFreeItems } from "./services/shopping/select.js";
+import { getRetailers, shopsForLevel, matchRetailer } from "./services/shopping/retailers.js";
+import { mockBucketFor } from "./services/shopping/mockBucket.js";
+import { SHOPPING_TAXONOMY, SHOPPING_TAXONOMY_IDS, categoryToTaxonomyId } from "./src/data/shoppingTaxonomy.js";
+
 const FALLBACK_ENV_PATH = 'E:/Secrets/Website/.env';
 dotenv.config({
   path: existsSync('.env')
@@ -32,6 +41,9 @@ dotenv.config({
 /** Free tier caps (UI + API). Paid tier can be added later with an `isPaid` flag. */
 const FREE_TIER_MAX_CONCEPTS = 3;
 const FREE_TIER_MAX_SHOPPING_LISTS = 3;
+/** Free tier: identify enumerates ALL items, but Serper only searches the top N;
+ *  the rest come back as a `teaser` (names only) to drive the upgrade hook. Paid = all. */
+const FREE_TIER_MAX_ITEMS = 4;
 
 /** Accounts that get unlimited quotas — never clamped or decremented. */
 const UNLIMITED_ACCOUNT_EMAILS = [
@@ -1115,35 +1127,43 @@ async function startServer() {
       if (!apiKey) throw new Error("GEMINI_API_KEY is not set.");
       const ai = new GoogleGenAI({ apiKey });
 
-      // Free-tier: identify 4–6 prominent shoppable elements distributed across
-      // categories (furniture, rugs, lighting, wall art, decor) — not furniture only.
-      // Skip a category if it's clearly not visible in the image; never fabricate.
-      // Return richer attributes so search queries can match color/material/style.
-      const identifyPrompt = `You are a professional interior design sourcing assistant.
+      // #12 P3a — owner-approved prompt (validated via scripts/test-identify.ts):
+      // enumerate only genuinely-visible objects, each mapped to ONE taxonomy id
+      // (seating ≠ storage; recessed/built-in lighting skipped; chandeliers
+      // recognized). Return descriptors + prominence so the search step can build
+      // category-aware queries, dedupe, and pick the FREE-tier main pieces.
+      const taxonomyForPrompt = SHOPPING_TAXONOMY
+        .map((c) => `  - ${c.id}: ${c.detects.slice(0, 9).join(", ")}`)
+        .join("\n");
+      const identifyPrompt = `You are a professional interior design sourcing assistant analyzing ONE room photo.
 
-Identify 4 to 6 of the most prominent SHOPPABLE elements in this room photo, distributed across categories — not just furniture.
+GOAL: list every DISTINCT, clearly-visible, shoppable object in the room, each mapped to exactly ONE category id from the fixed taxonomy below.
 
-Try to include a mix when visible:
-- 1–2 furniture pieces (sofa, armchair, bed, coffee/dining/side table, storage, desk, etc.)
-- 1 rug or floor covering, if visible
-- 1 lighting piece (pendant, chandelier, floor/table lamp, sconce), if visible
-- 1 wall art / poster / framed print, if visible
-- 1 wallpaper or distinctive wall covering, if a clearly patterned/textured wall treatment is present
-- 1 decorative accent (vase, sculptural object, large mirror, throw pillows as a set), if visible
+TAXONOMY (id: example object types that belong to it):
+${taxonomyForPrompt}
 
-If a category is clearly absent from the image, skip it — do not fabricate items that aren't there. Total must be between 4 and 6 items.
+RULES:
+- List ONLY objects you can actually see in THIS photo. Never invent, assume, or add "typical" items.
+- Each entry is ONE distinct physical object. Never list the same object twice and never split it (a sectional sofa = one "seating" item).
+- Ignore tiny, blurry, heavily-cropped, or barely-visible objects, and built-in architecture (windows, doors, flooring, the ceiling).
+- Every item's "taxonomyId" MUST be one of the ids above, copied verbatim. If an object fits none of them, OMIT it.
+- Map by FUNCTION, not by looks: a sideboard / credenza / TV unit / bookcase = storage (NEVER seating); a pendant or lamp = lighting; a framed print / mirror / vase / sculpture = art-decor; a coffee/side/console/dining table = tables-desks.
+- LIGHTING — only list DECORATIVE, separately-purchasable fixtures: chandeliers, pendants, flush / semi-flush ceiling mounts, floor lamps, table lamps, wall sconces. DO NOT list recessed / can / cove / track / strip or any other built-in lighting — treat those as architecture and skip them. A hanging ceiling fixture with multiple bulbs, arms, tiers, or globes is a CHANDELIER (or pendant) — never call it a "recessed light". A statement ceiling fixture over a seating or dining area is a focal point — score its prominence HIGH.
+- "prominence" = how visually dominant the object is in the photo, 0-100 (combine size + centrality + how in-focus it is).
 
-For each item return:
-- category: short type label, e.g. "Sofa", "Area Rug", "Pendant Light", "Wall Art", "Wallpaper", "Decorative Vase"
-- description: one short phrase describing the item (used as a subtitle, max ~8 words)
-- color: dominant color(s)
-- material: primary material if identifiable (e.g. "velvet", "wool", "brass", "ceramic", "oak", "vinyl", "non-woven paper" for wallpaper); use "unknown" if unclear
-- shape: silhouette or pattern descriptor (e.g. "rounded", "linear", "geometric", "abstract", "tufted", "vertical stripe", "floral repeat")
-- style: design era/style label (e.g. "mid-century modern", "boho", "contemporary", "scandinavian", "art deco")
-- search_query: 5–10 word retail search query optimized for Google Shopping, baking in color + material + style + key shape/pattern
+For EACH item return:
+- category: 1-3 word plain type label (e.g. "Sofa", "Area Rug", "Pendant Light", "Sideboard")
+- taxonomyId: exactly one id from the taxonomy above, verbatim
+- description: one short phrase describing THIS specific item (used as a subtitle, max ~8 words)
+- color: dominant color(s) you see
+- material: primary material, or "unknown"
+- shape: silhouette / form / pattern, or "unknown"
+- style: design era/style, or "unknown"
+- prominence: integer 0-100
+- search_query: 5-10 word retail search query (color + material + shape + category + style)
 
-Output ONLY valid JSON with no markdown fences and no explanation:
-{"items":[{"category":"Sofa","description":"Curved navy velvet sofa","color":"navy blue","material":"velvet","shape":"low curved","style":"mid-century modern","search_query":"navy velvet curved sofa mid century modern"},{"category":"Wallpaper","description":"Green vertical stripe wallpaper","color":"sage green and cream","material":"non-woven paper","shape":"vertical stripe","style":"contemporary","search_query":"sage green vertical stripe wallpaper non-woven contemporary"}]}`;
+Output ONLY valid JSON, no markdown fences, no commentary:
+{"items":[{"category":"Sofa","taxonomyId":"seating","description":"Curved navy velvet sofa","color":"navy blue","material":"velvet","shape":"low curved","style":"mid-century modern","prominence":95,"search_query":"navy velvet curved sofa mid century modern"}]}`;
 
       const geminiRes = await ai.models.generateContent({
         model: "gemini-2.5-flash",
@@ -1167,7 +1187,18 @@ Output ONLY valid JSON with no markdown fences and no explanation:
         return res.status(422).json({ error: "Could not identify items from the image." });
       }
       const identified = JSON.parse(jsonMatch[0]);
-      return res.json({ items: identified.items || [] });
+      // Validate/normalize taxonomyId; drop anything that can't be mapped to a
+      // canonical category (so downstream scope/query/match always get clean ids).
+      const items = (Array.isArray(identified.items) ? identified.items : [])
+        .map((it: any) => {
+          let id = typeof it.taxonomyId === "string" ? it.taxonomyId.trim() : "";
+          if (!SHOPPING_TAXONOMY_IDS.includes(id)) id = categoryToTaxonomyId(it.category) || categoryToTaxonomyId(it.description) || "";
+          return SHOPPING_TAXONOMY_IDS.includes(id)
+            ? { ...it, taxonomyId: id, description: it.description || it.category }
+            : null;
+        })
+        .filter(Boolean);
+      return res.json({ items });
 
     } catch (err: any) {
       console.error("[Shopping] identify error:", err?.message ?? err);
@@ -1241,9 +1272,37 @@ Output ONLY valid JSON with no markdown fences and no explanation:
         });
       }
 
-      const { items, country } = req.body;
+      const { items, country, budgetLevel, roomCap, scopeIds } = req.body;
       const gl = country || 'us';
+      // roomCap is FLAG-ONLY in v1 (the client flags over-cap); budgetLevel drives
+      // retailer-tier routing below (#12 P4).
+      void roomCap;
       if (!items || !Array.isArray(items)) return res.status(400).json({ error: "Missing or invalid items list" });
+
+      const isPaidShop = shopUser.isPaid === true || shopUser.shoppingListsLeft >= 999;
+
+      // #12 P3 — normalize taxonomy ids (defensive; identify already tags them),
+      // apply the PAID "Find" scope (free always searches all mains), then dedupe
+      // identical detections (6 identical chairs → one entry, quantity 6).
+      const normItems = items.map((it: any) => {
+        const id = (typeof it.taxonomyId === "string" && SHOPPING_TAXONOMY_IDS.includes(it.taxonomyId))
+          ? it.taxonomyId
+          : (categoryToTaxonomyId(it.category) || "");
+        return { ...it, taxonomyId: id };
+      });
+      const scope = Array.isArray(scopeIds) ? scopeIds.filter((s: any) => typeof s === "string") : [];
+      const scoped = (isPaidShop && scope.length) ? normItems.filter((i: any) => scope.includes(i.taxonomyId)) : normItems;
+      const deduped = dedupeItems(scoped);
+
+      // ── Free-tier search cap (#12 P3c) ──────────────────────────────────────
+      // Identify enumerated ALL items (cheap). Serper is only called for the
+      // searched set: paid = everything; free = up to 4 MAIN pieces (furniture/
+      // lighting/rugs, spread across categories). The rest become a names-only
+      // `teaser` for the upgrade hook — NO product lookup for those.
+      const searchedItems = isPaidShop ? deduped : pickFreeItems(deduped, FREE_TIER_MAX_ITEMS);
+      const teaserItems = deduped
+        .filter((it: any) => !searchedItems.includes(it))
+        .map((it: any) => ({ category: it.category, label: it.description || it.category }));
 
       // Serper.dev API key — set SERPER_API_KEY in AI Studio Secrets
       // MOCK_SERPER=true bypasses Serper entirely (returns canned products from
@@ -1252,45 +1311,8 @@ Output ONLY valid JSON with no markdown fences and no explanation:
       const SERPER_API_KEY = (process.env.SERPER_API_KEY || "").trim();
       if (!MOCK_SERPER && !SERPER_API_KEY) return res.status(500).json({ error: "SERPER_API_KEY not set — add it in AI Studio Secrets" });
 
-      // ── Shared helper: extract best direct URL from a Serper result ──────────
-      const extractDirectLink = (r: any): string => {
-        if (r.productLink && !r.productLink.includes('google.com/url')) return r.productLink;
-        if (r.merchantLink && !r.merchantLink.includes('google.com/url')) return r.merchantLink;
-        if (r.link) {
-          try {
-            const urlObj = new URL(r.link);
-            const adUrl = urlObj.searchParams.get('adurl') || urlObj.searchParams.get('url') || urlObj.searchParams.get('q');
-            if (adUrl && adUrl.startsWith('http') && !adUrl.includes('google.com')) return adUrl;
-          } catch {
-            const m = r.link.match(/[?&](?:adurl|url|q)=([^&]+)/i);
-            if (m) {
-              const decoded = decodeURIComponent(m[1]);
-              if (decoded.startsWith('http') && !decoded.includes('google.com')) return decoded;
-            }
-          }
-        }
-        return (r.link && !r.link.includes('google.com/url')) ? r.link : (r.productLink || r.merchantLink || r.link || "#");
-      };
-
-      const cleanSource = (raw: string): string => {
-        let s = (raw || "")
-          .replace(/^https?:\/\//i, "").replace(/^www\./i, "")
-          .split(/[/?#]/)[0]
-          .replace(/\.(com|org|net|edu|gov|io|co|uk|ca|au|de|fr|am|ae)$/i, "")
-          .split(/[-_.]/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
-          .trim();
-        return s || "Shop";
-      };
-
-      const mapProduct = (r: any) => ({
-        title: r.title || "Product",
-        price: r.price || null,
-        source: cleanSource(r.source || ""),
-        link: extractDirectLink(r),
-        thumbnail: r.imageUrl || null,
-        rating: r.rating || null,
-        reviews: r.ratingCount || null,
-      });
+      // Product mapping (link resolution + price normalization) is built after
+      // the Sanity retailer fetch below — see `productLink`.
 
       const serperSearch = async (query: string, num = 8): Promise<any[]> => {
         if (MOCK_SERPER) {
@@ -1298,9 +1320,8 @@ Output ONLY valid JSON with no markdown fences and no explanation:
           try {
             const mockPath = path.resolve(process.cwd(), "mocks/serper-shopping-mock.json");
             const mock = JSON.parse(readFileSync(mockPath, "utf-8"));
-            // Pick the bucket whose key appears in the query (lowercased), else fallback
-            const lowerQ = query.toLowerCase();
-            const bucketKey = Object.keys(mock).find(k => lowerQ.includes(k.toLowerCase())) || "default";
+            // Route by the item noun (ignores the retailer OR-filter — see mockBucketFor).
+            const bucketKey = mockBucketFor(query);
             const bucket: any[] = mock[bucketKey] || mock.default || [];
             return bucket.slice(0, num);
           } catch (e: any) {
@@ -1318,33 +1339,38 @@ Output ONLY valid JSON with no markdown fences and no explanation:
         return data.shopping || [];
       };
 
-      // ── Shop catalogue with category tags ──────────────────────────────────────
-      // cats: keywords that must overlap with item.category for this shop to be
-      // included. Shops without an overlap are skipped so e.g. Desenio is never
-      // queried for a sofa search.
-      const ALL_SHOPS = [
-        { name: "West Elm",        domain: "westelm.com",        cats: ["furniture","sofa","chair","table","rug","lighting","lamp","sconce","decor","bed","storage","desk","nightstand","dresser","bookcase"] },
-        { name: "CB2",             domain: "cb2.com",            cats: ["furniture","sofa","chair","table","rug","lighting","lamp","decor","storage","desk","bed"] },
-        { name: "IKEA",            domain: "ikea.com",           cats: ["furniture","sofa","chair","table","rug","lighting","lamp","decor","bed","storage","desk","nightstand","dresser","bookcase","shelf"] },
-        { name: "Pottery Barn",    domain: "potterybarn.com",    cats: ["furniture","sofa","chair","table","rug","lighting","lamp","decor","bed","storage","nightstand","dresser"] },
-        { name: "Article",         domain: "article.com",        cats: ["furniture","sofa","chair","table","bed","storage","desk","nightstand","dresser","bookcase"] },
-        { name: "Crate & Barrel",  domain: "crateandbarrel.com", cats: ["furniture","sofa","chair","table","rug","lighting","lamp","decor","storage","kitchen","bed"] },
-        { name: "Room & Board",    domain: "roomandboard.com",   cats: ["furniture","sofa","chair","table","bed","storage","desk","nightstand","dresser","bookcase"] },
-        { name: "Blu Dot",         domain: "bludot.com",         cats: ["furniture","sofa","chair","table","bed","storage","desk","lighting","lamp","shelving"] },
-        { name: "AllModern",       domain: "allmodern.com",      cats: ["furniture","sofa","chair","table","rug","lighting","lamp","decor","bed","storage","desk"] },
-        { name: "Desenio",         domain: "desenio.com",        cats: ["art","poster","print","wall art","wall decor","painting","canvas"] },
-        { name: "AllPosters",      domain: "allposters.com",     cats: ["art","poster","print","wall art","painting","canvas","photography"] },
-        { name: "Wayfair",         domain: "wayfair.com",        cats: ["furniture","sofa","chair","table","rug","lighting","lamp","decor","bed","storage","desk","nightstand","dresser","bookcase","kitchen","outdoor"] },
-      ];
+      // #12 P4 — retailer routing now comes from the live Sanity catalog
+      // (services/shopping/retailers): shopsForLevel() filters by budget tier
+      // (level → tiers), category overlap, and region. Fetched once below.
+      const budgetLevelNorm = (typeof budgetLevel === "string" ? budgetLevel : "any") as any;
+      const retailers = await getRetailers();
 
-      // Returns shops whose cat list has at least one keyword present in the item category string.
-      const shopsForCategory = (itemCategory: string): typeof ALL_SHOPS => {
-        const ic = itemCategory.toLowerCase();
-        const matched = ALL_SHOPS.filter(shop =>
-          shop.cats.some(cat => ic.includes(cat) || cat.includes(ic.split(/[\s,]/)[0]))
-        );
-        // Fallback: exclude art-only shops if nothing matched (e.g. unknown category)
-        return matched.length >= 2 ? matched : ALL_SHOPS.filter(s => !["desenio","allposters"].includes(s.domain.split(".")[0]));
+      // Resolve a Serper result's `source` to a CURATED retailer (Sanity only) —
+      // non-curated shops (e.g. Michaels) resolve to null and are skipped.
+      const retailerBySource = (source: string) => matchRetailer(retailers, source);
+      // Resolve the EXACT product page via a Serper WEB search (the /shopping
+      // endpoint gives no merchant URL). Returns the first organic result on the
+      // retailer's own domain, or "" → caller falls back to the retailer search URL.
+      const resolveExactUrl = async (title: string, domain: string, retailerName?: string): Promise<string> => {
+        if (MOCK_SERPER || !domain || !title) return "";
+        try {
+          const q = `${cleanProductTitle(title, retailerName)} ${domain}`;
+          const resp = await fetch("https://google.serper.dev/search", {
+            method: "POST",
+            headers: { "X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json" },
+            body: JSON.stringify({ q, gl, hl: "en", num: 6 }),
+          });
+          if (!resp.ok) return "";
+          const data = await resp.json();
+          const d = domain.toLowerCase().replace(/^www\./, "");
+          for (const o of (data.organic || [])) {
+            try {
+              const h = new URL(o.link).hostname.toLowerCase().replace(/^www\./, "");
+              if (h === d || h.endsWith("." + d)) return o.link;
+            } catch { /* skip malformed */ }
+          }
+          return "";
+        } catch { return ""; }
       };
 
       // ─── Daily budget (I-009) ───────────────────────────────────────────────
@@ -1355,13 +1381,15 @@ Output ONLY valid JSON with no markdown fences and no explanation:
         const parsed = parseInt((process.env.SERPER_DAILY_BUDGET || "200"), 10);
         return Number.isFinite(parsed) && parsed > 0 ? parsed : 200;
       })();
-      const plannedSerperCalls = items.slice(0, 4).length;
+      // Each item costs up to 2 Serper credits: 1 shopping search + 1 web search
+      // to resolve the exact product page. Reserve for the worst case up front.
+      const plannedSerperCalls = searchedItems.length;
       const todayUtc = utcDateString();
       if (!MOCK_SERPER) {
         const usage = dbShop.serperUsage && dbShop.serperUsage.date === todayUtc
           ? dbShop.serperUsage
           : { date: todayUtc, count: 0 };
-        if (usage.count + plannedSerperCalls > SERPER_DAILY_BUDGET) {
+        if (usage.count + plannedSerperCalls * 3 > SERPER_DAILY_BUDGET) {
           return res.status(503).json({
             error: "Daily limit reached, back tomorrow",
             code: "daily_budget_exceeded",
@@ -1375,23 +1403,54 @@ Output ONLY valid JSON with no markdown fences and no explanation:
         }
       }
 
-      // ── One category-aware OR query per item, top 3 results ─────────────────
+      // ── Category-aware query per item → relevance-filtered best match ───────
+      // #12 P3e: buildShoppingQuery bakes in descriptors + a curated-retailer OR
+      // filter; pickMatches drops off-category + accessory hits so a "seating"
+      // query never returns a cabinet. ONE best match per item by default (extra
+      // options come on demand via /api/shopping/alternate). No match → empty.
       const searchResults = await Promise.all(
-        items.slice(0, 4).map(async (item: any) => {
+        searchedItems.map(async (item: any) => {
+          let calls = 0;
           try {
-            const relevantShops = shopsForCategory(item.category);
-            // Cap at 6 shops to keep query short and focused
-            const shopFilter = relevantShops.slice(0, 6).map(s => `"${s.name}"`).join(" OR ");
-            const query = `${item.search_query} (${shopFilter})`;
-            console.log(`[SHOP] Serper: "${query}"`);
-            const hits = await serperSearch(query, 8);
+            const relevantShops = shopsForLevel(retailers, budgetLevelNorm, { category: item.category, taxonomyId: item.taxonomyId }, gl);
+            const shopNames = relevantShops.slice(0, 6).map((s) => s.name);
+            console.log(`[SHOP] Serper: "${buildShoppingQuery(item, shopNames)}"`);
+            let hits = await serperSearch(buildShoppingQuery(item, shopNames), 10); calls++;
+            let ranked = pickMatches(item, hits, 8);
+            // Broaden on empty: niche pieces may only exist at a shop OUTSIDE the
+            // curated OR-filter (e.g. a specific cabinet only at IKEA). Retry once
+            // without the shop filter for recall — relevance + retailer resolution
+            // still keep results on-category and from real retailers.
+            if (ranked.length === 0) {
+              console.log(`[SHOP] broadening (no shop filter) for "${item.category}"`);
+              hits = await serperSearch(buildShoppingQuery(item, []), 10); calls++;
+              ranked = pickMatches(item, hits, 8);
+            }
+            // Keep the best match we can link to a retailer — resolving the EXACT
+            // product page (web search), else the retailer's site-search.
+            let product: any = null;
+            for (const r of ranked) {
+              const direct = extractDirectLink(r);
+              const ret = retailerBySource(r.source);
+              if (!direct && !ret) continue;
+              let link = direct;
+              if (!link && ret) {
+                const exact = await resolveExactUrl(r.title, ret.domain, ret.name); if (!MOCK_SERPER) calls++;
+                link = exact || retailerSearchUrl(ret.domain, r.title, ret.name);
+              }
+              if (link) {
+                product = { title: r.title || "Product", price: normalizePrice(r.price), source: ret ? ret.name : cleanSource(r.source || ""), link, thumbnail: r.imageUrl || null, rating: r.rating || null, reviews: r.ratingCount || null };
+                break;
+              }
+            }
             return {
-              item: { category: item.category, description: item.description },
-              products: hits.slice(0, 3).map(mapProduct),
+              item: { category: item.category, description: item.description, search_query: item.search_query, taxonomyId: item.taxonomyId, quantity: item.quantity },
+              products: product ? [product] : [],
+              calls,
             };
           } catch (err) {
             console.error("Serper search error for", item.category, err);
-            return { item: { category: item.category, description: item.description }, products: [] };
+            return { item: { category: item.category, description: item.description }, products: [], calls };
           }
         })
       );
@@ -1401,19 +1460,21 @@ Output ONLY valid JSON with no markdown fences and no explanation:
       dbShop.users[googleIdShopping] = shopUser;
 
       // ─── Budget counter + forensic log (I-009) ──────────────────────────────
-      // Skip in mock mode — no real credits burned, no need to count.
-      if (!MOCK_SERPER && plannedSerperCalls > 0) {
+      // Actual credits = the calls each item actually made (1 shopping + maybe a
+      // broaden retry + an exact-URL web search). Skip in mock mode.
+      const actualSerperCalls = MOCK_SERPER ? 0 : searchResults.reduce((s: number, r: any) => s + (r.calls || 0), 0);
+      if (!MOCK_SERPER && actualSerperCalls > 0) {
         const current = dbShop.serperUsage && dbShop.serperUsage.date === todayUtc
           ? dbShop.serperUsage
           : { date: todayUtc, count: 0 };
-        dbShop.serperUsage = { date: todayUtc, count: current.count + plannedSerperCalls };
+        dbShop.serperUsage = { date: todayUtc, count: current.count + actualSerperCalls };
 
         const log: SerperLogEntry[] = Array.isArray(dbShop.serperLog) ? dbShop.serperLog : [];
         log.push({
           ts: new Date().toISOString(),
           userEmail: shopUser.email,
-          query: items.slice(0, 4).map((i: any) => i.search_query).join(" | "),
-          count: plannedSerperCalls,
+          query: searchedItems.map((i: any) => i.search_query).join(" | "),
+          count: actualSerperCalls,
           source: "shopping_search",
         });
         // Cap at 1000 entries — drop oldest when over.
@@ -1421,7 +1482,7 @@ Output ONLY valid JSON with no markdown fences and no explanation:
         dbShop.serperLog = log;
 
         // I-010 — mirror into per-provider apiCounters for cross-provider parity.
-        recordApiCall(dbShop, "serper", plannedSerperCalls);
+        recordApiCall(dbShop, "serper", actualSerperCalls);
       }
 
       // I-016 — activity log (always, including mock mode — the user did "generate")
@@ -1429,11 +1490,132 @@ Output ONLY valid JSON with no markdown fences and no explanation:
 
       writeDB(dbShop);
 
-      res.json({ results: searchResults, shoppingListsLeft: shopUser.shoppingListsLeft });
+      // Strip the internal per-item `calls` counter from the client payload.
+      const clean = searchResults.map((r: any) => ({ item: r.item, products: r.products }));
+      res.json({
+        results: clean,
+        searched: clean,
+        teaser: teaserItems,
+        totalIdentified: items.length,
+        shoppingListsLeft: shopUser.shoppingListsLeft,
+      });
 
     } catch (err: any) {
       console.error("Shopping search error:", err);
       res.status(500).json({ error: "Shopping search failed: " + (err.message || "unknown error") });
+    }
+  });
+
+  // ── POST /api/shopping/alternate (#11) — fetch ONE alternate product for an item ──
+  // On-demand only: spends a single Serper credit when the user clicks "Find another
+  // option". PAID (alternates are a paid refinement). Does NOT consume a shopping list.
+  app.post("/api/shopping/alternate", async (req, res) => {
+    try {
+      const SHOPPING_DISABLED = (process.env.SHOPPING_DISABLED || "false").toLowerCase() === "true";
+      if (SHOPPING_DISABLED) return res.status(503).json({ error: "Shopping List is temporarily offline", code: "disabled" });
+
+      const gid = requireAuth(req, res);
+      if (!gid) return;
+      const db = readDB();
+      let u = db.users[gid];
+      if (!u) return res.status(404).json({ error: "User not found" });
+      const norm = normalizeUserForFreeTier(u); u = norm.user;
+      if (norm.changed) { db.users[gid] = u; writeDB(db); }
+      const isPaidShop = u.isPaid === true || u.shoppingListsLeft >= 999;
+      // Alternates are a PAID refinement (§9). Free users are gated in the UI; enforce here too.
+      if (!isPaidShop) return res.status(403).json({ error: "Alternates are a paid feature", code: "paid_only" });
+
+      const { item, country, excludeSources } = req.body || {};
+      const gl = country || "us";
+      if (!item || !item.search_query) return res.status(400).json({ error: "Missing item" });
+      const exclude: string[] = Array.isArray(excludeSources) ? excludeSources.map((s: string) => String(s).toLowerCase()) : [];
+
+      const MOCK_SERPER = (process.env.MOCK_SERPER || "").toLowerCase() === "true";
+      const SERPER_API_KEY = (process.env.SERPER_API_KEY || "").trim();
+      if (!MOCK_SERPER && !SERPER_API_KEY) return res.status(500).json({ error: "SERPER_API_KEY not set" });
+
+      // Daily budget — one planned call.
+      const SERPER_DAILY_BUDGET = (() => { const p = parseInt((process.env.SERPER_DAILY_BUDGET || "200"), 10); return Number.isFinite(p) && p > 0 ? p : 200; })();
+      const today = utcDateString();
+      if (!MOCK_SERPER) {
+        const usage = db.serperUsage && db.serperUsage.date === today ? db.serperUsage : { date: today, count: 0 };
+        if (usage.count + 2 > SERPER_DAILY_BUDGET) return res.status(503).json({ error: "Daily limit reached, back tomorrow", code: "daily_budget_exceeded", resetAt: nextUtcMidnightIso() });
+        if (!db.serperUsage || db.serperUsage.date !== today) db.serperUsage = usage;
+      }
+
+      // extractDirectLink + cleanSource imported from services/shopping/links (#12 P2).
+      let hits: any[] = [];
+      if (MOCK_SERPER) {
+        try {
+          const mock = JSON.parse(readFileSync(path.resolve(process.cwd(), "mocks/serper-shopping-mock.json"), "utf-8"));
+          const key = mockBucketFor(String(item.search_query));
+          hits = (mock[key] || mock.default || []).slice(0, 10);
+        } catch { hits = []; }
+      } else {
+        const resp = await fetch("https://google.serper.dev/shopping", {
+          method: "POST",
+          headers: { "X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ q: item.search_query, gl, hl: "en", num: 10 }),
+        });
+        const data = await resp.json();
+        hits = resp.ok ? (data.shopping || []) : [];
+      }
+
+      // First on-category product (relevance-filtered) from a retailer we can link
+      // to, whose source isn't already shown. Real Serper gives no merchant URLs,
+      // so we build a retailer site-search link (same as /search).
+      const altRetailers = await getRetailers();
+      // Curated retailers only (Sanity) — non-curated shops are skipped.
+      const altRetailerBySource = (source: string) => matchRetailer(altRetailers, source);
+      const altResolveExactUrl = async (title: string, domain: string, retailerName?: string): Promise<string> => {
+        if (MOCK_SERPER || !domain || !title) return "";
+        try {
+          const resp = await fetch("https://google.serper.dev/search", {
+            method: "POST",
+            headers: { "X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json" },
+            body: JSON.stringify({ q: `${cleanProductTitle(title, retailerName)} ${domain}`, gl, hl: "en", num: 6 }),
+          });
+          if (!resp.ok) return "";
+          const data = await resp.json();
+          const d = domain.toLowerCase().replace(/^www\./, "");
+          for (const o of (data.organic || [])) {
+            try { const h = new URL(o.link).hostname.toLowerCase().replace(/^www\./, ""); if (h === d || h.endsWith("." + d)) return o.link; } catch { /* */ }
+          }
+          return "";
+        } catch { return ""; }
+      };
+      let product: any = null;
+      for (const r of pickMatches(item, hits, 12)) {
+        const ret = altRetailerBySource(r.source);
+        const source = ret ? ret.name : cleanSource(r.source || "");
+        if (exclude.includes(source.toLowerCase())) continue;
+        const direct = extractDirectLink(r);
+        if (!direct && !ret) continue;
+        let link = direct;
+        if (!link && ret) {
+          const exact = await altResolveExactUrl(r.title, ret.domain, ret.name);
+          link = exact || retailerSearchUrl(ret.domain, r.title, ret.name);
+        }
+        if (link) { product = { title: r.title || "Product", price: normalizePrice(r.price), source, link, thumbnail: r.imageUrl || null }; break; }
+      }
+
+      // Credits: 1 shopping search + 1 web search (exact URL) when a product was found.
+      if (!MOCK_SERPER) {
+        const altCalls = product ? 2 : 1;
+        const cur = db.serperUsage && db.serperUsage.date === today ? db.serperUsage : { date: today, count: 0 };
+        db.serperUsage = { date: today, count: cur.count + altCalls };
+        const log: SerperLogEntry[] = Array.isArray(db.serperLog) ? db.serperLog : [];
+        log.push({ ts: new Date().toISOString(), userEmail: u.email, query: String(item.search_query), count: altCalls, source: "shopping_alternate" });
+        while (log.length > 1000) log.shift();
+        db.serperLog = log;
+        recordApiCall(db, "serper", altCalls);
+        writeDB(db);
+      }
+
+      res.json({ product });
+    } catch (err: any) {
+      console.error("Shopping alternate error:", err);
+      res.status(500).json({ error: "Alternate lookup failed: " + (err.message || "unknown error") });
     }
   });
 

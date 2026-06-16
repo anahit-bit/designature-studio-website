@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Download, RefreshCw } from 'lucide-react';
 import { cld, cldSrcSet } from '../lib/cld';
+import { useLanguage } from '../LanguageContext';
 import FeedbackBand from './FeedbackBand';
 
 // Responsive ladders matched to the surfaces they serve.
@@ -77,6 +78,8 @@ interface VisionExperienceProps {
   navigateTo: (p: string) => void;
   setFeedbackOpen: (b: boolean) => void;
   shopCurrentConcept: () => void;
+  /** Carry the selected concept into Shopping (Entry, no auto-search) + switch tools. */
+  onShopThisRoom: (conceptUrl: string) => void;
   validationError: string | null;
   error: string | null;
   setError: (e: string | null) => void;
@@ -88,6 +91,7 @@ interface VisionExperienceProps {
 const DNA_BANNER_DISMISSED_KEY = 'ai_vision_dna_banner_dismissed';
 
 export default function VisionExperience(p: VisionExperienceProps) {
+  const { t } = useLanguage();
   // ── State derivation ──
   const state: 1 | 2 | 3 =
     p.results.length > 0 || p.sessionConceptArchive.length > 0 ? 3 :
@@ -148,6 +152,8 @@ export default function VisionExperience(p: VisionExperienceProps) {
   const roomFileRef = useRef<HTMLInputElement>(null);
   const replaceFileRef = useRef<HTMLInputElement>(null);
   const [pinterestPanelOpen, setPinterestPanelOpen] = useState(false);
+  // Optional refinements (style + room) — open by default per lock §9 / B4.4.
+  const [refinementsOpen, setRefinementsOpen] = useState(true);
 
   // ── Generate click — fires generation, then smooth-scrolls to the hero
   //    (where the processing animation is shown). Scroll is deferred via
@@ -274,6 +280,8 @@ export default function VisionExperience(p: VisionExperienceProps) {
             <h1 className="font-display font-normal text-white leading-[1.0] tracking-tight mb-4" style={{ fontSize: 'clamp(46px, 6vw, 86px)', letterSpacing: '-0.02em' }}>
               Your room.<br /><em className="italic text-white/80 font-light">Reimagined.</em>
             </h1>
+            {/* oxide accent rule — matches Style Quiz + Shopping landing heroes */}
+            <span aria-hidden className="block w-16 h-[2px] bg-[#8E3F2D] mx-auto mb-5" />
             <p className="text-[15px] text-white/85 leading-relaxed max-w-[460px] mx-auto mb-8">
               Three concepts in thirty seconds. Drop a photo, pick a style, see it transformed — yours to keep, share, or carry into a Designature project.
             </p>
@@ -284,14 +292,6 @@ export default function VisionExperience(p: VisionExperienceProps) {
                 className="bg-[#0047AB] text-white px-12 py-5 text-[12px] font-bold uppercase tracking-[0.3em] inline-flex items-center gap-3 hover:bg-[#003d99] transition-colors rounded-sm"
               >
                 ✦ Upload your room →
-              </button>
-              <button
-                type="button"
-                onClick={p.handleTrySampleRoom}
-                disabled={p.isSampleLoading}
-                className="text-white/70 hover:text-white text-[11px] font-bold uppercase tracking-[0.2em] underline underline-offset-4 px-2 py-2 transition-colors disabled:opacity-50"
-              >
-                {p.isSampleLoading ? 'Loading sample…' : 'Or try a sample room →'}
               </button>
             </div>
           </div>
@@ -496,7 +496,7 @@ export default function VisionExperience(p: VisionExperienceProps) {
         <div className="absolute inset-y-0 left-0 vision-pane-before overflow-hidden" style={{ width: beforeWidth }}>
           {p.roomImage && (
             <img
-              src={cld(p.roomImage, 900, BEFORE_OPTS)}
+              src={cld(p.roomImage, 1400, BEFORE_OPTS)}
               srcSet={cldSrcSet(p.roomImage, RESULT_AFTER_WIDTHS, BEFORE_OPTS)}
               sizes={isPortrait ? '(min-width: 1024px) 50vw, 100vw' : '(min-width: 1024px) 30vw, 100vw'}
               alt="Original room"
@@ -609,13 +609,15 @@ export default function VisionExperience(p: VisionExperienceProps) {
             >
               Share
             </button>
-            <button
-              type="button"
-              onClick={() => p.navigateTo('studio')}
-              className="px-5 py-3 bg-[#0047AB] text-white border border-[#0047AB] hover:bg-[#003d99] text-[10px] font-bold uppercase tracking-[0.22em]"
-            >
-              Get this designed →
-            </button>
+            {p.selectedConceptUrl && (
+              <button
+                type="button"
+                onClick={() => p.selectedConceptUrl && p.onShopThisRoom(p.selectedConceptUrl)}
+                className="px-5 py-3 bg-[#0047AB] text-white border border-[#0047AB] hover:bg-[#003d99] text-[10px] font-bold uppercase tracking-[0.22em] inline-flex items-center gap-2"
+              >
+                {t('ai.vision.shopThisRoom')} →
+              </button>
+            )}
             <button
               type="button"
               onClick={p.handleReset}
@@ -636,28 +638,69 @@ export default function VisionExperience(p: VisionExperienceProps) {
           </div>
         )}
       </section>
+      {/* CONVERSION BAND — end-of-funnel booking (demoted "Get this designed" out of
+          the action bar, where "Shop this room" is now the primary forward step). */}
+      <div className="bg-black text-white px-6 md:px-10 py-7 flex flex-col md:flex-row items-center justify-between gap-5 border-t border-white/10">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/70 mb-1">{t('ai.vision.bandKicker')}</p>
+          <h3 className="font-display text-3xl">{t('ai.vision.bandHeadline')} <em className="italic text-white/80">{t('ai.vision.bandHeadlineEm')}</em></h3>
+        </div>
+        <button type="button" onClick={() => p.navigateTo('studio')} className="bg-white text-black text-sm font-bold uppercase tracking-[0.24em] px-8 py-4 hover:bg-white/90 transition-colors whitespace-nowrap">{t('ai.vision.getDesigned')} →</button>
+      </div>
       </div>
     );
   };
 
   // ── Refinement strip — shown in State 1 + 2 only ──
-  const renderRefinementStrip = () => (
-    <section className="bg-[#F4EFE7] py-14 md:py-16 border-t border-[#DAD2C3]">
-      <div className="text-center mb-10 px-6">
-        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#0047AB] mb-3">Add inspirations · style + room are optional</p>
-        <h2 className="font-display text-[30px] md:text-[36px] leading-tight mb-2">What's inspiring you?</h2>
-        <p className="text-[14px] text-[#404040] max-w-[520px] mx-auto leading-relaxed">
-          Drop 2–3 reference photos, or paste a Pinterest pin. References are what tell the AI which direction to take — without them the result drifts. Style and room chips below are optional refinements on top.
-        </p>
+  // ── State 1 · SETUP — locked two-column split (white frame, dark room well +
+  //    cobalt controls), matching the v4 logged-in mockup. Replaces the cream
+  //    refinement strip + room-as-hero; reuses the inspiration grid + chips. ──
+  const renderSetup = () => {
+    const styleLabel = p.selectedStyle ? p.translateStyle(p.selectedStyle) : t('ai.vision.autoStyle');
+    const roomLabel = p.selectedRoom || t('ai.vision.autoRoom');
+    const quota = p.generationsLeft >= 999 ? p.unlimitedLabel : `${p.generationsLeft} ${p.remainingLabel}`;
+    return (
+    <section className="bg-white">
+      {/* titlehdr */}
+      <div className="flex items-end justify-between gap-5 px-6 md:px-10 py-6 border-b border-black/[0.08]">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#8E3F2D] mb-1.5">{t('ai.aiVision')}</p>
+          <h1 className="font-display text-[34px] md:text-[42px] leading-[1.0] text-black">{t('ai.vision.setupTitle')} <em className="italic">{t('ai.vision.setupTitleEm')}</em></h1>
+        </div>
+        <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-black/60 pb-1 whitespace-nowrap">{quota}</span>
       </div>
 
-      <div className="max-w-[720px] mx-auto px-6 flex flex-col gap-8">
-        {/* Inspirations */}
-        <div className="flex flex-col gap-3">
-          <div className="text-center font-display text-[18px] text-[#404040]">
-            Inspirations
-            <span className="ml-2 font-body text-[11px] tracking-[0.2em] uppercase font-bold text-[#0047AB]">required · 2–3 recommended</span>
+      <div className="grid lg:grid-cols-[42%_58%] items-start" style={{ gap: '1px', background: 'rgba(0,0,0,.08)' }}>
+        {/* LEFT — the room being redesigned (dark well, sticky) */}
+        <div className="bg-white self-stretch" onDragOver={(e) => e.preventDefault()} onDrop={(e) => p.handleDrop(e, 'room')}>
+          <div className="relative bg-[#0e0e0e] overflow-hidden lg:sticky lg:top-0" style={{ aspectRatio: '1/1' }}>
+            {p.roomImage && (
+              <img src={cld(p.roomImage, 1100)} srcSet={cldSrcSet(p.roomImage, HERO_USER_WIDTHS)} sizes="(min-width:1024px) 600px, 100vw" alt="Your room" className="absolute inset-0 w-full h-full object-contain" decoding="async" />
+            )}
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg,rgba(0,0,0,.15) 0%,rgba(0,0,0,0) 30%,rgba(0,0,0,.45) 100%)' }} />
+            <span className="absolute top-6 left-6 bg-black/[0.62] text-white text-[9px] font-bold uppercase tracking-[0.22em] px-3 py-1.5">{t('ai.vision.theRoom')}</span>
+            <button type="button" onClick={() => replaceFileRef.current?.click()} className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/90 text-black text-[9px] font-bold uppercase tracking-[0.2em] px-4 py-2.5 hover:bg-white transition-colors">{t('ai.vision.changePhoto')}</button>
           </div>
+          <p className="text-[10px] text-black/60 uppercase tracking-[0.16em] px-6 py-3">{t('ai.vision.keepProportions')}</p>
+        </div>
+
+        {/* RIGHT — controls (Step 1 always visible · refinements optional) */}
+        <div className="bg-white p-6 md:p-9 flex flex-col gap-5" style={{ minHeight: 620 }}>
+          {/* live concept summary (solid cobalt) */}
+          <div className="px-6 py-4 text-white" style={{ background: '#0047AB' }}>
+            <p className="text-[9px] font-bold uppercase tracking-[0.32em] text-white/75 mb-1.5">{t('ai.vision.yourConcept')}</p>
+            <p className="text-[15px] font-bold tracking-[0.04em]">{styleLabel} <span className="text-white/55 mx-0.5">·</span> {roomLabel}</p>
+            <p className="font-display italic text-[19px] leading-snug mt-2 text-white/90">{t('ai.vision.summaryLine').replace('{n}', String(p.inspirationImages.length))}</p>
+          </div>
+
+          {/* STEP 1 · inspiration (required) */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <span className="w-5 h-5 bg-black text-white text-[9px] flex items-center justify-center font-bold">1</span>
+              <span className="text-[12px] font-bold uppercase tracking-[0.3em] text-black/70">{t('ai.vision.step1Inspiration')}</span>
+              <span className="text-[10px] font-semibold text-[#8E3F2D] tracking-[0.06em] uppercase">{t('ai.vision.step1Required')}</span>
+            </div>
+            <p className="text-[11px] text-black/60">{t('ai.vision.step1Help')}</p>
           <div
             className="grid grid-cols-5 gap-2.5 max-w-[560px] mx-auto w-full"
             onDragOver={(e) => e.preventDefault()}
@@ -743,6 +786,20 @@ export default function VisionExperience(p: VisionExperienceProps) {
           )}
         </div>
 
+        {/* OPTIONAL refinements — style + room, open by default (lock §9 / B4.4) */}
+        <div className="border border-black/12 bg-white">
+          <button
+            type="button"
+            onClick={() => setRefinementsOpen((o) => !o)}
+            className="w-full flex items-center justify-between px-4 py-3 text-left"
+            aria-expanded={refinementsOpen}
+          >
+            <span className="text-[11px] font-bold uppercase tracking-[0.24em] text-[#8E3F2D]">{t('ai.vision.optionalRefinements')}</span>
+            <span className="text-[10px] text-black/55 uppercase tracking-[0.14em]">{t('ai.vision.autoDetected')} <span aria-hidden>{refinementsOpen ? '▴' : '▾'}</span></span>
+          </button>
+          <div className={`overflow-hidden transition-all duration-300 ${refinementsOpen ? 'max-h-[1600px]' : 'max-h-0'}`}>
+            <div className="px-4 pb-6 pt-2 flex flex-col gap-8">
+
         {/* Style */}
         <div className="flex flex-col gap-3">
           <div className="text-center font-display text-[18px] text-[#404040]">
@@ -806,6 +863,9 @@ export default function VisionExperience(p: VisionExperienceProps) {
             ))}
           </div>
         </div>
+            </div>
+          </div>
+        </div>
 
         {/* Bottom Generate concept — mirrors the hero-overlay button so users
             who scroll past the chips don't have to scroll back up. Shares the
@@ -845,28 +905,53 @@ export default function VisionExperience(p: VisionExperienceProps) {
             </button>
           </div>
         )}
+        </div>
       </div>
     </section>
-  );
+    );
+  };
+
+  // ── State 2 · GENERATING — distinct full-screen working state (lock §9 / B4.4).
+  //    Shown only for a FRESH generation (no concept yet); variations keep the
+  //    inline results UX so the AI-030 result hero isn't disrupted.
+  const renderGenerating = () => {
+    const styleLabel = p.selectedStyle ? p.translateStyle(p.selectedStyle) : t('ai.vision.autoStyle');
+    const roomLabel = p.selectedRoom || t('ai.vision.autoRoom');
+    const phrase = p.processingStage === 'extract'
+      ? p.PROCESSING_PHASES[0]
+      : (p.PROCESSING_PHASES[p.processingPhase] ?? p.PROCESSING_PHASES[0]);
+    const bg = p.roomImage || SAMPLE_BEFORE;
+    return (
+      <section ref={heroRef} className="relative w-full overflow-hidden bg-black" style={{ minHeight: '72vh' }}>
+        <img src={cld(bg, 1600, { crop: 'fill', aspectRatio: '16/9' })} alt="" className="absolute inset-0 w-full h-full object-cover" draggable={false} />
+        <div className="absolute inset-0 bg-black/72" />
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 text-center px-8">
+          <div className="w-12 h-12 border-2 border-white/15 border-t-white rounded-full animate-spin" />
+          <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/70">{t('ai.vision.generating')}</p>
+          <p className="font-display text-[30px] md:text-[40px] leading-tight text-white/95 max-w-[680px] animate-pulse">{phrase}</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/45">{styleLabel} · {roomLabel}</p>
+          <p className="text-[9px] text-white/35 uppercase tracking-widest">{t('ai.vision.generatingUsually')}</p>
+        </div>
+      </section>
+    );
+  };
+
+  // Fresh generation in flight (no concept yet) → dedicated generating screen.
+  const showGenerating = p.isProcessing && p.results.length === 0;
 
   return (
     <>
       {renderHiddenFileInputs()}
       {renderDnaBanner()}
 
-      {state === 1 && (
-        <>
-          {renderState1Hero()}
-          {renderRefinementStrip()}
-        </>
-      )}
-      {state === 2 && (
-        <>
-          {renderState2Hero()}
-          {renderRefinementStrip()}
-        </>
-      )}
-      {state === 3 && renderState3Hero()}
+      {showGenerating && renderGenerating()}
+
+      {/* State 0 · Landing — cinematic before/after launchpad (upload / sample). */}
+      {!showGenerating && state === 1 && renderState1Hero()}
+      {/* State 1 · Setup — locked two-column (room well + cobalt controls). */}
+      {!showGenerating && state === 2 && renderSetup()}
+      {/* State 3 · Results — AI-030 aspect-preserved, no-crop result hero. */}
+      {!showGenerating && state === 3 && renderState3Hero()}
 
       <FeedbackBand onOpenFeedback={() => p.setFeedbackOpen(true)} />
 

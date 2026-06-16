@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
+    "dev:mock": "tsx scripts/dev-mock.ts",
     "start": "tsx server.ts",
     "build": "vite build",
     "preview": "vite preview",
