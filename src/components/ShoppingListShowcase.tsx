@@ -70,8 +70,9 @@ export const SHOPPING_LOGOS: { slug: string; name: string }[] = [
 const logoUrl = (slug: string) => `${CLD}/retailer-${slug}.png`;
 const priceNum = (s: string) => parsePrice(s); // shared parser (drops cents, handles "$1,799.00")
 
-/** A retailer logo chip with a graceful text fallback if the image misses. */
-const LogoChip: React.FC<{ slug: string; name: string }> = ({ slug, name }) => {
+/** A retailer logo chip with a graceful text fallback if the image misses.
+ *  Exported so the logged-in ShoppingExperience renders the identical band. */
+export const LogoChip: React.FC<{ slug: string; name: string }> = ({ slug, name }) => {
   const [failed, setFailed] = useState(false);
   if (failed) return <span className="text-[15px] font-bold text-black/45">{name}</span>;
   return (

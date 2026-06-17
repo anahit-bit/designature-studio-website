@@ -168,6 +168,33 @@ describe('VisionExperience · AI-030 adaptive result hero', () => {
     expect(section.style.aspectRatio).toBe('');
   });
 
+});
+
+describe('VisionExperience · locked marquee band (§2 — Landing + Setup only)', () => {
+  const landing = { ...baseProps, roomImage: null, results: [], sessionConceptArchive: [], allSessionConcepts: [], selectedConceptUrl: null };
+  const setup = { ...baseProps, roomImage: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1/sample-room.png', results: [], sessionConceptArchive: [], allSessionConcepts: [] };
+  const renderWith = (props: typeof baseProps) =>
+    render(<MemoryRouter><LanguageProvider><VisionExperience {...props} /></LanguageProvider></MemoryRouter>);
+
+  it('renders the style marquee on the Landing state', () => {
+    const { container } = renderWith(landing);
+    const track = container.querySelector('.marquee-track');
+    expect(track).not.toBeNull();
+    expect(track?.textContent).toContain('Mid-Century'); // identical STYLES from the showcase
+  });
+
+  it('renders the style marquee on the Setup state', () => {
+    const { container } = renderWith(setup);
+    expect(container.querySelector('.marquee-track')).not.toBeNull();
+  });
+
+  it('does NOT render the marquee on the Results state', () => {
+    const { container } = renderVE(); // baseProps → state 3 (results)
+    expect(container.querySelector('.marquee-track')).toBeNull();
+  });
+});
+
+describe('VisionExperience · AI-030 (cont.)', () => {
   it('treats wide landscape (aspect > 1) as landscape with object-contain', () => {
     const { container } = renderVE();
     const section = container.querySelector('section.vision-result-hero') as HTMLElement;

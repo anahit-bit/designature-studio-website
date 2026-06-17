@@ -3,7 +3,9 @@ import { useLanguage } from '../LanguageContext';
 import { cld } from '../lib/cld';
 import { AuthUser } from '../AuthContext';
 import ConversionBand from './studio/ConversionBand';
+import Marquee from './studio/Marquee';
 import ShoppingOfflineCard from './ShoppingOfflineCard';
+import { SHOPPING_LOGOS, LogoChip } from './ShoppingListShowcase';
 import { SHOPPING_TAXONOMY, SHOPPING_TAXONOMY_IDS, categoryToTaxonomyId } from '../data/shoppingTaxonomy';
 import { parsePrice } from '../lib/priceParse';
 
@@ -192,6 +194,7 @@ const ShoppingExperience: React.FC<Props> = (p) => {
         <div className="px-8 py-7 border-r border-black/[0.08]"><p className="text-[11px] font-bold uppercase tracking-[0.28em] kicker mb-1.5">{t('ai.shopli.v2k')}</p><p className="text-[14px] text-black/55 leading-relaxed">{t('ai.shopli.v2b')}</p></div>
         <div className="px-8 py-7"><p className="text-[11px] font-bold uppercase tracking-[0.28em] kicker mb-1.5">{t('ai.shopli.v3k')}</p><p className="text-[14px] text-black/55 leading-relaxed">{t('ai.shopli.v3b')}</p></div>
       </div>
+      <Marquee label={t('ai.shop.searchedAcross')} items={SHOPPING_LOGOS.map((l) => <LogoChip key={l.slug} slug={l.slug} name={l.name} />)} />
     </>
   );
 
@@ -315,6 +318,7 @@ const ShoppingExperience: React.FC<Props> = (p) => {
           )}
         </div>
       </div>
+      <Marquee label={t('ai.shop.searchedAcross')} items={SHOPPING_LOGOS.map((l) => <LogoChip key={l.slug} slug={l.slug} name={l.name} />)} />
     </>
   );
 

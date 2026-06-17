@@ -185,6 +185,21 @@
 .studio-frame .ctab.active .ctab-veil { opacity: 0; }
 .studio-frame .ctab-veil { position: absolute; inset: 0; background: rgba(255,255,255,.5); transition: opacity .2s; }
 
+/* ── Room Audit (04) logged-in · annotated-room pins + score bars + dimension chip ── */
+/* click/tap pins (not hover-only) on the annotated room; .hot = the linked fix is active */
+@keyframes sxPinpop { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.25); } 100% { transform: scale(1); opacity: 1; } }
+.studio-frame .pin { animation: sxPinpop .45s cubic-bezier(.2,.8,.2,1) both; }
+.studio-frame .pin.hot { background: var(--cobalt) !important; color: #fff !important; box-shadow: 0 0 0 6px rgba(0,71,171,.28) !important; }
+.studio-frame .fixrow.hot { border-color: var(--cobalt) !important; box-shadow: 0 10px 30px rgba(0,71,171,.16); }
+
+/* score-bar grow (report) — the inner fill animates from 0 width on mount */
+@keyframes sxGrowbar { from { width: 0; } }
+.studio-frame .scorebar > span { animation: sxGrowbar .7s ease-out both; }
+
+/* the six design-dimension marquee chips (landing/setup ticker) */
+.studio-frame .dim { display: inline-flex; align-items: center; gap: .6rem; font-weight: 700; font-size: 15px; color: rgba(0,0,0,.45); }
+.studio-frame .dim::before { content: ''; width: 5px; height: 5px; background: var(--oxide); border-radius: 50%; }
+
 /* sign-in veil (logged-out account-action prompt) */
 .studio-signin-veil { position: fixed; inset: 0; z-index: 90; display: none; align-items: center; justify-content: center; padding: 24px;
   background: rgba(8,9,12,.66); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }

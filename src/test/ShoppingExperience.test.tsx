@@ -144,3 +144,23 @@ describe('ShoppingExperience — paid controls are functional, not static', () =
     expect(link.getAttribute('rel')).toMatch(/noopener/);
   });
 });
+
+describe('ShoppingExperience · locked marquee band (§2 — Landing + Entry only)', () => {
+  it('renders the retailer marquee on the Landing state', () => {
+    const { container } = renderSE(paidUser, { shoppingDone: false, shoppingResults: [], standaloneShoppingImage: null, searchSourceImage: null, selectedConceptUrl: null });
+    expect(container.querySelector('.marquee-track')).not.toBeNull();
+    expect(screen.getByText('Searched across')).toBeInTheDocument();
+    expect(screen.getAllByAltText('West Elm').length).toBeGreaterThan(0); // self-hosted retailer logos
+  });
+
+  it('renders the retailer marquee on the Entry state', () => {
+    const { container } = renderSE(paidUser, { shoppingDone: false, shoppingResults: [], standaloneShoppingImage: 'data:image/png;base64,AAAA' });
+    expect(container.querySelector('.marquee-track')).not.toBeNull();
+    expect(screen.getByText('Searched across')).toBeInTheDocument();
+  });
+
+  it('does NOT render the marquee on the Results state', () => {
+    const { container } = renderSE(paidUser); // baseProps → results view
+    expect(container.querySelector('.marquee-track')).toBeNull();
+  });
+});

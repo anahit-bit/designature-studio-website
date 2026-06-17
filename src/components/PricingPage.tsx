@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import Header from './Header';
 import PricingSection from './PricingSection';
 import Footer from './Footer';
@@ -9,8 +9,32 @@ import { cld, cldSrcSet, DEFAULT_WIDTHS } from '../lib/cld';
 
 const PRICING_HERO = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1772391549/3d_render_2_uoxs3r.jpg';
 
+/** A CTA elsewhere can request that we land on the plans (not the hero) by setting this
+ *  before navigating. We honour it once, then clear it. */
+export const PRICING_SCROLL_KEY = 'ds_pricing_scroll';
+
 const PricingPage: React.FC = () => {
   const { navigateTo, t } = useLanguage();
+
+  // When a CTA asked to land on the plans, scroll past the hero. We run inside rAF so we
+  // win against LanguageContext's on-navigation scroll-to-top (which fires synchronously
+  // on this same commit); the rAF callback runs on the next frame, after that reset.
+  useEffect(() => {
+    let flagged = false;
+    try {
+      flagged = sessionStorage.getItem(PRICING_SCROLL_KEY) === 'plans';
+    } catch { /* sessionStorage unavailable — just land on top */ }
+    if (!flagged) return;
+    // Consume the flag INSIDE the rAF (not here): in dev, StrictMode runs
+    // mount → cleanup → mount, and clearing the flag in the effect body would make the
+    // second mount miss it. The rAF also beats LanguageContext's synchronous
+    // scroll-to-top fired on this same navigation commit.
+    const id = requestAnimationFrame(() => {
+      try { sessionStorage.removeItem(PRICING_SCROLL_KEY); } catch { /* ignore */ }
+      document.getElementById('pricing-plans')?.scrollIntoView({ behavior: 'auto', block: 'start' });
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   return (
     <div className="min-h-screen bg-white font-body">
@@ -53,7 +77,7 @@ const PricingPage: React.FC = () => {
         </div>
       </section>
 
-      <div className="bg-white w-full">
+      <div id="pricing-plans" className="bg-white w-full scroll-mt-28">
         <div className="max-w-[1800px] mx-auto px-8 md:px-16 pt-16 pb-2">
           <h2 className="text-3xl md:text-5xl font-bold font-display text-black tracking-architectural uppercase leading-[0.9] text-center">
             {t('pricing.title')}
