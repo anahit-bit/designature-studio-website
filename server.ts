@@ -2159,10 +2159,10 @@ Score each of these 6 dimensions from 1-10 and write 1-2 sentences explaining th
 
 Then calculate an overall score from 1-100 (weighted average, not a simple mean — layout and functionality matter more).
 
-Finally, list exactly 3 "Fix Now" items — the highest-impact, most actionable improvements the homeowner can make immediately.
+Finally, list exactly 3 "Fix Now" items — the highest-impact, most actionable improvements the homeowner can make immediately. For EACH fix, also give a normalized location {x,y} as numbers from 0 to 100 — the percentage position (x = left→right, y = top→bottom) of the exact spot in THIS photo the fix refers to (the rug, the empty corner, the sofa, etc.). Point at the real object; do not guess a position if you are unsure.
 
 Output ONLY valid JSON with no markdown fences, no explanation:
-{"overallScore":72,"dimensions":[{"label":"Layout & Flow","score":7,"verdict":"The sofa placement creates a clear conversation zone, but the dining table blocks the path to the balcony."},{"label":"Lighting","score":5,"verdict":"..."},{"label":"Color Harmony","score":8,"verdict":"..."},{"label":"Clutter & Organization","score":6,"verdict":"..."},{"label":"Functionality","score":7,"verdict":"..."},{"label":"Style Cohesion","score":6,"verdict":"..."}],"fixNow":["Move the dining table 30cm left to open the balcony path","Add a floor lamp in the dark corner by the bookshelf","Replace the mismatched throw pillows with a cohesive neutral set"]}`;
+{"overallScore":72,"dimensions":[{"label":"Layout & Flow","score":7,"verdict":"The sofa placement creates a clear conversation zone, but the dining table blocks the path to the balcony."},{"label":"Lighting","score":5,"verdict":"..."},{"label":"Color Harmony","score":8,"verdict":"..."},{"label":"Clutter & Organization","score":6,"verdict":"..."},{"label":"Functionality","score":7,"verdict":"..."},{"label":"Style Cohesion","score":6,"verdict":"..."}],"fixNow":[{"text":"Move the dining table 30cm left to open the balcony path","x":44,"y":66},{"text":"Add a floor lamp in the dark corner by the bookshelf","x":14,"y":52},{"text":"Replace the mismatched throw pillows with a cohesive neutral set","x":62,"y":70}]}`;
 
       const geminiRes = await ai.models.generateContent({
         model: "gemini-2.5-flash",

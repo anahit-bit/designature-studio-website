@@ -3,6 +3,8 @@ import { X, Download, RefreshCw } from 'lucide-react';
 import { cld, cldSrcSet } from '../lib/cld';
 import { useLanguage } from '../LanguageContext';
 import FeedbackBand from './FeedbackBand';
+import Marquee from './studio/Marquee';
+import { STYLES } from './AIVisionShowcase';
 
 // Responsive ladders matched to the surfaces they serve.
 // AI-030f: HERO_FULL + RESULT_AFTER ladders widened so high-DPR / 4K
@@ -952,6 +954,16 @@ export default function VisionExperience(p: VisionExperienceProps) {
       {!showGenerating && state === 2 && renderSetup()}
       {/* State 3 · Results — AI-030 aspect-preserved, no-crop result hero. */}
       {!showGenerating && state === 3 && renderState3Hero()}
+
+      {/* Locked marquee band (§2) — Landing + Setup only, identical to the logged-out showcase.
+          Wrapped in a `.studio-frame` because the `.marquee` / `.marquee-track` CSS is scoped to
+          it (VisionExperience itself isn't a studio-frame); scoped to just the band so none of
+          studio-frame's other component rules touch Vision's bespoke markup. */}
+      {!showGenerating && (state === 1 || state === 2) && (
+        <div className="studio-frame">
+          <Marquee label={t('ai.vision.anyStyle')} items={STYLES} />
+        </div>
+      )}
 
       <FeedbackBand onOpenFeedback={() => p.setFeedbackOpen(true)} />
 

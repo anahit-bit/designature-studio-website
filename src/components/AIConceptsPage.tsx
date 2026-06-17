@@ -6,7 +6,7 @@ import { useLanguage } from '../LanguageContext';
 import { useAuth, AuthUser } from '../AuthContext';
 import Header from './Header';
 import Footer from './Footer';
-import RoomAudit from './RoomAudit';
+import RoomAuditExperience from './RoomAuditExperience';
 import FeedbackModal from './FeedbackModal';
 import AIVisionShowcase from './AIVisionShowcase';
 import VisionExperience from './VisionExperience';
@@ -67,6 +67,13 @@ declare global {
 // ─── Main Component ────────────────────────────────────────────────────────
 const AIConceptsPage: React.FC = () => {
   const { language, t, navigateTo } = useLanguage();
+
+  // Go to /pricing and land on the plan cards (not the hero). PricingPage reads this flag
+  // once on mount (see PRICING_SCROLL_KEY there) and scrolls to #pricing-plans.
+  const goToPricingPlans = () => {
+    try { sessionStorage.setItem('ds_pricing_scroll', 'plans'); } catch { /* ignore */ }
+    navigateTo('pricing');
+  };
 
   // Auth state — lifted into AuthContext (A-001)
   const {
@@ -1459,6 +1466,45 @@ const AIConceptsPage: React.FC = () => {
         />
       )}
 
+      {/* ── ROOM AUDIT EXPERIENCE (logged-in PAID, locked 4-state) ──
+           Self-contained .studio-frame panel mounted beside Vision/Shopping. Owns its own
+           upload→analyze→report pipeline. Free + logged-out keep the in-studio paid landing
+           below. FeedbackBand is preserved here (it used to sit under the old RoomAudit). */}
+      {!authLoading && user?.isPaid && activeTool === 'audit' && (
+        <>
+          <RoomAuditExperience
+            user={user}
+            onProcessingChange={setAuditProcessing}
+            onAuditComplete={async () => {
+              setAuditComplete(true);
+              await refreshQuota();
+            }}
+            onRedesignWithVision={(auditedRoom) => {
+              // Preload the audited room as AI Vision's source room (no auto-generate).
+              setRoomImage(auditedRoom);
+              const img = new Image();
+              img.onload = () => {
+                const ratio = img.width / img.height;
+                setRoomAspectRatio(`${img.width}/${img.height}`);
+                let ar: '1:1' | '3:4' | '4:3' | '9:16' | '16:9' = '1:1';
+                if (ratio > 1.5) ar = '16:9';
+                else if (ratio > 1.2) ar = '4:3';
+                else if (ratio > 0.8) ar = '1:1';
+                else if (ratio > 0.6) ar = '3:4';
+                else ar = '9:16';
+                setApiAspectRatio(ar);
+              };
+              img.src = auditedRoom;
+              setActiveTool('vision');
+              setTimeout(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }), 50);
+            }}
+            navigateTo={navigateTo}
+          />
+          {/* Persistent feedback band — bottom of Room Audit (AI-023 G) */}
+          <FeedbackBand onOpenFeedback={() => setFeedbackOpen(true)} />
+        </>
+      )}
+
       {/* ── ROOM AUDIT — in-studio paid landing (free OR logged-out; NOT a pricing redirect) ──
            Matches WEBSITE-PLAN-room-audit-paid-landing.html. Design+ users get the real tool
            (rendered in the main two-column below). */}
@@ -1534,33 +1580,26 @@ const AIConceptsPage: React.FC = () => {
                   ))}
                 </div>
 
+                {/* Primary CTA is auth-aware: logged-out → sign in (like the other tools'
+                    logged-out states); free logged-in → upgrade. Secondary always → pricing. */}
                 <button
                   type="button"
-                  onClick={() => navigateTo('pricing')}
+                  onClick={() => (user ? goToPricingPlans() : triggerGoogleSignIn())}
                   className="inline-flex items-center justify-center gap-3 w-full bg-[#0047AB] text-white text-[12px] font-bold uppercase tracking-[0.22em] px-7 py-4 mb-3 hover:bg-[#003d99] transition-colors"
                 >
-                  {user ? t('ai.audit.upgradeCta') : t('ai.audit.unlockCta')} →
+                  {user ? t('ai.audit.upgradeCta') : t('ai.audit.signInCta')} →
                 </button>
                 <div className="flex gap-3">
                   <button
                     type="button"
-                    onClick={() => navigateTo('pricing')}
+                    onClick={goToPricingPlans}
                     className="flex-1 border border-white/25 text-white/80 text-[11px] font-bold uppercase tracking-[0.16em] py-3.5 hover:border-white/60 hover:text-white transition"
                   >
-                    {t('ai.audit.seeSample')}
+                    {user ? t('ai.audit.seeSample') : t('ai.audit.seePlans')}
                   </button>
                 </div>
                 <p className="text-[11px] text-white/50 mt-4 leading-relaxed">
-                  {user ? (
-                    t('ai.audit.ctaNoteFree')
-                  ) : (
-                    <>
-                      {t('ai.audit.ctaNoteOut')}{' '}
-                      <button type="button" onClick={() => triggerGoogleSignIn()} className="text-white font-semibold hover:underline">
-                        {t('ai.audit.alreadyMember')}
-                      </button>
-                    </>
-                  )}
+                  {user ? t('ai.audit.ctaNoteFree') : t('ai.audit.ctaNoteOut')}
                 </p>
               </div>
             </div>
@@ -1573,7 +1612,7 @@ const AIConceptsPage: React.FC = () => {
            working area sizes to its content and the feedback CTA sits close
            below it. For ALL quiz steps (rating and result) drop the viewport
            height chain — other tools keep flex-grow + minHeight:'75vh'. */}
-      <div className={`flex flex-col border-t border-black/10${(activeTool === 'vision' || activeTool === 'shopping' || (activeTool === 'audit' && !user?.isPaid)) ? ' hidden' : ''}${activeTool !== 'quiz' ? ' flex-grow' : ''}`}>
+      <div className={`flex flex-col border-t border-black/10${(activeTool === 'vision' || activeTool === 'shopping' || activeTool === 'audit') ? ' hidden' : ''}${activeTool !== 'quiz' ? ' flex-grow' : ''}`}>
         {/* Quiz uses full-bleed sections (its own backgrounds + paddings); other tools keep the centered 1600px shell. */}
         <div className={activeTool === 'quiz' ? 'w-full' : 'max-w-[1600px] w-full mx-auto px-8 md:px-16 flex flex-col lg:flex-row flex-grow'} style={activeTool !== 'quiz' ? { minHeight: '75vh' } : undefined}>
 
@@ -1905,25 +1944,9 @@ const AIConceptsPage: React.FC = () => {
         {/* ════ RIGHT CONTENT AREA ════ */}
         <div className="flex-grow bg-white flex flex-col">
 
-          {/* ── 04 Room Audit ── paid/owner only ── */}
-          {activeTool === 'audit' && user?.isPaid && (
-            <div id="room-audit-panel" className="flex-grow flex flex-col bg-white min-h-[50vh]">
-              <RoomAudit
-                user={user ? { email: user.email, isPaid: user.isPaid, generationsLeft: user.generationsLeft } : null}
-                authLoading={authLoading}
-                t={t}
-                language={language}
-                onProcessingChange={setAuditProcessing}
-                onAuditComplete={async () => {
-                  setAuditComplete(true);
-                  await refreshQuota();
-                }}
-                onRequestLogin={() => triggerGoogleSignIn()}
-              />
-              {/* Persistent feedback band — bottom of Room Audit (AI-023 G) */}
-              <FeedbackBand onOpenFeedback={() => setFeedbackOpen(true)} />
-            </div>
-          )}
+          {/* 04 Room Audit (paid) now renders top-level as <RoomAuditExperience/> above —
+              the locked 4-state panel mirrors Vision/Shopping, so the two-column shell is
+              hidden for activeTool==='audit'. */}
 
           {/* Not logged in — right panel (vision only) */}
           {!authLoading && !user && activeTool === 'vision' && (

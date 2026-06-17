@@ -26,8 +26,9 @@ export const PAIRS: Pair[] = [
   { key: 'contemporary', before: `${CLD}AI/before_4_vpepte_square`, after: `${CLD}AI/after_4_xgalms_square` },
 ];
 
-/** Marquee styles (display strings — proper-noun style names, not translated). */
-const STYLES = ['Mid-Century', 'Scandinavian', 'Japandi', 'Modern', 'Minimalism', 'Art Deco',
+/** Marquee styles (display strings — proper-noun style names, not translated).
+ *  Exported so the logged-in VisionExperience renders the identical band. */
+export const STYLES = ['Mid-Century', 'Scandinavian', 'Japandi', 'Modern', 'Minimalism', 'Art Deco',
   'Bohemian', 'Industrial', 'Coastal', 'Traditional', 'Contemporary', 'Rustic', 'Mediterranean', 'Maximalist'];
 
 const sq = (url: string, w: number) => cld(url, w, { crop: 'fill', aspectRatio: '1/1' });
