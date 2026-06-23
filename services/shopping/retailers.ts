@@ -166,9 +166,14 @@ export function matchRetailer(retailers: ServerRetailer[], source: string): { na
 function regionMatches(regions: string[], gl: string): boolean {
   if (!regions.length) return true; // no region constraint
   const g = (gl || '').toLowerCase();
+  // The country selector + Serper use ISO 3166 geo codes (e.g. 'gb'), but Sanity
+  // retailers are tagged with human region labels (e.g. 'UK'). Map the codes that
+  // differ so a 'gb' search actually routes to UK-tagged retailers.
+  const GL_ALIASES: Record<string, string[]> = { gb: ['gb', 'uk'] };
+  const codes = GL_ALIASES[g] ?? [g];
   return regions.some((r) => {
     const rr = r.toLowerCase();
-    return rr === g || rr.includes('global') || rr.includes('worldwide') || rr.includes(g);
+    return rr.includes('global') || rr.includes('worldwide') || codes.some((c) => rr === c || rr.includes(c));
   });
 }
 

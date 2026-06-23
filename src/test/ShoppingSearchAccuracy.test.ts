@@ -11,7 +11,8 @@ import { isDirect, extractDirectLink, cleanSource, retailerSearchUrl, cleanProdu
 import { dedupeItems, pickFreeItems, SelItem } from '../../services/shopping/select';
 import { buildShoppingQuery, scoreHit, pickMatches } from '../../services/shopping/match';
 import { normalizeBudget, shopsForLevel, matchRetailer, ServerRetailer } from '../../services/shopping/retailers';
-import { mockBucketFor } from '../../services/shopping/mockBucket';
+import { mockBucketFor, filterMockByRegion } from '../../services/shopping/mockBucket';
+import { isProductUrl, isCategoryUrl, pickBestProductUrl, localizeDomain, isMultiStorefront } from '../../services/shopping/links';
 
 // ── P1 · PRICE ───────────────────────────────────────────────────────────────
 describe('P1 · parsePrice', () => {
@@ -197,6 +198,125 @@ describe('mockBucketFor', () => {
   });
 });
 
+describe('filterMockByRegion (MOCK region routing)', () => {
+  const entries = [
+    { region: 'us', source: 'westelm.com' },
+    { region: 'us', source: 'cb2.com' },
+    { region: 'gb', source: 'johnlewis.com' },
+    { region: 'gb', source: 'habitat.co.uk' },
+  ];
+  it("returns only US entries for gl 'us'", () => {
+    expect(filterMockByRegion(entries, 'us').map((e) => e.source)).toEqual(['westelm.com', 'cb2.com']);
+  });
+  it("returns only UK entries for gl 'gb'", () => {
+    expect(filterMockByRegion(entries, 'gb').map((e) => e.source)).toEqual(['johnlewis.com', 'habitat.co.uk']);
+  });
+  it('treats untagged entries as US', () => {
+    const mixed = [{ source: 'untagged.com' }, { region: 'gb', source: 'johnlewis.com' }];
+    expect(filterMockByRegion(mixed, 'us').map((e) => e.source)).toEqual(['untagged.com']);
+  });
+  it('falls back to the full bucket when a region has no entries (never empty)', () => {
+    const usOnly = [{ region: 'us', source: 'a' }, { region: 'us', source: 'b' }];
+    expect(filterMockByRegion(usOnly, 'gb')).toEqual(usOnly);
+  });
+  it('includes worldwide/global retailers for ANY country (e.g. Desenio)', () => {
+    const entries = [
+      { region: 'us', source: 'westelm.com' },
+      { region: 'gb', source: 'johnlewis.com' },
+      { region: 'worldwide', source: 'desenio.com' },
+      { region: 'global', source: 'amara.com' },
+    ];
+    expect(filterMockByRegion(entries, 'us').map((e) => e.source)).toEqual(['westelm.com', 'desenio.com', 'amara.com']);
+    expect(filterMockByRegion(entries, 'gb').map((e) => e.source)).toEqual(['johnlewis.com', 'desenio.com', 'amara.com']);
+  });
+});
+
+describe('product-link resolution (specific page vs category/search)', () => {
+  const PRODUCTS = [
+    'https://www.ikea.com/gb/en/p/kuddlava-table-lamp-pleated-white-90601200/',
+    'https://www.johnlewis.com/john-lewis-bailey-grand-sofa/p5921786',
+    'https://www.cb2.com/gwyneth-velvet-sofa/s258612',
+    'https://www.westelm.com/products/andes-grand-sofa-h3902/',
+    'https://www.article.com/product/15963/sven-sofa',
+    'https://www.wayfair.com/furniture/pdp/sofa-w000123456.html',
+  ];
+  const NON_PRODUCTS = [
+    'https://www.ikea.com/gb/en/cat/plants-plant-pots-pp001/',
+    'https://www.ikea.com/gb/en/cat/indoor-plant-pots-10778/', // numeric CATEGORY id must not read as a product
+    'https://www.swooneditions.com/range/norfolk-range?srsltid=abc',
+    'https://desenio.com/en/search?q=Canvas%20Prints',
+    'https://www.johnlewis.com/',
+  ];
+  it('flags real product pages', () => {
+    for (const u of PRODUCTS) expect(isProductUrl(u), u).toBe(true);
+  });
+  it('does NOT flag category/search/range/home pages as products', () => {
+    for (const u of NON_PRODUCTS) expect(isProductUrl(u), u).toBe(false);
+  });
+  it('flags category/search/range/home pages as listings', () => {
+    expect(isCategoryUrl('https://www.ikea.com/gb/en/cat/plants-plant-pots-pp001/')).toBe(true);
+    expect(isCategoryUrl('https://www.swooneditions.com/range/norfolk-range?srsltid=abc')).toBe(true);
+    expect(isCategoryUrl('https://desenio.com/en/search?q=art')).toBe(true);
+    expect(isCategoryUrl('https://www.johnlewis.com/')).toBe(true);
+    expect(isCategoryUrl('https://www.ikea.com/gb/en/p/kuddlava-90601200/')).toBe(false);
+  });
+  it('picks the on-domain PRODUCT page over a category page ranked first', () => {
+    const organic = [
+      { link: 'https://www.ikea.com/gb/en/cat/plants-plant-pots-pp001/' },
+      { link: 'https://www.ikea.com/gb/en/p/kuddlava-table-lamp-90601200/' },
+    ];
+    expect(pickBestProductUrl(organic, 'ikea.com')).toBe('https://www.ikea.com/gb/en/p/kuddlava-table-lamp-90601200/');
+  });
+  it('ignores off-domain results entirely', () => {
+    const organic = [
+      { link: 'https://www.pinterest.com/pin/ikea-lamp-12345/' },
+      { link: 'https://www.ikea.com/gb/en/p/real-lamp-90601200/' },
+    ];
+    expect(pickBestProductUrl(organic, 'ikea.com')).toBe('https://www.ikea.com/gb/en/p/real-lamp-90601200/');
+  });
+  it('falls back to the first on-domain hit when no product page exists', () => {
+    const organic = [
+      { link: 'https://www.swooneditions.com/range/norfolk-range' },
+      { link: 'https://www.swooneditions.com/about' },
+    ];
+    // No product page → first non-category (the /about) wins over the /range listing.
+    expect(pickBestProductUrl(organic, 'swooneditions.com')).toBe('https://www.swooneditions.com/about');
+  });
+  it('returns "" when nothing is on-domain (caller falls back to site-search)', () => {
+    expect(pickBestProductUrl([{ link: 'https://www.pinterest.com/x' }], 'ikea.com')).toBe('');
+  });
+});
+
+describe('country storefront localization (strict per-country domains)', () => {
+  it('maps Wayfair to the selected country storefront', () => {
+    expect(localizeDomain('wayfair.com', 'gb')).toBe('wayfair.co.uk');
+    expect(localizeDomain('wayfair.com', 'us')).toBe('wayfair.com');
+    expect(localizeDomain('wayfair.com', 'ca')).toBe('wayfair.ca');
+    expect(localizeDomain('www.wayfair.co.uk', 'gb')).toBe('wayfair.co.uk');
+  });
+  it('maps Amazon to the selected country storefront (gb → amazon.co.uk, never .com)', () => {
+    expect(localizeDomain('amazon.com', 'gb')).toBe('amazon.co.uk');
+    expect(localizeDomain('amazon.com', 'us')).toBe('amazon.com');
+    expect(localizeDomain('amazon.co.uk', 'us')).toBe('amazon.com');
+    expect(isMultiStorefront('amazon.com')).toBe(true);
+  });
+  it('never returns another country storefront for GB', () => {
+    const gb = localizeDomain('wayfair.com', 'gb');
+    expect(gb).toBe('wayfair.co.uk');
+    expect(gb).not.toBe('wayfair.com');
+    expect(gb).not.toBe('wayfair.ca');
+  });
+  it('falls back to the US storefront for an unmapped geo (no guessing)', () => {
+    expect(localizeDomain('wayfair.com', 'am')).toBe('wayfair.com');
+  });
+  it('leaves single-storefront retailers unchanged', () => {
+    expect(localizeDomain('johnlewis.com', 'gb')).toBe('johnlewis.com');
+    expect(localizeDomain('ikea.com', 'gb')).toBe('ikea.com'); // path-based geo, handled by gl
+    expect(isMultiStorefront('wayfair.com')).toBe(true);
+    expect(isMultiStorefront('johnlewis.com')).toBe(false);
+  });
+});
+
 // ── P4 · BUDGET ROUTING ────────────────────────────────────────────────────────
 describe('P4 · normalizeBudget', () => {
   it('maps $/$$/$$$/$$$$ → named tiers', () => {
@@ -266,6 +386,34 @@ describe('P4 · shopsForLevel', () => {
     ];
     const order = shopsForLevel(s, 'any', { category: 'Sofa', taxonomyId: 'seating' }, 'us').map((x) => x.name);
     expect(order[0]).toBe('Article');
+  });
+  it("maps the 'gb' geo code to UK-tagged retailers (UK enablement)", () => {
+    const s: ServerRetailer[] = [
+      { name: 'John Lewis', domain: 'johnlewis.com', categories: ['Furniture'], budget: 'mid', regions: ['UK'], rank: 0 },
+      { name: 'Habitat', domain: 'habitat.co.uk', categories: ['Furniture'], budget: 'mid', regions: ['UK'], rank: 0 },
+      { name: 'West Elm', domain: 'westelm.com', categories: ['Furniture'], budget: 'mid', regions: ['US'], rank: 0 },
+    ];
+    const item = { category: 'Sofa', taxonomyId: 'seating' };
+    const ukNames = shopsForLevel(s, 'any', item, 'gb').map((x) => x.name);
+    expect(ukNames).toEqual(expect.arrayContaining(['John Lewis', 'Habitat']));
+    expect(ukNames).not.toContain('West Elm');
+    // And a US search must NOT pull the UK-only shops.
+    const usNames = shopsForLevel(s, 'any', item, 'us').map((x) => x.name);
+    expect(usNames).toContain('West Elm');
+    expect(usNames).not.toContain('John Lewis');
+  });
+  it('includes Worldwide/Global retailers for any country (Desenio example)', () => {
+    const s: ServerRetailer[] = [
+      { name: 'West Elm', domain: 'westelm.com', categories: ['Wall Art'], budget: 'mid', regions: ['US'], rank: 0 },
+      { name: 'John Lewis', domain: 'johnlewis.com', categories: ['Wall Art'], budget: 'mid', regions: ['UK'], rank: 0 },
+      { name: 'Desenio', domain: 'desenio.com', categories: ['Wall Art'], budget: 'value', regions: ['Worldwide'], rank: 0 },
+    ];
+    const item = { category: 'Wall Art', taxonomyId: 'art-decor' };
+    expect(shopsForLevel(s, 'any', item, 'gb').map((x) => x.name)).toEqual(expect.arrayContaining(['John Lewis', 'Desenio']));
+    expect(shopsForLevel(s, 'any', item, 'us').map((x) => x.name)).toEqual(expect.arrayContaining(['West Elm', 'Desenio']));
+    // Worldwide retailer present in BOTH; country-specific shops stay in their lane.
+    expect(shopsForLevel(s, 'any', item, 'gb').map((x) => x.name)).not.toContain('West Elm');
+    expect(shopsForLevel(s, 'any', item, 'us').map((x) => x.name)).not.toContain('John Lewis');
   });
 });
 

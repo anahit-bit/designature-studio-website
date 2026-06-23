@@ -211,6 +211,31 @@ const AIConceptsPage: React.FC = () => {
   // path is collapsed by default and revealed by clicking the link below the primary action.
   const [showAlternateUpload, setShowAlternateUpload] = useState(false);
 
+  // ── Shopping result persistence (session-scoped, all tiers) ──
+  // A completed search is snapshotted to sessionStorage so it survives Edit,
+  // navigation, and reload for the whole browser-tab session — free users too.
+  // The snapshot is tagged with the user's identity so it never shows for a
+  // different account; cleared only by "Start over" (or closing the tab). The
+  // RESTORE runs in a separate effect below the account-reset effect (declaration
+  // order matters) so login (null→email) doesn't wipe it.
+  const SHOP_SNAPSHOT_KEY = 'ds_shopping_snapshot_v1';
+  useEffect(() => {
+    try {
+      if (shoppingDone && shoppingResults.length > 0) {
+        sessionStorage.setItem(SHOP_SNAPSHOT_KEY, JSON.stringify({
+          identity: user?.email ?? null,
+          done: true,
+          results: shoppingResults,
+          teaser: shoppingTeaser,
+          total: shoppingTotalIdentified,
+          country: shoppingCountry,
+          sourceImage: searchSourceImage,
+          sourceStandalone: searchSourceIsStandalone,
+        }));
+      }
+    } catch { /* sessionStorage full / unavailable — non-fatal */ }
+  }, [shoppingDone, shoppingResults, shoppingTeaser, shoppingTotalIdentified, shoppingCountry, searchSourceImage, searchSourceIsStandalone]);
+
   // ── Quiz → AI Vision DNA handoff ──
   // The Style Quiz screen owns its own state but persists the DNA result to
   // sessionStorage. The parent reads it from there so VisionExperience can show
@@ -378,6 +403,35 @@ const AIConceptsPage: React.FC = () => {
     lastIdentityRef.current = identity;
     resetEphemeralState();
   }, [user, resetEphemeralState]);
+
+  // ── Restore a persisted shopping search for the CURRENT identity ──
+  // Declared AFTER the account-reset effect so on login (null→email) it runs
+  // last and re-applies the snapshot the reset just cleared. The identity tag
+  // keeps one account's list from showing for another. Guarded so a quota
+  // refresh (same email, new `user` object) doesn't re-restore over live edits.
+  const shopRestoredForRef = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    const identity = user?.email ?? null;
+    if (shopRestoredForRef.current === identity) return;
+    shopRestoredForRef.current = identity;
+    try {
+      const raw = sessionStorage.getItem(SHOP_SNAPSHOT_KEY);
+      if (!raw) return;
+      const s = JSON.parse(raw);
+      if (s && s.done && (s.identity ?? null) === identity && Array.isArray(s.results) && s.results.length > 0) {
+        setShoppingResults(s.results);
+        setShoppingTeaser(Array.isArray(s.teaser) ? s.teaser : []);
+        setShoppingTotalIdentified(typeof s.total === 'number' ? s.total : s.results.length);
+        setSearchSourceImage(s.sourceImage || null);
+        setSearchSourceIsStandalone(!!s.sourceStandalone);
+        // Seed the source image so an "Edit search" lands on the Entry view (with
+        // the image + a "Back to your list" button), not the empty Landing view.
+        if (s.sourceImage) setStandaloneShoppingImage(s.sourceImage);
+        if (typeof s.country === 'string') setShoppingCountry(s.country);
+        setShoppingDone(true);
+      }
+    } catch { /* ignore corrupt snapshot */ }
+  }, [user]);
 
   // ── Warn before leaving if unsaved concepts ──
   useEffect(() => {
@@ -1433,14 +1487,17 @@ const AIConceptsPage: React.FC = () => {
             setStandaloneShoppingImage(null);
             setForceStandaloneUpload(false);
             setSearchSourceImage(null);
+            try { sessionStorage.removeItem(SHOP_SNAPSHOT_KEY); } catch { /* ignore */ }
           }}
           onEditSearch={() => {
             // Return to Step-1 (Entry) preserving inputs (image, country, Find cats,
             // budget — Find/budget are local to ShoppingExperience so they persist).
-            // The Entry "Find products" button then does a FULL re-run (costs a list).
+            // Results are KEPT in state + the session snapshot, so the user can return
+            // to them via "Back to your list" without re-running (which costs a list).
             // TODO(#12/#11): incremental re-search of only newly-added categories.
             setShoppingDone(false);
           }}
+          onBackToResults={() => setShoppingDone(true)}
           processShoppingFile={processShoppingFile}
           handleShopDrop={handleShopDrop}
           runSearch={(opts) => {

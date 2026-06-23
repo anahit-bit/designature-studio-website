@@ -60,7 +60,7 @@ const FAQS = [
       },
       {
         q: 'Which countries and retailers are supported?',
-        a: 'Currently the Shopping List searches US retailers including West Elm, Crate & Barrel, Walmart, Wayfair, and others. UK, EU, Armenia, and additional markets are coming soon.',
+        a: 'Currently the Shopping List searches US and UK retailers including West Elm, Crate & Barrel, John Lewis, and others. EU, Armenia, and additional markets are coming soon.',
       },
       {
         q: 'Can I shop from a photo I didn\'t generate with AI Vision?',

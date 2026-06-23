@@ -36,6 +36,7 @@ const baseProps = (user: AuthUser, over: Partial<any> = {}) => ({
   setShoppingCountry: () => {},
   onStartOver: () => {},
   onEditSearch: () => {},
+  onBackToResults: () => {},
   fetchAlternate: async () => null,
   processShoppingFile: () => {},
   handleShopDrop: () => {},

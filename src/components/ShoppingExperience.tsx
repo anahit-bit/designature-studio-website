@@ -14,7 +14,7 @@ const SHOP_HERO = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1780414472
 
 const COUNTRIES: { value: string; label: string; enabled: boolean }[] = [
   { value: 'us', label: '🇺🇸 United States', enabled: true },
-  { value: 'gb', label: '🇬🇧 United Kingdom — coming soon', enabled: false },
+  { value: 'gb', label: '🇬🇧 United Kingdom', enabled: true },
   { value: 'de', label: '🇩🇪 Germany — coming soon', enabled: false },
   { value: 'fr', label: '🇫🇷 France — coming soon', enabled: false },
   { value: 'am', label: '🇦🇲 Armenia — coming soon', enabled: false },
@@ -56,6 +56,8 @@ interface Props {
   onStartOver: () => void;
   /** Return to Step-1 (Entry) preserving inputs (the paid Find refinement → re-run). */
   onEditSearch: () => void;
+  /** Return to the existing results from the Entry screen WITHOUT re-running (no list cost). */
+  onBackToResults: () => void;
   processShoppingFile: (file: File) => void;
   handleShopDrop: (e: React.DragEvent) => void;
   /** Runs identify→search; budget + Find-scope opts pass through to the search call. */
@@ -206,7 +208,18 @@ const ShoppingExperience: React.FC<Props> = (p) => {
           <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#8E3F2D] mb-1.5">{t('ai.shoppingList')}</p>
           <h1 className="font-display text-[34px] md:text-[42px] leading-[1.0] text-black">{t('ai.shopli.entryTitle')} <em className="italic">{t('ai.shopli.entryTitleEm')}</em></h1>
         </div>
-        <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-black/60 pb-1 whitespace-nowrap">{quotaLine}</span>
+        <div className="flex items-center gap-4 pb-1">
+          {p.shoppingResults.length > 0 && (
+            <button
+              type="button"
+              onClick={p.onBackToResults}
+              className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#0047AB] border border-[#0047AB]/40 px-4 py-2 hover:border-[#0047AB] hover:bg-[#0047AB]/5 transition whitespace-nowrap"
+            >
+              ← {t('ai.shopli.backToList')}
+            </button>
+          )}
+          <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-black/60 whitespace-nowrap">{quotaLine}</span>
+        </div>
       </div>
       <div className="grid lg:grid-cols-[42%_58%] items-start" style={{ gap: '1px', background: 'rgba(0,0,0,.08)' }}>
         {/* LEFT — source image */}
