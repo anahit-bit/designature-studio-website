@@ -23,3 +23,22 @@ export function mockBucketFor(query: string): string {
   for (const [re, bucket] of ROUTES) if (re.test(q)) return bucket;
   return 'default';
 }
+
+/**
+ * MOCK-only helper: narrow a bucket's entries to the request region so a UK (gl
+ * 'gb') search returns UK retailers and a US ('us') search returns US ones.
+ * Each mock entry carries a `region` tag ('us' | 'gb'); untagged entries are
+ * treated as 'us'. Falls back to the full (unfiltered) bucket if a region has no
+ * entries, so the strip is never empty. Mirrors the gl→region intent of the
+ * server's regionMatches() (ISO 'gb' ⇒ region 'gb').
+ */
+export function filterMockByRegion<T extends { region?: string }>(entries: T[], gl: string): T[] {
+  const region = (gl || 'us').toLowerCase() === 'gb' ? 'gb' : 'us';
+  // A retailer matches if it's tagged for the selected country OR ships worldwide/
+  // globally (mirrors the server's regionMatches: country OR worldwide/global).
+  const inRegion = entries.filter((e) => {
+    const r = (e.region || 'us').toLowerCase();
+    return r === region || r === 'worldwide' || r === 'global' || r === 'all';
+  });
+  return inRegion.length ? inRegion : entries;
+}

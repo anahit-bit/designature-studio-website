@@ -199,7 +199,17 @@ const Header: React.FC = () => {
         }`}
       >
         <div className="max-w-[1800px] mx-auto px-8 md:px-16 flex items-center">
-          <div onClick={() => navigateTo('home')} className="cursor-pointer mr-auto">
+          <div
+            onClick={() => {
+              if (currentPage === 'home') {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              } else {
+                navigateTo('home');
+                window.scrollTo({ top: 0, behavior: 'auto' });
+              }
+            }}
+            className="cursor-pointer mr-auto"
+          >
             <Logo invert={!(isDarkTextNeeded && !useLightNav)} className="h-12 md:h-14" />
           </div>
 

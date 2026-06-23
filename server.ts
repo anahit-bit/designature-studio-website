@@ -22,11 +22,11 @@ import { STYLE_NAME_TO_PRESET, ROOM_NAME_TO_TYPE } from "./services/aiVision/sty
 
 // ─── Shopping List search-accuracy (#12): price + direct-link + match helpers ─
 import { normalizePrice } from "./src/lib/priceParse.js";
-import { extractDirectLink, cleanSource, retailerSearchUrl, cleanProductTitle } from "./services/shopping/links.js";
+import { extractDirectLink, cleanSource, retailerSearchUrl, cleanProductTitle, pickBestProductUrl, localizeDomain, isMultiStorefront } from "./services/shopping/links.js";
 import { buildShoppingQuery, pickMatches } from "./services/shopping/match.js";
 import { dedupeItems, pickFreeItems } from "./services/shopping/select.js";
 import { getRetailers, shopsForLevel, matchRetailer } from "./services/shopping/retailers.js";
-import { mockBucketFor } from "./services/shopping/mockBucket.js";
+import { mockBucketFor, filterMockByRegion } from "./services/shopping/mockBucket.js";
 import { SHOPPING_TAXONOMY, SHOPPING_TAXONOMY_IDS, categoryToTaxonomyId } from "./src/data/shoppingTaxonomy.js";
 
 const FALLBACK_ENV_PATH = 'E:/Secrets/Website/.env';
@@ -44,6 +44,15 @@ const FREE_TIER_MAX_SHOPPING_LISTS = 3;
 /** Free tier: identify enumerates ALL items, but Serper only searches the top N;
  *  the rest come back as a `teaser` (names only) to drive the upgrade hook. Paid = all. */
 const FREE_TIER_MAX_ITEMS = 4;
+/** Hard cap on TOTAL surfaced items (searched + teaser), for ALL tiers. Identify
+ *  enumerates everything, but a room of 27 distinct objects reads as noise — we
+ *  keep only the N most significant pieces (furniture/lighting/rugs first, then
+ *  the most prominent decor). Paid shops all N; free shops FREE_TIER_MAX_ITEMS of
+ *  them and the rest fill in as locked teaser markers. Override via SHOPPING_MAX_ITEMS. */
+const MAX_LIST_ITEMS = (() => {
+  const parsed = parseInt((process.env.SHOPPING_MAX_ITEMS || "12"), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 12;
+})();
 
 /** Accounts that get unlimited quotas — never clamped or decremented. */
 const UNLIMITED_ACCOUNT_EMAILS = [
@@ -1294,13 +1303,16 @@ Output ONLY valid JSON, no markdown fences, no commentary:
       const scoped = (isPaidShop && scope.length) ? normItems.filter((i: any) => scope.includes(i.taxonomyId)) : normItems;
       const deduped = dedupeItems(scoped);
 
-      // ── Free-tier search cap (#12 P3c) ──────────────────────────────────────
-      // Identify enumerated ALL items (cheap). Serper is only called for the
-      // searched set: paid = everything; free = up to 4 MAIN pieces (furniture/
-      // lighting/rugs, spread across categories). The rest become a names-only
-      // `teaser` for the upgrade hook — NO product lookup for those.
-      const searchedItems = isPaidShop ? deduped : pickFreeItems(deduped, FREE_TIER_MAX_ITEMS);
-      const teaserItems = deduped
+      // ── Total-list cap (all tiers) + free-tier search cap (#12 P3c) ─────────
+      // First trim the deduped set to the MAX_LIST_ITEMS most SIGNIFICANT pieces
+      // (pickFreeItems = mains-first by prominence, then top decor) so an over-
+      // detailed room (27 objects) reads as a focused ~12-item list for everyone.
+      // Then split the capped set: paid SHOPS all of it; free shops the top
+      // FREE_TIER_MAX_ITEMS and the remainder become locked `teaser` markers that
+      // fill the list up to the cap (NO product lookup for those).
+      const capped = pickFreeItems(deduped, MAX_LIST_ITEMS);
+      const searchedItems = isPaidShop ? capped : pickFreeItems(capped, FREE_TIER_MAX_ITEMS);
+      const teaserItems = capped
         .filter((it: any) => !searchedItems.includes(it))
         .map((it: any) => ({ category: it.category, label: it.description || it.category }));
 
@@ -1316,13 +1328,14 @@ Output ONLY valid JSON, no markdown fences, no commentary:
 
       const serperSearch = async (query: string, num = 8): Promise<any[]> => {
         if (MOCK_SERPER) {
-          console.log(`[SHOP][MOCK] would search: "${query}"`);
           try {
             const mockPath = path.resolve(process.cwd(), "mocks/serper-shopping-mock.json");
             const mock = JSON.parse(readFileSync(mockPath, "utf-8"));
-            // Route by the item noun (ignores the retailer OR-filter — see mockBucketFor).
+            // Route by the item noun (ignores the retailer OR-filter — see mockBucketFor),
+            // then narrow to the request region (gl 'gb' → UK shops, else US).
             const bucketKey = mockBucketFor(query);
-            const bucket: any[] = mock[bucketKey] || mock.default || [];
+            const bucket: any[] = filterMockByRegion(mock[bucketKey] || mock.default || [], gl);
+            console.log(`[SHOP][MOCK] gl=${gl} bucket=${bucketKey} → ${bucket.map((b) => b.source).join(", ") || "∅"}`);
             return bucket.slice(0, num);
           } catch (e: any) {
             console.error("[SHOP][MOCK] failed to load mocks/serper-shopping-mock.json:", e?.message);
@@ -1358,18 +1371,13 @@ Output ONLY valid JSON, no markdown fences, no commentary:
           const resp = await fetch("https://google.serper.dev/search", {
             method: "POST",
             headers: { "X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json" },
-            body: JSON.stringify({ q, gl, hl: "en", num: 6 }),
+            body: JSON.stringify({ q, gl, hl: "en", num: 10 }),
           });
           if (!resp.ok) return "";
           const data = await resp.json();
-          const d = domain.toLowerCase().replace(/^www\./, "");
-          for (const o of (data.organic || [])) {
-            try {
-              const h = new URL(o.link).hostname.toLowerCase().replace(/^www\./, "");
-              if (h === d || h.endsWith("." + d)) return o.link;
-            } catch { /* skip malformed */ }
-          }
-          return "";
+          // Prefer a real PRODUCT page on the retailer's domain over a category/
+          // search/range page (which Serper often ranks first).
+          return pickBestProductUrl(data.organic, domain);
         } catch { return ""; }
       };
 
@@ -1430,13 +1438,24 @@ Output ONLY valid JSON, no markdown fences, no commentary:
             // product page (web search), else the retailer's site-search.
             let product: any = null;
             for (const r of ranked) {
-              const direct = extractDirectLink(r);
+              let direct = extractDirectLink(r);
               const ret = retailerBySource(r.source);
+              // Strict per-country storefront: a multi-country brand (e.g. Wayfair)
+              // MUST link to the selected country's site (gb → wayfair.co.uk), never
+              // .com (US) or .ca. Localize the curated domain, and drop a direct link
+              // that points at the wrong-country storefront.
+              const ld = ret ? localizeDomain(ret.domain, gl) : "";
+              if (direct && ret && isMultiStorefront(ret.domain)) {
+                try {
+                  const h = new URL(direct).hostname.toLowerCase().replace(/^www\./, "");
+                  if (h !== ld && !h.endsWith("." + ld)) direct = "";
+                } catch { direct = ""; }
+              }
               if (!direct && !ret) continue;
               let link = direct;
               if (!link && ret) {
-                const exact = await resolveExactUrl(r.title, ret.domain, ret.name); if (!MOCK_SERPER) calls++;
-                link = exact || retailerSearchUrl(ret.domain, r.title, ret.name);
+                const exact = await resolveExactUrl(r.title, ld, ret.name); if (!MOCK_SERPER) calls++;
+                link = exact || retailerSearchUrl(ld, r.title, ret.name);
               }
               if (link) {
                 product = { title: r.title || "Product", price: normalizePrice(r.price), source: ret ? ret.name : cleanSource(r.source || ""), link, thumbnail: r.imageUrl || null, rating: r.rating || null, reviews: r.ratingCount || null };
@@ -1496,7 +1515,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
         results: clean,
         searched: clean,
         teaser: teaserItems,
-        totalIdentified: items.length,
+        totalIdentified: capped.length, // capped total (searched + teaser), not the raw identify count
         shoppingListsLeft: shopUser.shoppingListsLeft,
       });
 
@@ -1549,7 +1568,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
         try {
           const mock = JSON.parse(readFileSync(path.resolve(process.cwd(), "mocks/serper-shopping-mock.json"), "utf-8"));
           const key = mockBucketFor(String(item.search_query));
-          hits = (mock[key] || mock.default || []).slice(0, 10);
+          hits = filterMockByRegion(mock[key] || mock.default || [], gl).slice(0, 10);
         } catch { hits = []; }
       } else {
         const resp = await fetch("https://google.serper.dev/shopping", {
@@ -1573,15 +1592,11 @@ Output ONLY valid JSON, no markdown fences, no commentary:
           const resp = await fetch("https://google.serper.dev/search", {
             method: "POST",
             headers: { "X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json" },
-            body: JSON.stringify({ q: `${cleanProductTitle(title, retailerName)} ${domain}`, gl, hl: "en", num: 6 }),
+            body: JSON.stringify({ q: `${cleanProductTitle(title, retailerName)} ${domain}`, gl, hl: "en", num: 10 }),
           });
           if (!resp.ok) return "";
           const data = await resp.json();
-          const d = domain.toLowerCase().replace(/^www\./, "");
-          for (const o of (data.organic || [])) {
-            try { const h = new URL(o.link).hostname.toLowerCase().replace(/^www\./, ""); if (h === d || h.endsWith("." + d)) return o.link; } catch { /* */ }
-          }
-          return "";
+          return pickBestProductUrl(data.organic, domain);
         } catch { return ""; }
       };
       let product: any = null;
@@ -1589,12 +1604,21 @@ Output ONLY valid JSON, no markdown fences, no commentary:
         const ret = altRetailerBySource(r.source);
         const source = ret ? ret.name : cleanSource(r.source || "");
         if (exclude.includes(source.toLowerCase())) continue;
-        const direct = extractDirectLink(r);
+        let direct = extractDirectLink(r);
+        // Strict per-country storefront (see /search): localize the domain + drop a
+        // direct link pointing at the wrong-country site (gb → wayfair.co.uk only).
+        const ld = ret ? localizeDomain(ret.domain, gl) : "";
+        if (direct && ret && isMultiStorefront(ret.domain)) {
+          try {
+            const h = new URL(direct).hostname.toLowerCase().replace(/^www\./, "");
+            if (h !== ld && !h.endsWith("." + ld)) direct = "";
+          } catch { direct = ""; }
+        }
         if (!direct && !ret) continue;
         let link = direct;
         if (!link && ret) {
-          const exact = await altResolveExactUrl(r.title, ret.domain, ret.name);
-          link = exact || retailerSearchUrl(ret.domain, r.title, ret.name);
+          const exact = await altResolveExactUrl(r.title, ld, ret.name);
+          link = exact || retailerSearchUrl(ld, r.title, ret.name);
         }
         if (link) { product = { title: r.title || "Product", price: normalizePrice(r.price), source, link, thumbnail: r.imageUrl || null }; break; }
       }
