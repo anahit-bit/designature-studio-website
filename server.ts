@@ -29,6 +29,9 @@ import { getRetailers, shopsForLevel, matchRetailer } from "./services/shopping/
 import { mockBucketFor, filterMockByRegion } from "./services/shopping/mockBucket.js";
 import { SHOPPING_TAXONOMY, SHOPPING_TAXONOMY_IDS, categoryToTaxonomyId } from "./src/data/shoppingTaxonomy.js";
 
+// ─── Payments foundation (I-024 / B0): Postgres migration at boot ─────────────
+import { runMigrations } from "./db/migrate.js";
+
 const FALLBACK_ENV_PATH = 'E:/Secrets/Website/.env';
 dotenv.config({
   path: existsSync('.env')
@@ -412,6 +415,19 @@ async function startServer() {
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET,
   });
+
+  // ── Payments foundation (I-024 / B0): ensure orders + subscriptions tables ──
+  // Idempotent CREATE ... IF NOT EXISTS. Don't let a transient DB outage block
+  // the rest of the server (AI tools, auth, admin) from booting in dev — log
+  // loudly instead so payments breakage is obvious.
+  try {
+    await runMigrations();
+  } catch (err) {
+    console.error(
+      "❌ payments DB migration failed — payments features will not work:",
+      err instanceof Error ? err.message : err,
+    );
+  }
 
   // ════════════════════════════════════════════════════════════════════════
   // I-021b · Per-provider cost estimates (USD per call).
