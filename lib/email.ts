@@ -18,18 +18,28 @@ import { Resend } from "resend";
 /** Verified sender for all studio transactional mail. */
 export const FROM_ADDRESS = "Designature Studio <hello@designature.studio>";
 
-const apiKey = process.env.RESEND_API_KEY;
+// IMPORTANT — lazy key read (same ESM-vs-dotenv trap fixed in db/pgPool.ts):
+// ESM evaluates an imported module's top-level statements BEFORE the importing
+// module's body, and server.ts loads env via a top-level dotenv.config(). Reading
+// RESEND_API_KEY at import time would therefore see it undefined when server.ts
+// statically imports this file. So we read the key + construct Resend lazily on
+// first sendEmail() call, by which point dotenv has run.
+let _resend: Resend | null = null;
 
-if (!apiKey) {
-  console.warn(
-    "[email] RESEND_API_KEY is not set — sendEmail() will throw on use. " +
-      "Set it in E:/Secrets/Website/.env (see I-024 / B0).",
-  );
+function getResend(): Resend {
+  if (!_resend) {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      console.warn(
+        "[email] RESEND_API_KEY is not set — sendEmail() will throw on use. " +
+          "Set it in E:/Secrets/Website/.env (see I-024 / B0).",
+      );
+    }
+    // Resend's constructor tolerates an undefined key (it only fails at send time).
+    _resend = new Resend(apiKey);
+  }
+  return _resend;
 }
-
-// Resend's constructor tolerates an undefined key (it only fails at send time);
-// we still construct it so the module imports cleanly when email isn't needed.
-const resend = new Resend(apiKey);
 
 export interface SendEmailArgs {
   /** Recipient address (single recipient). */
@@ -44,11 +54,11 @@ export interface SendEmailArgs {
  * Resolves with Resend's message id on success; throws on any failure.
  */
 export async function sendEmail({ to, subject, html }: SendEmailArgs): Promise<{ id: string }> {
-  if (!apiKey) {
+  if (!process.env.RESEND_API_KEY) {
     throw new Error("RESEND_API_KEY is not configured — cannot send email.");
   }
 
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: FROM_ADDRESS,
     to,
     subject,

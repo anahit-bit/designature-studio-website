@@ -31,6 +31,19 @@ import { SHOPPING_TAXONOMY, SHOPPING_TAXONOMY_IDS, categoryToTaxonomyId } from "
 
 // ─── Payments foundation (I-024 / B0): Postgres migration at boot ─────────────
 import { runMigrations } from "./db/migrate.js";
+import { getPool } from "./db/pgPool.js";
+import { sendEmail } from "./lib/email.js";
+// ─── Payments Rail B (I-025): Ameriabank vPOS $99 consultation ────────────────
+import {
+  getAmeriaConfig,
+  buildGatewayRedirectUrl,
+  initPayment,
+  getPaymentDetails,
+  refundPayment,
+  cancelPayment,
+  evaluatePaymentSuccess,
+  normalizeCode,
+} from "./services/payments/ameria.js";
 
 const FALLBACK_ENV_PATH = 'E:/Secrets/Website/.env';
 dotenv.config({
@@ -155,8 +168,9 @@ interface DB {
   /** Per-provider call counters (I-010). Lazy-initialized on first call. */
   apiCounters?: Record<string, ProviderCounter>;
   /** Append-only user activity log (I-016). Capped at 5000 entries.
-   *  `source` is set on signup entries only (C-followup, 2026-05-19). */
-  activityLog?: Array<{ ts: string; userEmail: string; action: string; source?: string }>;
+   *  `source` is set on signup entries only (C-followup, 2026-05-19).
+   *  `meta` carries structured event payload (e.g. payment order_id/amount). */
+  activityLog?: Array<{ ts: string; userEmail: string; action: string; source?: string; meta?: Record<string, unknown> }>;
 }
 
 /** UTC YYYY-MM-DD for daily-budget bucketing. */
@@ -245,26 +259,64 @@ const ANON_USER = "anonymous";
  * `source` (C-followup) is only meaningful on signup entries; pass undefined
  * for everything else so the JSON stays compact.
  */
-function logActivity(db: DB, userEmail: string, action: string, source?: string): void {
+function logActivity(
+  db: DB,
+  userEmail: string,
+  action: string,
+  source?: string,
+  meta?: Record<string, unknown>,
+): void {
   if (!db.activityLog) db.activityLog = [];
-  const entry: { ts: string; userEmail: string; action: string; source?: string } = {
+  const entry: { ts: string; userEmail: string; action: string; source?: string; meta?: Record<string, unknown> } = {
     ts: new Date().toISOString(),
     userEmail,
     action,
   };
   if (source && source.trim()) entry.source = source.trim().slice(0, 60);
+  if (meta && Object.keys(meta).length > 0) entry.meta = meta;
   db.activityLog.push(entry);
   while (db.activityLog.length > 5000) db.activityLog.shift();
 }
 
 /** Convenience wrapper: read/log/write in one call. Used by routes that don't already touch the DB. */
-function recordActivity(userEmail: string, action: string): void {
+function recordActivity(userEmail: string, action: string, meta?: Record<string, unknown>): void {
   try {
     const db = readDB();
-    logActivity(db, userEmail, action);
+    logActivity(db, userEmail, action, undefined, meta);
     writeDB(db);
   } catch (err) {
     console.error(`[activityLog] failed to record ${action}:`, err);
+  }
+}
+
+/**
+ * Auto-expire stale pending consultation orders (I-025). Ameriabank auto-expires
+ * its side of an unfinished payment ~20min after init; we reflect that cleanly by
+ * flipping our 'pending' rows to 'cancelled' after 30min. No bank call — purely a
+ * DB-hygiene sweep. Logs a consultation_expired activity event per expired order.
+ * Runs on a 5-minute interval (set up in startServer).
+ */
+async function expireStalePendingOrders(): Promise<void> {
+  try {
+    const r = await getPool().query(
+      `UPDATE orders SET status = 'cancelled'
+        WHERE status = 'pending'
+          AND product_type = 'consultation'
+          AND created_at < NOW() - INTERVAL '30 minutes'
+        RETURNING id, ameria_order_id, client_email, created_at`,
+    );
+    for (const row of r.rows) {
+      recordActivity(row.client_email || ANON_USER, "consultation_expired", {
+        order_id: row.id,
+        ameria_order_id: row.ameria_order_id,
+        created_at: row.created_at ? new Date(row.created_at).toISOString() : null,
+      });
+    }
+    if (r.rows.length > 0) {
+      console.log(`[expire] auto-expired ${r.rows.length} stale pending consultation order(s)`);
+    }
+  } catch (err) {
+    console.error("[expire] auto-expire sweep failed:", err);
   }
 }
 
@@ -428,6 +480,13 @@ async function startServer() {
       err instanceof Error ? err.message : err,
     );
   }
+
+  // Sweep stale pending consultation orders → cancelled, every 5 minutes (I-025).
+  // Run once at boot to clear anything left stale across a restart, then on an
+  // interval. unref() so the timer never keeps the process alive on its own.
+  void expireStalePendingOrders();
+  const expireTimer = setInterval(() => void expireStalePendingOrders(), 5 * 60 * 1000);
+  expireTimer.unref();
 
   // ════════════════════════════════════════════════════════════════════════
   // I-021b · Per-provider cost estimates (USD per call).
@@ -2267,7 +2326,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
   //   "unlimited" — studio-owner allowlist (isConceptTestAccountEmail)
   //   "paid"      — user.isPaid === true (non-owner)
   //   "free"      — everyone else
-  app.get("/api/admin/users-detail", (req, res) => {
+  app.get("/api/admin/users-detail", async (req, res) => {
     if (!requireAdmin(req, res)) return;
     const db = readDB();
     const allActivity = db.activityLog || [];
@@ -2310,6 +2369,27 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       const key = e.userEmail.trim().toLowerCase();
       counts[key] = (counts[key] || 0) + 1;
     }
+
+    // Paid-consultation count + latest date per user (keyed by googleId). Best-
+    // effort: if the orders DB is unreachable, fall back to 0 rather than 500.
+    const consultByGid: Record<string, { count: number; last: string | null }> = {};
+    try {
+      const cr = await getPool().query(
+        `SELECT user_id, COUNT(*)::int AS cnt, MAX(paid_at) AS last_paid
+           FROM orders
+          WHERE product_type = 'consultation' AND status = 'paid' AND user_id IS NOT NULL
+          GROUP BY user_id`,
+      );
+      for (const row of cr.rows) {
+        consultByGid[row.user_id] = {
+          count: row.cnt,
+          last: row.last_paid ? new Date(row.last_paid).toISOString() : null,
+        };
+      }
+    } catch (err) {
+      console.error("[admin/users-detail] consultation count query failed:", err);
+    }
+
     const users = Object.values(db.users).map((u) => ({
       email: u.email,
       name: u.name,
@@ -2317,6 +2397,8 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       lastLogin: u.lastUsed,
       tier: tierOf(u),
       totalActivityCount: counts[u.email.trim().toLowerCase()] || 0,
+      consultations: consultByGid[u.googleId]?.count || 0,
+      lastConsultation: consultByGid[u.googleId]?.last || null,
     }));
     res.json({ users });
   });
@@ -2551,6 +2633,481 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       cost,
     });
   });
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Payments — Rail B (I-025): Ameriabank vPOS $99 consultation, guest checkout
+  // ════════════════════════════════════════════════════════════════════════
+  // Pay-first flow: POST /initiate creates a pending `orders` row + reserves a
+  // vPOS payment → browser redirects to the ARCA hosted page → on return the
+  // gateway hits GET /callback, where we VERIFY server-side (GetPaymentDetails)
+  // before marking paid + emailing the private Calendly link. Admins can refund.
+  //
+  // Security posture: amount + currency are server-authoritative (mode-resolved,
+  // never from the client); we verify via GetPaymentDetails rather than trusting
+  // the redirect code; we cross-check the bank-echoed Opaque against our order
+  // UUID; vPOS creds never reach the browser; /initiate is rate-limited per IP.
+
+  const isUuid = (s: string) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+
+  // In-memory per-IP rate limit for payment initiation (no general limiter
+  // exists project-wide). Guards against OrderID/sequence exhaustion + abuse.
+  const initiateHits: Record<string, number[]> = {};
+  const INITIATE_WINDOW_MS = 10 * 60 * 1000;
+  const INITIATE_MAX = 10;
+  const initiateRateLimited = (ip: string): boolean => {
+    const now = Date.now();
+    const arr = (initiateHits[ip] || []).filter((t) => now - t < INITIATE_WINDOW_MS);
+    arr.push(now);
+    initiateHits[ip] = arr;
+    return arr.length > INITIATE_MAX;
+  };
+
+  const CONSULTATION_DESCRIPTION = "Designature Studio — 45-min virtual consultation";
+
+  /** Structured, greppable payment-event log line (timestamp + diagnostics). */
+  const logPaymentEvent = (order: any, details: any, ok: boolean) => {
+    console.log("[ameria] payment_event", JSON.stringify({
+      ts: new Date().toISOString(),
+      orderId: order?.id,
+      ameriaOrderId: order?.ameria_order_id,
+      email: order?.client_email,
+      responseCode: details?.ResponseCode,
+      paymentState: details?.PaymentState,
+      depositedAmount: details?.DepositedAmount,
+      ok,
+    }));
+  };
+
+  /** Branded confirmation email: the private Calendly link is the focal CTA. */
+  const buildConsultationEmailHtml = (): string => {
+    const calendly = (process.env.PAID_CONSULT_CALENDLY_URL || "").trim();
+    const cobalt = "#0047AB";
+    return `<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;background:#f4f2ee;font-family:Arial,Helvetica,sans-serif;color:#1C1C1C;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f2ee;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #E7E3DB;">
+        <tr><td style="padding:36px 40px 8px;">
+          <p style="margin:0 0 18px;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:${cobalt};font-weight:700;">Designature Studio</p>
+          <h1 style="margin:0 0 12px;font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:30px;line-height:1.15;color:#1C1C1C;">You're booked. Now pick your time.</h1>
+          <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#404040;">Your payment cleared and your 45-minute virtual consultation is confirmed. The last step is choosing a time that works for you.</p>
+        </td></tr>
+        <tr><td style="padding:0 40px 28px;">
+          <a href="${calendly}" style="display:inline-block;background:${cobalt};color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:16px 34px;">Pick your time &rarr;</a>
+          <p style="margin:14px 0 0;font-size:13px;color:#6B6B6B;">Your Google Meet link is generated automatically when you book. If the button doesn't work, paste this into your browser:<br><span style="color:${cobalt};word-break:break-all;">${calendly}</span></p>
+        </td></tr>
+        <tr><td style="padding:0 40px 8px;border-top:1px solid #E7E3DB;">
+          <h2 style="margin:26px 0 12px;font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:20px;color:#1C1C1C;">What to have ready</h2>
+          <ul style="margin:0 0 18px;padding-left:20px;font-size:14px;line-height:1.7;color:#404040;">
+            <li>A few photos of the room — phone shots are completely fine.</li>
+            <li>A Pinterest board or saved screenshots, if you've been collecting ideas.</li>
+            <li>What's bothering you about the space, or how you want it to feel.</li>
+            <li>A rough floor plan, if you happen to have one. Not required.</li>
+          </ul>
+        </td></tr>
+        <tr><td style="padding:0 40px 36px;">
+          <p style="margin:0;padding:16px 18px;background:#f4f7fc;border-left:3px solid ${cobalt};font-size:13px;line-height:1.6;color:#404040;">A quiet reminder: your <strong>$99 is fully creditable toward a Designature design project</strong> if you book one within 30 days.</p>
+          <p style="margin:22px 0 0;font-size:12px;color:#9a9a9a;">Questions? Just reply to this email or write to hello@designature.studio.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+  };
+
+  /** Mark an order failed (best-effort), log it, and redirect the browser. */
+  const finalizeFailure = async (order: any, reason: string, res: any, responseCode?: unknown) => {
+    console.warn("[ameria/callback] → failed:", reason, order?.id);
+    try {
+      await getPool().query(`UPDATE orders SET status='failed' WHERE id=$1`, [order.id]);
+    } catch (err) {
+      console.error("[ameria/callback] mark-failed write failed:", err);
+    }
+    recordActivity(order.client_email, "consultation_failed", {
+      user_id: order.user_id,
+      order_id: order.id,
+      response_code: responseCode ?? null,
+    });
+    return res.redirect(302, "/booking/failed");
+  };
+
+  // ── POST /api/payments/ameria/initiate — create order + reserve vPOS payment ─
+  app.post("/api/payments/ameria/initiate", async (req, res) => {
+    const ip = clientIp(req);
+    if (initiateRateLimited(ip)) {
+      return res.status(429).json({ error: "Too many attempts. Please wait a few minutes and try again." });
+    }
+
+    // Auth is mandatory — no guest checkout. The booking link goes to the user's
+    // verified Google email, read server-side from the session (never the body).
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    const sessUser = readDB().users[googleId];
+    if (!sessUser?.email) {
+      return res.status(401).json({ error: "Your session has no email on file — please sign in again." });
+    }
+    const clientEmail = sessUser.email;
+
+    const cfg = getAmeriaConfig();
+    if (!cfg.baseUrl || !cfg.clientId || !cfg.username || !cfg.password) {
+      console.error("[ameria/initiate] vPOS env incomplete");
+      return res.status(503).json({ error: "Payments are temporarily unavailable. Please try again shortly." });
+    }
+
+    const pool = getPool();
+    // We store the amount/currency ACTUALLY charged at the gateway (mode-resolved:
+    // 10 AMD in sandbox, 99 USD in prod) so the order is a truthful ledger row and
+    // refunds default to the correct figure in both modes.
+    let order: { id: string; ameria_order_id: string };
+    try {
+      const r = await pool.query(
+        `INSERT INTO orders (product_type, amount, currency, status, client_email, user_id)
+         VALUES ('consultation', $1, $2, 'pending', $3, $4)
+         RETURNING id, ameria_order_id`,
+        [cfg.amount, cfg.mode === "sandbox" ? "AMD" : "USD", clientEmail, googleId],
+      );
+      order = r.rows[0];
+    } catch (err) {
+      console.error("[ameria/initiate] DB insert failed:", err);
+      return res.status(500).json({ error: "Could not start checkout. Please try again." });
+    }
+
+    try {
+      const init = await initPayment({
+        orderId: order.ameria_order_id,
+        description: CONSULTATION_DESCRIPTION,
+        opaque: order.id,
+      });
+      // InitPayment success is ResponseCode === 1 (Table-1 "00" is for the later
+      // GetPaymentDetails/RefundPayment calls, not InitPayment).
+      if (Number(init.responseCode) !== 1 || !init.paymentId) {
+        console.error("[ameria/initiate] InitPayment rejected:", init.responseCode, init.responseMessage, JSON.stringify(init.raw));
+        await pool.query(`UPDATE orders SET status='failed' WHERE id=$1`, [order.id]).catch(() => {});
+        return res.status(502).json({ error: "The payment gateway could not start the session. Please try again." });
+      }
+      await pool.query(`UPDATE orders SET ameria_payment_id=$1 WHERE id=$2`, [init.paymentId, order.id]);
+      recordActivity(clientEmail, "consultation_initiated", {
+        user_id: googleId,
+        order_id: order.id,
+        amount: cfg.amount,
+      });
+      return res.json({ redirectUrl: buildGatewayRedirectUrl(cfg.baseUrl, init.paymentId) });
+    } catch (err) {
+      console.error("[ameria/initiate] InitPayment error:", err);
+      await pool.query(`UPDATE orders SET status='failed' WHERE id=$1`, [order.id]).catch(() => {});
+      return res.status(502).json({ error: "We couldn't reach the payment gateway. Please try again." });
+    }
+  });
+
+  // ── GET /api/payments/ameria/callback — gateway returns the browser here ─────
+  app.get("/api/payments/ameria/callback", async (req, res) => {
+    const q: any = req.query;
+    // vPOS 3.1 casing is orderID / responseCode / paymentID / opaque — be tolerant.
+    const orderID = (q.orderID ?? q.OrderID ?? q.orderId ?? "").toString().trim();
+    const opaque = (q.opaque ?? q.Opaque ?? "").toString().trim();
+
+    if (!orderID || !opaque || !isUuid(opaque)) {
+      console.warn("[ameria/callback] missing/invalid orderID|opaque", { orderID, opaque });
+      return res.redirect(302, "/booking/failed");
+    }
+
+    const pool = getPool();
+    let order: any;
+    try {
+      const r = await pool.query(
+        `SELECT * FROM orders WHERE ameria_order_id=$1 AND id=$2 LIMIT 1`,
+        [orderID, opaque],
+      );
+      order = r.rows[0];
+    } catch (err) {
+      console.error("[ameria/callback] DB lookup failed:", err);
+      return res.redirect(302, "/booking/failed");
+    }
+    if (!order) {
+      console.warn("[ameria/callback] order not found / opaque mismatch", { orderID, opaque });
+      return res.redirect(302, "/booking/failed");
+    }
+
+    // Idempotency — a re-hit of the callback must not re-verify or re-email.
+    if (order.status === "paid" || order.status === "refunded") {
+      return res.redirect(302, `/booking/confirmed?order=${order.id}`);
+    }
+    if (order.status === "failed" || order.status === "cancelled") {
+      return res.redirect(302, "/booking/failed");
+    }
+    if (!order.ameria_payment_id) return finalizeFailure(order, "no payment id on order", res);
+
+    // Authoritative verification — never trust the redirect responseCode alone.
+    let details;
+    try {
+      details = await getPaymentDetails(order.ameria_payment_id);
+    } catch (err) {
+      console.error("[ameria/callback] GetPaymentDetails error:", err);
+      return finalizeFailure(order, "GetPaymentDetails threw", res);
+    }
+
+    // Cross-check the bank-echoed Opaque against our UUID (tamper/replay guard).
+    if (details.Opaque && String(details.Opaque).trim() !== String(order.id).trim()) {
+      return finalizeFailure(order, `Opaque mismatch (${details.Opaque})`, res);
+    }
+
+    const cfg = getAmeriaConfig();
+    const verdict = evaluatePaymentSuccess(details, cfg.amount, cfg.currency);
+    logPaymentEvent(order, details, verdict.ok);
+    if (!verdict.ok) {
+      return finalizeFailure(order, `verify failed: ${verdict.reasons.join("; ")}`, res, details.ResponseCode);
+    }
+
+    try {
+      await pool.query(`UPDATE orders SET status='paid', paid_at=now() WHERE id=$1`, [order.id]);
+    } catch (err) {
+      // The payment IS captured — don't fail the user. Log loudly for reconciliation.
+      console.error("[ameria/callback] mark-paid write failed (payment captured):", err);
+    }
+    recordActivity(order.client_email, "consultation_paid", {
+      user_id: order.user_id,
+      order_id: order.id,
+      amount: Number(order.amount),
+      ameria_payment_id: order.ameria_payment_id,
+    });
+
+    // A dropped email must NEVER lose a paid order — log + continue to confirmed.
+    try {
+      await sendEmail({
+        to: order.client_email,
+        subject: "Your Designature Studio consultation — book your time",
+        html: buildConsultationEmailHtml(),
+      });
+    } catch (err) {
+      console.error("[ameria/callback] confirmation email failed (order still paid):", err);
+    }
+    return res.redirect(302, `/booking/confirmed?order=${order.id}`);
+  });
+
+  // ── GET /api/payments/ameria/confirmation — Calendly link + booking status ───
+  // The Calendly URL is returned UNCONDITIONALLY so /booking/confirmed can always
+  // render the focal "Pick your time" CTA — the user just paid and should be able
+  // to book right there, not hunt through their inbox. The paid-status + email are
+  // only returned for a genuinely paid/refunded order (keyed by its UUID); they
+  // personalize the banner but are NOT required for the button to appear.
+  app.get("/api/payments/ameria/confirmation", async (req, res) => {
+    const calendlyUrl = (process.env.PAID_CONSULT_CALENDLY_URL || "").trim();
+    const orderId = ((req.query.orderId ?? req.query.order) || "").toString().trim();
+    if (!isUuid(orderId)) return res.json({ paid: false, calendlyUrl });
+    try {
+      const r = await getPool().query(
+        `SELECT status, client_email FROM orders WHERE id=$1 LIMIT 1`,
+        [orderId],
+      );
+      const order = r.rows[0];
+      if (!order || (order.status !== "paid" && order.status !== "refunded")) {
+        return res.json({ paid: false, calendlyUrl });
+      }
+      return res.json({ paid: true, email: order.client_email, calendlyUrl });
+    } catch (err) {
+      console.error("[ameria/confirmation] error:", err);
+      return res.status(500).json({ error: "Could not load your booking.", calendlyUrl });
+    }
+  });
+
+  // ── GET /api/payments/ameria/orders — admin: list recent consultation orders ─
+  // Read-only listing so the owner can find order UUIDs to refund (and watch the
+  // sandbox testing milestone progress) without querying Postgres directly.
+  // Admin-gated via the same admin_session cookie as the refund endpoint.
+  app.get("/api/payments/ameria/orders", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 1000);
+    try {
+      const r = await getPool().query(
+        `SELECT id, ameria_order_id, status, amount, currency, client_email,
+                ameria_payment_id,
+                (ameria_payment_id IS NOT NULL) AS has_payment,
+                created_at, paid_at
+           FROM orders
+          WHERE product_type = 'consultation'
+          ORDER BY created_at DESC
+          LIMIT $1`,
+        [limit],
+      );
+      res.json({ orders: r.rows });
+    } catch (err) {
+      console.error("[ameria/orders] list failed:", err);
+      res.status(500).json({ error: "Could not list orders." });
+    }
+  });
+
+  // ── POST /api/payments/ameria/refund — admin-only (reuse admin_session gate) ──
+  app.post("/api/payments/ameria/refund", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const orderId = (req.body?.orderId ?? "").toString().trim();
+    if (!isUuid(orderId)) return res.status(400).json({ error: "A valid orderId is required." });
+
+    const pool = getPool();
+    let order: any;
+    try {
+      const r = await pool.query(`SELECT * FROM orders WHERE id=$1 LIMIT 1`, [orderId]);
+      order = r.rows[0];
+    } catch (err) {
+      console.error("[ameria/refund] lookup failed:", err);
+      return res.status(500).json({ error: "Lookup failed." });
+    }
+    if (!order) return res.status(404).json({ error: "Order not found." });
+    if (!order.ameria_payment_id) return res.status(409).json({ error: "Order has no payment to refund." });
+    if (order.status !== "paid") {
+      return res.status(409).json({ error: `Order is '${order.status}', not 'paid' — cannot refund.` });
+    }
+
+    // Default = the gateway-captured amount (we stored the actually-charged figure
+    // in order.amount, so this is correct in sandbox AND production). Admin may
+    // pass a smaller `amount` for a partial refund.
+    const requested = req.body?.amount;
+    const amount =
+      requested != null && Number.isFinite(Number(requested)) && Number(requested) > 0
+        ? Number(requested)
+        : Number(order.amount);
+
+    try {
+      const refund = await refundPayment(order.ameria_payment_id, amount);
+      if (normalizeCode(refund.responseCode) !== "00") {
+        console.error("[ameria/refund] bank declined:", refund.responseCode, refund.responseMessage);
+        return res.status(502).json({
+          error: "The refund was not accepted by the bank.",
+          responseCode: refund.responseCode,
+          responseMessage: refund.responseMessage,
+        });
+      }
+      await pool.query(`UPDATE orders SET status='refunded' WHERE id=$1`, [order.id]);
+      recordActivity(order.client_email, "consultation_refunded", {
+        user_id: order.user_id,
+        order_id: order.id,
+        amount,
+      });
+      return res.json({ ok: true, orderId: order.id, amount });
+    } catch (err) {
+      console.error("[ameria/refund] error:", err);
+      return res.status(502).json({ error: "Could not reach the bank to process the refund." });
+    }
+  });
+
+  // ── POST /api/payments/ameria/cancel — admin-only (reuse admin_session gate) ──
+  // Voids a CAPTURED (paid) single-stage payment via vPOS CancelPayment (full
+  // void, no amount) — the same-day reversal before batch settlement, within the
+  // bank's 72h void window. Distinct from RefundPayment (post-settlement; money
+  // actually moves back to the card).
+  //
+  // Requires status='paid'. Diagnostic evidence (2026-06, scripts/sandbox-cancel-
+  // test.ts): CancelPayment needs a captured amount — a 'pending' order (init'd,
+  // no gateway capture) returns HTTP 500, and a gateway-touched-but-abandoned one
+  // returns code 07 "Reversal impossible". On success the order goes paid →
+  // cancelled.
+  app.post("/api/payments/ameria/cancel", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const orderId = (req.body?.orderId ?? "").toString().trim();
+    if (!isUuid(orderId)) return res.status(400).json({ error: "A valid orderId is required." });
+
+    const pool = getPool();
+    let order: any;
+    try {
+      const r = await pool.query(`SELECT * FROM orders WHERE id=$1 LIMIT 1`, [orderId]);
+      order = r.rows[0];
+    } catch (err) {
+      console.error("[ameria/cancel] lookup failed:", err);
+      return res.status(500).json({ error: "Lookup failed." });
+    }
+    if (!order) return res.status(404).json({ error: "Order not found." });
+    if (!order.ameria_payment_id) {
+      return res.status(409).json({ error: "Order has no payment to cancel." });
+    }
+    // A 'pending' order has no captured amount to void (bank returns HTTP 500 /
+    // code 07). Cancel/void only applies to a captured ('paid') payment.
+    if (order.status === "pending") {
+      return res.status(409).json({
+        error: "Order is 'pending' — let it expire naturally or wait for status='paid'",
+      });
+    }
+    if (order.status !== "paid") {
+      return res.status(409).json({ error: `Order is '${order.status}', not 'paid' — cannot cancel.` });
+    }
+
+    try {
+      const cancel = await cancelPayment(order.ameria_payment_id);
+      if (normalizeCode(cancel.responseCode) !== "00") {
+        console.error("[ameria/cancel] bank declined:", cancel.responseCode, cancel.responseMessage);
+        return res.status(502).json({
+          error: "The cancellation was not accepted by the bank.",
+          responseCode: cancel.responseCode,
+          responseMessage: cancel.responseMessage,
+        });
+      }
+      await pool.query(`UPDATE orders SET status='cancelled' WHERE id=$1`, [order.id]);
+      recordActivity(order.client_email, "consultation_cancelled", {
+        user_id: order.user_id,
+        order_id: order.id,
+        amount: Number(order.amount),
+      });
+      return res.json({ ok: true, orderId: order.id });
+    } catch (err) {
+      console.error("[ameria/cancel] error:", err);
+      return res.status(502).json({ error: "Could not reach the bank to process the cancellation." });
+    }
+  });
+
+  // ── Dev-only helpers: exercise the success + fail paths without the bank ─────
+  // Gated by NODE_ENV !== 'production'. seed-order creates a pending order;
+  // force-callback drives it to paid (with email) or failed, mirroring the real
+  // callback's side-effects so the end-to-end flow is verifiable locally.
+  if (process.env.NODE_ENV !== "production") {
+    app.post("/api/payments/ameria/_dev/seed-order", async (req, res) => {
+      const email = (req.body?.clientEmail ?? "dev@example.com").toString().trim();
+      const cfg = getAmeriaConfig();
+      const r = await getPool().query(
+        `INSERT INTO orders (product_type, amount, currency, status, client_email, ameria_payment_id)
+         VALUES ('consultation', $1, $2, 'pending', $3, 'dev-fake-payment-id')
+         RETURNING id, ameria_order_id`,
+        [cfg.amount, cfg.mode === "sandbox" ? "AMD" : "USD", email],
+      );
+      res.json({ orderId: r.rows[0].id, ameriaOrderId: r.rows[0].ameria_order_id });
+    });
+
+    app.get("/api/payments/ameria/_dev/force-callback", async (req, res) => {
+      const orderId = (req.query.orderId ?? "").toString().trim();
+      const result = (req.query.result ?? "success").toString().trim();
+      if (!isUuid(orderId)) return res.status(400).send("orderId (uuid) required");
+      const pool = getPool();
+      const r = await pool.query(`SELECT * FROM orders WHERE id=$1 LIMIT 1`, [orderId]);
+      const order = r.rows[0];
+      if (!order) return res.status(404).send("order not found");
+
+      if (result === "success") {
+        await pool.query(`UPDATE orders SET status='paid', paid_at=now() WHERE id=$1`, [order.id]);
+        recordActivity(order.client_email, "consultation_paid", {
+          user_id: order.user_id,
+          order_id: order.id,
+          amount: Number(order.amount),
+          ameria_payment_id: order.ameria_payment_id,
+        });
+        try {
+          await sendEmail({
+            to: order.client_email,
+            subject: "Your Designature Studio consultation — book your time",
+            html: buildConsultationEmailHtml(),
+          });
+        } catch (err) {
+          console.error("[force-callback] email failed:", err);
+        }
+        return res.redirect(302, `/booking/confirmed?order=${order.id}`);
+      }
+      await pool.query(`UPDATE orders SET status='failed' WHERE id=$1`, [order.id]);
+      recordActivity(order.client_email, "consultation_failed", {
+        user_id: order.user_id,
+        order_id: order.id,
+        response_code: "dev-forced",
+      });
+      return res.redirect(302, "/booking/failed");
+    });
+  }
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

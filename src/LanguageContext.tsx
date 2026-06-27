@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import { useLocation, useNavigate } from 'react-router-dom';
 
 export type Language = 'en' | 'am';
-export type Page = 'home' | 'portfolio' | 'project-detail' | 'services' | 'studio' | 'ai-concepts' | 'ai-vision' | 'pricing' | 'faq' | 'terms' | 'privacy' | 'refund';
+export type Page = 'home' | 'portfolio' | 'project-detail' | 'services' | 'studio' | 'ai-concepts' | 'ai-vision' | 'pricing' | 'faq' | 'terms' | 'privacy' | 'refund' | 'consultation' | 'booking-confirmed' | 'booking-failed';
 export type PortfolioFilter = 'All' | 'Residential' | 'Commercial';
 
 // URL ⇄ page-state mapping. URL is the source of truth; localStorage persistence
@@ -22,6 +22,9 @@ function pathToPageState(pathname: string): { page: Page; projectId: string | nu
   if (pathname === '/terms') return { page: 'terms', projectId: null };
   if (pathname === '/privacy') return { page: 'privacy', projectId: null };
   if (pathname === '/refund') return { page: 'refund', projectId: null };
+  if (pathname === '/consultation') return { page: 'consultation', projectId: null };
+  if (pathname === '/booking/confirmed') return { page: 'booking-confirmed', projectId: null };
+  if (pathname === '/booking/failed') return { page: 'booking-failed', projectId: null };
   return { page: 'home', projectId: null };
 }
 
@@ -51,6 +54,12 @@ function pageToPath(page: Page, projectId?: string | null, filter?: PortfolioFil
       return '/privacy';
     case 'refund':
       return '/refund';
+    case 'consultation':
+      return '/consultation';
+    case 'booking-confirmed':
+      return '/booking/confirmed';
+    case 'booking-failed':
+      return '/booking/failed';
   }
 }
 

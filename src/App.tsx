@@ -13,10 +13,14 @@ import FAQPage from './components/FAQPage';
 import TermsPage from './components/TermsPage';
 import PrivacyPage from './components/PrivacyPage';
 import RefundPage from './components/RefundPage';
+import ConsultationPage from './components/ConsultationPage';
+import BookingConfirmedPage from './components/BookingConfirmedPage';
+import BookingFailedPage from './components/BookingFailedPage';
 import DeliverablesPage from './components/DeliverablesPage';
 import AdminPage from './components/AdminPage';
 import AdminLoginPage from './components/AdminLoginPage';
 import AdminUsersPage from './components/AdminUsersPage';
+import AdminOrdersPage from './components/AdminOrdersPage';
 import Footer from './components/Footer';
 import RouteTracker from './components/RouteTracker';
 import HomeHeroText from './components/home/HomeHeroText';
@@ -113,9 +117,13 @@ const App: React.FC = () => (
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/refund" element={<RefundPage />} />
+            <Route path="/consultation" element={<ConsultationPage />} />
+            <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
+            <Route path="/booking/failed" element={<BookingFailedPage />} />
             <Route path="/deliverables" element={<DeliverablesRoute />} />
             <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route path="/admin/users" element={<AdminUsersPage />} />
+            <Route path="/admin/orders" element={<AdminOrdersPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
