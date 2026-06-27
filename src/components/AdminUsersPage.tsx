@@ -22,6 +22,10 @@ interface UserRow {
   lastLogin: string;
   tier: Tier;
   totalActivityCount: number;
+  /** Count of paid consultation orders (I-025). */
+  consultations: number;
+  /** ISO date of the user's most recent paid consultation, or null. */
+  lastConsultation: string | null;
 }
 
 interface UserDetail extends UserRow {
@@ -35,7 +39,7 @@ interface ActivityEntry {
   action: string;
 }
 
-type SortKey = 'email' | 'signupDate' | 'lastLogin' | 'tier' | 'totalActivityCount';
+type SortKey = 'email' | 'signupDate' | 'lastLogin' | 'tier' | 'totalActivityCount' | 'consultations';
 type SortDir = 'asc' | 'desc';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -240,6 +244,7 @@ const AdminUsersPage: React.FC = () => {
       .sort((a, b) => {
         const dir = sortDir === 'asc' ? 1 : -1;
         if (sortKey === 'totalActivityCount') return dir * (a.totalActivityCount - b.totalActivityCount);
+        if (sortKey === 'consultations') return dir * (a.consultations - b.consultations);
         if (sortKey === 'tier') {
           const order = { free: 0, paid: 1, unlimited: 2 } as const;
           return dir * (order[a.tier] - order[b.tier]);
@@ -255,7 +260,7 @@ const AdminUsersPage: React.FC = () => {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortKey(key);
-      setSortDir(key === 'totalActivityCount' || key === 'lastLogin' ? 'desc' : 'asc');
+      setSortDir(key === 'totalActivityCount' || key === 'lastLogin' || key === 'consultations' ? 'desc' : 'asc');
     }
   }
 
@@ -346,6 +351,7 @@ const AdminUsersPage: React.FC = () => {
                     { key: 'signupDate', label: 'Signup', align: 'left' },
                     { key: 'lastLogin', label: 'Last login', align: 'left' },
                     { key: 'tier', label: 'Tier', align: 'left' },
+                    { key: 'consultations', label: 'Consultations', align: 'right' },
                     { key: 'totalActivityCount', label: 'Activity', align: 'right' },
                   ] as Array<{ key: SortKey; label: string; align: 'left' | 'right' }>).map((col) => (
                     <th
@@ -364,7 +370,7 @@ const AdminUsersPage: React.FC = () => {
               <tbody>
                 {visible.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-5 py-8 text-sm text-neutral-500 italic text-center">
+                    <td colSpan={6} className="px-5 py-8 text-sm text-neutral-500 italic text-center">
                       No users match the current filters.
                     </td>
                   </tr>
@@ -392,6 +398,16 @@ const AdminUsersPage: React.FC = () => {
                           }`}>
                             {r.tier}
                           </span>
+                        </td>
+                        <td
+                          className="px-5 py-4 text-xs text-right text-neutral-700 tabular-nums"
+                          title={r.lastConsultation ? `Latest: ${fmtDate(r.lastConsultation)}` : undefined}
+                        >
+                          {r.consultations > 0 ? (
+                            <span className="text-[#0047AB] font-bold">{r.consultations}</span>
+                          ) : (
+                            '—'
+                          )}
                         </td>
                         <td className="px-5 py-4 text-xs text-right text-neutral-700 tabular-nums">
                           {r.totalActivityCount} {r.totalActivityCount === 1 ? 'action' : 'actions'}

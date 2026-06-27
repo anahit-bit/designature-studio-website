@@ -28,6 +28,10 @@
  *   signup                — New user created via Google auth. params: { source }
  *   newsletter_signup     — Newsletter subscribe succeeded. params: { source }
  *   quota_burned          — A generate response left the user at 0 remaining. params: { tool }
+ *   consultation_initiated — "Book & Pay $99" clicked on /consultation. params: { value }
+ *   purchase              — Paid consultation confirmed (GA4 standard e-commerce event).
+ *                           params: { transaction_id, value, currency, items }
+ *   consultation_failed   — /booking/failed reached after a declined/aborted payment.
  */
 
 declare global {
