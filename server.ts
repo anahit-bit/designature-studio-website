@@ -44,6 +44,11 @@ import {
   evaluatePaymentSuccess,
   normalizeCode,
 } from "./services/payments/ameria.js";
+// ─── GEO / SEO (Phase 1): robots, sitemap, per-route meta + JSON-LD injection ──
+import { buildRobotsTxt } from "./server/config/bots.js";
+import { buildSitemap } from "./server/seo/sitemap.js";
+import { renderRoute, loadTemplate } from "./server/seo/render.js";
+import { absUrl } from "./server/seo/config.js";
 
 const FALLBACK_ENV_PATH = 'E:/Secrets/Website/.env';
 dotenv.config({
@@ -3109,6 +3114,24 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     });
   }
 
+  // ─── GEO / SEO: robots.txt + sitemap.xml ────────────────────────────────
+  // Registered before the dev/prod SPA branch so they resolve identically in
+  // both. robots.txt is generated from the single bot allowlist in
+  // server/config/bots.ts (no separate static file to drift out of sync).
+  app.get("/robots.txt", (_req, res) => {
+    res.type("text/plain").send(buildRobotsTxt(absUrl("/sitemap.xml")));
+  });
+
+  app.get("/sitemap.xml", async (_req, res) => {
+    try {
+      const xml = await buildSitemap();
+      res.type("application/xml").send(xml);
+    } catch (err) {
+      console.error("[seo] sitemap build failed:", err);
+      res.status(500).type("text/plain").send("sitemap unavailable");
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     // Vite default HMR WebSocket port 24678 often conflicts.
@@ -3151,9 +3174,27 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static("dist"));
-    app.get("*all", (req, res) => {
-      res.sendFile("dist/index.html", { root: "." });
+    // `index: false` so a request for "/" is NOT short-circuited to the raw
+    // dist/index.html by the static handler — it must fall through to the SEO
+    // renderer below. Static still serves hashed JS/CSS, favicon, etc.
+    app.use(express.static("dist", { index: false }));
+    // Read the built shell once at startup so per-request injection is cheap.
+    try {
+      loadTemplate();
+    } catch (err) {
+      console.error("[seo] could not preload dist/index.html:", err);
+    }
+    // SPA catch-all: serve the SAME HTML to bots and humans, enriched per route
+    // with <title>, meta description, canonical, OG/Twitter, and JSON-LD. The
+    // SPA still boots and takes over on mount.
+    app.get("*all", async (req, res) => {
+      try {
+        const html = await renderRoute(req.path);
+        res.status(200).type("html").send(html);
+      } catch (err) {
+        console.error("[seo] route render failed, serving raw shell:", err);
+        res.sendFile("dist/index.html", { root: "." });
+      }
     });
   }
 
