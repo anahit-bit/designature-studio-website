@@ -48,13 +48,13 @@ const FAQS: Array<{ q: string; a: React.ReactNode; open?: boolean }> = [
     open: true,
   },
   {
-    q: 'Is there a refund if I change my mind?',
+    q: 'Can I reschedule or cancel?',
     a: (
       <>
-        Yes. If the session isn't the right fit, you're covered by a 14-day refund — see our{' '}
+        Yes. Reschedule or cancel free up to 24 hours before your booked start time for a full refund. If we can't hold the call, you're fully refunded — your choice of a rebook or your money back. See our{' '}
         <a
           href="/refund"
-          className="text-[#0047AB] font-semibold hover:text-[#8E3F2D] transition-colors"
+          className="text-[#0047AB] font-semibold hover:text-[#9E5E41] transition-colors"
         >
           Refund Policy
         </a>{' '}
@@ -79,7 +79,7 @@ const FAQS: Array<{ q: string; a: React.ReactNode; open?: boolean }> = [
           href="https://calendly.com/designature-studio-us/free_consultation"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[#0047AB] font-semibold hover:text-[#8E3F2D] transition-colors"
+          className="text-[#0047AB] font-semibold hover:text-[#9E5E41] transition-colors"
         >
           Book a free introductory call →
         </a>{' '}
@@ -97,7 +97,7 @@ const SectionHead: React.FC<{ label: string; title: string }> = ({ label, title 
     <h2 className="font-display tracking-architectural text-[clamp(30px,3.6vw,44px)] leading-tight mt-3">
       {title}
     </h2>
-    <span className="block w-[50px] h-[2px] bg-[#8E3F2D] mx-auto mt-4" />
+    <span className="block w-[50px] h-[2px] bg-[#9E5E41] mx-auto mt-4" />
   </div>
 );
 
@@ -269,7 +269,7 @@ const ConsultationPage: React.FC = () => {
                 </div>
 
                 {error && (
-                  <p role="alert" className="text-[13px] text-[#8E3F2D] font-semibold mb-3">
+                  <p role="alert" className="text-[13px] text-[#9E5E41] font-semibold mb-3">
                     {error}
                   </p>
                 )}
@@ -300,9 +300,9 @@ const ConsultationPage: React.FC = () => {
                 accepted
               </div>
               <div className="flex items-center gap-2.5 text-[12px] text-[#404040]">
-                <span className="w-5 text-center flex-shrink-0">↩</span> 14-day refund if it doesn't fit
+                <span className="w-5 text-center flex-shrink-0">↩</span> Free cancel up to 24h before
                 — see{' '}
-                <a href="/refund" className="text-[#0047AB] font-semibold hover:text-[#8E3F2D] transition-colors">
+                <a href="/refund" className="text-[#0047AB] font-semibold hover:text-[#9E5E41] transition-colors">
                   Refund Policy
                 </a>
               </div>

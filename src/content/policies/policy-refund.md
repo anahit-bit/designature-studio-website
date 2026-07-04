@@ -7,6 +7,21 @@ This Refund Policy applies to subscriptions to Designature AI Studio at www.desi
 
 All paid subscriptions are processed by our Merchant of Record, currently **Paddle.com Market Limited ("Paddle")**. Refunds are issued by the MoR on our behalf.
 
+## Paid Consultation ($99)
+
+The 45-minute paid design consultation is a one-time service, processed securely by our payment provider to the card you used.
+
+- Reschedule or cancel free up to 24 hours before your booked start time for a full refund.
+- Cancellations within 24 hours of the start time, or no-shows, are non-refundable.
+- If we cancel or cannot hold the call, you receive a full refund or a free reschedule — your choice.
+- If you book a design project with us within 30 days of your consultation, the $99 is credited toward that project.
+
+To request a consultation refund, email **hello@designature.studio** from the email address you booked with, subject line "Consultation refund".
+
+---
+
+The sections below apply to AI Studio subscriptions.
+
 ## 1. 14-Day Refund Window for New Subscribers
 
 If you subscribe to a paid plan for the **first time**, you may request a full refund within **14 calendar days** of your initial payment, for any reason.
