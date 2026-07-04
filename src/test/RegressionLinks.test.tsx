@@ -89,27 +89,26 @@ describe('Regression: links and email flows', () => {
     });
   });
 
-  it('studio contact form triggers EmailJS sendForm', async () => {
-    sendFormMock.mockResolvedValueOnce({});
+  it('studio contact form posts to /api/contact (EmailJS replaced)', async () => {
     renderWithProvider(<StudioPage />);
 
-    fireEvent.change(screen.getByPlaceholderText(/Your full name/i), {
+    fireEvent.change(screen.getByPlaceholderText(/Anahit Ghasabyan/i), {
       target: { value: 'QA User' },
     });
-    fireEvent.change(screen.getByPlaceholderText(/your@email.com/i), {
+    fireEvent.change(screen.getByPlaceholderText(/you@email\.com/i), {
       target: { value: 'qa@example.com' },
     });
-    fireEvent.change(screen.getByPlaceholderText(/Living room redesign/i), {
-      target: { value: 'QA Subject' },
-    });
-    fireEvent.change(screen.getByPlaceholderText(/Tell us about your project/i), {
+    fireEvent.change(screen.getByPlaceholderText(/Rooms, timeline/i), {
       target: { value: 'Regression run message' },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Send Message/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Send message/i }));
 
     await waitFor(() => {
-      expect(sendFormMock).toHaveBeenCalledTimes(1);
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/contact',
+        expect.objectContaining({ method: 'POST' })
+      );
     });
   });
 });
