@@ -28,6 +28,11 @@
  *   signup                — New user created via Google auth. params: { source }
  *   newsletter_signup     — Newsletter subscribe succeeded. params: { source }
  *   quota_burned          — A generate response left the user at 0 remaining. params: { tool }
+ *   consultation_cta_clicked — A paid-consultation ENTRY button was clicked (I-025 PR 2).
+ *                           params: { placement: 'pricing'|'ai_result'|'services',
+ *                                     tool?: 'vision'|'quiz'|'audit'|'shopping' (ai_result only) }
+ *   start_project_clicked — A "Start a project" CTA was clicked (→ /studio#contact form).
+ *                           params: { from: 'services'|'home_closing'|'ai_result' }
  *   consultation_initiated — "Book & Pay $99" clicked on /consultation. params: { value }
  *   purchase              — Paid consultation confirmed (GA4 standard e-commerce event).
  *                           params: { transaction_id, value, currency, items }

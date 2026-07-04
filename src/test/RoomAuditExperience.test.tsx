@@ -46,7 +46,7 @@ const uploadPhoto = (container: HTMLElement) => {
 
 // inline style colors are serialized by jsdom's cssstyle to rgb(); accept either form.
 const COBALT_RGB = 'rgb(0, 71, 171)';
-const OXIDE_SOFT_RGB = 'rgb(201, 122, 96)';
+const TERRACOTTA_RGB = 'rgb(158, 94, 65)';
 
 beforeEach(() => {
   try { localStorage.setItem('ds_session_token', 'fake-token'); } catch { /* ignore */ }
@@ -64,7 +64,6 @@ describe('RoomAuditExperience — 4-state machine', () => {
     expect(screen.getByText('Room Audit · Ready')).toBeInTheDocument();
     expect(screen.getByText('scored.')).toBeInTheDocument();          // hero title em
     expect(screen.getByText(/Upload your room/i)).toBeInTheDocument(); // upload CTA
-    expect(screen.getByText(/Score a sample room/i)).toBeInTheDocument();
     expect(screen.getByText('Unlimited audits · Design+')).toBeInTheDocument(); // 999 quota
   });
 
@@ -120,17 +119,17 @@ describe('RoomAuditExperience — STATE 3 · REPORT (dynamic data)', () => {
     expect(screen.getAllByText('B').length).toBeGreaterThan(0);
   });
 
-  it('uses cobalt for score ≥ 8 and oxide-soft below (NO red/green)', async () => {
+  it('uses cobalt for score ≥ 8 and terracotta below (NO red/green)', async () => {
     const { container } = await reachReport();
-    // Lighting = 9 → cobalt score text; Layout & Flow = 6 → oxide-soft score text.
+    // Lighting = 9 → cobalt score text; Layout & Flow = 6 → terracotta score text.
     expect(screen.getByText('9/10').style.color).toBe(COBALT_RGB);
-    expect(screen.getByText('6/10').style.color).toBe(OXIDE_SOFT_RGB);
+    expect(screen.getByText('6/10').style.color).toBe(TERRACOTTA_RGB);
     // bar fills carry the same two hues — and never a red/green.
     const fillStyles = Array.from(container.querySelectorAll('.scorebar > span'))
       .map((el) => (el.getAttribute('style') || '').toLowerCase());
     const hasHue = (rgb: string, hex: string) => fillStyles.some((s) => s.includes(rgb) || s.includes(hex));
     expect(hasHue(COBALT_RGB, '#0047ab')).toBe(true);
-    expect(hasHue(OXIDE_SOFT_RGB, '#c97a60')).toBe(true);
+    expect(hasHue(TERRACOTTA_RGB, '#9e5e41')).toBe(true);
   });
 
   it('renders one pin per fix WITH valid coords and degrades (no pin) when coords are absent', async () => {

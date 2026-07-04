@@ -1760,6 +1760,43 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     }
   });
 
+  // ── POST /api/contact — Studio "Start a conversation" form → email to hello@ ──
+  // Body: { name, email, message, projectType?, budget? }. Sends via Resend
+  // (lib/email.sendEmail). Replaces the old client-side EmailJS path (dead creds).
+  app.post("/api/contact", async (req, res) => {
+    const { name, email, message, projectType, budget } = req.body || {};
+    const nameSafe = typeof name === "string" ? name.trim().slice(0, 120) : "";
+    const emailSafe = typeof email === "string" ? email.trim().slice(0, 160) : "";
+    const messageSafe = typeof message === "string" ? message.trim().slice(0, 4000) : "";
+    if (!nameSafe || !messageSafe || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailSafe)) {
+      return res.status(400).json({ error: "Name, a valid email, and a message are required." });
+    }
+    const projectTypeSafe = typeof projectType === "string" ? projectType.trim().slice(0, 80) : "";
+    const budgetSafe = typeof budget === "string" ? budget.trim().slice(0, 80) : "";
+    const escHtml = (s: string) =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const html = `
+      <h2 style="font-family:sans-serif">New studio enquiry</h2>
+      <p><strong>Name:</strong> ${escHtml(nameSafe)}</p>
+      <p><strong>Email:</strong> ${escHtml(emailSafe)}</p>
+      ${projectTypeSafe ? `<p><strong>Project type:</strong> ${escHtml(projectTypeSafe)}</p>` : ""}
+      ${budgetSafe ? `<p><strong>Rough budget:</strong> ${escHtml(budgetSafe)}</p>` : ""}
+      <p><strong>Message:</strong></p>
+      <p style="white-space:pre-wrap">${escHtml(messageSafe)}</p>
+    `;
+    try {
+      await sendEmail({
+        to: "hello@designature.studio",
+        subject: `New enquiry from ${nameSafe}`,
+        html,
+      });
+      res.json({ ok: true });
+    } catch (err: any) {
+      console.error("[contact] send failed:", err?.message || err);
+      res.status(500).json({ error: "Failed to send message." });
+    }
+  });
+
   // ── POST /api/newsletter/subscribe — append email to newsletter sheet ──
   // Body: { email, source? }. source is a short slug identifying where the
   // signup originated (I-021a): "home_footer", "shopping_offline", etc.

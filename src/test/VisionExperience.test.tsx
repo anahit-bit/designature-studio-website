@@ -75,13 +75,16 @@ describe('VisionExperience · Shop-this-room handoff (#22)', () => {
     expect(onShopThisRoom).toHaveBeenCalledWith(baseProps.selectedConceptUrl);
   });
 
-  it('"Get this designed" is demoted to the end-of-funnel conversion band (still present)', () => {
+  it('closes the result with the $99-review conversion band + a full-project fallback', () => {
     render(
       <MemoryRouter><LanguageProvider>
         <VisionExperience {...baseProps} />
       </LanguageProvider></MemoryRouter>
     );
-    expect(screen.getByText(/Get this designed/i)).toBeInTheDocument();
+    // The old "Get this designed → studio" band was replaced by the canonical review band.
+    expect(screen.getAllByText(/Get a \$99 review/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/start a full project/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Get this designed/i)).not.toBeInTheDocument();
   });
 });
 

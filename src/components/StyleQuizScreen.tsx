@@ -9,8 +9,8 @@ import StatusHdr from './studio/StatusHdr';
 import StudioHero, { Glass } from './studio/StudioHero';
 import ValueStrip from './studio/ValueStrip';
 import Marquee from './studio/Marquee';
-import ConversionBand from './studio/ConversionBand';
 import SigninVeil from './studio/SigninVeil';
+import { ConsultationReviewBand } from './ConsultationCTA';
 
 // ── The 9 quiz styles (must match quizImageWeights.ts) ──
 const STYLES = [
@@ -820,29 +820,9 @@ const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignI
           </section>
         )}
 
-        <ConversionBand
-          kicker={t('ai.quiz.conv.kicker')}
-          headline={isGuest
-            ? (<>{t('ai.quiz.conv.guest1')} <em>{t('ai.quiz.conv.guest2')}</em></>)
-            : (<>{t('ai.quiz.conv.user1')} <em>{t('ai.quiz.conv.user2')}</em></>)}
-          actions={isGuest ? (
-            <>
-              <button type="button" onClick={() => setSigninReason(t('ai.quiz.reason.saveStyle'))}
-                className="bg-white text-black text-sm font-bold uppercase tracking-[0.24em] px-8 py-4 hover:bg-white/90 transition">
-                {t('ai.quiz.conv.signinSave')}
-              </button>
-              <button type="button" onClick={() => navigateTo('home')}
-                className="border border-white/30 text-white text-sm font-bold uppercase tracking-[0.24em] px-8 py-4 hover:bg-white/10 transition">
-                {t('ai.bookConversation')}
-              </button>
-            </>
-          ) : (
-            <button type="button" onClick={() => navigateTo('home')}
-              className="bg-white text-black text-sm font-bold uppercase tracking-[0.3em] px-8 py-4 hover:bg-white/90 transition">
-              {t('ai.quiz.conv.book')}
-            </button>
-          )}
-        />
+        {/* One conversion band per AI result — $99 review + full-project rung.
+            Replaces the old free "Book a conversation → home" band. */}
+        <ConsultationReviewBand tool="quiz" />
       </section>
     );
   };
@@ -937,11 +917,6 @@ const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignI
               <span className="block w-16 h-[2px] rule-oxide mx-auto mb-5" />
               <p className="text-[14px] text-white/80 leading-relaxed max-w-[400px] mx-auto mb-8">{t('ai.quiz.li.sub')}</p>
               <button type="button" onClick={startQuiz} className="cta-primary text-[12px] font-bold uppercase tracking-[0.24em] px-11 py-4 transition">{t('ai.quiz.li.startCta')}</button>
-              <div className="flex items-center justify-center gap-5 mt-5">
-                <button type="button" onClick={showSampleResult} className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/70 border-b border-white/30 pb-0.5 hover:text-white transition">
-                  {t('ai.quiz.li.sampleResult')}
-                </button>
-              </div>
             </Glass>
             <span className="cap absolute bottom-6 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-[0.25em] px-4 py-2 z-10 text-center">{t('ai.quiz.li.cap')}</span>
           </StudioHero>

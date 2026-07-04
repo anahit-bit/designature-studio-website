@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { useLanguage } from '../LanguageContext';
 import { cld } from '../lib/cld';
 import { AuthUser } from '../AuthContext';
-import ConversionBand from './studio/ConversionBand';
+import { ConsultationReviewBand } from './ConsultationCTA';
 import Marquee from './studio/Marquee';
 import ShoppingOfflineCard from './ShoppingOfflineCard';
 import { SHOPPING_LOGOS, LogoChip } from './ShoppingListShowcase';
@@ -205,7 +205,7 @@ const ShoppingExperience: React.FC<Props> = (p) => {
     <>
       <div className="titlehdr">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#8E3F2D] mb-1.5">{t('ai.shoppingList')}</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#9E5E41] mb-1.5">{t('ai.shoppingList')}</p>
           <h1 className="font-display text-[34px] md:text-[42px] leading-[1.0] text-black">{t('ai.shopli.entryTitle')} <em className="italic">{t('ai.shopli.entryTitleEm')}</em></h1>
         </div>
         <div className="flex items-center gap-4 pb-1">
@@ -241,7 +241,7 @@ const ShoppingExperience: React.FC<Props> = (p) => {
           </div>
           {/* STEP 1 — country FREE + Find scope PAID */}
           <div>
-            <div className="flex items-center gap-3 mb-1"><span className="w-5 h-5 bg-black text-white text-[9px] flex items-center justify-center font-bold">1</span><span className="text-[12px] font-bold uppercase tracking-[0.3em] text-black/70">{t('ai.shopli.whereToShop')}</span><span className="text-[10px] font-semibold text-[#8E3F2D] tracking-[0.06em] uppercase">{t('ai.shopli.setsRetailers')}</span></div>
+            <div className="flex items-center gap-3 mb-1"><span className="w-5 h-5 bg-black text-white text-[9px] flex items-center justify-center font-bold">1</span><span className="text-[12px] font-bold uppercase tracking-[0.3em] text-black/70">{t('ai.shopli.whereToShop')}</span><span className="text-[10px] font-semibold text-[#9E5E41] tracking-[0.06em] uppercase">{t('ai.shopli.setsRetailers')}</span></div>
             <div className="mt-3">
               <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/60 mb-2 block">{t('ai.shopli.country')}</label>
               {countrySelect}
@@ -314,7 +314,7 @@ const ShoppingExperience: React.FC<Props> = (p) => {
                       <input type="number" value={capValue} onChange={(e) => setCapValue(e.target.value)} placeholder="6,000" className="w-[120px] border border-black/20 pl-[22px] pr-3 py-2 text-[13px] font-semibold outline-none focus:border-[#0047AB]" /></div>
                   </div>
                 )}
-                {capOn && <p className="ml-7 mt-2 text-[11px] text-[#8E3F2D]">{t('ai.shopli.capNote')}</p>}
+                {capOn && <p className="ml-7 mt-2 text-[11px] text-[#9E5E41]">{t('ai.shopli.capNote')}</p>}
               </div>
             </div>
           </div>
@@ -387,7 +387,7 @@ const ShoppingExperience: React.FC<Props> = (p) => {
     return (
       <>
         <div className="statushdr">
-          <div className="flex items-center gap-2.5"><span className="w-2 h-2 rounded-full bg-green-500" /><span className="text-[12px] font-bold uppercase tracking-[0.3em] text-black/60">{t('ai.shopli.listReady').replace('{n}', String(count))}</span></div>
+          <div className="flex items-center gap-2.5"><span className="w-2 h-2 rounded-full bg-[#15803d]" /><span className="text-[12px] font-bold uppercase tracking-[0.3em] text-black/60">{t('ai.shopli.listReady').replace('{n}', String(count))}</span></div>
           <div className="flex gap-2">
             <button type="button" onClick={p.onEditSearch} className="text-[10px] font-bold uppercase tracking-[0.2em] text-black/60 border border-black/15 px-4 py-2 hover:border-black/40 hover:text-black transition">{t('ai.shopli.editSearch')}</button>
             <button type="button" onClick={p.onStartOver} className="text-[10px] font-bold uppercase tracking-[0.2em] text-black/60 border border-black/15 px-4 py-2 hover:border-black/40 hover:text-black transition">{t('ai.shopli.startOver')}</button>
@@ -420,7 +420,7 @@ const ShoppingExperience: React.FC<Props> = (p) => {
               </div>
               <div className="flex items-end justify-between mb-3">
                 <p className="text-[11px] font-bold uppercase tracking-[0.28em] kicker">{t('ai.shopli.yourList')}</p>
-                <p className="text-[12px] font-bold">{t('ai.shopli.estTotal')} · <span className={roomCap && total > roomCap ? 'text-[#8E3F2D]' : 'text-black'}>${total.toLocaleString()}</span>{roomCap && total > roomCap && <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#8E3F2D]">{t('ai.shopli.overCap')}</span>}</p>
+                <p className="text-[12px] font-bold">{t('ai.shopli.estTotal')} · <span className={roomCap && total > roomCap ? 'text-[#9E5E41]' : 'text-black'}>${total.toLocaleString()}</span>{roomCap && total > roomCap && <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#9E5E41]">{t('ai.shopli.overCap')}</span>}</p>
               </div>
               {/* Group by — PAID, real */}
               <div className="paid mb-4">
@@ -453,7 +453,7 @@ const ShoppingExperience: React.FC<Props> = (p) => {
                             <p className="text-[9px] font-bold uppercase tracking-[0.2em] kicker">{g.item?.category}</p>
                             <div className="flex items-center gap-2">
                               <span className="paid"><span className="lockchip">🔒</span>
-                                <button type="button" onClick={() => setFavourites(toggleNum(favourites, i))} title={t('ai.shopli.favourite')} className={`text-[14px] leading-none transition ${isFav ? 'text-[#8E3F2D]' : 'text-black/35 hover:text-[#8E3F2D]'}`}>{isFav ? '♥' : '♡'}</button>
+                                <button type="button" onClick={() => setFavourites(toggleNum(favourites, i))} title={t('ai.shopli.favourite')} className={`text-[14px] leading-none transition ${isFav ? 'text-[#9E5E41]' : 'text-black/35 hover:text-[#9E5E41]'}`}>{isFav ? '♥' : '♡'}</button>
                               </span>
                               <span className="paid"><span className="lockchip">🔒</span>
                                 <button type="button" onClick={() => setExcluded(toggleNum(excluded, i))} title={t('ai.shopli.include')} className={`text-[11px] font-bold w-5 h-5 border flex items-center justify-center transition ${isExcluded ? 'border-black/30 text-transparent' : 'border-[#0047AB] bg-[#0047AB] text-white'}`}>✓</button>
@@ -488,7 +488,7 @@ const ShoppingExperience: React.FC<Props> = (p) => {
                           className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#0047AB] hover:bg-[#0047AB]/5 transition disabled:opacity-50 flex items-center gap-2">
                           {loadingAlt ? t('ai.shopli.findingAlt') : t('ai.shopli.findAnother')}
                         </button>
-                        {altError[i] && <p className="px-4 pb-2 text-[10px] text-[#8E3F2D]">{t('ai.shopli.noAltFound')}</p>}
+                        {altError[i] && <p className="px-4 pb-2 text-[10px] text-[#9E5E41]">{t('ai.shopli.noAltFound')}</p>}
                       </div>
                     </div>
                   );
@@ -498,7 +498,7 @@ const ShoppingExperience: React.FC<Props> = (p) => {
                   Server sends an empty teaser for paid, so this naturally hides for paid users. */}
               {p.shoppingTeaser.length > 0 && (
                 <div className="mt-5 border border-dashed border-black/25 bg-neutral-50 p-5">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#8E3F2D] mb-3">{t('ai.shopli.teaserTitle')}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#9E5E41] mb-3">{t('ai.shopli.teaserTitle')}</p>
                   <div className="flex flex-wrap gap-2 mb-4">
                     {p.shoppingTeaser.map((it, k) => (
                       <span key={k} className="inline-flex items-center gap-1.5 border border-black/15 bg-white/70 px-3 py-2 text-[11px] grayscale opacity-80">
@@ -524,13 +524,9 @@ const ShoppingExperience: React.FC<Props> = (p) => {
             </div>
           </div>
         </div>
-        <ConversionBand
-          kicker={t('ai.shopli.convKicker')}
-          headline={<>{t('ai.shopli.convHeadline')} <em>{t('ai.shopli.convHeadlineEm')}</em></>}
-          actions={
-            <button type="button" onClick={() => p.navigateTo('pricing')} className="bg-white text-black text-sm font-bold uppercase tracking-[0.3em] px-8 py-4 hover:bg-white/90 transition">{t('ai.shopli.bookStudio')}</button>
-          }
-        />
+        {/* One conversion band per AI result — $99 review + full-project rung.
+            Replaces the old "Book the studio → /pricing" mis-point. */}
+        <ConsultationReviewBand tool="shopping" />
       </>
     );
   };

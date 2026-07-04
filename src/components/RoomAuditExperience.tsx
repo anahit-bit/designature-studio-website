@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../LanguageContext';
 import { cld } from '../lib/cld';
 import { AuthUser } from '../AuthContext';
-import ConversionBand from './studio/ConversionBand';
+import { ConsultationReviewBand } from './ConsultationCTA';
 import { getStoredToken } from '../sessionClient';
 import { trackAuditStart } from '../lib/track';
 import { trackEvent } from '../lib/analytics';
@@ -77,7 +77,7 @@ interface Props {
 // ─── Scoring helpers ────────────────────────────────────────────────────────
 // Lock §3: cobalt for strong, oxide-soft otherwise. NO red/green (matches the paid landing).
 const COBALT = '#0047AB';
-const OXIDE_SOFT = '#C97A60';
+const OXIDE_SOFT = '#9E5E41';
 /** Per-dimension (out of 10): cobalt ≥ 8, oxide-soft below. */
 const scoreHex = (s: number): string => (s >= 8 ? COBALT : OXIDE_SOFT);
 /** Overall (out of 100): cobalt ≥ 80, oxide-soft below — same two hues, scaled. */
@@ -372,9 +372,6 @@ const RoomAuditExperience: React.FC<Props> = (p) => {
             <span className="block w-16 h-[2px] rule-oxide mx-auto mb-5" />
             <p className="text-[14px] text-white/75 leading-relaxed max-w-[380px] mx-auto mb-8">{t('ai.audit.heroSub')}</p>
             <button type="button" onClick={() => fileRef.current?.click()} className="cta-primary text-[12px] font-bold uppercase tracking-[0.24em] px-11 py-4 transition">{t('ai.audit.uploadCta')}</button>
-            <div className="flex items-center justify-center gap-5 mt-5">
-              <button type="button" onClick={() => void loadSample()} disabled={sampleLoading} className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/65 border-b border-white/30 pb-0.5 hover:text-white transition disabled:opacity-50">{sampleLoading ? t('ai.audit.sampleLoading') : t('ai.audit.sampleCta')}</button>
-            </div>
           </div>
         </div>
         <span className="cap absolute bottom-6 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-[0.25em] px-4 py-2 z-10">{t('ai.audit.heroCap')}</span>
@@ -411,9 +408,8 @@ const RoomAuditExperience: React.FC<Props> = (p) => {
             <span className="badge-cobalt absolute top-6 left-6 text-[9px] font-bold uppercase tracking-[0.22em] px-3 py-1.5">{t('ai.audit.theRoom')}</span>
             <button type="button" onClick={() => fileRef.current?.click()} className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/90 text-black text-[9px] font-bold uppercase tracking-[0.2em] px-4 py-2.5 hover:bg-white transition-colors">{t('ai.audit.changePhoto')}</button>
           </div>
-          <div className="px-6 py-3 flex items-center justify-between gap-3">
+          <div className="px-6 py-3 flex items-center gap-3">
             <p className="text-[10px] text-black/60 uppercase tracking-[0.16em]">{t('ai.audit.uploadHint')}</p>
-            <button type="button" onClick={() => void loadSample()} disabled={sampleLoading} className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0047AB] border-b border-[#0047AB]/40 hover:border-[#0047AB] transition whitespace-nowrap disabled:opacity-50">{sampleLoading ? t('ai.audit.sampleLoading') : t('ai.audit.sampleInstead')}</button>
           </div>
         </div>
 
@@ -474,7 +470,7 @@ const RoomAuditExperience: React.FC<Props> = (p) => {
             </div>
           </div>
 
-          {error && <div className="text-[12px] text-[#8E3F2D] border border-[#8E3F2D]/30 bg-[#8E3F2D]/5 px-4 py-3">{error}</div>}
+          {error && <div className="text-[12px] text-[#9E5E41] border border-[#9E5E41]/30 bg-[#9E5E41]/5 px-4 py-3">{error}</div>}
 
           {/* PRIMARY ACTION — pinned */}
           <div className="mt-auto pt-1 flex items-center gap-4">
@@ -521,7 +517,7 @@ const RoomAuditExperience: React.FC<Props> = (p) => {
     return (
       <>
         <div className="statushdr">
-          <div className="flex items-center gap-2.5"><span className="w-2 h-2 rounded-full bg-green-500" /><span className="text-[12px] font-bold uppercase tracking-[0.3em] text-black/60">{t('ai.audit.statusComplete')}</span></div>
+          <div className="flex items-center gap-2.5"><span className="w-2 h-2 rounded-full bg-[#15803d]" /><span className="text-[12px] font-bold uppercase tracking-[0.3em] text-black/60">{t('ai.audit.statusComplete')}</span></div>
           <button type="button" onClick={handleReset} className="text-[10px] font-bold uppercase tracking-[0.2em] text-black/60 border border-black/15 px-4 py-2 hover:border-black/40 hover:text-black transition">{t('ai.audit.auditAnother')}</button>
         </div>
         <div className="px-6 md:px-10 py-8">
@@ -608,11 +604,9 @@ const RoomAuditExperience: React.FC<Props> = (p) => {
             </div>
           </div>
         </div>
-        <ConversionBand
-          kicker={t('ai.audit.convKicker')}
-          headline={<>{t('ai.audit.convHeadline')} <em>{t('ai.audit.convHeadlineEm')}</em></>}
-          actions={<button type="button" onClick={() => p.navigateTo('pricing')} className="bg-white text-black text-sm font-bold uppercase tracking-[0.3em] px-8 py-4 hover:bg-white/90 transition">{t('ai.audit.bookStudio')}</button>}
-        />
+        {/* One conversion band per AI result — $99 review + full-project rung.
+            Replaces the old "Book the studio → /pricing" mis-point. */}
+        <ConsultationReviewBand tool="audit" />
       </>
     );
   };

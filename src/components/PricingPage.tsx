@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import Header from './Header';
 import PricingSection from './PricingSection';
 import Footer from './Footer';
-import CTABanner from './CTABanner';
 import { useLanguage } from '../LanguageContext';
 import { ArrowLeft } from 'lucide-react';
 import { cld, cldSrcSet, DEFAULT_WIDTHS } from '../lib/cld';
@@ -44,7 +43,7 @@ const PricingPage: React.FC = () => {
       <section className="relative w-full h-[85vh] md:h-screen overflow-hidden bg-black font-body">
         <div className="absolute inset-0 z-0">
           <img
-            src={cld(PRICING_HERO, 1440)}
+            src={cld(PRICING_HERO, 1920)}
             srcSet={cldSrcSet(PRICING_HERO, DEFAULT_WIDTHS)}
             sizes="100vw"
             width={1920} height={1080}
@@ -69,7 +68,7 @@ const PricingPage: React.FC = () => {
             <h1 className="text-3xl md:text-5xl lg:text-[5.5vw] font-bold font-display text-white tracking-architectural leading-[0.85] uppercase animate-in fade-in slide-in-from-bottom duration-1000">
               {t('pricing.hero')}
             </h1>
-            <span aria-hidden className="block w-20 h-[2px] bg-[#C97A60] my-7" />
+            <span aria-hidden className="block w-20 h-[2px] bg-[#9E5E41] my-7" />
             <p className="text-white/80 text-base md:text-lg font-light leading-relaxed animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
               {t('pricing.subtitle')}
             </p>
@@ -84,8 +83,13 @@ const PricingPage: React.FC = () => {
           </h2>
         </div>
       </div>
+      {/* The PricingSection ends with the $99 consultation band (I-025 PR 2), which is
+          now the page's single bottom CTA. The universal <CTABanner/> ("Start a
+          conversation", free) is intentionally omitted here so the free "talk to us"
+          offer doesn't appear twice and sandwich the paid consultation on the one page
+          where the visitor is in a paying mindset. CTABanner stays site-wide elsewhere;
+          the Header "Let's talk" still preserves the free-chat path. */}
       <PricingSection hideHeader />
-      <CTABanner />
       <Footer />
     </div>
   );

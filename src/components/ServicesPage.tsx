@@ -8,12 +8,14 @@ import Header from './Header';
 import Footer from './Footer';
 import { cld, cldSrcSet, DEFAULT_WIDTHS } from '../lib/cld';
 import { trackCalendly } from '../lib/track';
+import { ConsultationServicesBridge, useStartProjectCta } from './ConsultationCTA';
 
 const SERVICES_HERO = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1771143071/services_1_oatiib.jpg';
 const CALENDLY_URL = 'https://calendly.com/designature-studio-us/free_consultation';
 
 const ServicesPage: React.FC = () => {
   const { t, language, navigateTo } = useLanguage();
+  const startProject = useStartProjectCta('services');
 
   const serviceCategories = [
     {
@@ -322,6 +324,10 @@ const ServicesPage: React.FC = () => {
           </div>
         </section>
 
+        {/* Placement 3 (I-025 PR 2) — bridge between the full-project offerings above
+            and the free "Let's chat" closer below. Neither existing CTA is replaced. */}
+        <ConsultationServicesBridge />
+
         {/* Final CTA Banner Section */}
         <section className="bg-black text-white py-24 md:py-48 overflow-hidden relative">
           <div className="max-w-[1800px] mx-auto px-8 md:px-16 flex flex-col items-center text-center relative z-10">
@@ -339,15 +345,24 @@ const ServicesPage: React.FC = () => {
                 {t('serv.final.desc')}
               </p>
               
-              <div className="flex justify-center">
+              {/* CTA ladder closer — primary "Start a project" (→ /studio#contact form),
+                  secondary free "Let's talk". The $99 rung is the bridge panel above. */}
+              <div className="flex flex-col sm:flex-row justify-center items-center gap-4 md:gap-5">
+                <button
+                  type="button"
+                  onClick={startProject}
+                  className="inline-flex items-center justify-center bg-white text-black px-12 md:px-14 py-6 text-sm md:text-base font-bold tracking-[0.4em] uppercase transition-transform hover:-translate-y-0.5"
+                >
+                  Start a project →
+                </button>
                 <a
                   href={CALENDLY_URL}
                   onClick={(e) => { e.preventDefault(); trackCalendly(CALENDLY_URL, 'services'); }}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group relative inline-flex items-center justify-center border border-white bg-transparent px-12 md:px-16 py-6 text-sm md:text-base font-bold tracking-[0.5em] uppercase transition-all duration-500 hover:bg-white hover:text-black overflow-hidden"
+                  className="inline-flex items-center justify-center border border-white/40 bg-transparent text-white px-12 md:px-14 py-6 text-sm md:text-base font-bold tracking-[0.4em] uppercase transition-colors hover:border-white no-underline"
                 >
-                  <span className="relative z-10">{t('serv.final.btn')}</span>
+                  Let's talk →
                 </a>
               </div>
             </motion.div>

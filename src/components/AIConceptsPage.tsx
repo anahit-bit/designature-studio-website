@@ -1133,7 +1133,7 @@ const AIConceptsPage: React.FC = () => {
             <h1 className="font-display text-4xl md:text-[56px] font-bold tracking-tight leading-[0.92] uppercase text-white">
               AI {t('ai.design')} <span className="italic font-light text-white/50">{t('ai.studio')}</span>
             </h1>
-            <span aria-hidden className="block w-16 h-[2px] bg-[#C97A60] mt-4 mb-4" />
+            <span aria-hidden className="block w-16 h-[2px] bg-[#9E5E41] mt-4 mb-4" />
             <p className="text-[11px] text-white/60 uppercase tracking-[0.18em] mb-5">
               {t('ai.desc')}
             </p>
@@ -1189,7 +1189,7 @@ const AIConceptsPage: React.FC = () => {
                 <div className="text-[10px] text-white/70 uppercase tracking-[0.18em] mt-1.5">{t('ai.toExplore')}</div>
               </div>
               <div className="flex-1 pl-5 text-right">
-                <div className="font-display text-2xl font-medium text-[#C97A60] leading-none">3</div>
+                <div className="font-display text-2xl font-medium text-[#9E5E41] leading-none">3</div>
                 <div className="text-[10px] text-white/70 uppercase tracking-[0.18em] mt-1.5">{t('ai.liveTools')}</div>
               </div>
             </div>
@@ -1203,9 +1203,11 @@ const AIConceptsPage: React.FC = () => {
           <div id="ai-concepts-tools" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 border-y-2 border-black">
 
             {/* Tool 1 — Style Quiz (LIVE) */}
-            <div
+            <button
+              type="button"
               onClick={() => { if (!isProcessing) setActiveTool('quiz'); }}
-              className={`group relative p-4 border-r border-black/10 transition-all ${isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${activeTool === 'quiz' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
+              aria-label={t('ai.styleQuiz')}
+              className={`group relative p-4 border-r border-black/10 transition-all text-left w-full appearance-none ${isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${activeTool === 'quiz' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
               style={{ minHeight: '130px' }}
             >
               <div className={`text-[10px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'quiz' ? 'text-white/75' : 'text-black/55'}`}>01</div>
@@ -1219,14 +1221,16 @@ const AIConceptsPage: React.FC = () => {
                 )}
               </div>
               <div className="absolute bottom-3 right-3">
-                <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'quiz' ? 'text-blue-100 bg-blue-900/40' : 'text-green-700 bg-green-50'}`}>{t('ai.nowActive')}</span>
+                <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'quiz' ? 'text-white bg-white/20' : 'text-[#15803d] bg-[#15803d]/10'}`}>{t('ai.nowActive')}</span>
               </div>
-            </div>
+            </button>
 
             {/* Tool 2 — AI Vision (LIVE) */}
-            <div
+            <button
+              type="button"
               onClick={() => setActiveTool('vision')}
-              className={`group relative p-4 cursor-pointer border-r border-black/10 transition-all ${activeTool === 'vision' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
+              aria-label={t('ai.aiVision')}
+              className={`group relative p-4 cursor-pointer border-r border-black/10 transition-all text-left w-full appearance-none ${activeTool === 'vision' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
               style={{ minHeight: '130px' }}
             >
               <div className={`text-[10px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'vision' ? 'text-white/75' : 'text-black/55'}`}>02</div>
@@ -1245,17 +1249,19 @@ const AIConceptsPage: React.FC = () => {
                 )}
               </div>
               <div className="absolute bottom-3 right-3">
-                <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'vision' ? 'text-blue-100 bg-blue-900/40' : 'text-green-700 bg-green-50'}`}>{t('ai.nowActive')}</span>
+                <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'vision' ? 'text-white bg-white/20' : 'text-[#15803d] bg-[#15803d]/10'}`}>{t('ai.nowActive')}</span>
               </div>
-            </div>
+            </button>
 
             {/* Tool 3 — Shopping List (LIVE / OFFLINE) */}
             {(() => {
               const shoppingDown = !!shoppingStatus?.disabled;
               return (
-            <div
+            <button
+              type="button"
               onClick={() => { if (!isProcessing) setActiveTool('shopping'); }}
-              className={`group relative p-4 border-r border-black/10 transition-all ${isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${activeTool === 'shopping' ? 'bg-[#0047AB] text-white' : `bg-white text-black hover:bg-neutral-50${shoppingDown ? ' opacity-60' : ''}`}`}
+              aria-label={t('ai.shoppingList')}
+              className={`group relative p-4 border-r border-black/10 transition-all text-left w-full appearance-none ${isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${activeTool === 'shopping' ? 'bg-[#0047AB] text-white' : `bg-white text-black hover:bg-neutral-50${shoppingDown ? ' opacity-60' : ''}`}`}
               style={{ minHeight: '130px' }}
             >
               <div className={`text-[10px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'shopping' ? 'text-white/75' : 'text-black/55'}`}>03</div>
@@ -1282,17 +1288,19 @@ const AIConceptsPage: React.FC = () => {
                     offline
                   </span>
                 ) : (
-                  <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'shopping' ? 'text-blue-100 bg-blue-900/40' : 'text-green-700 bg-green-50'}`}>{t('ai.nowActive')}</span>
+                  <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'shopping' ? 'text-white bg-white/20' : 'text-[#15803d] bg-[#15803d]/10'}`}>{t('ai.nowActive')}</span>
                 )}
               </div>
-            </div>
+            </button>
               );
             })()}
 
             {/* Tool 4 — Room Audit (Design+ · non-paid opens the in-studio paid landing, NOT a pricing redirect) */}
-            <div
+            <button
+              type="button"
               onClick={() => { if (!(isProcessing || auditProcessing)) setActiveTool('audit'); }}
-              className={`group relative p-4 border-r border-black/10 transition-all ${
+              aria-label={t('ai.roomAudit')}
+              className={`group relative p-4 border-r border-black/10 transition-all text-left w-full appearance-none ${
                 (isProcessing || auditProcessing) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
               } ${activeTool === 'audit' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
               style={{ minHeight: '130px' }}
@@ -1309,12 +1317,12 @@ const AIConceptsPage: React.FC = () => {
               </div>
               <div className="absolute bottom-3 right-3">
                 {user?.isPaid ? (
-                  <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'audit' ? 'text-blue-100 bg-blue-900/40' : 'text-green-700 bg-green-50'}`}>{t('ai.nowActive')}</span>
+                  <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'audit' ? 'text-white bg-white/20' : 'text-[#15803d] bg-[#15803d]/10'}`}>{t('ai.nowActive')}</span>
                 ) : (
-                  <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'audit' ? 'text-white bg-white/20' : 'text-white bg-[#0047AB]'}`}>DESIGN+</span>
+                  <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'audit' ? 'text-white bg-white/20' : 'text-white bg-[#9E5E41]'}`}>DESIGN+</span>
                 )}
               </div>
-            </div>
+            </button>
 
             {/* Tool 5 — Design Brief (SOON) */}
             <div
@@ -1572,7 +1580,7 @@ const AIConceptsPage: React.FC = () => {
 
               {/* LEFT — sample audit output (sells the value) */}
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#C97A60] mb-4">{t('ai.audit.sampleKicker')}</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#9E5E41] mb-4">{t('ai.audit.sampleKicker')}</p>
                 <div className="relative overflow-hidden border border-white/10" style={{ aspectRatio: '4/3' }}>
                   <img
                     src={cld('https://res.cloudinary.com/dys2k5muv/image/upload/v1774950187/12_iwshvs.jpg', 1200, { crop: 'fill', aspectRatio: '4/3' })}
@@ -1595,15 +1603,15 @@ const AIConceptsPage: React.FC = () => {
                 {/* pin notes */}
                 <div className="grid sm:grid-cols-3 gap-3 mt-4">
                   <div className="border border-white/10 p-3">
-                    <div className="text-[10px] font-bold text-[#C97A60] mb-1">① {t('ai.audit.pin1Title')}</div>
+                    <div className="text-[10px] font-bold text-[#9E5E41] mb-1">① {t('ai.audit.pin1Title')}</div>
                     <div className="text-[12px] text-white/70 leading-snug">{t('ai.audit.pin1Note')}</div>
                   </div>
                   <div className="border border-white/10 p-3">
-                    <div className="text-[10px] font-bold text-[#C97A60] mb-1">② {t('ai.audit.pin2Title')}</div>
+                    <div className="text-[10px] font-bold text-[#9E5E41] mb-1">② {t('ai.audit.pin2Title')}</div>
                     <div className="text-[12px] text-white/70 leading-snug">{t('ai.audit.pin2Note')}</div>
                   </div>
                   <div className="border border-white/10 p-3">
-                    <div className="text-[10px] font-bold text-[#C97A60] mb-1">③ {t('ai.audit.pin3Title')}</div>
+                    <div className="text-[10px] font-bold text-[#9E5E41] mb-1">③ {t('ai.audit.pin3Title')}</div>
                     <div className="text-[12px] text-white/70 leading-snug">{t('ai.audit.pin3Note')}</div>
                   </div>
                 </div>
@@ -1630,7 +1638,7 @@ const AIConceptsPage: React.FC = () => {
                     <div key={label as string} className="flex items-center gap-2.5">
                       <span className="text-[12px] text-white/80 flex-1">{label}</span>
                       <span className="w-16 h-[5px] bg-white/15 overflow-hidden">
-                        <span className="block h-full" style={{ width: `${(score as number) * 10}%`, background: (score as number) >= 8 ? '#0047AB' : '#C97A60' }} />
+                        <span className="block h-full" style={{ width: `${(score as number) * 10}%`, background: (score as number) >= 8 ? '#0047AB' : '#9E5E41' }} />
                       </span>
                       <span className="text-[11px] font-bold text-white/60 w-7 text-right">{score}/10</span>
                     </div>
@@ -2162,22 +2170,10 @@ const AIConceptsPage: React.FC = () => {
 
               </div>
 
-              {/* Try sample room CTA */}
-              <button
-                onClick={handleTrySampleRoom}
-                disabled={isProcessing || isSampleLoading || (user?.generationsLeft ?? 0) <= 0}
-                className="mt-8 bg-black text-white text-[9px] font-bold uppercase tracking-[0.3em] px-8 py-4 hover:bg-black/80 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {isSampleLoading && (
-                  <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
-                )}
-                {t('aiVision.gallery.tryItButton')}
-              </button>
-
-              {/* Feedback CTA — lives here in the empty state, below the sample-room button */}
+              {/* Feedback CTA — lives here in the empty state */}
               <button
                 onClick={() => setFeedbackOpen(true)}
-                className="mt-3 inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.3em] px-8 py-4 hover:bg-[#003d99] transition-colors duration-200"
+                className="mt-8 inline-flex items-center gap-2 bg-[#0047AB] text-white text-[9px] font-bold uppercase tracking-[0.3em] px-8 py-4 hover:bg-[#003d99] transition-colors duration-200"
               >
                 Share your feedback
                 <ArrowRight className="w-3 h-3 flex-shrink-0" />
@@ -2237,7 +2233,7 @@ const AIConceptsPage: React.FC = () => {
               {results.length > 0 && (
               <div className="flex items-center justify-between px-8 py-4 bg-white border-b border-black/8">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500" />
+                  <div className="w-2 h-2 rounded-full bg-[#15803d]" />
                   <span className="text-sm md:text-base font-bold uppercase tracking-[0.3em] text-black/60">
                     {t('ai.designComplete')}
                   </span>
@@ -2957,38 +2953,7 @@ const AIConceptsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── PERSISTENT BOOKING CTA — shows after any interaction ── */}
-      {(results.length > 0 ||
-        sessionConceptArchive.length > 0 ||
-        shoppingDone ||
-        !!standaloneShoppingImage) && (
-        <div className="border-t border-black/8 bg-black">
-          <div className="max-w-[1600px] mx-auto px-8 md:px-16 py-8 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/55 mb-1">
-                {t('ai.loveWhatSee')}
-              </p>
-              <h3 className="font-display text-2xl font-bold text-white tracking-tight">
-                {t('ai.readyMakeReal')}
-              </h3>
-              <p className="text-sm text-white/55 uppercase tracking-widest mt-1">
-                {t('ai.firstConversation')}
-              </p>
-            </div>
-            <button
-              onClick={() => navigateTo('home')}
-              className="flex-shrink-0 flex items-center gap-3 bg-white text-black text-sm font-bold uppercase tracking-[0.3em] px-8 py-4 hover:bg-white/90 transition-all"
-            >
-              {t('ai.bookConversation')}
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
       <div className="border-t border-black/10" />
-
-
 
       <Footer />
 

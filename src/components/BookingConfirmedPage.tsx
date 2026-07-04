@@ -84,7 +84,7 @@ const BookingConfirmedPage: React.FC = () => {
       {/* CONFIRM HERO */}
       <section className="text-center pt-32 md:pt-40 pb-10 px-6">
         <div className="max-w-[1180px] mx-auto">
-          <div className="w-[62px] h-[62px] rounded-full bg-[rgba(60,110,71,0.12)] border border-[#3C6E47] text-[#3C6E47] flex items-center justify-center text-[28px] mx-auto mb-6">
+          <div className="w-[62px] h-[62px] rounded-full bg-[rgba(21,128,61,0.12)] border border-[#15803d] text-[#15803d] flex items-center justify-center text-[28px] mx-auto mb-6">
             ✓
           </div>
           <h1 className="font-display tracking-architectural text-[clamp(40px,5vw,68px)] leading-[1.05] mb-4">
@@ -159,7 +159,7 @@ const BookingConfirmedPage: React.FC = () => {
                 key={i}
                 className="flex gap-3.5 items-start bg-white border border-[#E7E3DB] rounded-md px-[22px] py-[18px]"
               >
-                <span className="w-2 h-2 rounded-full bg-[#C97A60] mt-2 flex-shrink-0" />
+                <span className="w-2 h-2 rounded-full bg-[#9E5E41] mt-2 flex-shrink-0" />
                 <p className="text-[14.5px] text-[#404040] leading-snug">{p}</p>
               </div>
             ))}

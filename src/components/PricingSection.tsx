@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../LanguageContext';
 import { setSigninSource } from '../lib/signinSource';
+import { useConsultationCta, consultationBtnClass } from './ConsultationCTA';
 
 const CHECK = () => (
   <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="flex-shrink-0 mt-0.5">
@@ -38,7 +39,7 @@ const NotifyButton: React.FC<{ dark?: boolean; plan: string }> = ({ dark, plan }
   };
 
   if (sent) return (
-    <div className={`w-full py-3.5 text-center text-[11px] font-bold uppercase tracking-[0.15em] ${dark ? 'text-green-400' : 'text-green-600'}`}>
+    <div className="w-full py-3.5 text-center text-[11px] font-bold uppercase tracking-[0.15em] text-[#15803d]">
       {t('pricing.notify.sent')}
     </div>
   );
@@ -75,6 +76,7 @@ const NotifyButton: React.FC<{ dark?: boolean; plan: string }> = ({ dark, plan }
 
 const PricingSection: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({ compact, hideHeader }) => {
   const { navigateTo, t } = useLanguage();
+  const bookConsultation = useConsultationCta('pricing');
 
   return (
     <section id="pricing" className={`${compact ? "pt-6 md:pt-8" : "pt-16 md:pt-24"} pb-16 md:pb-24 bg-white font-body`}>
@@ -126,7 +128,7 @@ const PricingSection: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
           {/* DESIGN */}
           <div className="bg-[#0a0a0a] p-8 flex flex-col">
             <div className="md:min-h-[420px]">
-              <span className="text-[10px] font-bold uppercase tracking-[0.15em] px-2 py-1 bg-[#8E3F2D] text-white w-fit mb-5 block">{t('pricing.popular')}</span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.15em] px-2 py-1 bg-[#9E5E41] text-white w-fit mb-5 block">{t('pricing.popular')}</span>
               <div className="mb-4">
                 <span className="text-[34px] font-bold tracking-tight leading-none text-white">$19</span>
                 <span className="text-[13px] text-white/70 ml-1">{t('pricing.month')}</span>
@@ -186,6 +188,23 @@ const PricingSection: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
             </div>
           </div>
 
+        </div>
+
+        {/* Placement 1 (I-025 PR 2) — additive $99 consultation band BELOW the three
+            tiers. NOT a 4th card; the tiers + their CTAs above stay untouched. Quieter
+            (outlined, smaller) so it reads "and also", not "instead". */}
+        <div className="mt-4 bg-[#FAFAFA] border border-black/8 px-6 py-6 md:px-10 md:py-7 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+          <div>
+            <p className="text-[14px] md:text-[15px] text-black/80 leading-snug">
+              Want personalized guidance? <strong className="font-semibold text-black">Book a $99 consultation</strong>
+            </p>
+            <p className="text-[12px] text-black/55 leading-relaxed mt-1">
+              45 minutes on Google Meet · fully creditable toward a design project.
+            </p>
+          </div>
+          <button type="button" onClick={bookConsultation} className={`self-start md:self-auto ${consultationBtnClass}`}>
+            Book a $99 consultation →
+          </button>
         </div>
       </div>
     </section>

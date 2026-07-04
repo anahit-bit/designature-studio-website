@@ -5,6 +5,7 @@ import { useLanguage } from '../LanguageContext';
 import FeedbackBand from './FeedbackBand';
 import Marquee from './studio/Marquee';
 import { STYLES } from './AIVisionShowcase';
+import { ConsultationReviewBand } from './ConsultationCTA';
 
 // Responsive ladders matched to the surfaces they serve.
 // AI-030f: HERO_FULL + RESULT_AFTER ladders widened so high-DPR / 4K
@@ -283,7 +284,7 @@ export default function VisionExperience(p: VisionExperienceProps) {
               Your room.<br /><em className="italic text-white/80 font-light">Reimagined.</em>
             </h1>
             {/* oxide accent rule — matches Style Quiz + Shopping landing heroes */}
-            <span aria-hidden className="block w-16 h-[2px] bg-[#8E3F2D] mx-auto mb-5" />
+            <span aria-hidden className="block w-16 h-[2px] bg-[#9E5E41] mx-auto mb-5" />
             <p className="text-[15px] text-white/85 leading-relaxed max-w-[460px] mx-auto mb-8">
               Three concepts in thirty seconds. Drop a photo, pick a style, see it transformed — yours to keep, share, or carry into a Designature project.
             </p>
@@ -640,15 +641,9 @@ export default function VisionExperience(p: VisionExperienceProps) {
           </div>
         )}
       </section>
-      {/* CONVERSION BAND — end-of-funnel booking (demoted "Get this designed" out of
-          the action bar, where "Shop this room" is now the primary forward step). */}
-      <div className="bg-black text-white px-6 md:px-10 py-7 flex flex-col md:flex-row items-center justify-between gap-5 border-t border-white/10">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/70 mb-1">{t('ai.vision.bandKicker')}</p>
-          <h3 className="font-display text-3xl">{t('ai.vision.bandHeadline')} <em className="italic text-white/80">{t('ai.vision.bandHeadlineEm')}</em></h3>
-        </div>
-        <button type="button" onClick={() => p.navigateTo('studio')} className="bg-white text-black text-sm font-bold uppercase tracking-[0.24em] px-8 py-4 hover:bg-white/90 transition-colors whitespace-nowrap">{t('ai.vision.getDesigned')} →</button>
-      </div>
+      {/* One conversion band per AI result — the contextual $99 review + a full-project
+          rung (ConsultationReviewBand). Replaces the old "Get this designed → studio" band. */}
+      <ConsultationReviewBand tool="vision" />
       </div>
     );
   };
@@ -666,7 +661,7 @@ export default function VisionExperience(p: VisionExperienceProps) {
       {/* titlehdr */}
       <div className="flex items-end justify-between gap-5 px-6 md:px-10 py-6 border-b border-black/[0.08]">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#8E3F2D] mb-1.5">{t('ai.aiVision')}</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#9E5E41] mb-1.5">{t('ai.aiVision')}</p>
           <h1 className="font-display text-[34px] md:text-[42px] leading-[1.0] text-black">{t('ai.vision.setupTitle')} <em className="italic">{t('ai.vision.setupTitleEm')}</em></h1>
         </div>
         <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-black/60 pb-1 whitespace-nowrap">{quota}</span>
@@ -700,7 +695,7 @@ export default function VisionExperience(p: VisionExperienceProps) {
             <div className="flex items-center gap-3">
               <span className="w-5 h-5 bg-black text-white text-[9px] flex items-center justify-center font-bold">1</span>
               <span className="text-[12px] font-bold uppercase tracking-[0.3em] text-black/70">{t('ai.vision.step1Inspiration')}</span>
-              <span className="text-[10px] font-semibold text-[#8E3F2D] tracking-[0.06em] uppercase">{t('ai.vision.step1Required')}</span>
+              <span className="text-[10px] font-semibold text-[#9E5E41] tracking-[0.06em] uppercase">{t('ai.vision.step1Required')}</span>
             </div>
             <p className="text-[11px] text-black/60">{t('ai.vision.step1Help')}</p>
           <div
@@ -796,7 +791,7 @@ export default function VisionExperience(p: VisionExperienceProps) {
             className="w-full flex items-center justify-between px-4 py-3 text-left"
             aria-expanded={refinementsOpen}
           >
-            <span className="text-[11px] font-bold uppercase tracking-[0.24em] text-[#8E3F2D]">{t('ai.vision.optionalRefinements')}</span>
+            <span className="text-[11px] font-bold uppercase tracking-[0.24em] text-[#9E5E41]">{t('ai.vision.optionalRefinements')}</span>
             <span className="text-[10px] text-black/55 uppercase tracking-[0.14em]">{t('ai.vision.autoDetected')} <span aria-hidden>{refinementsOpen ? '▴' : '▾'}</span></span>
           </button>
           <div className={`overflow-hidden transition-all duration-300 ${refinementsOpen ? 'max-h-[1600px]' : 'max-h-0'}`}>

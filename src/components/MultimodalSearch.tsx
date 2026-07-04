@@ -89,7 +89,7 @@ const MultimodalSearch: React.FC = () => {
                   <span className={`text-[13px] font-bold tracking-widest w-7 flex-shrink-0 ${tool.live ? 'text-[#0047AB]' : 'text-white/55'}`}>{tool.n}</span>
                   <span className={`text-sm tracking-wide ${tool.live ? 'text-white/85' : 'text-white/55'}`}>{t(tool.labelKey)}</span>
                   {tool.live
-                    ? <span className="text-[10px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 bg-green-500/20 text-green-300 flex-shrink-0">Live</span>
+                    ? <span className="text-[10px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 bg-[#15803d] text-white flex-shrink-0">Live</span>
                     : <span className="text-[10px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 bg-white/10 text-white/65 flex-shrink-0">Soon</span>
                   }
                 </div>
