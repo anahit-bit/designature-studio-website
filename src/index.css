@@ -68,8 +68,9 @@
    ============================================================================ */
 .studio-frame {
   --cobalt: #0047AB;
-  --oxide: #8E3F2D;
-  --oxide-soft: #C97A60;
+  --oxide: #9E5E41;
+  --oxide-soft: #9E5E41;
+  --success: #15803d;
   --sand: #DAD2C3;
 }
 

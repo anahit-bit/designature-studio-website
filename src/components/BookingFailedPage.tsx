@@ -33,7 +33,7 @@ const BookingFailedPage: React.FC = () => {
 
       <div className="max-w-[1180px] mx-auto px-6">
         <div className="max-w-[620px] mx-auto pt-36 md:pt-44 pb-20 text-center">
-          <div className="w-[60px] h-[60px] rounded-full border border-[#8E3F2D] text-[#8E3F2D] flex items-center justify-center text-[30px] mx-auto mb-6">
+          <div className="w-[60px] h-[60px] rounded-full border border-[#9E5E41] text-[#9E5E41] flex items-center justify-center text-[30px] mx-auto mb-6">
             ↻
           </div>
           <h1 className="font-display tracking-architectural text-[clamp(38px,4.8vw,62px)] leading-[1.06] mb-4">
@@ -69,7 +69,7 @@ const BookingFailedPage: React.FC = () => {
             </div>
             {REASONS.map((r, i) => (
               <div key={i} className="flex gap-3.5 items-start py-2.5">
-                <span className="w-[7px] h-[7px] rounded-full bg-[#C97A60] mt-[7px] flex-shrink-0" />
+                <span className="w-[7px] h-[7px] rounded-full bg-[#9E5E41] mt-[7px] flex-shrink-0" />
                 <p className="text-[14px] text-[#404040] leading-snug">{r}</p>
               </div>
             ))}

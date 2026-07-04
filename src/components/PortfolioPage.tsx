@@ -46,7 +46,7 @@ const PortfolioPage: React.FC = () => {
               <h1 className="text-3xl md:text-5xl lg:text-[5.5vw] font-bold font-display tracking-architectural leading-[0.85] uppercase animate-in fade-in slide-in-from-bottom duration-1000">
                 {t('portfolio.title')}
               </h1>
-              <span aria-hidden className="block w-20 h-[2px] bg-[#8E3F2D] mt-7" />
+              <span aria-hidden className="block w-20 h-[2px] bg-[#9E5E41] mt-7" />
             </div>
 
             {/* Filter Navigation */}
@@ -76,10 +76,12 @@ const PortfolioPage: React.FC = () => {
         {/* 3-Column Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredProjects.map((project, idx) => (
-            <div
+            <button
+              type="button"
               key={project.id}
               onClick={() => navigateTo('project-detail', project.id)}
-              className="group relative aspect-[4/5] bg-neutral-100 overflow-hidden cursor-pointer"
+              aria-label={language === 'en' ? project.titleEN : project.titleAM}
+              className="group relative aspect-[4/5] bg-neutral-100 overflow-hidden cursor-pointer text-left w-full appearance-none border-0 p-0"
             >
               <ResponsiveImage
                 src={project.imageUrl}
@@ -108,7 +110,7 @@ const PortfolioPage: React.FC = () => {
               <div className="absolute top-8 right-8 border border-white/20 px-3 py-1 opacity-0 group-hover:opacity-100 transition-all duration-700">
                 <span className="text-xs font-bold text-white tracking-widest">{t('portfolio.view')}</span>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>

@@ -49,23 +49,12 @@ const Header: React.FC = () => {
   }, [isMobileMenuOpen]);
 
   const navLinks = [
-    { name: t('nav.studio'), href: '#studio', page: 'studio', action: () => navigateTo('studio') },
-    { name: t('nav.portfolio'), href: '#projects', page: 'portfolio', action: () => navigateTo('portfolio') },
-    { name: t('nav.services'), href: '#services', page: 'services', action: () => navigateTo('services') },
-    { name: t('nav.pricing'), href: '#pricing', page: 'pricing', action: () => navigateTo('pricing') },
-    { name: t('nav.aiStudio'), href: '#ai-concepts', page: 'ai-concepts', action: () => { setSigninSource('header_nav'); navigateTo('ai-concepts'); window.scrollTo({ top: 0 }); }, isHighlight: true },
+    { name: t('nav.studio'), href: '/studio', page: 'studio', action: () => navigateTo('studio') },
+    { name: t('nav.portfolio'), href: '/portfolio', page: 'portfolio', action: () => navigateTo('portfolio') },
+    { name: t('nav.services'), href: '/services', page: 'services', action: () => navigateTo('services') },
+    { name: t('nav.pricing'), href: '/pricing', page: 'pricing', action: () => navigateTo('pricing') },
+    { name: t('nav.aiStudio'), href: '/ai-concepts', page: 'ai-concepts', action: () => { setSigninSource('header_nav'); navigateTo('ai-concepts'); window.scrollTo({ top: 0 }); }, isHighlight: true },
   ];
-
-  const LanguageSwitcher = () => (
-    <button
-      onClick={() => setLanguage(language === 'en' ? 'am' : 'en')}
-      className={`text-[11px] font-bold uppercase tracking-[0.25em] transition-all duration-300 px-2 ${
-        (isDarkTextNeeded && !useLightNav) ? 'text-black hover:text-black/65' : 'text-white hover:text-white/70'
-      }`}
-    >
-      {language === 'en' ? 'AM' : 'EN'}
-    </button>
-  );
 
   const CTAButton = ({ className = "" }: { className?: string }) => (
     <div className={`flex flex-col items-center gap-1.5 ${className}`}>
@@ -221,6 +210,7 @@ const Header: React.FC = () => {
                 key={link.name}
                 href={link.href}
                 onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
                   e.preventDefault();
                   link.action();
                 }}
@@ -240,14 +230,14 @@ const Header: React.FC = () => {
                     width: '5px',
                     height: '5px',
                     borderRadius: '50%',
-                    background: '#8E3F2D',
+                    background: '#9E5E41',
                     marginLeft: '5px',
                     verticalAlign: 'middle',
                     animation: 'dot-pulse 2.5s ease-in-out infinite',
                   }} />
                 )}
                 {isActive && !link.isHighlight && (
-                  <span className={`absolute -bottom-1 left-0 w-full h-[1.5px] ${(isDarkTextNeeded && !useLightNav) ? 'bg-[#8E3F2D]' : 'bg-[#C97A60]'}`} />
+                  <span className={`absolute -bottom-1 left-0 w-full h-[1.5px] ${(isDarkTextNeeded && !useLightNav) ? 'bg-[#9E5E41]' : 'bg-[#9E5E41]'}`} />
                 )}
               </a>
             );
@@ -255,7 +245,6 @@ const Header: React.FC = () => {
           </nav>
 
           <div className="hidden lg:flex items-center gap-8">
-            {/* <LanguageSwitcher /> */}
             <SecondaryCTA />
             <CTAButton />
           </div>
@@ -293,6 +282,7 @@ const Header: React.FC = () => {
                 key={link.name} 
                 href={link.href} 
                 onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
                   e.preventDefault();
                   link.action();
                   setIsMobileMenuOpen(false);
@@ -308,7 +298,6 @@ const Header: React.FC = () => {
           </nav>
 
           <div className="px-8 pb-10 md:px-16 md:pb-16 flex flex-col items-center gap-6">
-            {/* <LanguageSwitcher /> */}
             <SecondaryCTA inMobileMenu />
             <CTAButton className="w-full" />
           </div>

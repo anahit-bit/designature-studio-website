@@ -247,8 +247,8 @@ const AIToolsSection: React.FC = () => {
             </p>
             <span className="flex items-center gap-2.5 border-t border-white/10 pt-3.5">
               <span
-                className="inline-block px-2.5 py-1 rounded-full text-[9px] font-bold tracking-[0.22em] uppercase shrink-0"
-                style={{ background: 'rgba(255, 215, 0, 0.18)', color: '#f4d23a' }}
+                className="inline-block px-2.5 py-1 rounded-none text-[9px] font-bold tracking-[0.22em] uppercase shrink-0"
+                style={{ background: '#9E5E41', color: '#fff' }}
               >
                 {t('home.ai.tier.designPlus')}
               </span>
@@ -264,7 +264,7 @@ const AIToolsSection: React.FC = () => {
           className="flex flex-wrap items-center gap-x-5 gap-y-2 mb-14 px-6 md:px-7 py-5 bg-white/[0.025] rounded-r-sm"
           style={{ borderLeft: '2px solid #0047AB' }}
         >
-          <span className="text-[10px] font-bold tracking-[0.32em] uppercase text-[#C97A60] whitespace-nowrap">
+          <span className="text-[10px] font-bold tracking-[0.32em] uppercase text-[#9E5E41] whitespace-nowrap">
             {t('home.ai.comingSoonLabel')}
           </span>
           <span className="text-[13px] leading-[1.6] text-white/60 tracking-[0.04em]">

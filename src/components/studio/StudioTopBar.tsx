@@ -30,7 +30,7 @@ const StudioTopBar: React.FC<StudioTopBarProps> = ({ onSignIn, onSignOut }) => {
       <div className="px-6 md:px-10 pt-24 pb-4 flex items-end justify-between gap-4">
         {/* identity */}
         <div className="min-w-0">
-          <p className="text-[9px] font-bold uppercase tracking-[0.34em] text-[#C97A60] mb-1">{t('ai.studioBrand')}</p>
+          <p className="text-[9px] font-bold uppercase tracking-[0.34em] text-[#9E5E41] mb-1">{t('ai.studioBrand')}</p>
           <h1 className="font-display text-[22px] md:text-[28px] leading-none text-white">{t('nav.aiStudio')}</h1>
         </div>
 

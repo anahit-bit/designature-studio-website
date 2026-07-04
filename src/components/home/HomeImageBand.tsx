@@ -6,6 +6,7 @@ interface Panel {
   cat: string;
   cap: string;
   imageUrl: string;
+  filter: 'Residential' | 'Commercial';
 }
 
 /**
@@ -21,7 +22,7 @@ interface Panel {
  * until the owner swaps in real category renders.
  */
 const HomeImageBand: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, navigateTo } = useLanguage();
 
   // Reuse the three hero slides from the previous Hero.tsx slideshow so the
   // hero band shows the same imagery the owner curated for /. These map
@@ -31,16 +32,19 @@ const HomeImageBand: React.FC = () => {
       cat: t('home.band.apartments.cat'),
       cap: t('home.band.apartments.cap'),
       imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1770985128/1_wsuf6e.jpg',
+      filter: 'Residential',
     },
     {
       cat: t('home.band.houses.cat'),
       cap: t('home.band.houses.cap'),
       imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1777898987/hero_image_commercial_majogz.png',
+      filter: 'Residential',
     },
     {
       cat: t('home.band.commercial.cat'),
       cap: t('home.band.commercial.cap'),
       imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1777895308/hero_commercial_o0m0sk.png',
+      filter: 'Commercial',
     },
   ];
 
@@ -75,7 +79,13 @@ const HomeImageBand: React.FC = () => {
       `}</style>
 
       {panels.map((p) => (
-        <div key={p.cat} className="hero-render">
+        <button
+          key={p.cat}
+          type="button"
+          onClick={() => navigateTo('portfolio', undefined, p.filter)}
+          aria-label={p.cat}
+          className="hero-render appearance-none border-0 bg-transparent p-0 m-0 text-left w-full"
+        >
           <div className="absolute inset-0">
             {/* crop="limit" delivers the full landscape source; object-cover then
                 frames it the same way at any panel width (slim → expanded).
@@ -103,7 +113,7 @@ const HomeImageBand: React.FC = () => {
               {p.cap}
             </span>
           </div>
-        </div>
+        </button>
       ))}
     </section>
   );

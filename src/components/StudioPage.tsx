@@ -1,11 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, Instagram, Facebook, Mail, Send, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 import Header from './Header';
 import Footer from './Footer';
-import emailjs from '@emailjs/browser';
 import ResponsiveImage from './ResponsiveImage';
 import { cld, cldSrcSet, DEFAULT_WIDTHS } from '../lib/cld';
+import { STUDIO_SCROLL_KEY } from './ConsultationCTA';
 
 const STUDIO_HERO = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1771178204/memphis_1_bhkave.jpg';
 const FOUNDER_PHOTO = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775402047/20260124_090857_yj4blf.jpg';
@@ -15,23 +15,52 @@ const StudioPage: React.FC = () => {
   const formRef = useRef<HTMLFormElement>(null);
   const [formStatus, setFormStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // "Start a project" CTAs set STUDIO_SCROLL_KEY before navigating here, asking us to
+  // land on the contact form instead of the hero. We must run AFTER LanguageContext's
+  // on-navigation scrollTo(0,0) (a parent effect), so we schedule via rAF (smooth in a
+  // real browser) with a setTimeout fallback (fires even when the tab never paints, e.g.
+  // headless preview). Whichever runs first consumes the flag; the other no-ops.
+  useEffect(() => {
+    let flagged = false;
+    try { flagged = sessionStorage.getItem(STUDIO_SCROLL_KEY) === 'contact'; } catch { /* unavailable — land on top */ }
+    if (!flagged) return;
+    let done = false;
+    const run = () => {
+      if (done) return;
+      done = true;
+      try { sessionStorage.removeItem(STUDIO_SCROLL_KEY); } catch { /* ignore */ }
+      document.getElementById('contact')?.scrollIntoView({ behavior: 'auto', block: 'start' });
+    };
+    const raf = requestAnimationFrame(run);
+    const timer = setTimeout(run, 60);
+    return () => { cancelAnimationFrame(raf); clearTimeout(timer); };
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!formRef.current) return;
+    const fd = new FormData(e.currentTarget);
+    const payload = {
+      name: String(fd.get('name') || '').trim(),
+      email: String(fd.get('email') || '').trim(),
+      projectType: String(fd.get('projectType') || ''),
+      budget: String(fd.get('budget') || ''),
+      message: String(fd.get('message') || '').trim(),
+    };
+    if (!payload.name || !payload.email || !payload.message) { setFormStatus('error'); return; }
     setFormStatus('loading');
-    const SERVICE_ID = 'service_6v89z1a';
-    const TEMPLATE_ID = 'template_v888z1a';
-    const PUBLIC_KEY = 'user_v888z1a';
-    emailjs.sendForm(SERVICE_ID, TEMPLATE_ID, formRef.current, PUBLIC_KEY)
-      .then(() => {
-        setFormStatus('success');
-        formRef.current?.reset();
-        setTimeout(() => setFormStatus('idle'), 5000);
-      }, (error) => {
-        console.error('EmailJS Error:', error);
-        setFormStatus('error');
-        setTimeout(() => setFormStatus('idle'), 5000);
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
+      if (!res.ok) throw new Error('bad status');
+      setFormStatus('success');
+      formRef.current?.reset();
+    } catch {
+      setFormStatus('error');
+      setTimeout(() => setFormStatus('idle'), 6000);
+    }
   };
 
   return (
@@ -185,101 +214,110 @@ const StudioPage: React.FC = () => {
         </section>
 
         {/* ══════════════════════════════════════════
-            SECTION 5 — CONTACT (dark, redesigned)
+            SECTION 5 — CONTACT (redesigned per approved mockup;
+            white-dominant, brand canon: cobalt · terracotta · white)
             ══════════════════════════════════════════ */}
-        <section id="contact" className="bg-neutral-950 text-white">
-          <div className="max-w-[1600px] mx-auto px-8 md:px-16 py-24 md:py-32 grid lg:grid-cols-2 gap-0">
+        <section id="contact" className="bg-white text-[#0A0A0A] scroll-mt-24 border-t border-[#DAD2C3]">
+          <div className="max-w-[1180px] mx-auto px-8 md:px-16 py-20 md:py-28 grid lg:grid-cols-[0.9fr_1.1fr] gap-14 lg:gap-16 items-start">
 
-            {/* Left — contact info */}
-            <div className="lg:pr-20 lg:border-r border-white/20 flex flex-col justify-between pb-16 lg:pb-0">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.5em] text-white/70 mb-5">
-                  {t('studio.contact.title')}
-                </p>
-                <h2 className="font-display text-5xl md:text-6xl font-light leading-[0.92] letter-spacing-tight mb-6">
-                  {language === 'en' ? <>Let's build<br />something<br /><em className="text-white/85">remarkable</em></> : <>Ստեղծենք<br />ինչ-որ<br /><em className="text-white/85">հիշարժան</em></>}
-                </h2>
-                <p className="text-sm md:text-[15px] font-light text-white/80 leading-relaxed max-w-xs mt-8">
-                  {t('studio.contactSub')}
-                </p>
+            {/* Left — invitation + contacts */}
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-[0.34em] text-[#6B6B6B]">Start a conversation</span>
+              <h2 className="font-display text-4xl md:text-5xl font-medium leading-[1.02] tracking-[-0.01em] mt-3.5">
+                Tell us about<br /><em className="italic text-[#9E5E41]">your space.</em>
+              </h2>
+              <div className="w-14 h-[2px] bg-[#9E5E41] my-6" aria-hidden="true" />
+              <p className="text-[16px] text-[#404040] leading-relaxed max-w-[380px]">
+                Whether it's a first apartment or a full commercial fit-out — send us a few details and we'll come back within two business days. No commitment, no pressure.
+              </p>
+
+              <div className="mt-10 flex flex-col gap-5">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#6B6B6B]">Email</span>
+                  <a href="mailto:hello@designature.studio" className="text-[15px] font-medium text-[#0047AB] hover:text-[#003d99] transition-colors w-fit">hello@designature.studio</a>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#6B6B6B]">US office · WhatsApp</span>
+                  <a href="https://wa.me/13474801265" target="_blank" rel="noopener noreferrer" className="text-[15px] font-medium text-[#0047AB] hover:text-[#003d99] transition-colors w-fit">+1 (347) 480-1265</a>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#6B6B6B]">Armenia office · WhatsApp</span>
+                  <a href="https://wa.me/37493860364" target="_blank" rel="noopener noreferrer" className="text-[15px] font-medium text-[#0047AB] hover:text-[#003d99] transition-colors w-fit">+374 93 86 03 64</a>
+                </div>
               </div>
 
-              <div className="mt-16 space-y-0">
-                {[
-                  { label: t('studio.contact.email'), values: ['hello@designature.studio'], href: 'mailto:hello@designature.studio' },
-                  { label: t('studio.contact.phone'), values: ['+1 (347) 480-1265', '+374 93 86 03 64'], href: 'tel:+13474801265' },
-                  { label: t('studio.contact.location'), values: [t('studio.contact.location.desc')], href: null },
-                ].map((item, i) => (
-                  <div key={i} className="flex gap-8 py-5 border-t border-white/15">
-                    <span className="text-[11px] uppercase tracking-[0.35em] text-white/70 w-14 flex-shrink-0 pt-0.5">{item.label}</span>
-                    <div className="flex flex-col gap-1">
-                      {item.values.map((v, j) => (
-                        item.href ? (
-                          <a key={j} href={item.href} className="text-sm md:text-[15px] font-light text-white/90 hover:text-white transition-colors">{v}</a>
-                        ) : (
-                          <span key={j} className="text-sm md:text-[15px] font-light text-white/90">{v}</span>
-                        )
-                      ))}
-                    </div>
-                  </div>
-                ))}
+              <div className="flex gap-3.5 mt-8">
+                <a href="https://www.instagram.com/designature_interior/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="w-10 h-10 border border-[#DAD2C3] flex items-center justify-center text-[#0A0A0A] hover:border-[#0047AB] hover:text-[#0047AB] transition-colors">
+                  <Instagram className="w-4 h-4" />
+                </a>
+                <a href="https://www.facebook.com/Designature.Design.Studio" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="w-10 h-10 border border-[#DAD2C3] flex items-center justify-center text-[#0A0A0A] hover:border-[#0047AB] hover:text-[#0047AB] transition-colors">
+                  <Facebook className="w-4 h-4" />
+                </a>
               </div>
             </div>
 
             {/* Right — form */}
-            <div className="lg:pl-20 pt-16 lg:pt-0 flex flex-col justify-center">
-              <p className="font-display text-lg italic text-white/80 mb-12">
-                {t('studio.contact.form.title')}
-              </p>
-
-              <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-0">
-                {/* Name + Email row */}
-                <div className="grid md:grid-cols-2 gap-8">
-                  <div className="border-b border-white/20 pb-3 focus-within:border-white/50 transition-colors">
-                    <label className="block text-[10px] uppercase tracking-[0.4em] text-white/70 mb-2">{t('studio.formName')}</label>
-                    <input type="text" name="user_name" required className="w-full bg-transparent text-white text-sm font-light outline-none placeholder-white/55" placeholder={t('studio.contact.form.name')} />
+            <div>
+              {formStatus === 'success' ? (
+                <div className="border border-[#DAD2C3] border-l-[3px] border-l-[#15803d] bg-[#FAFAFA] p-8 md:p-10">
+                  <div className="flex items-center gap-2 text-[#15803d] text-[13px] font-bold uppercase tracking-[0.1em]">
+                    <CheckCircle2 className="w-4 h-4" /> Message sent
                   </div>
-                  <div className="border-b border-white/20 pb-3 focus-within:border-white/50 transition-colors">
-                    <label className="block text-[10px] uppercase tracking-[0.4em] text-white/70 mb-2">{t('studio.formEmail')}</label>
-                    <input type="email" name="user_email" required className="w-full bg-transparent text-white text-sm font-light outline-none placeholder-white/55" placeholder={t('studio.contact.form.email')} />
+                  <p className="text-[15px] text-[#404040] mt-2 leading-relaxed">
+                    Thank you — we've received your note and will reply within two business days at the email you gave us.
+                  </p>
+                </div>
+              ) : (
+                <form ref={formRef} onSubmit={handleSubmit} className="border border-[#DAD2C3] p-6 md:p-9">
+                  <div className="grid sm:grid-cols-2 gap-4 mb-5">
+                    <div>
+                      <label htmlFor="c-name" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#6B6B6B] mb-2">Your name</label>
+                      <input id="c-name" name="name" type="text" required placeholder="Anahit Ghasabyan" className="w-full text-[15px] text-[#0A0A0A] bg-white border border-[#DAD2C3] px-3.5 py-3 outline-none focus:border-[#0047AB] transition-colors" />
+                    </div>
+                    <div>
+                      <label htmlFor="c-email" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#6B6B6B] mb-2">Email</label>
+                      <input id="c-email" name="email" type="email" required placeholder="you@email.com" className="w-full text-[15px] text-[#0A0A0A] bg-white border border-[#DAD2C3] px-3.5 py-3 outline-none focus:border-[#0047AB] transition-colors" />
+                    </div>
                   </div>
-                </div>
-
-                <div className="border-b border-white/20 pb-3 focus-within:border-white/50 transition-colors mt-8">
-                  <label className="block text-[10px] uppercase tracking-[0.4em] text-white/70 mb-2">{t('studio.formSubject')}</label>
-                  <input type="text" name="subject" required className="w-full bg-transparent text-white text-sm font-light outline-none placeholder-white/55" placeholder={t('studio.contact.form.subject')} />
-                </div>
-
-                <div className="border-b border-white/20 pb-3 focus-within:border-white/50 transition-colors mt-8">
-                  <label className="block text-[10px] uppercase tracking-[0.4em] text-white/70 mb-2">{t('studio.formMessage')}</label>
-                  <textarea name="message" required rows={6} className="w-full min-h-[140px] bg-transparent text-white text-sm font-light outline-none resize-none placeholder-white/55" placeholder={t('studio.contact.form.message')} />
-                </div>
-
-                {/* Submit row */}
-                <div className="flex items-center justify-end mt-10 pt-8 border-t border-white/15">
-                  <button
-                    type="submit"
-                    disabled={formStatus === 'loading'}
-                    className="flex items-center gap-3 bg-white text-black text-[11px] font-bold uppercase tracking-[0.35em] px-8 py-4 hover:bg-white/85 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    {formStatus === 'loading' ? t('studio.formSending') : t('studio.formSend')}
-                    <Send className="w-3.5 h-3.5" />
+                  <div className="grid sm:grid-cols-2 gap-4 mb-5">
+                    <div>
+                      <label htmlFor="c-type" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#6B6B6B] mb-2">Project type</label>
+                      <select id="c-type" name="projectType" defaultValue="Apartment" className="w-full text-[15px] text-[#0A0A0A] bg-white border border-[#DAD2C3] px-3.5 py-3 outline-none focus:border-[#0047AB] transition-colors">
+                        <option>Apartment</option>
+                        <option>House</option>
+                        <option>Commercial</option>
+                        <option>Not sure yet</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="c-budget" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#6B6B6B] mb-2">Rough budget (optional)</label>
+                      <select id="c-budget" name="budget" defaultValue="Prefer not to say" className="w-full text-[15px] text-[#0A0A0A] bg-white border border-[#DAD2C3] px-3.5 py-3 outline-none focus:border-[#0047AB] transition-colors">
+                        <option>Prefer not to say</option>
+                        <option>Under $10k</option>
+                        <option>$10k–30k</option>
+                        <option>$30k–75k</option>
+                        <option>$75k+</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="mb-5">
+                    <label htmlFor="c-message" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#6B6B6B] mb-2">Tell us about the space</label>
+                    <textarea id="c-message" name="message" required rows={5} placeholder="Rooms, timeline, what you're hoping to achieve…" className="w-full min-h-[120px] text-[15px] text-[#0A0A0A] bg-white border border-[#DAD2C3] px-3.5 py-3 outline-none focus:border-[#0047AB] transition-colors resize-y" />
+                  </div>
+                  <button type="submit" disabled={formStatus === 'loading'} className="w-full bg-[#0047AB] text-white text-[12px] font-bold uppercase tracking-[0.28em] py-4 hover:bg-[#003d99] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    {formStatus === 'loading' ? 'Sending…' : 'Send message →'}
                   </button>
-                </div>
-
-                {formStatus === 'success' && (
-                  <div className="flex items-center gap-3 text-emerald-400 mt-4 animate-in fade-in">
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span className="text-[11px] font-bold uppercase tracking-widest">{t('studio.formSuccess')}</span>
-                  </div>
-                )}
-                {formStatus === 'error' && (
-                  <div className="flex items-center gap-3 text-rose-400 mt-4 animate-in fade-in">
-                    <AlertCircle className="w-4 h-4" />
-                    <span className="text-[11px] font-bold uppercase tracking-widest">{t('studio.formError')}</span>
-                  </div>
-                )}
-              </form>
+                  {formStatus === 'error' && (
+                    <div className="flex items-center gap-2 text-[#9E5E41] mt-3.5">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                      <span className="text-[12px] font-semibold">Something went wrong — please email hello@designature.studio directly.</span>
+                    </div>
+                  )}
+                  <p className="text-[12px] text-[#6B6B6B] mt-3.5 text-center">
+                    We reply within 2 business days. See our <a href="/privacy" className="text-[#0047AB] hover:text-[#003d99] transition-colors">Privacy Policy</a>.
+                  </p>
+                </form>
+              )}
             </div>
 
           </div>

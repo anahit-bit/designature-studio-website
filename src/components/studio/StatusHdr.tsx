@@ -14,7 +14,7 @@ interface StatusHdrProps {
 const DOT: Record<StatusTone, string> = {
   ready: 'bg-[#0047AB]',
   working: 'bg-amber-500 animate-pulse',
-  done: 'bg-green-500',
+  done: 'bg-[#15803d]',
 };
 
 /**

@@ -70,7 +70,7 @@ const markdownComponents: Components = {
         : null;
 
     const linkClass =
-      'text-[#0047AB] underline underline-offset-2 decoration-1 hover:text-[#8E3F2D] transition-colors';
+      'text-[#0047AB] underline underline-offset-2 decoration-1 hover:text-[#9E5E41] transition-colors';
 
     if (internalPath) {
       return (

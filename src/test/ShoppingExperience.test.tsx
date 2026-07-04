@@ -123,8 +123,8 @@ describe('ShoppingExperience — paid controls are functional, not static', () =
     // teaser items named (no products)
     expect(screen.getByText('Rug')).toBeInTheDocument();
     expect(screen.getByText('Curtains')).toBeInTheDocument();
-    // single upgrade CTA for the 2 teaser items
-    expect(screen.getByText(/Upgrade to shop these 2 more/i)).toBeInTheDocument();
+    // single upgrade CTA for the 2 teaser items (relabelled "See plans — unlock N more")
+    expect(screen.getByText(/unlock 2 more/i)).toBeInTheDocument();
     // free inputs summary count line
     expect(screen.getByText(/Found 4 items · showing 2 \(free\)/i)).toBeInTheDocument();
   });

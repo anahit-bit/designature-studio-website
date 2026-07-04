@@ -267,16 +267,10 @@ const ShoppingListShowcase: React.FC<Props> = ({ onRequestLogin }) => {
         kicker={t('ai.shop.convKicker')}
         headline={<>{t('ai.shop.convHeadline')} <em>{t('ai.shop.convHeadlineEm')}</em></>}
         actions={
-          <>
-            <button type="button" onClick={() => openSignin('ai.shop.reasonShop')}
-              className="bg-white text-black text-sm font-bold uppercase tracking-[0.24em] px-8 py-4 hover:bg-white/90 transition">
-              {t('ai.shop.signInToStart')}
-            </button>
-            <button type="button" onClick={() => openSignin('ai.shop.reasonShop')}
-              className="border border-white/30 text-white text-sm font-bold uppercase tracking-[0.24em] px-8 py-4 hover:bg-white/10 transition">
-              {t('ai.shop.bookStudio')}
-            </button>
-          </>
+          <button type="button" onClick={() => openSignin('ai.shop.reasonShop')}
+            className="bg-white text-black text-sm font-bold uppercase tracking-[0.24em] px-8 py-4 hover:bg-white/90 transition">
+            {t('ai.shop.signInToStart')}
+          </button>
         }
       />
 

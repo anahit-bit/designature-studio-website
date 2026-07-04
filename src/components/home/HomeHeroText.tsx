@@ -6,7 +6,7 @@ const HomeHeroText: React.FC = () => {
   return (
     <section className="bg-white pt-32 md:pt-40 pb-12 md:pb-14">
       <div className="max-w-[1280px] mx-auto px-6 md:px-14">
-        <span className="block text-[13px] md:text-[15px] font-bold uppercase tracking-[0.26em] text-[#8E3F2D] mb-6">
+        <span className="block text-[13px] md:text-[15px] font-bold uppercase tracking-[0.26em] text-[#9E5E41] mb-6">
           {t('home.hero.eyebrow')}
         </span>
         <h1 className="font-display font-normal text-[#0A0A0A] leading-[1.04] tracking-[-0.01em] text-[44px] sm:text-[60px] md:text-[72px] lg:text-[84px] max-w-[880px]">
@@ -14,7 +14,7 @@ const HomeHeroText: React.FC = () => {
           <br />
           {t('home.hero.headline.l2')}
         </h1>
-        <span aria-hidden className="block w-20 h-[2px] bg-[#8E3F2D] my-7" />
+        <span aria-hidden className="block w-20 h-[2px] bg-[#9E5E41] my-7" />
         <p className="text-[17px] md:text-[19px] leading-[1.55] text-[#404040] max-w-[640px]">
           {t('home.hero.tagline')}
         </p>

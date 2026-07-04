@@ -359,7 +359,7 @@ const translations = {
     'ai.shopli.sec': 'sec',
     'ai.shopli.freeComplete': 'Free tier complete',
     'ai.shopli.usedAll': "You've used your 3 free lists.",
-    'ai.shopli.upgrade': '✦ Upgrade plan',
+    'ai.shopli.upgrade': 'See plans',
     'ai.shopli.theItem': 'the item',
     'ai.shopli.identifying': 'Identifying products…',
     'ai.shopli.usingOne': 'Using 1 of your {n} lists',
@@ -396,7 +396,7 @@ const translations = {
     'ai.shopli.noneSel': 'No categories',
     'ai.shopli.freeCountLine': 'Found {m} items · showing {n} (free) — upgrade for the rest',
     'ai.shopli.teaserTitle': 'We also spotted in your room',
-    'ai.shopli.upgradeToShop': 'Upgrade to shop these {n} more →',
+    'ai.shopli.upgradeToShop': 'See plans — unlock {n} more →',
     'ai.auditDesc': 'Get a scored report card for any room with actionable fixes',
     // ── Room Audit · in-studio paid landing (free + logged-out) ──
     'ai.audit.sampleKicker': 'A sample audit',
@@ -770,7 +770,7 @@ const translations = {
     'ai.quiz.conv.signinSave': 'Sign in to save →',
     'ai.quiz.saveModalTitle': 'Save your style — Design tier feature',
     'ai.quiz.saveModalBody': 'Saving your design DNA to your dashboard is part of the Design tier ($19/mo). Want to review pricing?',
-    'ai.quiz.viewPricing': 'View pricing →',
+    'ai.quiz.viewPricing': 'See plans →',
     'ai.quiz.maybeLater': 'Maybe later',
     'ai.quiz.veil.kicker': 'Designature Studio',
     'ai.quiz.veil.title1': 'Save your',
@@ -903,7 +903,7 @@ const translations = {
     // CTA Banner
     'cta.banner.title': 'Ready when you are.',
     'cta.banner.subtext': "You've explored the possibilities. Let's bring your space to life — together.",
-    'cta.banner.btn': 'Start a Conversation',
+    'cta.banner.btn': "Let's talk",
 
     // Footer
     'footer.studio': 'Studio',
