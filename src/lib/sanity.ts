@@ -177,8 +177,10 @@ export function getCachedRetailers(): Retailer[] | null {
 // string (the studio convention, same as project coverImages); we defensively also
 // dereference an image asset so an image-type field still resolves.
 //
-// Same cached/deduped module-level pattern as fetchProjects()/fetchRetailers():
-// one network request per page lifetime (per-slug for the single-post fetch).
+// Deduped like fetchProjects()/fetchRetailers(), but with a SHORT time-based TTL
+// (JOURNAL_CACHE_TTL_MS) instead of cache-forever — see the ttlCached() note
+// below. Posts change often, so a permanent cache would hide a just-published
+// post until a server restart.
 
 // Fields shared by list + single-post queries (excerpt/cards). Body + seo are
 // heavy, so they are only pulled by the single-post query.
@@ -271,86 +273,91 @@ function toBlogPost(doc: SanityPost): BlogPost {
   }
 }
 
-let postsCache: BlogPost[] | null = null
-let postsInflight: Promise<BlogPost[]> | null = null
+// ── Short-TTL cache (journal fetchers only) ─────────────────────────────────
+// fetchProjects()/fetchRetailers() cache for the whole process lifetime because
+// the portfolio + retailer list change rarely. The journal fetchers instead use
+// a SHORT time-based TTL: on the long-lived server a cache-forever entry would
+// hide a newly published/edited post until a Railway restart, so a 60s TTL lets
+// published content show up on its own within ~a minute. In-flight dedup is kept
+// so concurrent calls still share a single request.
+export const JOURNAL_CACHE_TTL_MS = 60_000
+
+interface TtlSlot<T> {
+  value: T
+  ts: number
+}
 
 /**
- * Fetches all published posts (card shape — no body/seo). Deduped + cached at
- * module level, same pattern as fetchProjects().
+ * Wrap a per-key async fetcher with a short TTL cache + in-flight dedup. A cached
+ * value is reused while `now - ts <= JOURNAL_CACHE_TTL_MS`; once stale the next
+ * call refetches. Concurrent calls for the same key share one in-flight promise.
+ * Time is read via Date.now() so tests can drive it with fake timers.
+ */
+function ttlCached<T>(fetcher: (key: string) => Promise<T>): (key: string) => Promise<T> {
+  const cache = new Map<string, TtlSlot<T>>()
+  const inflight = new Map<string, Promise<T>>()
+  return async (key: string): Promise<T> => {
+    const hit = cache.get(key)
+    if (hit && Date.now() - hit.ts <= JOURNAL_CACHE_TTL_MS) return hit.value
+    const existing = inflight.get(key)
+    if (existing) return existing
+    const p = (async () => {
+      const value = await fetcher(key)
+      cache.set(key, { value, ts: Date.now() })
+      return value
+    })()
+    inflight.set(key, p)
+    try {
+      return await p
+    } finally {
+      inflight.delete(key) // allow retry after failure + refetch after TTL
+    }
+  }
+}
+
+// Single-value fetchers (posts list, categories) key on a constant.
+const ALL_KEY = '__all__'
+
+const postsCached = ttlCached<BlogPost[]>(async () => {
+  const docs = await sanityClient.fetch<SanityPost[]>(POSTS_QUERY)
+  return (docs ?? []).map(toBlogPost)
+})
+
+/**
+ * Fetches all published posts (card shape — no body/seo). Short-TTL cached +
+ * in-flight deduped, so a newly published post appears within ~60s (no restart).
  */
 export async function fetchPosts(): Promise<BlogPost[]> {
-  if (postsCache) return postsCache
-  if (postsInflight) return postsInflight
-  postsInflight = (async () => {
-    const docs = await sanityClient.fetch<SanityPost[]>(POSTS_QUERY)
-    const posts = (docs ?? []).map(toBlogPost)
-    postsCache = posts
-    return posts
-  })()
-  try {
-    return await postsInflight
-  } finally {
-    postsInflight = null // allow retry if it failed
-  }
+  return postsCached(ALL_KEY)
 }
 
-// Per-slug cache + inflight map so repeated single-post fetches dedupe.
-const postCache = new Map<string, BlogPost | null>()
-const postInflight = new Map<string, Promise<BlogPost | null>>()
+const postCached = ttlCached<BlogPost | null>(async (slug: string) => {
+  const doc = await sanityClient.fetch<SanityPost | null>(POST_QUERY, { slug })
+  return doc ? toBlogPost(doc) : null
+})
 
 /**
- * Fetches a single published post by slug (full body + seo). Returns null when
- * no published post matches. Deduped + cached per slug.
+ * Fetches a single published post by slug (full body + seo). Returns null when no
+ * published post matches. Short-TTL cached + in-flight deduped per slug.
  */
 export async function fetchPost(slug: string): Promise<BlogPost | null> {
-  if (postCache.has(slug)) return postCache.get(slug) ?? null
-  const existing = postInflight.get(slug)
-  if (existing) return existing
-  const p = (async () => {
-    const doc = await sanityClient.fetch<SanityPost | null>(POST_QUERY, { slug })
-    const post = doc ? toBlogPost(doc) : null
-    postCache.set(slug, post)
-    return post
-  })()
-  postInflight.set(slug, p)
-  try {
-    return await p
-  } finally {
-    postInflight.delete(slug)
-  }
+  return postCached(slug)
 }
 
-let categoriesCache: Category[] | null = null
-let categoriesInflight: Promise<Category[]> | null = null
+const categoriesCached = ttlCached<Category[]>(async () => {
+  const docs = await sanityClient.fetch<Category[]>(CATEGORIES_QUERY)
+  return (docs ?? []).map((c) => ({
+    title: c.title,
+    slug: c.slug,
+    description: c.description ?? undefined,
+    order: typeof c.order === 'number' ? c.order : undefined,
+  }))
+})
 
 /**
- * Fetches all categories ordered by their manual `order` field. Deduped + cached.
+ * Fetches all categories ordered by their manual `order` field. Short-TTL cached
+ * + in-flight deduped.
  */
 export async function fetchCategories(): Promise<Category[]> {
-  if (categoriesCache) return categoriesCache
-  if (categoriesInflight) return categoriesInflight
-  categoriesInflight = (async () => {
-    const docs = await sanityClient.fetch<Category[]>(CATEGORIES_QUERY)
-    const categories = (docs ?? []).map((c) => ({
-      title: c.title,
-      slug: c.slug,
-      description: c.description ?? undefined,
-      order: typeof c.order === 'number' ? c.order : undefined,
-    }))
-    categoriesCache = categories
-    return categories
-  })()
-  try {
-    return await categoriesInflight
-  } finally {
-    categoriesInflight = null // allow retry if it failed
-  }
-}
-
-/** Cached synchronous peeks — return null until the first fetch resolves. */
-export function getCachedPosts(): BlogPost[] | null {
-  return postsCache
-}
-export function getCachedCategories(): Category[] | null {
-  return categoriesCache
+  return categoriesCached(ALL_KEY)
 }
