@@ -33,8 +33,8 @@ export const BUSINESS = {
   image:
     "https://res.cloudinary.com/dys2k5muv/image/upload/v1772532381/1_h9ofqr.jpg",
   email: "hello@designature.studio",
-  /** Primary contact number (US line from the footer). */
-  telephone: "+13474801265",
+  /** Primary contact number (Armenian WhatsApp Business line from the footer). */
+  telephone: "+37477901991",
   foundingDate: "2021",
   priceRange: "$$",
   address: {

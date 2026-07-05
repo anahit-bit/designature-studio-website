@@ -173,18 +173,10 @@ const Footer: React.FC = () => {
                 </a>
 
                 <div className="flex flex-col gap-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">{t('footer.usOffice')}</span>
-                  <a href="https://wa.me/13474801265" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-4 text-xs font-bold tracking-widest uppercase text-white/80 hover:text-[#0047AB] transition-colors duration-300">
-                    <WhatsAppIcon className="w-4 h-4 text-white group-hover:text-[#0047AB] transition-colors" />
-                    +1 (347) 480-1265
-                  </a>
-                </div>
-
-                <div className="flex flex-col gap-3">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">{t('footer.amOffice')}</span>
-                  <a href="https://wa.me/37493860364" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-4 text-xs font-bold tracking-widest uppercase text-white/80 hover:text-[#0047AB] transition-colors duration-300">
+                  <a href="https://wa.me/37477901991" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-4 text-xs font-bold tracking-widest uppercase text-white/80 hover:text-[#0047AB] transition-colors duration-300">
                     <WhatsAppIcon className="w-4 h-4 text-white group-hover:text-[#0047AB] transition-colors" />
-                    +374 93 86 03 64
+                    +374 77 90 19 91
                   </a>
                 </div>
               </div>
