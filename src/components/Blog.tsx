@@ -1,12 +1,37 @@
 
-import React from 'react';
-import { getBlogPosts } from '../constants';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ArrowUpRight } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
+import { fetchPosts } from '../lib/sanity';
+import type { BlogPost } from '../types';
+import PostCard from './journal/PostCard';
 
+/**
+ * Homepage "Journal" teaser. Pulls the three most-recent published posts from
+ * Sanity and links into /journal (index) + /journal/:slug (articles). Renders
+ * nothing until at least one post exists, so the homepage never shows an empty
+ * blog band when the CMS is empty or unreachable.
+ */
 const Blog: React.FC = () => {
-  const { language, t } = useLanguage();
-  const posts = getBlogPosts(language);
+  const { t } = useLanguage();
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchPosts()
+      .then((p) => {
+        if (!cancelled) setPosts(p.slice(0, 3));
+      })
+      .catch(() => {
+        if (!cancelled) setPosts([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (posts.length === 0) return null;
 
   return (
     <section id="blog" className="pt-20 md:pt-32 pb-0 bg-white border-t border-black/5 font-body">
@@ -19,32 +44,19 @@ const Blog: React.FC = () => {
             </h3>
           </div>
           <div className="lg:col-span-4 lg:text-right">
-            <button className="group inline-flex items-center gap-4 text-sm md:text-base font-bold uppercase tracking-[0.4em] border-b border-black/10 pb-2 hover:border-black transition-all">
+            <Link
+              to="/journal"
+              className="group inline-flex items-center gap-4 text-sm md:text-base font-bold uppercase tracking-[0.4em] border-b border-black/10 pb-2 hover:border-black transition-all"
+            >
               {t('btn.allInsights')}
               <ArrowUpRight className="w-4 h-4 group-hover:-translate-y-1 group-hover:translate-x-1 transition-transform" />
-            </button>
+            </Link>
           </div>
         </div>
 
         <div className="grid md:grid-cols-3 gap-12 md:gap-16">
           {posts.map((post) => (
-            <div key={post.id} className="group cursor-pointer">
-              <div className="aspect-[16/10] overflow-hidden bg-neutral-100 mb-8 relative">
-                <img 
-                  src={post.imageUrl} 
-                  alt={post.title} 
-                  className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110"
-                />
-                <div className="absolute top-6 left-6 bg-white px-4 py-2 text-sm md:text-base font-bold uppercase tracking-widest">
-                  {post.category}
-                </div>
-              </div>
-              <p className="text-sm md:text-base font-bold uppercase tracking-[0.3em] text-black/55 mb-4">{post.date}</p>
-              <h4 className="text-xl md:text-2xl font-bold font-display tracking-tight mb-6 group-hover:text-neutral-500 transition-colors">
-                {post.title}
-              </h4>
-              <div className="w-8 h-[1px] bg-black group-hover:w-full transition-all duration-700" />
-            </div>
+            <PostCard key={post.id} post={post} />
           ))}
         </div>
       </div>

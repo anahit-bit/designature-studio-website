@@ -11,9 +11,10 @@
  * Builders return plain objects; render.ts serializes them safely.
  */
 import type { ProjectData } from "../../src/constants";
+import type { BlogPost, Category } from "../../src/types";
 import { BUSINESS, SITE_URL, absUrl, CORE_SERVICES } from "./config.js";
 import { FAQ_SECTIONS } from "../../src/data/faqs.js";
-import type { RouteInfo } from "./meta.js";
+import type { RouteInfo, JournalData } from "./meta.js";
 
 type JsonLd = Record<string, unknown>;
 
@@ -118,13 +119,83 @@ function faqPageNode(): JsonLd {
   };
 }
 
+// ── Journal (Phase 2) ────────────────────────────────────────────────────────
+
+/** FAQPage built from a post's authored `seo.faq[]` (only when present). */
+function postFaqNode(post: BlogPost, canonical: string): JsonLd | null {
+  const faq = post.seo?.faq ?? [];
+  if (!faq.length) return null;
+  return {
+    "@type": "FAQPage",
+    "@id": `${canonical}#faqpage`,
+    mainEntity: faq.map((f) => ({
+      "@type": "Question",
+      name: f.question,
+      acceptedAnswer: { "@type": "Answer", text: f.answer },
+    })),
+  };
+}
+
+/** BlogPosting/Article node for a single post. */
+function blogPostingNode(post: BlogPost, canonical: string): JsonLd {
+  const node: JsonLd = {
+    "@type": "BlogPosting",
+    "@id": `${canonical}#article`,
+    headline: post.title,
+    url: canonical,
+    mainEntityOfPage: canonical,
+    image: post.coverImage || BUSINESS.image,
+    author: post.author
+      ? { "@type": "Person", name: post.author }
+      : { "@id": ORG_ID, "@type": "Organization", name: BUSINESS.name },
+    publisher: { "@id": ORG_ID },
+    isPartOf: { "@id": WEBSITE_ID },
+  };
+  if (post.excerpt) node.description = post.excerpt;
+  if (post.publishedAt) {
+    node.datePublished = post.publishedAt;
+    node.dateModified = post.publishedAt; // schema has no separate updatedAt
+  }
+  if (post.category?.title) node.articleSection = post.category.title;
+  if (post.tags && post.tags.length) node.keywords = post.tags.join(", ");
+  return node;
+}
+
+/** CollectionPage node for a category, listing its posts. */
+function collectionPageNode(
+  category: Category,
+  canonical: string,
+  posts: BlogPost[]
+): JsonLd {
+  return {
+    "@type": "CollectionPage",
+    "@id": `${canonical}#collection`,
+    name: `${category.title} — The Journal`,
+    description:
+      category.description ||
+      `Articles on ${category.title.toLowerCase()} from the Designature Studio journal.`,
+    url: canonical,
+    isPartOf: { "@id": WEBSITE_ID },
+    mainEntity: {
+      "@type": "ItemList",
+      itemListElement: posts.map((p, i) => ({
+        "@type": "ListItem",
+        position: i + 1,
+        url: absUrl(`/journal/${encodeURIComponent(p.slug)}`),
+        name: p.title,
+      })),
+    },
+  };
+}
+
 /**
  * Build the list of JSON-LD nodes for a route. Each is emitted as its own
  * <script> so a malformed one can't poison the others.
  */
 export function buildJsonLd(
   info: RouteInfo,
-  project?: ProjectData | null
+  project?: ProjectData | null,
+  journal?: JournalData
 ): JsonLd[] {
   const nodes: JsonLd[] = [];
   const withContext = (node: JsonLd): JsonLd => ({
@@ -161,6 +232,61 @@ export function buildJsonLd(
     case "faq":
       nodes.push(faqPageNode());
       break;
+    case "journalIndex":
+      nodes.push(
+        {
+          "@type": "Blog",
+          "@id": `${absUrl("/journal")}#blog`,
+          name: "The Journal",
+          url: absUrl("/journal"),
+          publisher: { "@id": ORG_ID },
+          isPartOf: { "@id": WEBSITE_ID },
+        },
+        breadcrumbNode([
+          { name: "Home", url: SITE_URL + "/" },
+          { name: "The Journal", url: absUrl("/journal") },
+        ])
+      );
+      break;
+    case "journalDetail": {
+      const slug = info.slug ?? "";
+      const canonical = absUrl(`/journal/${encodeURIComponent(slug)}`);
+      const post = journal?.post;
+      if (post) {
+        nodes.push(blogPostingNode(post, canonical));
+        const crumbs: Crumb[] = [
+          { name: "Home", url: SITE_URL + "/" },
+          { name: "The Journal", url: absUrl("/journal") },
+        ];
+        if (post.category?.title && post.category.slug) {
+          crumbs.push({
+            name: post.category.title,
+            url: absUrl(`/journal/category/${encodeURIComponent(post.category.slug)}`),
+          });
+        }
+        crumbs.push({ name: post.title, url: canonical });
+        nodes.push(breadcrumbNode(crumbs));
+        const faqNode = postFaqNode(post, canonical);
+        if (faqNode) nodes.push(faqNode);
+      }
+      break;
+    }
+    case "journalCategory": {
+      const slug = info.slug ?? "";
+      const canonical = absUrl(`/journal/category/${encodeURIComponent(slug)}`);
+      const category = journal?.category;
+      if (category) {
+        nodes.push(collectionPageNode(category, canonical, journal?.categoryPosts ?? []));
+        nodes.push(
+          breadcrumbNode([
+            { name: "Home", url: SITE_URL + "/" },
+            { name: "The Journal", url: absUrl("/journal") },
+            { name: category.title, url: canonical },
+          ])
+        );
+      }
+      break;
+    }
     default:
       break;
   }

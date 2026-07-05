@@ -16,13 +16,23 @@ import {
   classifyRoute,
   buildMeta,
   resolveProject,
+  resolvePost,
+  resolveCategory,
+  resolveCategoryPosts,
   type RouteInfo,
   type RouteMeta,
+  type JournalData,
 } from "./meta.js";
 import { buildJsonLd } from "./jsonld.js";
 import { escapeAttr, escapeHtml, jsonLdScriptBody } from "./escape.js";
 import { BUSINESS } from "./config.js";
-import { HOME_COPY, SERVICES_COPY, FAQ_COPY, type PrerenderCopy } from "./content.js";
+import {
+  HOME_COPY,
+  SERVICES_COPY,
+  FAQ_COPY,
+  JOURNAL_COPY,
+  type PrerenderCopy,
+} from "./content.js";
 import { FAQ_SECTIONS } from "../../src/data/faqs.js";
 
 // ── Template loading (read once, cache) ────────────────────────────────────
@@ -97,8 +107,76 @@ function prerenderFaq(): string {
   return `<h2>Frequently Asked Questions</h2>${items}`;
 }
 
+/**
+ * Reduce markdown to plain-text paragraphs for the crawler prerender. Strips
+ * fences, headings, list/quote markers, emphasis, and link/image syntax (keeping
+ * the visible text). Not a full parser — just enough that a JS-less crawler reads
+ * the article's actual words.
+ */
+function markdownToParagraphs(md: string): string[] {
+  const noCode = md.replace(/```[\s\S]*?```/g, " ").replace(/`([^`]*)`/g, "$1");
+  return noCode
+    .split(/\n\s*\n/)
+    .map((block) =>
+      block
+        .replace(/^#{1,6}\s+/gm, "")
+        .replace(/^\s*[-*+]\s+/gm, "")
+        .replace(/^\s*\d+\.\s+/gm, "")
+        .replace(/^\s*>\s?/gm, "")
+        .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+        .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+        .replace(/[*_~]{1,3}([^*_~]+)[*_~]{1,3}/g, "$1")
+        .replace(/\s+/g, " ")
+        .trim()
+    )
+    .filter(Boolean);
+}
+
+/** Prerender for a single article: title, excerpt, body text, FAQ. */
+function prerenderJournalDetail(journal?: JournalData): string {
+  const post = journal?.post;
+  if (!post) return "";
+  const parts: string[] = [`<h1>${escapeHtml(post.title)}</h1>`];
+  if (post.excerpt) parts.push(`<p>${escapeHtml(post.excerpt)}</p>`);
+  if (post.body) {
+    const body = markdownToParagraphs(post.body)
+      .map((p) => `<p>${escapeHtml(p)}</p>`)
+      .join("");
+    if (body) parts.push(`<div>${body}</div>`);
+  }
+  const faq = post.seo?.faq ?? [];
+  if (faq.length) {
+    const items = faq
+      .map((f) => `<div><h3>${escapeHtml(f.question)}</h3><p>${escapeHtml(f.answer)}</p></div>`)
+      .join("");
+    parts.push(`<h2>Frequently asked questions</h2>${items}`);
+  }
+  return parts.join("");
+}
+
+/** Prerender for a category page: title, description, list of post titles. */
+function prerenderJournalCategory(journal?: JournalData): string {
+  const category = journal?.category;
+  if (!category) return "";
+  const parts: string[] = [`<h1>${escapeHtml(category.title)}</h1>`];
+  if (category.description) parts.push(`<p>${escapeHtml(category.description)}</p>`);
+  const posts = journal?.categoryPosts ?? [];
+  if (posts.length) {
+    const items = posts
+      .map(
+        (p) =>
+          `<li><a href="/journal/${escapeAttr(encodeURIComponent(p.slug))}">${escapeHtml(
+            p.title
+          )}</a></li>`
+      )
+      .join("");
+    parts.push(`<ul>${items}</ul>`);
+  }
+  return parts.join("");
+}
+
 /** Inner HTML injected into #root for JS-less crawlers ('' = no prerender). */
-function buildPrerender(info: RouteInfo): string {
+function buildPrerender(info: RouteInfo, journal?: JournalData): string {
   let body = "";
   switch (info.key) {
     case "home":
@@ -110,9 +188,19 @@ function buildPrerender(info: RouteInfo): string {
     case "faq":
       body = prerenderCopyBlock(FAQ_COPY) + prerenderFaq();
       break;
+    case "journalIndex":
+      body = prerenderCopyBlock(JOURNAL_COPY);
+      break;
+    case "journalDetail":
+      body = prerenderJournalDetail(journal);
+      break;
+    case "journalCategory":
+      body = prerenderJournalCategory(journal);
+      break;
     default:
       return "";
   }
+  if (!body) return "";
   // Wrapped so it's obvious in view-source that the SPA replaces this on mount.
   return `<div data-seo-prerender="true">${body}</div>`;
 }
@@ -137,11 +225,13 @@ export function renderHtmlFromTemplate(
   template: string,
   info: RouteInfo,
   project?: import("../../src/constants").ProjectData | null,
-  precomputed?: { meta?: RouteMeta; nodes?: Record<string, unknown>[] }
+  precomputed?: { meta?: RouteMeta; nodes?: Record<string, unknown>[] },
+  journal?: JournalData
 ): string {
-  const meta = precomputed?.meta ?? buildMeta(info, project);
-  const nodes = precomputed?.nodes ?? buildJsonLd(info, project);
-  const ogType = info.key === "portfolioDetail" ? "article" : "website";
+  const meta = precomputed?.meta ?? buildMeta(info, project, journal);
+  const nodes = precomputed?.nodes ?? buildJsonLd(info, project, journal);
+  const ogType =
+    info.key === "portfolioDetail" || info.key === "journalDetail" ? "article" : "website";
 
   const head = [buildHeadTags(meta, ogType), buildJsonLdScripts(nodes)]
     .filter(Boolean)
@@ -156,7 +246,7 @@ export function renderHtmlFromTemplate(
     html = head + html;
   }
 
-  const prerender = buildPrerender(info);
+  const prerender = buildPrerender(info, journal);
   if (prerender && html.includes(ROOT_DIV)) {
     html = html.replace(ROOT_DIV, `<div id="root">${prerender}</div>`);
   }
@@ -170,10 +260,24 @@ export async function renderRoute(
   distPath?: string
 ): Promise<string> {
   const info = classifyRoute(pathname);
+
   const project =
     info.key === "portfolioDetail" && info.projectId
       ? await resolveProject(info.projectId)
       : null;
+
+  // Resolve journal data (post / category + its posts) for the blog routes.
+  let journal: JournalData | undefined;
+  if (info.key === "journalDetail" && info.slug) {
+    journal = { post: await resolvePost(info.slug) };
+  } else if (info.key === "journalCategory" && info.slug) {
+    const [category, categoryPosts] = await Promise.all([
+      resolveCategory(info.slug),
+      resolveCategoryPosts(info.slug),
+    ]);
+    journal = { category, categoryPosts };
+  }
+
   const template = loadTemplate(distPath);
-  return renderHtmlFromTemplate(template, info, project);
+  return renderHtmlFromTemplate(template, info, project, undefined, journal);
 }

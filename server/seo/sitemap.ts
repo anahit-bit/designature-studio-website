@@ -8,7 +8,7 @@
  * EXTENDING (e.g. Phase-2 blog): add one entry to `getDynamicEntries()` that
  * pushes `{ path, lastmod }` for each slug — see the marked spot below.
  */
-import { fetchProjects } from "../../src/lib/sanity.js";
+import { fetchProjects, fetchPosts, fetchCategories } from "../../src/lib/sanity.js";
 import { absUrl } from "./config.js";
 import { escapeXml } from "./escape.js";
 
@@ -29,6 +29,7 @@ export const STATIC_SITEMAP_ROUTES: SitemapEntry[] = [
   { path: "/ai-vision", changefreq: "weekly", priority: 0.8 },
   { path: "/pricing", changefreq: "monthly", priority: 0.8 },
   { path: "/faq", changefreq: "monthly", priority: 0.6 },
+  { path: "/journal", changefreq: "weekly", priority: 0.8 },
   { path: "/consultation", changefreq: "monthly", priority: 0.6 },
   { path: "/terms", changefreq: "yearly", priority: 0.2 },
   { path: "/privacy", changefreq: "yearly", priority: 0.2 },
@@ -65,10 +66,42 @@ async function getDynamicEntries(): Promise<SitemapEntry[]> {
     );
   }
 
-  // ── Phase 2: blog posts ───────────────────────────────────────────────
-  // When the blog lands, fetch its slugs and push one entry each here, e.g.:
-  //   for (const post of await fetchPosts())
-  //     entries.push({ path: `/blog/${post.slug}`, lastmod: toLastmod(post.updatedAt) });
+  // ── Journal posts (Phase 2) ───────────────────────────────────────────
+  try {
+    const posts = await fetchPosts();
+    for (const post of posts) {
+      if (!post.slug) continue;
+      entries.push({
+        path: `/journal/${encodeURIComponent(post.slug)}`,
+        lastmod: toLastmod(post.publishedAt),
+        changefreq: "monthly",
+        priority: 0.7,
+      });
+    }
+  } catch (err) {
+    console.warn(
+      "[seo] sitemap: journal posts fetch failed, skipping:",
+      (err as Error)?.message
+    );
+  }
+
+  // ── Journal categories (Phase 2) ──────────────────────────────────────
+  try {
+    const categories = await fetchCategories();
+    for (const cat of categories) {
+      if (!cat.slug) continue;
+      entries.push({
+        path: `/journal/category/${encodeURIComponent(cat.slug)}`,
+        changefreq: "weekly",
+        priority: 0.5,
+      });
+    }
+  } catch (err) {
+    console.warn(
+      "[seo] sitemap: journal categories fetch failed, skipping:",
+      (err as Error)?.message
+    );
+  }
 
   return entries;
 }

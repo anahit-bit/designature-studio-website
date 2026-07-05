@@ -67,6 +67,26 @@ const USAGE_EVENTS_USER_TIME_INDEX = `
     ON usage_events (user_id, created_at);
 `;
 
+// Journal comments (Phase 2 — own, moderated). Public submissions land as
+// 'pending' and only surface once an admin approves them. 'rejected' is kept
+// (not deleted) so a spammer can't resubmit into a fresh row unnoticed.
+const BLOG_COMMENTS_TABLE = `
+  CREATE TABLE IF NOT EXISTS blog_comments (
+    id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    post_slug   text        NOT NULL,
+    author_name text        NOT NULL,
+    body        text        NOT NULL,
+    status      text        NOT NULL DEFAULT 'pending',   -- 'pending' | 'approved' | 'rejected'
+    created_at  timestamptz NOT NULL DEFAULT now()
+  );
+`;
+
+// Public read path filters by (post_slug, status='approved'); moderation lists by status.
+const BLOG_COMMENTS_SLUG_INDEX = `
+  CREATE INDEX IF NOT EXISTS idx_blog_comments_slug_status
+    ON blog_comments (post_slug, status);
+`;
+
 /**
  * Create the payments tables if they don't exist. Logs a "ready" line per table.
  * Throws if the DB is unreachable — the caller (server boot) decides whether to
@@ -89,4 +109,8 @@ export async function runMigrations(): Promise<void> {
   await pool.query(USAGE_EVENTS_TABLE);
   await pool.query(USAGE_EVENTS_USER_TIME_INDEX);
   console.log("✅ usage_events table ready");
+
+  await pool.query(BLOG_COMMENTS_TABLE);
+  await pool.query(BLOG_COMMENTS_SLUG_INDEX);
+  console.log("✅ blog_comments table ready");
 }

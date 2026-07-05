@@ -17,8 +17,37 @@ const SAMPLE_PROJECT = {
   gallery: [],
 };
 
+const SAMPLE_CATEGORY = {
+  title: 'How-to',
+  slug: 'how-to',
+  description: 'Practical, step-by-step interior design guides.',
+  order: 1,
+};
+
+const SAMPLE_POST = {
+  id: 'post-1',
+  title: 'How to Light a Living Room',
+  slug: 'light-a-living-room',
+  excerpt: 'Layered lighting, the simple way.',
+  body: '# Getting started\n\nUse **three** layers of light with a [guide](https://x).\n\n- Ambient\n- Task\n- Accent',
+  coverImage: 'https://res.cloudinary.com/dys2k5muv/image/upload/cover.jpg',
+  category: { title: 'How-to', slug: 'how-to' },
+  tags: ['lighting', 'living-room'],
+  author: 'Anahit',
+  publishedAt: '2026-06-01',
+  aiDisclosure: true,
+  seo: {
+    metaTitle: 'Lighting a Living Room — A Practical Guide',
+    metaDescription: 'A practical, layered approach to lighting your living room.',
+    faq: [{ question: 'How many light sources?', answer: 'At least three layers.' }],
+  },
+};
+
 vi.mock('../lib/sanity', () => ({
   fetchProjects: vi.fn(async () => [SAMPLE_PROJECT]),
+  fetchPosts: vi.fn(async () => [SAMPLE_POST]),
+  fetchPost: vi.fn(async (slug: string) => (slug === SAMPLE_POST.slug ? SAMPLE_POST : null)),
+  fetchCategories: vi.fn(async () => [SAMPLE_CATEGORY]),
 }));
 
 import {
@@ -265,5 +294,111 @@ describe('HTML injection', () => {
     });
     expect(html).toContain('&quot;Quoted&quot;');
     expect(html).not.toContain('content="A "Quoted"');
+  });
+});
+
+describe('journal (Phase 2) routes', () => {
+  it('classifies journal index, article, and category routes', () => {
+    expect(classifyRoute('/journal').key).toBe('journalIndex');
+    const article = classifyRoute('/journal/light-a-living-room');
+    expect(article.key).toBe('journalDetail');
+    expect(article.slug).toBe('light-a-living-room');
+    const cat = classifyRoute('/journal/category/how-to');
+    expect(cat.key).toBe('journalCategory');
+    expect(cat.slug).toBe('how-to');
+    // category route must not be misread as an article slug of "category"
+    expect(classifyRoute('/journal/category/how-to').key).not.toBe('journalDetail');
+  });
+
+  it('gives the journal index a unique indexable meta record', () => {
+    const meta = buildMeta(classifyRoute('/journal'));
+    expect(meta.title).toContain('Journal');
+    expect(meta.description.length).toBeGreaterThan(50);
+    expect(meta.noindex).toBe(false);
+    expect(meta.canonical).toBe('https://designature.studio/journal');
+  });
+
+  it('resolves article meta from the post (prefers seo.metaTitle/Description + coverImage)', () => {
+    const info = classifyRoute('/journal/light-a-living-room');
+    const meta = buildMeta(info, null, { post: SAMPLE_POST as any });
+    expect(meta.title).toBe('Lighting a Living Room — A Practical Guide');
+    expect(meta.description).toContain('layered approach');
+    expect(meta.ogImage).toBe(SAMPLE_POST.coverImage);
+    expect(meta.canonical).toBe('https://designature.studio/journal/light-a-living-room');
+    expect(meta.noindex).toBe(false);
+  });
+
+  it('marks an unknown article slug noindex (no soft-404)', () => {
+    const meta = buildMeta(classifyRoute('/journal/does-not-exist'), null, { post: null });
+    expect(meta.noindex).toBe(true);
+  });
+
+  it('resolves category meta from the category', () => {
+    const meta = buildMeta(classifyRoute('/journal/category/how-to'), null, {
+      category: SAMPLE_CATEGORY as any,
+    });
+    expect(meta.title).toContain('How-to');
+    expect(meta.description).toContain('step-by-step');
+    expect(meta.noindex).toBe(false);
+  });
+
+  it('emits BlogPosting + BreadcrumbList + FAQPage for an article', () => {
+    const nodes = buildJsonLd(classifyRoute('/journal/light-a-living-room'), null, {
+      post: SAMPLE_POST as any,
+    });
+    const types = nodes.map((n) => n['@type']);
+    expect(types).toContain('BlogPosting');
+    expect(types).toContain('BreadcrumbList');
+    expect(types).toContain('FAQPage');
+    for (const n of nodes) expect(n['@context']).toBe('https://schema.org');
+    const article = nodes.find((n) => n['@type'] === 'BlogPosting')!;
+    expect(article.headline).toBe('How to Light a Living Room');
+    expect(article.datePublished).toBe('2026-06-01');
+    // breadcrumb ends at the post, and includes the category crumb
+    const crumb = nodes.find((n) => n['@type'] === 'BreadcrumbList')!;
+    const items = crumb.itemListElement as any[];
+    expect(items[items.length - 1].name).toBe('How to Light a Living Room');
+    expect(items.some((i) => i.name === 'How-to')).toBe(true);
+  });
+
+  it('emits CollectionPage + BreadcrumbList for a category', () => {
+    const nodes = buildJsonLd(classifyRoute('/journal/category/how-to'), null, {
+      category: SAMPLE_CATEGORY as any,
+      categoryPosts: [SAMPLE_POST as any],
+    });
+    const types = nodes.map((n) => n['@type']);
+    expect(types).toContain('CollectionPage');
+    expect(types).toContain('BreadcrumbList');
+    const coll = nodes.find((n) => n['@type'] === 'CollectionPage')!;
+    expect((coll.mainEntity as any).itemListElement[0].name).toBe('How to Light a Living Room');
+  });
+
+  it('includes journal post + category slugs in the sitemap', async () => {
+    const xml = await buildSitemap(2000);
+    expect(xml).toContain('<loc>https://designature.studio/journal</loc>');
+    expect(xml).toContain('<loc>https://designature.studio/journal/light-a-living-room</loc>');
+    expect(xml).toContain('<loc>https://designature.studio/journal/category/how-to</loc>');
+  });
+
+  it('prerenders article title + body text + FAQ through renderRoute', async () => {
+    const html = await renderRoute('/journal/light-a-living-room');
+    expect(html).toContain('"@type":"BlogPosting"');
+    expect(html).toContain('data-seo-prerender');
+    expect(html).toContain('How to Light a Living Room');
+    // markdown reduced to plain text (no leading "# ")
+    expect(html).toContain('Getting started');
+    expect(html).toContain('Use three layers of light');
+    // FAQ surfaced
+    expect(html).toContain('How many light sources?');
+    // resolved title from seo.metaTitle
+    expect(html).toContain('<title>Lighting a Living Room');
+  });
+
+  it('prerenders category title + description + post titles through renderRoute', async () => {
+    const html = await renderRoute('/journal/category/how-to');
+    expect(html).toContain('"@type":"CollectionPage"');
+    expect(html).toContain('data-seo-prerender');
+    expect(html).toContain('Practical, step-by-step');
+    expect(html).toContain('How to Light a Living Room');
   });
 });

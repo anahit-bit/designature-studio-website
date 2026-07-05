@@ -9,7 +9,7 @@ import {
   PenTool,
   FileText
 } from 'lucide-react';
-import { HeroSlide, Service, Project, BlogPost } from './types';
+import { HeroSlide, Service, Project } from './types';
 import { Language } from './LanguageContext';
 
 // ╔══════════════════════════════════════════════════════════════════════════════╗
@@ -867,27 +867,6 @@ export const getProjects = (lang: Language): Project[] =>
   }));
 
 // ─── BLOG POSTS ───────────────────────────────────────────────────────────────
-
-export const getBlogPosts = (lang: Language): BlogPost[] => [
-  {
-    id: '1',
-    title: lang === 'en' ? 'The Future of Brutalist Minimalism' : 'Բրուտալիստական մինիմալիզմի ապագան',
-    date: 'MAR 24, 2024',
-    category: 'Trends',
-    imageUrl: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=800',
-  },
-  {
-    id: '2',
-    title: lang === 'en' ? 'Sustainable High-End Materials' : 'Կայուն բարձրակարգ նյութեր',
-    date: 'FEB 12, 2024',
-    category: 'Innovation',
-    imageUrl: 'https://images.unsplash.com/photo-1518005020470-588a3a307a00?auto=format&fit=crop&q=80&w=800',
-  },
-  {
-    id: '3',
-    title: lang === 'en' ? 'Sculpting Light in Empty Spaces' : 'Լույսի քանդակումը դատարկ տարածություններում',
-    date: 'JAN 05, 2024',
-    category: 'Art',
-    imageUrl: 'https://images.unsplash.com/photo-1513584684374-8bdb7489feef?auto=format&fit=crop&q=80&w=800',
-  },
-];
+// The Journal (Phase 2) reads real posts from Sanity via src/lib/sanity.ts
+// (fetchPosts / fetchPost / fetchCategories). The former hard-coded getBlogPosts()
+// sample was removed when the live blog landed.

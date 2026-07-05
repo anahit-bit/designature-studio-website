@@ -45,3 +45,11 @@ export const FAQ_COPY: PrerenderCopy = {
   intro:
     "Everything you need to know about the AI Studio, our design tools, and how we work.",
 };
+
+/** Mirrors JournalPage hero copy (src/components/JournalPage.tsx). */
+export const JOURNAL_COPY: PrerenderCopy = {
+  eyebrow: "The Journal",
+  headline: "Notes on design & living well.",
+  intro:
+    "Ideas, how-tos, and behind-the-scenes from the studio — on interior design, AI-assisted tools, and making a home that feels like you.",
+};

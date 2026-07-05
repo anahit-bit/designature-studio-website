@@ -27,8 +27,8 @@ calls `renderRoute()` instead of a raw `sendFile`.
 
 **Indexed (in sitemap + JSON-LD as applicable):**
 `/`, `/portfolio`, `/portfolio/:id`, `/services`, `/studio`, `/ai-concepts`,
-`/ai-vision`, `/pricing`, `/faq`, `/consultation`, `/terms`, `/privacy`,
-`/refund`.
+`/ai-vision`, `/pricing`, `/faq`, `/journal`, `/journal/:slug`,
+`/journal/category/:slug`, `/consultation`, `/terms`, `/privacy`, `/refund`.
 
 **`noindex` (excluded from sitemap):** `/admin*`, `/booking/*`, `/deliverables`
 — plus any unknown path. These still serve the SPA normally.
@@ -40,6 +40,12 @@ calls `renderRoute()` instead of a raw `sendFile`.
 - `/portfolio` → `BreadcrumbList`.
 - `/portfolio/:id` → `BreadcrumbList` (Home › Portfolio › Project).
 - `/faq` → `FAQPage`, generated from `src/data/faqs.ts` (matches the page 1:1).
+- `/journal` → `Blog` + `BreadcrumbList`.
+- `/journal/:slug` → `BlogPosting` (headline, author, datePublished/dateModified,
+  image, articleSection, keywords) + `BreadcrumbList` (Home › Journal › [Category] ›
+  Post) + `FAQPage` when the post has `seo.faq[]`.
+- `/journal/category/:slug` → `CollectionPage` (with an `ItemList` of its posts) +
+  `BreadcrumbList` (Home › Journal › Category).
 
 ## ⚠ Business data to confirm
 
@@ -53,15 +59,43 @@ richer `LocalBusiness`. Primary phone is the US line; the Armenian line
 > The original task's "BUSINESS DATA" block was a blank placeholder, so these
 > values were derived from the codebase rather than supplied.
 
-## How to add blog slugs later (Phase 2)
+## Journal / blog (Phase 2 — DONE)
 
-1. **Sitemap** — in `server/seo/sitemap.ts`, `getDynamicEntries()`, uncomment the
-   marked block and push one `{ path: '/blog/'+slug, lastmod }` per post.
-2. **Metadata** — add a `blogDetail` case in `server/seo/meta.ts`
-   (`classifyRoute` + `buildMeta`) resolving title/description/OG from the post.
-3. **JSON-LD** — add an `Article`/`BlogPosting` + `BreadcrumbList` case in
-   `server/seo/jsonld.ts`.
-4. **robots.txt** — no change needed (blog is under the allowed `/`).
+The Journal (user-facing "Journal" at `/journal`; Sanity types stay `post` +
+`category`) is now wired into every layer of this SEO stack. The data comes from
+Sanity via `src/lib/sanity.ts` (`fetchPosts` / `fetchPost` / `fetchCategories`,
+same cached/deduped pattern as `fetchProjects`), resolved server-side in
+`meta.ts` (`resolvePost` / `resolveCategory` / `resolveCategoryPosts`). All CMS
+reads are failure-tolerant — a Sanity outage degrades to a valid empty page /
+sitemap, never a 500.
+
+What's covered:
+
+1. **Sitemap** — `server/seo/sitemap.ts` `getDynamicEntries()` pushes every
+   published post (`/journal/:slug`, `lastmod = publishedAt`) and every category
+   (`/journal/category/:slug`). `/journal` is a static route.
+2. **Metadata** — `server/seo/meta.ts` `classifyRoute()` returns
+   `journalIndex` / `journalDetail` / `journalCategory` (the last two carry a
+   `slug`). `buildMeta()` resolves title/description/OG from the post or category,
+   preferring `post.seo.metaTitle` / `metaDescription` when authored, and marks an
+   unknown slug `noindex` (no soft-404). `/journal` copy lives in `STATIC_META`.
+3. **JSON-LD** — `server/seo/jsonld.ts` emits `BlogPosting` + breadcrumb + optional
+   `FAQPage` for an article, and `CollectionPage` + breadcrumb for a category
+   (see "JSON-LD by route"). `buildMeta`/`buildJsonLd` take an optional third
+   `JournalData` arg (`{ post?, category?, categoryPosts? }`).
+4. **Prerender** — `server/seo/content.ts` holds `JOURNAL_COPY` (index) and
+   `render.ts` prerenders the article title + excerpt + markdown-reduced body text
+   + FAQ, and the category title + description + post-title list, into `#root`.
+5. **robots.txt** — no change needed (journal is under the allowed `/`).
+
+**To author a new indexed route in the journal family**, follow the same four
+touch-points above; posts + categories flow automatically once published in Sanity
+(`status == "published"`).
+
+Comments (own, moderated) are a separate concern from SEO: `blog_comments` table
+in `db/migrate.ts`, public `GET`/`POST /api/journal/:slug/comments`, and admin
+moderation at `/admin/comments` (`GET /api/admin/comments` +
+`POST /api/admin/comments/moderate`, gated by the admin session).
 
 ## How to extend the metadata map
 

@@ -431,6 +431,24 @@ function clientIp(req: any): string {
     .trim();
 }
 
+// ─── Journal comment submission rate limit (Phase 2) ────────────────────────
+// In-memory per-IP sliding window: at most N comment POSTs per window. Best-effort
+// spam brake (paired with a honeypot field + admin moderation), lost on restart.
+const COMMENT_MAX_PER_WINDOW = 5;
+const COMMENT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+const commentPostTimes: Record<string, number[]> = {};
+function isCommentRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const recent = (commentPostTimes[ip] || []).filter((t) => now - t < COMMENT_WINDOW_MS);
+  if (recent.length >= COMMENT_MAX_PER_WINDOW) {
+    commentPostTimes[ip] = recent;
+    return true;
+  }
+  recent.push(now);
+  commentPostTimes[ip] = recent;
+  return false;
+}
+
 function isLockedOut(ip: string): { locked: boolean; resetIn: number; remaining: number } {
   const rec = loginAttempts[ip];
   if (!rec) return { locked: false, resetIn: 0, remaining: ADMIN_LOGIN_MAX_ATTEMPTS };
@@ -1985,6 +2003,120 @@ Output ONLY valid JSON, no markdown fences, no commentary:
   });
 
   // ════════════════════════════════════════════════════════════════════════
+  // Journal comments (Phase 2) — own, moderated.
+  //   GET  /api/journal/:slug/comments   PUBLIC  → approved only
+  //   POST /api/journal/:slug/comments   PUBLIC  → creates a 'pending' comment
+  //   GET  /api/admin/comments           requireAdmin → list by status
+  //   POST /api/admin/comments/moderate  requireAdmin → approve / reject
+  // Graceful DB failure: reads fall back to an empty list (page still renders);
+  // writes surface a 503. See db/migrate.ts `blog_comments`.
+  // ════════════════════════════════════════════════════════════════════════
+  const slugParamSafe = (raw: unknown): string =>
+    typeof raw === "string" ? raw.trim().slice(0, 200) : "";
+
+  app.get("/api/journal/:slug/comments", async (req, res) => {
+    const slug = slugParamSafe(req.params.slug);
+    if (!slug) return res.status(400).json({ error: "Bad slug" });
+    try {
+      const r = await getPool().query(
+        `SELECT id, author_name, body, created_at
+           FROM blog_comments
+          WHERE post_slug = $1 AND status = 'approved'
+          ORDER BY created_at DESC
+          LIMIT 500`,
+        [slug],
+      );
+      res.json({ comments: r.rows });
+    } catch (err: any) {
+      // Never 500 the reader on a CMS/DB hiccup — show the article without comments.
+      console.warn("[journal] list comments failed:", err?.message || err);
+      res.json({ comments: [] });
+    }
+  });
+
+  app.post("/api/journal/:slug/comments", async (req, res) => {
+    const slug = slugParamSafe(req.params.slug);
+    if (!slug) return res.status(400).json({ error: "Bad slug" });
+
+    const { authorName, body, website } = req.body || {};
+
+    // Honeypot: real users never fill the hidden "website" field. Pretend success
+    // (don't tip off the bot) but store nothing.
+    if (typeof website === "string" && website.trim() !== "") {
+      return res.json({ ok: true });
+    }
+
+    const nameSafe = typeof authorName === "string" ? authorName.trim().slice(0, 80) : "";
+    const bodySafe = typeof body === "string" ? body.trim().slice(0, 3000) : "";
+    if (!nameSafe || !bodySafe) {
+      return res.status(400).json({ error: "Name and comment are required." });
+    }
+
+    if (isCommentRateLimited(clientIp(req))) {
+      return res
+        .status(429)
+        .json({ error: "You're commenting too fast — please try again in a few minutes." });
+    }
+
+    try {
+      await getPool().query(
+        `INSERT INTO blog_comments (post_slug, author_name, body, status)
+         VALUES ($1, $2, $3, 'pending')`,
+        [slug, nameSafe, bodySafe],
+      );
+      res.json({ ok: true });
+    } catch (err: any) {
+      console.error("[journal] insert comment failed:", err?.message || err);
+      res.status(503).json({ error: "Comments are temporarily unavailable." });
+    }
+  });
+
+  app.get("/api/admin/comments", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const statusRaw = typeof req.query.status === "string" ? req.query.status : "pending";
+    const status = ["pending", "approved", "rejected"].includes(statusRaw) ? statusRaw : "";
+    try {
+      const r = status
+        ? await getPool().query(
+            `SELECT id, post_slug, author_name, body, status, created_at
+               FROM blog_comments WHERE status = $1
+              ORDER BY created_at DESC LIMIT 1000`,
+            [status],
+          )
+        : await getPool().query(
+            `SELECT id, post_slug, author_name, body, status, created_at
+               FROM blog_comments ORDER BY created_at DESC LIMIT 1000`,
+          );
+      res.json({ comments: r.rows });
+    } catch (err: any) {
+      console.error("[journal] admin list comments failed:", err?.message || err);
+      res.status(500).json({ error: "Failed to load comments." });
+    }
+  });
+
+  app.post("/api/admin/comments/moderate", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const { id, action } = req.body || {};
+    if (typeof id !== "string" || !id.trim()) {
+      return res.status(400).json({ error: "Missing comment id." });
+    }
+    const nextStatus = action === "approve" ? "approved" : action === "reject" ? "rejected" : "";
+    if (!nextStatus) return res.status(400).json({ error: "Invalid action." });
+    try {
+      const r = await getPool().query(
+        `UPDATE blog_comments SET status = $1 WHERE id = $2`,
+        [nextStatus, id.trim()],
+      );
+      if (r.rowCount === 0) return res.status(404).json({ error: "Comment not found." });
+      res.json({ ok: true });
+    } catch (err: any) {
+      // Invalid UUID etc. → treat as a bad request, not a server fault.
+      console.warn("[journal] moderate comment failed:", err?.message || err);
+      res.status(400).json({ error: "Could not update that comment." });
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════════════
   // I-018 · /api/admin/* AUTH AUDIT  (last reviewed 2026-05-18 · Phase C)
   // ════════════════════════════════════════════════════════════════════════
   // Every admin endpoint must call requireAdminAuth at the top of its handler.
@@ -1998,6 +2130,8 @@ Output ONLY valid JSON, no markdown fences, no commentary:
   //   GET     /api/admin/users           requireAdminAuth (via requireAdmin alias)
   //   GET     /api/admin/usage           requireAdminAuth (via requireAdmin alias)
   //   GET     /api/admin/users-detail    requireAdminAuth (via requireAdmin alias)
+  //   GET     /api/admin/comments        requireAdminAuth (via requireAdmin alias)  [Phase 2 Journal]
+  //   POST    /api/admin/comments/moderate requireAdminAuth (via requireAdmin alias) [Phase 2 Journal]
   //
   // History:
   //   2026-05-15 (I-011 drive-by): reset-user + users were unauthenticated.

@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import { useLocation, useNavigate } from 'react-router-dom';
 
 export type Language = 'en' | 'am';
-export type Page = 'home' | 'portfolio' | 'project-detail' | 'services' | 'studio' | 'ai-concepts' | 'ai-vision' | 'pricing' | 'faq' | 'terms' | 'privacy' | 'refund' | 'consultation' | 'booking-confirmed' | 'booking-failed';
+export type Page = 'home' | 'portfolio' | 'project-detail' | 'services' | 'studio' | 'ai-concepts' | 'ai-vision' | 'pricing' | 'faq' | 'journal' | 'journal-detail' | 'journal-category' | 'terms' | 'privacy' | 'refund' | 'consultation' | 'booking-confirmed' | 'booking-failed';
 export type PortfolioFilter = 'All' | 'Residential' | 'Commercial';
 
 // URL ⇄ page-state mapping. URL is the source of truth; localStorage persistence
@@ -19,6 +19,9 @@ function pathToPageState(pathname: string): { page: Page; projectId: string | nu
   if (pathname === '/ai-vision') return { page: 'ai-vision', projectId: null };
   if (pathname === '/pricing') return { page: 'pricing', projectId: null };
   if (pathname === '/faq') return { page: 'faq', projectId: null };
+  if (pathname === '/journal') return { page: 'journal', projectId: null };
+  if (/^\/journal\/category\/[^/]+\/?$/.test(pathname)) return { page: 'journal-category', projectId: null };
+  if (/^\/journal\/[^/]+\/?$/.test(pathname)) return { page: 'journal-detail', projectId: null };
   if (pathname === '/terms') return { page: 'terms', projectId: null };
   if (pathname === '/privacy') return { page: 'privacy', projectId: null };
   if (pathname === '/refund') return { page: 'refund', projectId: null };
@@ -48,6 +51,12 @@ function pageToPath(page: Page, projectId?: string | null, filter?: PortfolioFil
       return '/pricing';
     case 'faq':
       return '/faq';
+    case 'journal':
+      return '/journal';
+    case 'journal-detail':
+      return projectId ? `/journal/${encodeURIComponent(projectId)}` : '/journal';
+    case 'journal-category':
+      return projectId ? `/journal/category/${encodeURIComponent(projectId)}` : '/journal';
     case 'terms':
       return '/terms';
     case 'privacy':
@@ -87,6 +96,7 @@ const translations = {
     'nav.pricing': 'Pricing',
     'nav.contact': 'Contact',
     'nav.blog': 'Blog',
+    'nav.journal': 'Journal',
     'nav.bookConsultation': 'Book a Consultation',
     'nav.freeConsultation': 'Free Consultation',
     'nav.tryAiFree': 'Try AI free',
@@ -1147,6 +1157,7 @@ const translations = {
     'nav.pricing': 'Գներ',
     'nav.contact': 'Կապ',
     'nav.blog': 'Բլոգ',
+    'nav.journal': 'Ամսագիր',
     'nav.bookConsultation': 'Ամրագրել Խորհրդատվություն',
     'nav.freeConsultation': 'Անվճար Խորհրդատվություն',
     'nav.tryAiFree': 'Փորձել AI-ը անվճար',

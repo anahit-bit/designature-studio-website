@@ -21,6 +21,11 @@ import AdminPage from './components/AdminPage';
 import AdminLoginPage from './components/AdminLoginPage';
 import AdminUsersPage from './components/AdminUsersPage';
 import AdminOrdersPage from './components/AdminOrdersPage';
+import AdminCommentsPage from './components/AdminCommentsPage';
+import JournalPage from './components/JournalPage';
+import JournalCategoryPage from './components/JournalCategoryPage';
+import JournalArticlePage from './components/JournalArticlePage';
+import Blog from './components/Blog';
 import Footer from './components/Footer';
 import RouteTracker from './components/RouteTracker';
 import HomeHeroText from './components/home/HomeHeroText';
@@ -46,6 +51,7 @@ const HomePage: React.FC = () => (
       <FeaturedWork />
       <AIToolsSection />
       <Voices />
+      <Blog />
       <ClosingBand />
     </main>
     <Footer />
@@ -114,6 +120,9 @@ const App: React.FC = () => (
             <Route path="/ai-vision" element={<AIVisionRoute />} />
             <Route path="/pricing" element={<PricingRoute />} />
             <Route path="/faq" element={<FAQPage />} />
+            <Route path="/journal" element={<JournalPage />} />
+            <Route path="/journal/category/:slug" element={<JournalCategoryPage />} />
+            <Route path="/journal/:slug" element={<JournalArticlePage />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/refund" element={<RefundPage />} />
@@ -124,6 +133,7 @@ const App: React.FC = () => (
             <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route path="/admin/users" element={<AdminUsersPage />} />
             <Route path="/admin/orders" element={<AdminOrdersPage />} />
+            <Route path="/admin/comments" element={<AdminCommentsPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

@@ -11,7 +11,13 @@
  * by hand. See SEO-NOTES.md.
  */
 import type { ProjectData } from "../../src/constants";
-import { fetchProjects } from "../../src/lib/sanity.js";
+import type { BlogPost, Category } from "../../src/types";
+import {
+  fetchProjects,
+  fetchPost,
+  fetchPosts,
+  fetchCategories,
+} from "../../src/lib/sanity.js";
 import { SITE_URL, DEFAULT_OG_IMAGE, absUrl } from "./config.js";
 
 export interface RouteMeta {
@@ -36,6 +42,9 @@ export type RouteKey =
   | "aiVision"
   | "pricing"
   | "faq"
+  | "journalIndex"
+  | "journalDetail"
+  | "journalCategory"
   | "consultation"
   | "terms"
   | "privacy"
@@ -47,6 +56,15 @@ export interface RouteInfo {
   key: RouteKey;
   /** Present only for portfolioDetail — the Sanity project id from the URL. */
   projectId?: string;
+  /** Present for journalDetail (post slug) + journalCategory (category slug). */
+  slug?: string;
+}
+
+/** Journal data resolved for a request, passed to the meta/JSON-LD builders. */
+export interface JournalData {
+  post?: BlogPost | null;
+  category?: Category | null;
+  categoryPosts?: BlogPost[];
 }
 
 /** Normalize a pathname: strip query/hash, collapse trailing slash (except root). */
@@ -69,6 +87,12 @@ export function classifyRoute(pathname: string): RouteInfo {
   const detail = p.match(/^\/portfolio\/([^/]+)$/);
   if (detail) return { key: "portfolioDetail", projectId: decodeURIComponent(detail[1]) };
 
+  // Journal — match category (3 segments) before the single-slug article route.
+  const jCat = p.match(/^\/journal\/category\/([^/]+)$/);
+  if (jCat) return { key: "journalCategory", slug: decodeURIComponent(jCat[1]) };
+  const jDetail = p.match(/^\/journal\/([^/]+)$/);
+  if (jDetail) return { key: "journalDetail", slug: decodeURIComponent(jDetail[1]) };
+
   switch (p) {
     case "/":
       return { key: "home" };
@@ -86,6 +110,8 @@ export function classifyRoute(pathname: string): RouteInfo {
       return { key: "pricing" };
     case "/faq":
       return { key: "faq" };
+    case "/journal":
+      return { key: "journalIndex" };
     case "/consultation":
       return { key: "consultation" };
     case "/terms":
@@ -103,7 +129,10 @@ const SUFFIX = " | Designature Studio";
 
 /** Hand-written metadata for every public, static route. */
 const STATIC_META: Record<
-  Exclude<RouteKey, "portfolioDetail" | "private" | "unknown">,
+  Exclude<
+    RouteKey,
+    "portfolioDetail" | "journalDetail" | "journalCategory" | "private" | "unknown"
+  >,
   Omit<RouteMeta, "canonical" | "noindex"> & { path: string }
 > = {
   home: {
@@ -186,6 +215,16 @@ const STATIC_META: Record<
       "Common questions about the AI Studio, data privacy, pricing, and our design services.",
     ogImage: DEFAULT_OG_IMAGE,
   },
+  journalIndex: {
+    path: "/journal",
+    title: "The Journal — Interior Design Ideas & AI Design Notes" + SUFFIX,
+    description:
+      "The Designature Studio journal: interior design ideas, how-tos, and behind-the-scenes notes on designing a home you love — plus guides to our AI design tools. Read the latest articles.",
+    ogTitle: "The Journal — Designature Studio",
+    ogDescription:
+      "Interior design ideas, how-tos, and AI design notes from the Designature Studio team.",
+    ogImage: DEFAULT_OG_IMAGE,
+  },
   consultation: {
     path: "/consultation",
     title: "Book a Consultation" + SUFFIX,
@@ -245,11 +284,112 @@ export async function resolveProject(id: string): Promise<ProjectData | null> {
   }
 }
 
+/** Fetch a single published post by slug, tolerant of Sanity being unreachable. */
+export async function resolvePost(slug: string): Promise<BlogPost | null> {
+  try {
+    return await fetchPost(slug);
+  } catch (err) {
+    console.warn("[seo] resolvePost: Sanity fetch failed:", (err as Error)?.message);
+    return null;
+  }
+}
+
+/** Fetch a category by slug, tolerant of Sanity being unreachable. */
+export async function resolveCategory(slug: string): Promise<Category | null> {
+  try {
+    const cats = await fetchCategories();
+    return cats.find((c) => c.slug === slug) ?? null;
+  } catch (err) {
+    console.warn("[seo] resolveCategory: Sanity fetch failed:", (err as Error)?.message);
+    return null;
+  }
+}
+
+/** Fetch the published posts in a category, tolerant of Sanity being unreachable. */
+export async function resolveCategoryPosts(slug: string): Promise<BlogPost[]> {
+  try {
+    const posts = await fetchPosts();
+    return posts.filter((p) => p.category?.slug === slug);
+  } catch (err) {
+    console.warn("[seo] resolveCategoryPosts: Sanity fetch failed:", (err as Error)?.message);
+    return [];
+  }
+}
+
 /**
  * Resolve full metadata for a pathname. For portfolioDetail, pass the already
  * resolved project (or null) to avoid a duplicate Sanity fetch.
  */
-export function buildMeta(info: RouteInfo, project?: ProjectData | null): RouteMeta {
+export function buildMeta(
+  info: RouteInfo,
+  project?: ProjectData | null,
+  journal?: JournalData,
+): RouteMeta {
+  if (info.key === "journalDetail") {
+    const slug = info.slug ?? "";
+    const canonical = absUrl(`/journal/${encodeURIComponent(slug)}`);
+    const post = journal?.post;
+    if (post) {
+      const title = post.seo?.metaTitle || `${post.title}${SUFFIX}`;
+      const description = clampDescription(
+        post.seo?.metaDescription ||
+          post.excerpt ||
+          `${post.title} — from the Designature Studio journal.`,
+      );
+      return {
+        title,
+        description,
+        canonical,
+        ogTitle: post.title,
+        ogDescription: description,
+        ogImage: post.coverImage || DEFAULT_OG_IMAGE,
+        noindex: false,
+      };
+    }
+    // Unknown / unpublished slug — don't create a soft-404 in the index.
+    return {
+      title: "Article — The Journal" + SUFFIX,
+      description:
+        "An article from the Designature Studio journal — interior design ideas and AI design notes.",
+      canonical,
+      ogTitle: "The Journal" + SUFFIX,
+      ogDescription: "The Designature Studio journal.",
+      ogImage: DEFAULT_OG_IMAGE,
+      noindex: true,
+    };
+  }
+
+  if (info.key === "journalCategory") {
+    const slug = info.slug ?? "";
+    const canonical = absUrl(`/journal/category/${encodeURIComponent(slug)}`);
+    const category = journal?.category;
+    if (category) {
+      const title = `${category.title} — The Journal${SUFFIX}`;
+      const description = clampDescription(
+        category.description ||
+          `Articles on ${category.title.toLowerCase()} from the Designature Studio journal.`,
+      );
+      return {
+        title,
+        description,
+        canonical,
+        ogTitle: `${category.title} — The Journal`,
+        ogDescription: description,
+        ogImage: DEFAULT_OG_IMAGE,
+        noindex: false,
+      };
+    }
+    return {
+      title: "Category — The Journal" + SUFFIX,
+      description: "A category in the Designature Studio journal.",
+      canonical,
+      ogTitle: "The Journal" + SUFFIX,
+      ogDescription: "The Designature Studio journal.",
+      ogImage: DEFAULT_OG_IMAGE,
+      noindex: true,
+    };
+  }
+
   if (info.key === "portfolioDetail") {
     const canonical = absUrl(
       `/portfolio/${encodeURIComponent(info.projectId ?? "")}`
