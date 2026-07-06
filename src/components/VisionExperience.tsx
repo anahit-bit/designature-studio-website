@@ -96,8 +96,12 @@ const DNA_BANNER_DISMISSED_KEY = 'ai_vision_dna_banner_dismissed';
 export default function VisionExperience(p: VisionExperienceProps) {
   const { t } = useLanguage();
   // ── State derivation ──
+  // State 3 needs a live concept OR a room still loaded. After Reset the room is
+  // cleared but the archive is deliberately kept (so past concepts re-appear in the
+  // strip on the next generation) — without the roomImage guard the lingering archive
+  // would trap the tool in state 3 with no photo and no upload path (the Reset bug).
   const state: 1 | 2 | 3 =
-    p.results.length > 0 || p.sessionConceptArchive.length > 0 ? 3 :
+    p.results.length > 0 || (p.sessionConceptArchive.length > 0 && !!p.roomImage) ? 3 :
     p.roomImage ? 2 : 1;
 
   // ── Before/after slider — drag the divider ──

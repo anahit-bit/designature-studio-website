@@ -197,6 +197,43 @@ describe('VisionExperience · locked marquee band (§2 — Landing + Setup only)
   });
 });
 
+describe('VisionExperience · Reset returns to empty-upload state (#reset-dead-end)', () => {
+  const renderWith = (props: typeof baseProps) =>
+    render(<MemoryRouter><LanguageProvider><VisionExperience {...props} /></LanguageProvider></MemoryRouter>);
+
+  // Post-Reset shape: handleReset clears results + roomImage but DELIBERATELY keeps
+  // the archive (so past concepts re-appear in the strip on the next generation).
+  // Before the fix, the lingering archive forced state 3 with no photo and no upload
+  // path — the reported dead-end. Now the state-3 archive branch is guarded by roomImage.
+  const afterReset = {
+    ...baseProps,
+    roomImage: null,
+    results: [],
+    sessionConceptArchive: ['https://res.cloudinary.com/dys2k5muv/image/upload/v1/old-concept.png'],
+    allSessionConcepts: ['https://res.cloudinary.com/dys2k5muv/image/upload/v1/old-concept.png'],
+    selectedConceptUrl: null,
+  };
+
+  it('falls back to the state-1 upload landing (not the result hero) when the room is cleared but the archive persists', () => {
+    const { container } = renderWith(afterReset);
+    // State 1 landing hero is present with a working upload affordance…
+    expect(container.querySelector('section.vision-hero-section')).not.toBeNull();
+    expect(screen.getByText(/Upload your room/i)).toBeInTheDocument();
+    // …and the state-3 result hero is NOT rendered (no dead-end).
+    expect(container.querySelector('section.vision-result-hero')).toBeNull();
+  });
+
+  it('still shows the result hero when a room is loaded with a lingering archive (regen path preserved)', () => {
+    // Guards the `&& roomImage` refinement: mid-session (e.g. a failed regeneration)
+    // the room is still loaded, so the result hero — and its error surface — must stay.
+    // `.vision-result-hero` is unique to state 3 (state 1 never renders it).
+    const { container } = renderWith({ ...afterReset, roomImage: baseProps.roomImage });
+    expect(container.querySelector('section.vision-result-hero')).not.toBeNull();
+    // Not the state-1 landing: its "Upload your room" CTA must be absent here.
+    expect(screen.queryByText(/Upload your room/i)).not.toBeInTheDocument();
+  });
+});
+
 describe('VisionExperience · AI-030 (cont.)', () => {
   it('treats wide landscape (aspect > 1) as landscape with object-contain', () => {
     const { container } = renderVE();
