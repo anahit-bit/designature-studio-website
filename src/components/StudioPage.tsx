@@ -237,7 +237,7 @@ const StudioPage: React.FC = () => {
                   <a href="mailto:hello@designature.studio" className="text-[15px] font-medium text-[#0047AB] hover:text-[#003d99] transition-colors w-fit">hello@designature.studio</a>
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#6B6B6B]">Armenia office · WhatsApp</span>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#6B6B6B]">WhatsApp Business</span>
                   <a href="https://wa.me/37477901991" target="_blank" rel="noopener noreferrer" className="text-[15px] font-medium text-[#0047AB] hover:text-[#003d99] transition-colors w-fit">+374 77 90 19 91</a>
                 </div>
               </div>
