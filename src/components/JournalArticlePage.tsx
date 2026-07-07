@@ -138,7 +138,7 @@ const JournalArticlePage: React.FC = () => {
               >
                 ← The Journal
               </Link>
-              <div>
+              <div className="animate-in fade-in slide-in-from-bottom duration-1000">
                 {post.category && (
                   <Link
                     to={`/journal/category/${encodeURIComponent(post.category.slug)}`}

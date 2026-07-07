@@ -76,10 +76,10 @@ const JournalCategoryPage: React.FC = () => {
             >
               ← The Journal
             </Link>
-            <h1 className="text-3xl md:text-5xl lg:text-[5.5vw] font-bold font-display text-white tracking-architectural leading-[0.85] uppercase mb-8">
+            <h1 className="text-3xl md:text-5xl lg:text-[5.5vw] font-bold font-display text-white tracking-architectural leading-[0.85] uppercase mb-8 animate-in fade-in slide-in-from-bottom duration-1000">
               {category?.title ?? '…'}
             </h1>
-            <p className="text-white/80 text-base md:text-xl font-light leading-relaxed max-w-xl">
+            <p className="text-white/80 text-base md:text-xl font-light leading-relaxed max-w-xl animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
               {count} article{count === 1 ? '' : 's'}
             </p>
           </div>
