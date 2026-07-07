@@ -70,7 +70,7 @@ const StudioPage: React.FC = () => {
       {/* ══════════════════════════════════════════
           SECTION 1 — HERO (unchanged, kept as-is)
           ══════════════════════════════════════════ */}
-      <section className="relative w-full h-[85vh] md:h-screen overflow-hidden bg-black font-body">
+      <section className="relative w-full h-[60vh] md:h-[68vh] min-h-[440px] max-h-[720px] overflow-hidden bg-black font-body">
         <div className="absolute inset-0 z-0">
           <img
             src={cld(STUDIO_HERO, 1440)}
@@ -86,7 +86,7 @@ const StudioPage: React.FC = () => {
           />
           <div className="absolute inset-0 bg-black/40 z-[1]" />
         </div>
-        <div className="relative z-10 h-full max-w-[1800px] mx-auto px-8 md:px-16 flex flex-col justify-center pb-20">
+        <div className="relative z-10 h-full max-w-[1800px] mx-auto px-8 md:px-16 flex flex-col justify-center pb-10">
           <div className="max-w-4xl pt-20">
             <button
               onClick={() => navigateTo('home')}
@@ -237,12 +237,8 @@ const StudioPage: React.FC = () => {
                   <a href="mailto:hello@designature.studio" className="text-[15px] font-medium text-[#0047AB] hover:text-[#003d99] transition-colors w-fit">hello@designature.studio</a>
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#6B6B6B]">US office · WhatsApp</span>
-                  <a href="https://wa.me/13474801265" target="_blank" rel="noopener noreferrer" className="text-[15px] font-medium text-[#0047AB] hover:text-[#003d99] transition-colors w-fit">+1 (347) 480-1265</a>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#6B6B6B]">Armenia office · WhatsApp</span>
-                  <a href="https://wa.me/37493860364" target="_blank" rel="noopener noreferrer" className="text-[15px] font-medium text-[#0047AB] hover:text-[#003d99] transition-colors w-fit">+374 93 86 03 64</a>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#6B6B6B]">WhatsApp Business</span>
+                  <a href="https://wa.me/37477901991" target="_blank" rel="noopener noreferrer" className="text-[15px] font-medium text-[#0047AB] hover:text-[#003d99] transition-colors w-fit">+374 77 901 991</a>
                 </div>
               </div>
 

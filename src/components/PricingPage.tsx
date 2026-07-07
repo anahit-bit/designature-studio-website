@@ -40,7 +40,7 @@ const PricingPage: React.FC = () => {
       <Header />
 
       {/* Hero */}
-      <section className="relative w-full h-[85vh] md:h-screen overflow-hidden bg-black font-body">
+      <section className="relative w-full h-[60vh] md:h-[68vh] min-h-[440px] max-h-[720px] overflow-hidden bg-black font-body">
         <div className="absolute inset-0 z-0">
           <img
             src={cld(PRICING_HERO, 1920)}
@@ -56,7 +56,7 @@ const PricingPage: React.FC = () => {
           />
           <div className="absolute inset-0 bg-black/50 z-[1]" />
         </div>
-        <div className="relative z-10 h-full max-w-[1800px] mx-auto px-8 md:px-16 flex flex-col justify-center pb-20">
+        <div className="relative z-10 h-full max-w-[1800px] mx-auto px-8 md:px-16 flex flex-col justify-center pb-10">
           <div className="max-w-4xl pt-20">
             <button
               onClick={() => navigateTo('home')}

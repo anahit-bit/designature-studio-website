@@ -28,6 +28,8 @@ interface OrderRow {
   client_email: string;
   ameria_payment_id: string | null;
   has_payment: boolean;
+  slot_start_time: string | null;
+  google_calendar_event_id: string | null;
   created_at: string;
   paid_at: string | null;
 }
@@ -306,12 +308,12 @@ const AdminOrdersPage: React.FC = () => {
             <table className="w-full bg-white border border-[#DAD2C3] border-collapse">
               <thead>
                 <tr>
-                  {['Created', 'Customer email', 'Status', 'Amount', 'Order #', 'Payment ID', 'Action'].map(
+                  {['Created', 'Customer email', 'Slot (UTC)', 'Status', 'Amount', 'Order #', 'Payment ID', 'Action'].map(
                     (label, i) => (
                       <th
                         key={label}
                         className={`bg-[#FAFAFA] text-[10px] tracking-[0.22em] uppercase text-neutral-500 font-bold px-5 py-3.5 border-b border-[#DAD2C3] ${
-                          i >= 3 ? 'text-right' : 'text-left'
+                          i >= 4 ? 'text-right' : 'text-left'
                         } ${label === 'Action' ? 'text-right' : ''}`}
                       >
                         {label}
@@ -323,7 +325,7 @@ const AdminOrdersPage: React.FC = () => {
               <tbody>
                 {visible.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-5 py-8 text-sm text-neutral-500 italic text-center">
+                    <td colSpan={8} className="px-5 py-8 text-sm text-neutral-500 italic text-center">
                       No orders match the current filters.
                     </td>
                   </tr>
@@ -334,6 +336,12 @@ const AdminOrdersPage: React.FC = () => {
                         {fmtDateTime(r.created_at)}
                       </td>
                       <td className="px-5 py-4 text-xs text-black font-semibold">{r.client_email}</td>
+                      <td className="px-5 py-4 text-xs text-neutral-700 whitespace-nowrap">
+                        {fmtDateTime(r.slot_start_time)}
+                        {r.google_calendar_event_id ? (
+                          <span title="Google Calendar event created" className="ml-1.5">📅</span>
+                        ) : null}
+                      </td>
                       <td className="px-5 py-4 text-xs">
                         <StatusChip status={r.status} />
                       </td>

@@ -44,6 +44,22 @@ import {
   evaluatePaymentSuccess,
   normalizeCode,
 } from "./services/payments/ameria.js";
+// ─── Book-first consultation (I-025-v2): Calendly availability + Google Calendar ─
+import { filterAvailable, gmtLabelForTz } from "./services/consultation/slots.js";
+import {
+  getConsultationConfig,
+  isCalendlyConfigured,
+  fetchCalendlyAvailableSlots,
+  HORIZON_DAYS,
+} from "./services/consultation/calendly.js";
+import {
+  buildConsentUrl,
+  exchangeCodeForTokens,
+  getRedirectUri as getCalendarRedirectUri,
+  isCalendarConfigured,
+  insertEvent as calendarInsertEvent,
+  deleteEvent as calendarDeleteEvent,
+} from "./services/calendar/googleCalendar.js";
 // ─── GEO / SEO (Phase 1): robots, sitemap, per-route meta + JSON-LD injection ──
 import { buildRobotsTxt } from "./server/config/bots.js";
 import { buildSitemap } from "./server/seo/sitemap.js";
@@ -295,10 +311,11 @@ function recordActivity(userEmail: string, action: string, meta?: Record<string,
 }
 
 /**
- * Auto-expire stale pending consultation orders (I-025). Ameriabank auto-expires
- * its side of an unfinished payment ~20min after init; we reflect that cleanly by
- * flipping our 'pending' rows to 'cancelled' after 30min. No bank call — purely a
- * DB-hygiene sweep. Logs a consultation_expired activity event per expired order.
+ * Auto-expire stale slot holds (I-025-v2, book-first). When a customer holds a
+ * slot but doesn't complete payment inside the 20-minute window, this sweep flips
+ * the 'pending' order to 'cancelled', which drops it out of the partial unique
+ * index and returns the slot to availability. No bank call — the payment was
+ * never captured. Fires a consultation_slot_expired activity event per row.
  * Runs on a 5-minute interval (set up in startServer).
  */
 async function expireStalePendingOrders(): Promise<void> {
@@ -307,21 +324,22 @@ async function expireStalePendingOrders(): Promise<void> {
       `UPDATE orders SET status = 'cancelled'
         WHERE status = 'pending'
           AND product_type = 'consultation'
-          AND created_at < NOW() - INTERVAL '30 minutes'
-        RETURNING id, ameria_order_id, client_email, created_at`,
+          AND slot_hold_expires_at IS NOT NULL
+          AND slot_hold_expires_at < NOW()
+        RETURNING id, ameria_order_id, client_email, slot_start_time`,
     );
     for (const row of r.rows) {
-      recordActivity(row.client_email || ANON_USER, "consultation_expired", {
+      recordActivity(row.client_email || ANON_USER, "consultation_slot_expired", {
         order_id: row.id,
         ameria_order_id: row.ameria_order_id,
-        created_at: row.created_at ? new Date(row.created_at).toISOString() : null,
+        slot_start_time: row.slot_start_time ? new Date(row.slot_start_time).toISOString() : null,
       });
     }
     if (r.rows.length > 0) {
-      console.log(`[expire] auto-expired ${r.rows.length} stale pending consultation order(s)`);
+      console.log(`[expire] released ${r.rows.length} expired slot hold(s)`);
     }
   } catch (err) {
-    console.error("[expire] auto-expire sweep failed:", err);
+    console.error("[expire] slot-hold expiry sweep failed:", err);
   }
 }
 
@@ -2840,6 +2858,95 @@ Output ONLY valid JSON with no markdown fences, no explanation:
   };
 
   const CONSULTATION_DESCRIPTION = "Designature Studio — 45-min virtual consultation";
+  /** Second attendee on every booking (the studio host). */
+  const CONSULTATION_HOST_EMAIL = (process.env.CONSULTATION_HOST_EMAIL || "anahit@designature.studio").trim();
+
+  /** Human-readable slot, rendered in the studio's timezone (for emails/logs). */
+  const formatSlot = (iso: string, timeZone: string): string => {
+    try {
+      const d = new Date(iso);
+      const date = new Intl.DateTimeFormat("en-GB", {
+        timeZone,
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }).format(d);
+      const time = new Intl.DateTimeFormat("en-GB", {
+        timeZone,
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }).format(d);
+      return `${date} · ${time}`;
+    } catch {
+      return iso;
+    }
+  };
+
+  /**
+   * Create the Google Calendar booking for a paid order (idempotent via the
+   * order id as requestId). Stores google_calendar_event_id. Best-effort: a
+   * calendar failure must NEVER unwind a captured payment — we log loudly and
+   * leave the order paid so the owner can add the event manually.
+   */
+  const createCalendarEventForOrder = async (order: any): Promise<void> => {
+    if (order.google_calendar_event_id) return; // already created (re-hit guard)
+    if (!order.slot_start_time) {
+      console.error("[calendar] paid order has no slot_start_time — cannot book:", order.id);
+      return;
+    }
+    if (!isCalendarConfigured()) {
+      console.error(
+        "[calendar] GOOGLE_CALENDAR_REFRESH_TOKEN not set — booking NOT created for paid order",
+        order.id,
+        "(run /api/admin/google-calendar/authorize).",
+      );
+      return;
+    }
+    try {
+      const cfg = getConsultationConfig();
+      const result = await calendarInsertEvent({
+        startIso: new Date(order.slot_start_time).toISOString(),
+        durationMinutes: cfg.durationMinutes,
+        attendeeEmail: order.client_email,
+        hostEmail: CONSULTATION_HOST_EMAIL,
+        requestId: order.id,
+        summary: CONSULTATION_DESCRIPTION,
+      });
+      await getPool()
+        .query(`UPDATE orders SET google_calendar_event_id=$1 WHERE id=$2`, [result.eventId, order.id])
+        .catch((err) => console.error("[calendar] event created but id-store failed:", err));
+      console.log(
+        "[calendar] booked event",
+        JSON.stringify({ orderId: order.id, eventId: result.eventId, meet: result.meetLink }),
+      );
+    } catch (err) {
+      console.error("[calendar] events.insert failed (order stays paid, book manually):", order.id, err);
+    }
+  };
+
+  /**
+   * Delete the calendar event tied to an order (on refund/cancel). Best-effort:
+   * money movement already succeeded, so a calendar failure is logged, not
+   * fatal. Clears google_calendar_event_id on success.
+   */
+  const deleteCalendarEventForOrder = async (order: any): Promise<void> => {
+    if (!order.google_calendar_event_id) return;
+    if (!isCalendarConfigured()) {
+      console.error("[calendar] cannot delete event (not configured) for order", order.id);
+      return;
+    }
+    try {
+      await calendarDeleteEvent(order.google_calendar_event_id);
+      await getPool()
+        .query(`UPDATE orders SET google_calendar_event_id=NULL WHERE id=$1`, [order.id])
+        .catch(() => {});
+      console.log("[calendar] deleted event for order", order.id);
+    } catch (err) {
+      console.error("[calendar] events.delete failed (refund/cancel still succeeded):", order.id, err);
+    }
+  };
 
   /** Structured, greppable payment-event log line (timestamp + diagnostics). */
   const logPaymentEvent = (order: any, details: any, ok: boolean) => {
@@ -2855,10 +2962,27 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     }));
   };
 
-  /** Branded confirmation email: the private Calendly link is the focal CTA. */
-  const buildConsultationEmailHtml = (): string => {
-    const calendly = (process.env.PAID_CONSULT_CALENDLY_URL || "").trim();
+  /**
+   * Branded payment RECEIPT email (book-first). The booking already happened —
+   * Google Calendar sends the actual invite + Meet link + reminders separately.
+   * This is a quiet receipt, NOT a "click here to book" prompt.
+   */
+  const buildConsultationReceiptEmailHtml = (slotIso: string | null): string => {
     const cobalt = "#0047AB";
+    const tz = getConsultationConfig().timeZone;
+    // Show the time as a city-free GMT offset; the Google Calendar invite is the
+    // authoritative copy and localises to the customer's own timezone.
+    const when = slotIso ? formatSlot(slotIso, tz) : null;
+    const gmt = slotIso ? gmtLabelForTz(tz, new Date(slotIso)) : "";
+    const whenBlock = when
+      ? `<tr><td style="padding:0 40px 20px;">
+          <div style="padding:16px 18px;background:#f4f7fc;border-left:3px solid ${cobalt};">
+            <p style="margin:0 0 4px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${cobalt};font-weight:700;">Your session</p>
+            <p style="margin:0;font-size:16px;line-height:1.5;color:#1C1C1C;font-weight:600;">${when} <span style="color:#6B6B6B;font-weight:400;">(${gmt})</span></p>
+            <p style="margin:6px 0 0;font-size:12px;color:#6B6B6B;">Your calendar invite shows this in your own timezone.</p>
+          </div>
+        </td></tr>`
+      : "";
     return `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
 <body style="margin:0;background:#f4f2ee;font-family:Arial,Helvetica,sans-serif;color:#1C1C1C;">
@@ -2867,13 +2991,10 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #E7E3DB;">
         <tr><td style="padding:36px 40px 8px;">
           <p style="margin:0 0 18px;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:${cobalt};font-weight:700;">Designature Studio</p>
-          <h1 style="margin:0 0 12px;font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:30px;line-height:1.15;color:#1C1C1C;">You're booked. Now pick your time.</h1>
-          <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#404040;">Your payment cleared and your 45-minute virtual consultation is confirmed. The last step is choosing a time that works for you.</p>
+          <h1 style="margin:0 0 12px;font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:30px;line-height:1.15;color:#1C1C1C;">You're booked.</h1>
+          <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#404040;">Your payment cleared and your 45-minute virtual consultation is confirmed. A separate Google Calendar invitation is on its way — it carries your <strong>Google Meet link</strong> and reminders, and shows the time in your own timezone.</p>
         </td></tr>
-        <tr><td style="padding:0 40px 28px;">
-          <a href="${calendly}" style="display:inline-block;background:${cobalt};color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:16px 34px;">Pick your time &rarr;</a>
-          <p style="margin:14px 0 0;font-size:13px;color:#6B6B6B;">Your Google Meet link is generated automatically when you book. If the button doesn't work, paste this into your browser:<br><span style="color:${cobalt};word-break:break-all;">${calendly}</span></p>
-        </td></tr>
+        ${whenBlock}
         <tr><td style="padding:0 40px 8px;border-top:1px solid #E7E3DB;">
           <h2 style="margin:26px 0 12px;font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:20px;color:#1C1C1C;">What to have ready</h2>
           <ul style="margin:0 0 18px;padding-left:20px;font-size:14px;line-height:1.7;color:#404040;">
@@ -2885,7 +3006,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         </td></tr>
         <tr><td style="padding:0 40px 36px;">
           <p style="margin:0;padding:16px 18px;background:#f4f7fc;border-left:3px solid ${cobalt};font-size:13px;line-height:1.6;color:#404040;">A quiet reminder: your <strong>$99 is fully creditable toward a Designature design project</strong> if you book one within 30 days.</p>
-          <p style="margin:22px 0 0;font-size:12px;color:#9a9a9a;">Questions? Just reply to this email or write to hello@designature.studio.</p>
+          <p style="margin:22px 0 0;font-size:12px;color:#9a9a9a;">Need to reschedule or cancel? Reply to this email or write to hello@designature.studio.</p>
         </td></tr>
       </table>
     </td></tr>
@@ -2909,47 +3030,20 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     return res.redirect(302, "/booking/failed");
   };
 
-  // ── POST /api/payments/ameria/initiate — create order + reserve vPOS payment ─
-  app.post("/api/payments/ameria/initiate", async (req, res) => {
-    const ip = clientIp(req);
-    if (initiateRateLimited(ip)) {
-      return res.status(429).json({ error: "Too many attempts. Please wait a few minutes and try again." });
-    }
+  /** How long a picked slot is held for the customer to complete payment. */
+  const SLOT_HOLD_MINUTES = 20;
+  /** Serializes concurrent holds so the overlap check + INSERT are atomic. */
+  const HOLD_ADVISORY_LOCK_SQL = `SELECT pg_advisory_xact_lock(hashtext('designature-consultation-hold')::bigint)`;
 
-    // Auth is mandatory — no guest checkout. The booking link goes to the user's
-    // verified Google email, read server-side from the session (never the body).
-    const googleId = requireAuth(req, res);
-    if (!googleId) return;
-    const sessUser = readDB().users[googleId];
-    if (!sessUser?.email) {
-      return res.status(401).json({ error: "Your session has no email on file — please sign in again." });
-    }
-    const clientEmail = sessUser.email;
-
+  /**
+   * Reserve the vPOS payment for an already-created pending order. Shared by the
+   * hold route. On success updates ameria_payment_id + logs consultation_initiated
+   * and returns the gateway redirect URL; on failure marks the order 'failed'
+   * (which frees the slot) and throws a tagged error the caller maps to 502.
+   */
+  const reserveVposPayment = async (order: { id: string; ameria_order_id: string; client_email: string; user_id?: string }): Promise<string> => {
     const cfg = getAmeriaConfig();
-    if (!cfg.baseUrl || !cfg.clientId || !cfg.username || !cfg.password) {
-      console.error("[ameria/initiate] vPOS env incomplete");
-      return res.status(503).json({ error: "Payments are temporarily unavailable. Please try again shortly." });
-    }
-
     const pool = getPool();
-    // We store the amount/currency ACTUALLY charged at the gateway (mode-resolved:
-    // 10 AMD in sandbox, 99 USD in prod) so the order is a truthful ledger row and
-    // refunds default to the correct figure in both modes.
-    let order: { id: string; ameria_order_id: string };
-    try {
-      const r = await pool.query(
-        `INSERT INTO orders (product_type, amount, currency, status, client_email, user_id)
-         VALUES ('consultation', $1, $2, 'pending', $3, $4)
-         RETURNING id, ameria_order_id`,
-        [cfg.amount, cfg.mode === "sandbox" ? "AMD" : "USD", clientEmail, googleId],
-      );
-      order = r.rows[0];
-    } catch (err) {
-      console.error("[ameria/initiate] DB insert failed:", err);
-      return res.status(500).json({ error: "Could not start checkout. Please try again." });
-    }
-
     try {
       const init = await initPayment({
         orderId: order.ameria_order_id,
@@ -2959,21 +3053,214 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       // InitPayment success is ResponseCode === 1 (Table-1 "00" is for the later
       // GetPaymentDetails/RefundPayment calls, not InitPayment).
       if (Number(init.responseCode) !== 1 || !init.paymentId) {
-        console.error("[ameria/initiate] InitPayment rejected:", init.responseCode, init.responseMessage, JSON.stringify(init.raw));
+        console.error("[consultation/hold] InitPayment rejected:", init.responseCode, init.responseMessage, JSON.stringify(init.raw));
         await pool.query(`UPDATE orders SET status='failed' WHERE id=$1`, [order.id]).catch(() => {});
-        return res.status(502).json({ error: "The payment gateway could not start the session. Please try again." });
+        throw new Error("vpos-init-rejected");
       }
       await pool.query(`UPDATE orders SET ameria_payment_id=$1 WHERE id=$2`, [init.paymentId, order.id]);
-      recordActivity(clientEmail, "consultation_initiated", {
-        user_id: googleId,
+      recordActivity(order.client_email, "consultation_initiated", {
+        user_id: order.user_id,
         order_id: order.id,
         amount: cfg.amount,
       });
-      return res.json({ redirectUrl: buildGatewayRedirectUrl(cfg.baseUrl, init.paymentId) });
+      return buildGatewayRedirectUrl(cfg.baseUrl, init.paymentId);
+    } catch (err: any) {
+      if (err?.message !== "vpos-init-rejected") {
+        console.error("[consultation/hold] InitPayment error:", err);
+        await pool.query(`UPDATE orders SET status='failed' WHERE id=$1`, [order.id]).catch(() => {});
+      }
+      throw err;
+    }
+  };
+
+  // ── GET /api/consultation/slots — available booking slots (next 30 days) ─────
+  // Availability is MIRRORED LIVE from Calendly (the owner manages her schedule
+  // there), minus our own live holds. Requires sign-in (the picker loads post-auth).
+  app.get("/api/consultation/slots", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+
+    const cfg = getConsultationConfig();
+    const now = new Date();
+
+    if (!isCalendlyConfigured()) {
+      console.error(
+        "[consultation/slots] Calendly not configured — set CALENDLY_ACCESS_TOKEN + CALENDLY_PAID_CONSULT_EVENT_TYPE_URI",
+      );
+      return res.json({ slots: [], durationMinutes: cfg.durationMinutes, configured: false });
+    }
+
+    // Live Calendly availability (cached 60s, chunked into <=7-day windows).
+    let calendlySlots: string[];
+    try {
+      calendlySlots = await fetchCalendlyAvailableSlots(now, HORIZON_DAYS);
     } catch (err) {
-      console.error("[ameria/initiate] InitPayment error:", err);
-      await pool.query(`UPDATE orders SET status='failed' WHERE id=$1`, [order.id]).catch(() => {});
-      return res.status(502).json({ error: "We couldn't reach the payment gateway. Please try again." });
+      console.error("[consultation/slots] Calendly availability fetch failed:", err);
+      return res.status(502).json({ error: "Could not load availability. Please try again." });
+    }
+
+    // Our own live holds (pending/paid) so two customers can't hold the same time
+    // (Calendly won't know about a Google-Calendar event until it syncs).
+    let held: string[] = [];
+    try {
+      const r = await getPool().query(
+        `SELECT slot_start_time FROM orders
+          WHERE product_type='consultation'
+            AND status IN ('pending','paid')
+            AND slot_start_time IS NOT NULL
+            AND slot_start_time >= NOW() - INTERVAL '1 day'`,
+      );
+      held = r.rows.map((row: any) => new Date(row.slot_start_time).toISOString());
+    } catch (err) {
+      console.error("[consultation/slots] held-slot lookup failed:", err);
+      return res.status(500).json({ error: "Could not load availability. Please try again." });
+    }
+
+    const slots = filterAvailable(calendlySlots, [], held, cfg.durationMinutes);
+    return res.json({ slots, durationMinutes: cfg.durationMinutes, configured: true });
+  });
+
+  // ── POST /api/consultation/hold — hold a slot 20min + reserve vPOS payment ───
+  // Book-first: the order row is created HERE (with the slot), held for 20min,
+  // then we reserve the payment and hand back the gateway redirect. The auto-
+  // expire sweep releases the hold if payment never completes.
+  app.post("/api/consultation/hold", async (req, res) => {
+    const ip = clientIp(req);
+    if (initiateRateLimited(ip)) {
+      return res.status(429).json({ error: "Too many attempts. Please wait a few minutes and try again." });
+    }
+
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    const sessUser = readDB().users[googleId];
+    if (!sessUser?.email) {
+      return res.status(401).json({ error: "Your session has no email on file — please sign in again." });
+    }
+    const clientEmail = sessUser.email;
+
+    const slotRaw = (req.body?.slot_start_time ?? "").toString().trim();
+    const cfg = getConsultationConfig();
+    const now = new Date();
+    const slotTs = Date.parse(slotRaw);
+    if (!slotRaw || !Number.isFinite(slotTs)) {
+      return res.status(400).json({ error: "That time isn't available to book. Please pick another slot." });
+    }
+    const slotIso = new Date(slotTs).toISOString();
+
+    // Server-authoritative validation: the requested slot must be a currently
+    // bookable Calendly slot (reuses the 60s cache from /slots — no extra call).
+    if (!isCalendlyConfigured()) {
+      return res.status(503).json({ error: "Booking is temporarily unavailable. Please try again shortly." });
+    }
+    try {
+      const available = await fetchCalendlyAvailableSlots(now, HORIZON_DAYS);
+      if (!available.includes(slotIso)) {
+        return res.status(400).json({ error: "That time isn't available to book. Please pick another slot." });
+      }
+    } catch (err) {
+      console.error("[consultation/hold] Calendly validation failed:", err);
+      return res.status(502).json({ error: "Could not confirm availability. Please try again." });
+    }
+
+    const ameriaCfg = getAmeriaConfig();
+    if (!ameriaCfg.baseUrl || !ameriaCfg.clientId || !ameriaCfg.username || !ameriaCfg.password) {
+      console.error("[consultation/hold] vPOS env incomplete");
+      return res.status(503).json({ error: "Payments are temporarily unavailable. Please try again shortly." });
+    }
+
+    // Create the hold atomically: an advisory lock serializes concurrent holds so
+    // the overlap check + INSERT can't race; the partial unique index is the final
+    // backstop against an identical-slot double-hold. We store the ACTUALLY-charged
+    // amount/currency (mode-resolved) so the order is a truthful ledger row.
+    const pool = getPool();
+    const client = await pool.connect();
+    let order: { id: string; ameria_order_id: string };
+    try {
+      await client.query("BEGIN");
+      await client.query(HOLD_ADVISORY_LOCK_SQL);
+
+      const overlap = await client.query(
+        `SELECT 1 FROM orders
+          WHERE product_type='consultation'
+            AND status IN ('pending','paid')
+            AND slot_start_time IS NOT NULL
+            AND slot_start_time < ($1::timestamptz + make_interval(mins => $2))
+            AND (slot_start_time + make_interval(mins => $2)) > $1::timestamptz
+          LIMIT 1`,
+        [slotIso, cfg.durationMinutes],
+      );
+      if (overlap.rows.length > 0) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({ error: "That time was just taken. Please pick another slot." });
+      }
+
+      const r = await client.query(
+        `INSERT INTO orders (product_type, amount, currency, status, client_email, user_id,
+                             slot_start_time, slot_hold_expires_at)
+         VALUES ('consultation', $1, $2, 'pending', $3, $4, $5,
+                 NOW() + make_interval(mins => $6))
+         RETURNING id, ameria_order_id`,
+        [
+          ameriaCfg.amount,
+          ameriaCfg.mode === "sandbox" ? "AMD" : "USD",
+          clientEmail,
+          googleId,
+          slotIso,
+          SLOT_HOLD_MINUTES,
+        ],
+      );
+      order = r.rows[0];
+      await client.query("COMMIT");
+    } catch (err: any) {
+      await client.query("ROLLBACK").catch(() => {});
+      if (err?.code === "23505") {
+        // Unique-index violation → the slot was taken between our check and insert.
+        return res.status(409).json({ error: "That time was just taken. Please pick another slot." });
+      }
+      console.error("[consultation/hold] DB insert failed:", err);
+      return res.status(500).json({ error: "Could not hold your slot. Please try again." });
+    } finally {
+      client.release();
+    }
+
+    // Reserve the payment for the held order.
+    try {
+      const redirectUrl = await reserveVposPayment({ ...order, client_email: clientEmail, user_id: googleId });
+      const holdExpiresAt = new Date(now.getTime() + SLOT_HOLD_MINUTES * 60_000).toISOString();
+      return res.json({ orderId: order.id, redirectUrl, slotStartTime: slotIso, holdExpiresAt });
+    } catch {
+      return res.status(502).json({ error: "The payment gateway could not start the session. Please try again." });
+    }
+  });
+
+  // ── POST /api/consultation/release — free a still-pending hold immediately ───
+  // Called when a customer backs out of the hold modal (or lets the countdown
+  // lapse client-side). Only cancels a PENDING order the caller owns, so it can't
+  // touch a paid booking. The 5-min auto-expire sweep is the backstop if this
+  // never fires (e.g. tab closed).
+  app.post("/api/consultation/release", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    const orderId = (req.body?.orderId ?? "").toString().trim();
+    if (!isUuid(orderId)) return res.status(400).json({ error: "A valid orderId is required." });
+    try {
+      const r = await getPool().query(
+        `UPDATE orders SET status='cancelled'
+          WHERE id=$1 AND user_id=$2 AND product_type='consultation' AND status='pending'
+          RETURNING id, client_email, slot_start_time`,
+        [orderId, googleId],
+      );
+      if (r.rows.length > 0) {
+        recordActivity(r.rows[0].client_email, "consultation_hold_released", {
+          user_id: googleId,
+          order_id: orderId,
+          slot_start_time: r.rows[0].slot_start_time ? new Date(r.rows[0].slot_start_time).toISOString() : null,
+        });
+      }
+      return res.json({ released: r.rows.length > 0 });
+    } catch (err) {
+      console.error("[consultation/release] failed:", err);
+      return res.status(500).json({ error: "Could not release the hold." });
     }
   });
 
@@ -3047,44 +3334,53 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       order_id: order.id,
       amount: Number(order.amount),
       ameria_payment_id: order.ameria_payment_id,
+      slot_start_time: order.slot_start_time ? new Date(order.slot_start_time).toISOString() : null,
     });
 
+    // Book-first: create the Google Calendar event (auto-generates the Meet link
+    // and sends both attendees the invite). Best-effort — a captured payment is
+    // never unwound by a calendar hiccup (createCalendarEventForOrder logs loudly).
+    await createCalendarEventForOrder(order);
+
     // A dropped email must NEVER lose a paid order — log + continue to confirmed.
+    // This is a RECEIPT now (Google Calendar delivers the actual invite + Meet link).
     try {
       await sendEmail({
         to: order.client_email,
-        subject: "Your Designature Studio consultation — book your time",
-        html: buildConsultationEmailHtml(),
+        subject: "You're booked — your Designature Studio consultation",
+        html: buildConsultationReceiptEmailHtml(order.slot_start_time ? new Date(order.slot_start_time).toISOString() : null),
       });
     } catch (err) {
-      console.error("[ameria/callback] confirmation email failed (order still paid):", err);
+      console.error("[ameria/callback] receipt email failed (order still paid):", err);
     }
     return res.redirect(302, `/booking/confirmed?order=${order.id}`);
   });
 
-  // ── GET /api/payments/ameria/confirmation — Calendly link + booking status ───
-  // The Calendly URL is returned UNCONDITIONALLY so /booking/confirmed can always
-  // render the focal "Pick your time" CTA — the user just paid and should be able
-  // to book right there, not hunt through their inbox. The paid-status + email are
-  // only returned for a genuinely paid/refunded order (keyed by its UUID); they
-  // personalize the banner but are NOT required for the button to appear.
+  // ── GET /api/payments/ameria/confirmation — booking receipt status ───────────
+  // Book-first: the booking already happened, so /booking/confirmed is a quiet
+  // receipt. We return the paid status + the booked slot for a genuinely
+  // paid/refunded order (keyed by its UUID) so the page can show "You're booked
+  // for {slot}". No Calendly link — Google Calendar delivered the invite.
   app.get("/api/payments/ameria/confirmation", async (req, res) => {
-    const calendlyUrl = (process.env.PAID_CONSULT_CALENDLY_URL || "").trim();
     const orderId = ((req.query.orderId ?? req.query.order) || "").toString().trim();
-    if (!isUuid(orderId)) return res.json({ paid: false, calendlyUrl });
+    if (!isUuid(orderId)) return res.json({ paid: false });
     try {
       const r = await getPool().query(
-        `SELECT status, client_email FROM orders WHERE id=$1 LIMIT 1`,
+        `SELECT status, client_email, slot_start_time FROM orders WHERE id=$1 LIMIT 1`,
         [orderId],
       );
       const order = r.rows[0];
       if (!order || (order.status !== "paid" && order.status !== "refunded")) {
-        return res.json({ paid: false, calendlyUrl });
+        return res.json({ paid: false });
       }
-      return res.json({ paid: true, email: order.client_email, calendlyUrl });
+      return res.json({
+        paid: true,
+        email: order.client_email,
+        slotStartTime: order.slot_start_time ? new Date(order.slot_start_time).toISOString() : null,
+      });
     } catch (err) {
       console.error("[ameria/confirmation] error:", err);
-      return res.status(500).json({ error: "Could not load your booking.", calendlyUrl });
+      return res.status(500).json({ error: "Could not load your booking." });
     }
   });
 
@@ -3100,6 +3396,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         `SELECT id, ameria_order_id, status, amount, currency, client_email,
                 ameria_payment_id,
                 (ameria_payment_id IS NOT NULL) AS has_payment,
+                slot_start_time, google_calendar_event_id,
                 created_at, paid_at
            FROM orders
           WHERE product_type = 'consultation'
@@ -3160,6 +3457,9 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         order_id: order.id,
         amount,
       });
+      // Remove the calendar event + cancel the invites. Best-effort — the refund
+      // already succeeded, so a calendar failure is logged, not surfaced as an error.
+      await deleteCalendarEventForOrder(order);
       return res.json({ ok: true, orderId: order.id, amount });
     } catch (err) {
       console.error("[ameria/refund] error:", err);
@@ -3223,6 +3523,8 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         order_id: order.id,
         amount: Number(order.amount),
       });
+      // Remove the calendar event + cancel the invites (best-effort, as with refund).
+      await deleteCalendarEventForOrder(order);
       return res.json({ ok: true, orderId: order.id });
     } catch (err) {
       console.error("[ameria/cancel] error:", err);
@@ -3235,16 +3537,33 @@ Output ONLY valid JSON with no markdown fences, no explanation:
   // force-callback drives it to paid (with email) or failed, mirroring the real
   // callback's side-effects so the end-to-end flow is verifiable locally.
   if (process.env.NODE_ENV !== "production") {
+    // Seed a pending, slot-held order (first available slot unless one is given)
+    // so the callback + calendar flow can be exercised without the bank.
     app.post("/api/payments/ameria/_dev/seed-order", async (req, res) => {
       const email = (req.body?.clientEmail ?? "dev@example.com").toString().trim();
       const cfg = getAmeriaConfig();
+      // Prefer a real Calendly slot when configured; otherwise a fixed near-future
+      // on-the-hour time so the callback/calendar flow is exercisable offline.
+      let slotIso: string;
+      if (req.body?.slot_start_time) {
+        slotIso = new Date(req.body.slot_start_time).toISOString();
+      } else if (isCalendlyConfigured()) {
+        const avail = await fetchCalendlyAvailableSlots(new Date(), HORIZON_DAYS).catch(() => []);
+        slotIso = avail[0] || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+      } else {
+        const d = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+        d.setUTCMinutes(0, 0, 0);
+        slotIso = d.toISOString();
+      }
       const r = await getPool().query(
-        `INSERT INTO orders (product_type, amount, currency, status, client_email, ameria_payment_id)
-         VALUES ('consultation', $1, $2, 'pending', $3, 'dev-fake-payment-id')
+        `INSERT INTO orders (product_type, amount, currency, status, client_email, ameria_payment_id,
+                             slot_start_time, slot_hold_expires_at)
+         VALUES ('consultation', $1, $2, 'pending', $3, 'dev-fake-payment-id', $4,
+                 NOW() + make_interval(mins => 20))
          RETURNING id, ameria_order_id`,
-        [cfg.amount, cfg.mode === "sandbox" ? "AMD" : "USD", email],
+        [cfg.amount, cfg.mode === "sandbox" ? "AMD" : "USD", email, slotIso],
       );
-      res.json({ orderId: r.rows[0].id, ameriaOrderId: r.rows[0].ameria_order_id });
+      res.json({ orderId: r.rows[0].id, ameriaOrderId: r.rows[0].ameria_order_id, slotStartTime: slotIso });
     });
 
     app.get("/api/payments/ameria/_dev/force-callback", async (req, res) => {
@@ -3263,12 +3582,14 @@ Output ONLY valid JSON with no markdown fences, no explanation:
           order_id: order.id,
           amount: Number(order.amount),
           ameria_payment_id: order.ameria_payment_id,
+          slot_start_time: order.slot_start_time ? new Date(order.slot_start_time).toISOString() : null,
         });
+        await createCalendarEventForOrder(order);
         try {
           await sendEmail({
             to: order.client_email,
-            subject: "Your Designature Studio consultation — book your time",
-            html: buildConsultationEmailHtml(),
+            subject: "You're booked — your Designature Studio consultation",
+            html: buildConsultationReceiptEmailHtml(order.slot_start_time ? new Date(order.slot_start_time).toISOString() : null),
           });
         } catch (err) {
           console.error("[force-callback] email failed:", err);
@@ -3284,6 +3605,87 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       return res.redirect(302, "/booking/failed");
     });
   }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Google Calendar — one-time owner authorization (I-025-v2)
+  // ════════════════════════════════════════════════════════════════════════
+  // The studio owner grants this app offline write access to her calendar ONCE.
+  // We capture the resulting refresh_token and SHOW it on screen (admin-gated) so
+  // she can paste it into GOOGLE_CALENDAR_REFRESH_TOKEN (Railway prod + local
+  // .env). Reuses the same GOOGLE_CLIENT_ID/SECRET as customer sign-in — the only
+  // Google-Cloud change is adding the calendar.events scope + this redirect URI:
+  //   ${APP_URL}/api/admin/google-calendar/callback
+  const calendarSetupPage = (bodyHtml: string): string =>
+    `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>Google Calendar setup — Designature Studio</title></head>
+<body style="margin:0;background:#f4f2ee;font-family:-apple-system,Segoe UI,Arial,sans-serif;color:#1C1C1C;">
+<div style="max-width:640px;margin:48px auto;background:#fff;border:1px solid #E7E3DB;padding:36px 40px;">
+<p style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#0047AB;font-weight:700;margin:0 0 16px;">Designature Studio · Admin</p>
+${bodyHtml}
+</div></body></html>`;
+
+  // GET /api/admin/google-calendar/authorize — kick off the consent flow.
+  app.get("/api/admin/google-calendar/authorize", (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      return res
+        .status(500)
+        .type("html")
+        .send(
+          calendarSetupPage(
+            `<h1 style="font-family:Georgia,serif;font-weight:400;">Not configured</h1><p>GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are missing from the server environment.</p>`,
+          ),
+        );
+    }
+    return res.redirect(302, buildConsentUrl());
+  });
+
+  // GET /api/admin/google-calendar/callback — Google returns here with a code.
+  app.get("/api/admin/google-calendar/callback", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const err = (req.query.error ?? "").toString();
+    const code = (req.query.code ?? "").toString();
+    if (err) {
+      return res
+        .status(400)
+        .type("html")
+        .send(calendarSetupPage(`<h1 style="font-family:Georgia,serif;font-weight:400;">Authorization cancelled</h1><p>Google returned: <code>${err}</code>. You can close this tab and try again from <code>/api/admin/google-calendar/authorize</code>.</p>`));
+    }
+    if (!code) {
+      return res.status(400).type("html").send(calendarSetupPage(`<h1 style="font-family:Georgia,serif;font-weight:400;">Missing code</h1><p>No authorization code was returned.</p>`));
+    }
+    try {
+      const { refreshToken } = await exchangeCodeForTokens(code);
+      if (!refreshToken) {
+        return res
+          .status(400)
+          .type("html")
+          .send(
+            calendarSetupPage(
+              `<h1 style="font-family:Georgia,serif;font-weight:400;">No refresh token</h1>
+<p>Google didn't return a refresh token — this happens when the app was already authorized. Remove Designature Studio at
+<a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a>, then run
+<code>/api/admin/google-calendar/authorize</code> again.</p>`,
+            ),
+          );
+      }
+      const redirectUri = getCalendarRedirectUri();
+      return res.type("html").send(
+        calendarSetupPage(
+          `<h1 style="font-family:Georgia,serif;font-weight:400;margin:0 0 12px;">Calendar connected ✓</h1>
+<p style="margin:0 0 16px;color:#404040;">Copy this refresh token into your environment as <code>GOOGLE_CALENDAR_REFRESH_TOKEN</code> — in Railway's Variables tab (production) and, if you're testing locally, in <code>E:/Secrets/Website/.env</code>. It's shown once.</p>
+<pre style="background:#0B0F16;color:#e6edf3;padding:16px;border-radius:4px;overflow-x:auto;font-size:13px;user-select:all;">${refreshToken}</pre>
+<p style="margin:16px 0 0;font-size:13px;color:#6B6B6B;">Redirect URI in use: <code>${redirectUri}</code><br>After saving it in Railway, redeploy (or restart) so the server picks it up. Then run one real booking end-to-end to confirm the calendar event + Meet link.</p>`,
+        ),
+      );
+    } catch (e) {
+      console.error("[google-calendar/callback] token exchange failed:", e);
+      return res
+        .status(502)
+        .type("html")
+        .send(calendarSetupPage(`<h1 style="font-family:Georgia,serif;font-weight:400;">Token exchange failed</h1><p>Check the server logs. Confirm the redirect URI <code>${getCalendarRedirectUri()}</code> is registered in the Google Cloud OAuth client.</p>`));
+    }
+  });
 
   // ─── GEO / SEO: robots.txt + sitemap.xml ────────────────────────────────
   // Registered before the dev/prod SPA branch so they resolve identically in

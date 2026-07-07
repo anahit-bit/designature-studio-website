@@ -53,8 +53,8 @@ calls `renderRoute()` instead of a raw `sendFile`.
 socials, founding year, OG image). **Left intentionally omitted** (schema is
 valid without them — do not invent): **street address**, **geo coordinates**,
 **opening hours**. Add them to `BUSINESS` in `config.ts` when confirmed for a
-richer `LocalBusiness`. Primary phone is the US line; the Armenian line
-(`+374 93 86 03 64`) can be added as an additional `ContactPoint` if desired.
+richer `LocalBusiness`. Primary phone is the Armenian WhatsApp Business line
+(`+37477901991`, canonical 2026-07-05).
 
 > The original task's "BUSINESS DATA" block was a blank placeholder, so these
 > values were derived from the codebase rather than supplied.

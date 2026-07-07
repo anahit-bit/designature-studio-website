@@ -833,6 +833,8 @@ const AIConceptsPage: React.FC = () => {
     setSelectedConceptIndex(0);
     setInspirationImages([]);
     setRoomImage(null);
+    setSelectedStyle('');
+    setSelectedRoom('');
     setError(null);
     setValidationError(null);
     setShoppingResults([]);

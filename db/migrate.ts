@@ -60,6 +60,35 @@ const USAGE_EVENTS_TABLE = `
   );
 `;
 
+// ── Book-first consultation (I-025-v2) — orders columns + slot uniqueness ──────
+// The consultation flow changed from pay-first (private Calendly link emailed
+// post-payment) to BOOK-first (customer picks a slot, we hold it 20min, then
+// pay; on success Google Calendar creates the event + Meet link). That needs
+// three new columns on `orders` and a partial unique index that guarantees no
+// two live (pending/paid) orders claim the same slot start. All idempotent.
+const ORDERS_BOOKFIRST_COLUMNS = `
+  ALTER TABLE orders ADD COLUMN IF NOT EXISTS slot_start_time          timestamptz;
+  ALTER TABLE orders ADD COLUMN IF NOT EXISTS slot_hold_expires_at     timestamptz;
+  ALTER TABLE orders ADD COLUMN IF NOT EXISTS google_calendar_event_id text;
+`;
+
+// Partial unique index: at most one live (pending OR paid) order per slot start.
+// Concurrent holds on the same slot → the second INSERT fails with 23505, which
+// the /hold route maps to a clean 409 "just taken, pick another". (Overlap
+// between DIFFERENT half-hour starts is prevented separately by an advisory-lock
+// overlap check in the hold route — this index is the exact-match backstop.)
+const ORDERS_SLOT_UNIQUE_INDEX = `
+  CREATE UNIQUE INDEX IF NOT EXISTS orders_slot_start_unique
+    ON orders (slot_start_time)
+    WHERE status IN ('pending', 'paid');
+`;
+
+// booking_slot was a pay-first-era placeholder that was never populated. The
+// book-first flow stores the real slot in slot_start_time, so drop the dead col.
+const ORDERS_DROP_BOOKING_SLOT = `
+  ALTER TABLE orders DROP COLUMN IF EXISTS booking_slot;
+`;
+
 // Composite index for the on-read quota lookup: count a user's events in the
 // current billing period (WHERE user_id = $1 AND created_at >= period_start).
 const USAGE_EVENTS_USER_TIME_INDEX = `
@@ -109,6 +138,13 @@ export async function runMigrations(): Promise<void> {
   await pool.query(USAGE_EVENTS_TABLE);
   await pool.query(USAGE_EVENTS_USER_TIME_INDEX);
   console.log("✅ usage_events table ready");
+
+  // Book-first consultation additions (I-025-v2). Multi-statement strings are
+  // fine — node-postgres runs them as a simple query batch.
+  await pool.query(ORDERS_BOOKFIRST_COLUMNS);
+  await pool.query(ORDERS_SLOT_UNIQUE_INDEX);
+  await pool.query(ORDERS_DROP_BOOKING_SLOT);
+  console.log("✅ orders book-first columns + slot unique index ready");
 
   await pool.query(BLOG_COMMENTS_TABLE);
   await pool.query(BLOG_COMMENTS_SLUG_INDEX);
