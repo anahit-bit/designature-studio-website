@@ -114,7 +114,12 @@ function prerenderFaq(): string {
  * the article's actual words.
  */
 function markdownToParagraphs(md: string): string[] {
-  const noCode = md.replace(/```[\s\S]*?```/g, " ").replace(/`([^`]*)`/g, "$1");
+  const noCode = md
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]*)`/g, "$1")
+    // Journal "[studio]…[/studio]" note markers: keep the quote text, drop the tags
+    // so JS-less crawlers never see the literal markers.
+    .replace(/\[\/?studio\]/g, " ");
   return noCode
     .split(/\n\s*\n/)
     .map((block) =>

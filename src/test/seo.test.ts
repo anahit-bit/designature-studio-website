@@ -29,7 +29,7 @@ const SAMPLE_POST = {
   title: 'How to Light a Living Room',
   slug: 'light-a-living-room',
   excerpt: 'Layered lighting, the simple way.',
-  body: '# Getting started\n\nUse **three** layers of light with a [guide](https://x).\n\n- Ambient\n- Task\n- Accent',
+  body: '# Getting started\n\nUse **three** layers of light with a [guide](https://x).\n\n- Ambient\n- Task\n- Accent\n\n[studio]a candid studio aside[/studio]',
   coverImage: 'https://res.cloudinary.com/dys2k5muv/image/upload/cover.jpg',
   category: { title: 'How-to', slug: 'how-to' },
   tags: ['lighting', 'living-room'],
@@ -390,6 +390,9 @@ describe('journal (Phase 2) routes', () => {
     expect(html).toContain('Use three layers of light');
     // FAQ surfaced
     expect(html).toContain('How many light sources?');
+    // [studio] note markers stripped from the crawler prerender (inner text kept)
+    expect(html).toContain('a candid studio aside');
+    expect(html).not.toContain('[studio]');
     // resolved title from seo.metaTitle
     expect(html).toContain('<title>Lighting a Living Room');
   });
