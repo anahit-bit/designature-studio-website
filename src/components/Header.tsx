@@ -7,7 +7,7 @@ import { trackCalendly } from '../lib/track';
 import { setSigninSource } from '../lib/signinSource';
 import Logo from './Logo';
 
-const Header: React.FC = () => {
+const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
@@ -33,6 +33,10 @@ const Header: React.FC = () => {
   const isDarkTextNeeded = isScrolled || currentPage === 'home' || currentPage === 'portfolio' || currentPage === 'project-detail' || currentPage === 'services' || currentPage === 'studio' || currentPage === 'pricing' || currentPage === 'faq' || currentPage === 'journal' || currentPage === 'journal-detail' || currentPage === 'journal-category' || currentPage === 'terms' || currentPage === 'privacy' || currentPage === 'refund' || currentPage === 'consultation' || currentPage === 'booking-confirmed' || currentPage === 'booking-failed';
   const isAIConceptsPage = currentPage === 'ai-concepts';
   const useLightNav = isAIConceptsPage && !isScrolled;
+  // Pages with a dark photo hero (e.g. the Journal) pass onDark so the header
+  // renders WHITE until the user scrolls; on scroll it reverts to the normal
+  // solid-white/black-text bar. Leaves every other page's logic untouched.
+  const showDarkText = isDarkTextNeeded && !useLightNav && !(onDark && !isScrolled);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -67,14 +71,14 @@ const Header: React.FC = () => {
         <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
       </button>
       <span className={`text-[10px] font-semibold font-body tracking-wider uppercase leading-none transition-colors duration-700 ${
-        (isDarkTextNeeded && !useLightNav) ? 'text-black/75' : 'text-white/85'
+        (showDarkText) ? 'text-black/75' : 'text-white/85'
       } ${language === 'en' ? 'italic' : ''}`}>
         {t('btn.firstConvo')}
       </span>
     </div>
   );
 
-  const onDarkBg = !(isDarkTextNeeded && !useLightNav);
+  const onDarkBg = !(showDarkText);
   const isOnAIConcepts = currentPage === 'ai-concepts';
   const userInitial = (user?.name || user?.email || '?').charAt(0).toUpperCase();
 
@@ -183,7 +187,7 @@ const Header: React.FC = () => {
         className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-700 font-body ${
           isScrolled
             ? 'bg-white/80 backdrop-blur-2xl border-b border-black/5 py-3'
-            : (isDarkTextNeeded && !useLightNav)
+            : (showDarkText)
               ? 'bg-transparent py-8'
               : 'bg-gradient-to-b from-black/40 via-black/15 to-transparent py-8'
         }`}
@@ -200,7 +204,7 @@ const Header: React.FC = () => {
             }}
             className="cursor-pointer mr-auto"
           >
-            <Logo invert={!(isDarkTextNeeded && !useLightNav)} className="h-12 md:h-14" />
+            <Logo invert={!(showDarkText)} className="h-12 md:h-14" />
           </div>
 
           <nav className="hidden lg:flex items-center gap-8 mr-12">
@@ -220,8 +224,8 @@ const Header: React.FC = () => {
                   link.isHighlight
                     ? 'text-[#0047AB] hover:text-[#0047AB]/75'
                     : isActive
-                      ? ((isDarkTextNeeded && !useLightNav) ? 'text-black' : 'text-white')
-                      : ((isDarkTextNeeded && !useLightNav) ? 'text-black/70 hover:text-black' : 'text-white/75 hover:text-white')
+                      ? ((showDarkText) ? 'text-black' : 'text-white')
+                      : ((showDarkText) ? 'text-black/70 hover:text-black' : 'text-white/75 hover:text-white')
                 }`}
                 style={link.isHighlight ? { animation: 'ai-pulse 2.5s ease-in-out infinite' } : {}}
               >
@@ -239,7 +243,7 @@ const Header: React.FC = () => {
                   }} />
                 )}
                 {isActive && !link.isHighlight && (
-                  <span className={`absolute -bottom-1 left-0 w-full h-[1.5px] ${(isDarkTextNeeded && !useLightNav) ? 'bg-[#9E5E41]' : 'bg-[#9E5E41]'}`} />
+                  <span className={`absolute -bottom-1 left-0 w-full h-[1.5px] ${(showDarkText) ? 'bg-[#9E5E41]' : 'bg-[#9E5E41]'}`} />
                 )}
               </a>
             );
@@ -254,7 +258,7 @@ const Header: React.FC = () => {
           <button
             data-testid="mobile-menu-button"
             className={`lg:hidden ml-6 p-2 rounded-full transition-all duration-300 ${
-              (isDarkTextNeeded && !useLightNav)
+              (showDarkText)
                 ? 'text-black'
                 : 'text-white bg-black/30 backdrop-blur-md border border-white/20 hover:bg-black/40'
             }`}

@@ -1,21 +1,22 @@
 /**
  * /journal/:slug — a single article.
  *
- * Cover · title · (category · date · author) · optional AI-disclosure banner ·
- * markdown body (react-markdown) · tag chips · FAQ (from post.seo.faq) · two CTAs
- * (Try AI Vision free / Book a consultation) · moderated comments.
+ * Photo hero (cover, or afterImage as a fallback) with the title + meta overlaid,
+ * then the article: lead · "The transformation" (before/after) · versionImage ·
+ * AI-disclosure banner · markdown body · "From my studio" notes · Shop-this-room ·
+ * tags · FAQ (post.seo.faq) · two CTA cards · comments · "More from the Journal".
  *
  * An unknown/unpublished slug (after load) bounces to the Journal index.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import Header from './Header';
 import Footer from './Footer';
 import AIDisclosureBanner from './journal/AIDisclosureBanner';
 import Comments from './journal/Comments';
-import { formatPostDate } from './journal/PostCard';
-import { fetchPost } from '../lib/sanity';
+import PostCard, { formatPostDate } from './journal/PostCard';
+import { fetchPost, fetchPosts } from '../lib/sanity';
 import { cld, cldSrcSet, DEFAULT_WIDTHS, CARD_WIDTHS } from '../lib/cld';
 import type { BlogPost } from '../types';
 
@@ -44,6 +45,7 @@ const JournalArticlePage: React.FC = () => {
   const { slug = '' } = useParams<{ slug: string }>();
   const [post, setPost] = useState<BlogPost | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [allPosts, setAllPosts] = useState<BlogPost[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,55 +66,118 @@ const JournalArticlePage: React.FC = () => {
     };
   }, [slug]);
 
-  if (loaded && !post) return <Navigate to="/journal" replace />;
+  // All posts (cached fetcher) for the "More from the Journal" rail.
+  useEffect(() => {
+    let cancelled = false;
+    fetchPosts()
+      .then((p) => {
+        if (!cancelled) setAllPosts(p);
+      })
+      .catch(() => {
+        if (!cancelled) setAllPosts([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const date = formatPostDate(post?.publishedAt);
   const faq = post?.seo?.faq ?? [];
 
+  // Read time from the body word count (~200 wpm).
+  const readMin = useMemo(() => {
+    const words = (post?.body || '').trim().split(/\s+/).filter(Boolean).length;
+    return words ? Math.max(1, Math.round(words / 200)) : 0;
+  }, [post?.body]);
+
+  // Up to 3 related: same category first, then newest — always excluding this post.
+  const related = useMemo(() => {
+    if (!post) return [];
+    const others = allPosts.filter((p) => p.slug !== post.slug);
+    const sameCat = others.filter(
+      (p) => post.category?.slug && p.category?.slug === post.category.slug,
+    );
+    const rest = others.filter((p) => !sameCat.includes(p));
+    return [...sameCat, ...rest].slice(0, 3);
+  }, [post, allPosts]);
+
+  if (loaded && !post) return <Navigate to="/journal" replace />;
+
+  const heroImg = post?.coverImage || post?.afterImage;
+  const authorInitial = (post?.author || 'D').charAt(0).toUpperCase();
+
   return (
     <div className="min-h-screen bg-white font-body">
-      <Header />
+      <Header onDark />
 
-      <article className="max-w-[820px] mx-auto px-6 md:px-8 pt-28 md:pt-36 pb-20">
-        {!loaded || !post ? (
-          <p className="text-sm text-black/50 italic">Loading…</p>
-        ) : (
-          <>
-            <Link
-              to="/journal"
-              className="text-[11px] font-bold uppercase tracking-[0.25em] text-black/60 hover:text-black transition-colors"
-            >
-              ← The Journal
-            </Link>
-
-            {/* Meta line */}
-            <div className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold uppercase tracking-[0.2em] text-black/55">
-              {post.category && (
-                <Link
-                  to={`/journal/category/${encodeURIComponent(post.category.slug)}`}
-                  className="text-[#9E5E41] hover:underline"
-                >
-                  {post.category.title}
-                </Link>
-              )}
-              {post.category && date && <span className="text-black/25">·</span>}
-              {date && <span>{date}</span>}
-              {post.author && <span className="text-black/25">·</span>}
-              {post.author && <span className="normal-case tracking-normal font-medium text-black/60">{post.author}</span>}
+      {!loaded || !post ? (
+        // Dark placeholder so the white (onDark) header stays legible while loading.
+        <section className="w-full h-[52vh] min-h-[380px] bg-[#0B2240] flex items-center justify-center">
+          <p className="text-white/60 text-sm italic">Loading…</p>
+        </section>
+      ) : (
+        <>
+          {/* Photo hero */}
+          <section className="relative w-full h-[60vh] md:h-[68vh] min-h-[440px] max-h-[720px] overflow-hidden bg-black">
+            {heroImg && (
+              <img
+                src={cld(heroImg, 1600)}
+                srcSet={cldSrcSet(heroImg, DEFAULT_WIDTHS)}
+                sizes="100vw"
+                alt={post.title}
+                loading="eager"
+                className="absolute inset-0 w-full h-full object-cover"
+                draggable={false}
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/15 to-black/70" />
+            <div className="relative z-10 h-full max-w-[900px] mx-auto px-8 md:px-10 w-full flex flex-col justify-between pt-28 pb-12 md:pb-14">
+              <Link
+                to="/journal"
+                className="text-[11px] font-bold uppercase tracking-[0.35em] text-white/75 hover:text-white transition-colors flex items-center gap-2 w-fit"
+              >
+                ← The Journal
+              </Link>
+              <div>
+                {post.category && (
+                  <Link
+                    to={`/journal/category/${encodeURIComponent(post.category.slug)}`}
+                    className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#9E5E41] hover:text-white transition-colors"
+                  >
+                    {post.category.title}
+                  </Link>
+                )}
+                <h1 className="mt-3 text-3xl md:text-5xl lg:text-6xl font-bold font-display text-white tracking-architectural leading-[1.02]">
+                  {post.title}
+                </h1>
+                <div className="mt-5 flex flex-wrap items-center gap-3 text-[12px] tracking-[0.05em] text-white/80">
+                  <span className="w-8 h-8 rounded-full bg-[#0047AB] text-white inline-flex items-center justify-center text-[11px] font-bold">
+                    {authorInitial}
+                  </span>
+                  {post.author && <span className="font-medium">{post.author}</span>}
+                  {post.author && date && <span className="text-white/40">·</span>}
+                  {date && <span>{date}</span>}
+                  {readMin > 0 && <span className="text-white/40">·</span>}
+                  {readMin > 0 && <span>{readMin} min read</span>}
+                </div>
+              </div>
             </div>
+          </section>
 
-            <h1 className="mt-5 text-3xl md:text-5xl font-bold font-display tracking-architectural leading-[1.05]">
-              {post.title}
-            </h1>
-
-            {/* Lead — the little intro before the hero image */}
+          <article className="max-w-[820px] mx-auto px-6 md:px-8 pt-12 md:pt-16 pb-20">
+            {/* Lead paragraph */}
             {(post.intro || post.excerpt) && (
-              <p className="mt-6 text-lg text-black/70 font-light leading-relaxed">{post.intro || post.excerpt}</p>
+              <p className="text-lg md:text-xl text-black/70 font-light leading-relaxed">
+                {post.intro || post.excerpt}
+              </p>
             )}
 
-            {/* Before / After — the signature module (falls back to a plain cover) */}
-            {post.beforeImage && post.afterImage ? (
-              <figure className="mt-10">
+            {/* The transformation — the signature Before/After module */}
+            {post.beforeImage && post.afterImage && (
+              <figure className="mt-12">
+                <h2 className="text-[11px] font-bold uppercase tracking-[0.24em] text-black/50 mb-5">
+                  The transformation
+                </h2>
                 <div className="grid grid-cols-2 gap-2 md:gap-3">
                   {[
                     { url: post.beforeImage, label: 'Before', cls: 'bg-[#4A4038]' },
@@ -140,17 +205,7 @@ const JournalArticlePage: React.FC = () => {
                   </figcaption>
                 )}
               </figure>
-            ) : post.coverImage ? (
-              <div className="mt-10 aspect-[16/9] overflow-hidden bg-neutral-100">
-                <img
-                  src={cld(post.coverImage, 1024, { crop: 'fill', aspectRatio: '16/9' })}
-                  srcSet={cldSrcSet(post.coverImage, DEFAULT_WIDTHS, { crop: 'fill', aspectRatio: '16/9' })}
-                  sizes="(min-width: 820px) 820px, 100vw"
-                  alt={post.title}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            ) : null}
+            )}
 
             {/* Alternate version of the same room */}
             {post.versionImage && (
@@ -187,15 +242,15 @@ const JournalArticlePage: React.FC = () => {
             {/* “From my studio” personal notes */}
             {(post.personalNotes ?? []).length > 0 && (
               <div className="mt-6 flex flex-col gap-4">
-                {(post.personalNotes ?? []).map((q, i) => (
+                {(post.personalNotes ?? []).map((quote, i) => (
                   <blockquote
                     key={i}
-                    className="relative rounded-xl border border-[#9E5E41]/60 bg-white px-6 py-5 shadow-[0_6px_20px_rgba(158,94,65,0.08)]"
+                    className="relative border border-[#9E5E41]/60 bg-white px-6 py-5 shadow-[0_6px_20px_rgba(158,94,65,0.08)]"
                   >
                     <span className="mb-2 block text-[11px] font-bold uppercase tracking-[0.12em] text-[#9E5E41]">
                       From my studio
                     </span>
-                    <p className="font-display text-lg md:text-xl italic leading-snug text-[#0B2240]">“{q}”</p>
+                    <p className="font-display text-lg md:text-xl italic leading-snug text-[#0B2240]">“{quote}”</p>
                   </blockquote>
                 ))}
               </div>
@@ -203,7 +258,7 @@ const JournalArticlePage: React.FC = () => {
 
             {/* Shop this room */}
             {(post.shoppingItems ?? []).length > 0 && (
-              <div className="mt-12 overflow-hidden rounded-2xl border border-black/10">
+              <div className="mt-12 overflow-hidden border border-black/10">
                 {post.shoppingImage && (
                   <img
                     src={cld(post.shoppingImage, 1024, { crop: 'limit' })}
@@ -216,7 +271,7 @@ const JournalArticlePage: React.FC = () => {
                 )}
                 <div className="flex items-center justify-between gap-2 bg-[#0B2240] px-5 py-3.5 text-white">
                   <span className="font-display text-xl">Shop this room</span>
-                  <span className="rounded-full bg-[#9E5E41] px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.08em]">
+                  <span className="bg-[#9E5E41] px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.08em]">
                     Auto-generated list
                   </span>
                 </div>
@@ -244,7 +299,7 @@ const JournalArticlePage: React.FC = () => {
                     </li>
                   ))}
                 </ul>
-                <div className="border-t border-black/8 bg-[#FAF7F2] px-5 py-4">
+                <div className="border-t border-black/8 bg-[#FAFAFA] px-5 py-4">
                   <p className="mb-2 text-[11.5px] italic text-black/50">
                     Example matches — the live Shopping List builds an exact, shoppable list for your own room &amp; region.
                   </p>
@@ -318,7 +373,7 @@ const JournalArticlePage: React.FC = () => {
                     Bring your space to life
                   </p>
                 </div>
-                <span className="text-[11px] font-bold uppercase tracking-[0.25em] text-white group-hover:text-[#C79A6A] transition-colors">
+                <span className="text-[11px] font-bold uppercase tracking-[0.25em] text-white group-hover:text-[#9E5E41] transition-colors">
                   Book a consultation →
                 </span>
               </Link>
@@ -326,9 +381,25 @@ const JournalArticlePage: React.FC = () => {
 
             {/* Comments */}
             <Comments slug={post.slug} />
-          </>
-        )}
-      </article>
+          </article>
+
+          {/* More from the Journal */}
+          {related.length > 0 && (
+            <section className="bg-[#FAFAFA] border-t border-black/5 py-16 md:py-20">
+              <div className="max-w-[1180px] mx-auto px-8 md:px-16">
+                <h2 className="text-[11px] font-bold uppercase tracking-[0.24em] text-black/50 mb-10">
+                  More from the Journal
+                </h2>
+                <div className="grid md:grid-cols-3 gap-10 md:gap-x-10 md:gap-y-12">
+                  {related.map((p) => (
+                    <PostCard key={p.id} post={p} />
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+        </>
+      )}
 
       <Footer />
     </div>
