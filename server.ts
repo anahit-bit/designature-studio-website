@@ -497,7 +497,10 @@ function recordLoginAttempt(ip: string, success: boolean): void {
 // ─── Server ────────────────────────────────────────────────────────────────
 async function startServer() {
   const app = express();
-  const PORT = Number(process.env.PORT) || 3000;
+  // Railway's service networking routes to a FIXED target port of 3000 (set when
+  // the app first shipped). Following Railway's injected $PORT (8080) instead
+  // makes the edge proxy miss the app → 502. Keep the app on 3000 to match.
+  const PORT = 3000;
 
   // Raised to 100 MB to accommodate base64-encoded room + reference images in one request
   app.use(express.json({ limit: "100mb" }));
