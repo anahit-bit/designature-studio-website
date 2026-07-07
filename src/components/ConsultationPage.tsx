@@ -1,22 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Header from './Header';
 import Footer from './Footer';
 import { useAuth } from '../AuthContext';
 import { trackEvent } from '../lib/analytics';
 
 /**
- * /consultation — paid $99 / 45-min virtual consultation funnel (Rail B / I-025).
+ * /consultation — book-first paid $99 / 45-min virtual consultation (I-025-v2).
  *
- * Ports WEBSITE-PLAN-consultation-page-mockup.html onto the real site chrome
- * (shared <Header/> + <Footer/>). White-dominant, cobalt primary, oxide accents,
- * Cormorant (font-display) + Montserrat (font-body) per the locked design system.
+ * Flow: sign in with Google → pick a slot from the next 30 days (availability =
+ * studio working hours minus Google-Calendar busy minus live holds) → the server
+ * HOLDS the slot for 20 minutes and reserves the Ameriabank payment → "Book & pay"
+ * redirects to the gateway. On success Google Calendar creates the event + Meet
+ * link. No Calendly anywhere.
  *
- * The form posts to /api/payments/ameria/initiate and redirects the browser to
- * the Ameriabank hosted page. No public surface links here yet — entry buttons
- * ship in PR 2 after sandbox testing passes.
+ * White-dominant, cobalt primary, oxide/terracotta accents, Cormorant
+ * (font-display) + Montserrat (font-body) per the locked design system. Slot
+ * times are rendered in the CUSTOMER's local timezone.
  */
-
-const COBALT = '#0047AB';
 
 const INCLUDED: Array<{ n: string; title: string; body: string }> = [
   {
@@ -43,24 +43,33 @@ const INCLUDED: Array<{ n: string; title: string; body: string }> = [
 
 const FAQS: Array<{ q: string; a: React.ReactNode; open?: boolean }> = [
   {
-    q: "What if I can't make my slot?",
-    a: 'No problem — you can reschedule any time through the booking link, right up to the session.',
+    q: 'How do I get my Google Meet link?',
+    a: 'As soon as your payment clears, Google Calendar sends you an invitation for your chosen time — it carries the Meet link and reminders, and shows the time in your own timezone. Nothing else to book.',
     open: true,
   },
   {
     q: 'Can I reschedule or cancel?',
     a: (
       <>
-        Yes. Reschedule or cancel free up to 24 hours before your booked start time for a full refund. If we can't hold the call, you're fully refunded — your choice of a rebook or your money back. See our{' '}
+        Yes. Reschedule or cancel free up to 24 hours before your booked start time for a full refund.
+        Just reply to your confirmation email or write to{' '}
         <a
-          href="/refund"
+          href="mailto:hello@designature.studio"
           className="text-[#0047AB] font-semibold hover:text-[#9E5E41] transition-colors"
         >
+          hello@designature.studio
+        </a>
+        . See our{' '}
+        <a href="/refund" className="text-[#0047AB] font-semibold hover:text-[#9E5E41] transition-colors">
           Refund Policy
         </a>{' '}
         for details.
       </>
     ),
+  },
+  {
+    q: "What if I don't pay in time?",
+    a: "When you pick a slot we hold it for 20 minutes so you can pay without losing it. If the payment isn't completed in that window, the slot is simply released back to the calendar — no charge, and you're welcome to start again.",
   },
   {
     q: 'What if I want a full project instead?',
@@ -69,23 +78,6 @@ const FAQS: Array<{ q: string; a: React.ReactNode; open?: boolean }> = [
   {
     q: 'Do I need to prepare anything?',
     a: 'Whatever you have helps — a few room photos, a Pinterest board, or a rough sketch. Nothing formal required.',
-  },
-  {
-    q: 'What if I just want a free chat first?',
-    a: (
-      <>
-        That's completely fine.{' '}
-        <a
-          href="https://calendly.com/designature-studio-us/free_consultation"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-[#0047AB] font-semibold hover:text-[#9E5E41] transition-colors"
-        >
-          Book a free introductory call →
-        </a>{' '}
-        and we'll see if a paid session or a full project is the better next step.
-      </>
-    ),
   },
 ];
 
@@ -110,10 +102,347 @@ const GoogleG: React.FC = () => (
   </svg>
 );
 
+// ── Slot formatting (customer's local timezone) ──────────────────────────────
+
+interface DayGroup {
+  key: string; // yyyy-mm-dd in local tz
+  label: string; // "Tuesday, 14 January"
+  slots: string[]; // ISO UTC
+}
+
+function groupByDay(slots: string[]): DayGroup[] {
+  const dayFmt = new Intl.DateTimeFormat(undefined, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+  const keyFmt = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  const groups = new Map<string, DayGroup>();
+  for (const iso of slots) {
+    const d = new Date(iso);
+    const key = keyFmt.format(d);
+    if (!groups.has(key)) groups.set(key, { key, label: dayFmt.format(d), slots: [] });
+    groups.get(key)!.slots.push(iso);
+  }
+  return Array.from(groups.values());
+}
+
+function fmtTime(iso: string): string {
+  return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
+}
+
+function fmtLongLocal(iso: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(iso));
+}
+
+/** "GMT+4" / "GMT-5:30" for the customer's own browser timezone — no city name. */
+function localGmtLabel(): string {
+  const mins = -new Date().getTimezoneOffset(); // e.g. +240 → GMT+4
+  const sign = mins >= 0 ? '+' : '-';
+  const abs = Math.abs(mins);
+  const h = Math.floor(abs / 60);
+  const m = abs % 60;
+  return `GMT${sign}${h}${m ? ':' + String(m).padStart(2, '0') : ''}`;
+}
+
+// ── Hold / countdown modal ───────────────────────────────────────────────────
+
+const HoldModal: React.FC<{
+  slotIso: string;
+  holdExpiresAt: string;
+  onPay: () => void;
+  onClose: () => void;
+  onExpire: () => void;
+}> = ({ slotIso, holdExpiresAt, onPay, onClose, onExpire }) => {
+  const [remaining, setRemaining] = useState(() =>
+    Math.max(0, Math.floor((Date.parse(holdExpiresAt) - Date.now()) / 1000)),
+  );
+
+  useEffect(() => {
+    const tick = () => {
+      const secs = Math.max(0, Math.floor((Date.parse(holdExpiresAt) - Date.now()) / 1000));
+      setRemaining(secs);
+      if (secs <= 0) onExpire();
+    };
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
+  }, [holdExpiresAt, onExpire]);
+
+  const mm = String(Math.floor(remaining / 60)).padStart(2, '0');
+  const ss = String(remaining % 60).padStart(2, '0');
+  const expired = remaining <= 0;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-6 py-12 font-body"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white border border-[#E7E3DB] shadow-[0_24px_60px_rgba(0,0,0,0.16)] w-full max-w-[480px] p-8"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <span className="inline-block text-[10px] font-bold uppercase tracking-[0.3em] text-[#0047AB] mb-3">
+          Slot reserved
+        </span>
+        <h3 className="font-display text-[28px] leading-tight mb-2">
+          You've reserved
+          <br />
+          {fmtLongLocal(slotIso)}.
+        </h3>
+        <p className="text-[13.5px] text-[#6B6B6B] mb-6">{localGmtLabel()} · your local time</p>
+
+        {!expired ? (
+          <>
+            <div className="flex items-center gap-3 mb-6 px-4 py-3.5 bg-[#FAFAFA] border border-[#E7E3DB]">
+              <span className="text-[22px]">⏳</span>
+              <div>
+                <p className="text-[13px] text-[#404040] leading-snug">
+                  Complete payment within{' '}
+                  <b className="text-[#1C1C1C] tabular-nums">
+                    {mm}:{ss}
+                  </b>{' '}
+                  to confirm this time.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onPay}
+              className="w-full inline-flex items-center justify-center gap-2.5 bg-[#0047AB] text-white px-8 py-4 text-[13px] font-bold uppercase tracking-[0.2em] transition-all hover:bg-[#0036a0]"
+            >
+              Book &amp; pay $99 →
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full mt-3 text-[12px] font-semibold text-[#6B6B6B] hover:text-[#1C1C1C] py-2"
+            >
+              Pick a different time
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="text-[14px] text-[#9E5E41] font-semibold mb-5">
+              This hold has expired and the slot has been released. Please choose another time.
+            </p>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full inline-flex items-center justify-center bg-[#0047AB] text-white px-8 py-4 text-[13px] font-bold uppercase tracking-[0.2em] hover:bg-[#0036a0]"
+            >
+              Back to available times
+            </button>
+          </>
+        )}
+        <p className="text-[11px] text-[#9a9a9a] leading-relaxed mt-4 text-center">
+          You'll be redirected to Ameriabank's secure payment page. 🔒 Visa, Mastercard &amp; ArCa accepted.
+        </p>
+      </div>
+    </div>
+  );
+};
+
+// ── Slot picker ──────────────────────────────────────────────────────────────
+
+interface HoldState {
+  orderId: string;
+  redirectUrl: string;
+  slotIso: string;
+  holdExpiresAt: string;
+}
+
+const SlotPicker: React.FC = () => {
+  const { apiFetch } = useAuth();
+  const [slots, setSlots] = useState<string[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [activeDay, setActiveDay] = useState(0);
+
+  const [holding, setHolding] = useState(false);
+  const [holdError, setHoldError] = useState<string | null>(null);
+  const [hold, setHold] = useState<HoldState | null>(null);
+  const releasedRef = useRef(false);
+
+  const loadSlots = useCallback(async () => {
+    setLoadError(null);
+    setSlots(null);
+    try {
+      const res = await apiFetch('/api/consultation/slots');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !Array.isArray(data?.slots)) {
+        setLoadError(data?.error || "We couldn't load availability. Please try again.");
+        setSlots([]);
+        return;
+      }
+      setSlots(data.slots);
+      setActiveDay(0);
+    } catch {
+      setLoadError('Network error. Please check your connection and try again.');
+      setSlots([]);
+    }
+  }, [apiFetch]);
+
+  useEffect(() => {
+    void loadSlots();
+  }, [loadSlots]);
+
+  const days = useMemo(() => (slots ? groupByDay(slots) : []), [slots]);
+
+  const releaseHold = useCallback(
+    (orderId: string) => {
+      if (releasedRef.current) return;
+      releasedRef.current = true;
+      // Best-effort — keepalive so it still fires if the tab is closing.
+      apiFetch('/api/consultation/release', {
+        method: 'POST',
+        body: JSON.stringify({ orderId }),
+        keepalive: true,
+      } as RequestInit).catch(() => {});
+    },
+    [apiFetch],
+  );
+
+  const pickSlot = async (iso: string) => {
+    if (holding) return;
+    setHoldError(null);
+    setHolding(true);
+    trackEvent('consultation_initiated', { value: 99 });
+    try {
+      const res = await apiFetch('/api/consultation/hold', {
+        method: 'POST',
+        body: JSON.stringify({ slot_start_time: iso }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.redirectUrl || !data?.orderId) {
+        setHoldError(data?.error || "We couldn't hold that slot. Please pick another.");
+        setHolding(false);
+        // A 409 means the slot was taken — refresh availability.
+        if (res.status === 409) void loadSlots();
+        return;
+      }
+      releasedRef.current = false;
+      setHold({
+        orderId: data.orderId,
+        redirectUrl: data.redirectUrl,
+        slotIso: data.slotStartTime || iso,
+        holdExpiresAt: data.holdExpiresAt,
+      });
+      setHolding(false);
+    } catch {
+      setHoldError('Network error. Please try again.');
+      setHolding(false);
+    }
+  };
+
+  const closeModal = () => {
+    if (hold) releaseHold(hold.orderId);
+    setHold(null);
+    void loadSlots();
+  };
+
+  const payNow = () => {
+    if (!hold) return;
+    // Committing to pay — don't release on unmount.
+    releasedRef.current = true;
+    window.location.href = hold.redirectUrl;
+  };
+
+  const onExpire = () => {
+    // Server auto-expires too; this just reflects it in the UI.
+    releasedRef.current = true;
+  };
+
+  return (
+    <>
+      {slots === null ? (
+        <p className="text-center text-[14px] text-[#6B6B6B] py-8">Loading available times…</p>
+      ) : loadError ? (
+        <div className="text-center py-8">
+          <p className="text-[14px] text-[#9E5E41] font-semibold mb-4">{loadError}</p>
+          <button
+            type="button"
+            onClick={() => void loadSlots()}
+            className="inline-flex items-center justify-center border border-[#0047AB] text-[#0047AB] px-7 py-3 text-[12px] font-bold uppercase tracking-[0.18em] hover:bg-[#0047AB] hover:text-white transition-colors"
+          >
+            Try again
+          </button>
+        </div>
+      ) : days.length === 0 ? (
+        <p className="text-center text-[14px] text-[#404040] py-8 max-w-[440px] mx-auto leading-relaxed">
+          No open times in the next 30 days right now. Please check back soon, or email{' '}
+          <a href="mailto:hello@designature.studio" className="text-[#0047AB] font-semibold">
+            hello@designature.studio
+          </a>{' '}
+          and we'll find a time.
+        </p>
+      ) : (
+        <div className="max-w-[820px] mx-auto">
+          <p className="text-center text-[12.5px] text-[#6B6B6B] mb-6">
+            Times shown in <b className="text-[#1C1C1C]">{localGmtLabel()}</b> (your local time)
+          </p>
+          {/* Day tabs */}
+          <div className="flex gap-2 overflow-x-auto pb-3 mb-6 border-b border-[#E7E3DB]">
+            {days.map((d, i) => (
+              <button
+                key={d.key}
+                type="button"
+                onClick={() => setActiveDay(i)}
+                className={`flex-shrink-0 px-4 py-2.5 text-[12px] font-semibold whitespace-nowrap border transition-colors ${
+                  i === activeDay
+                    ? 'bg-[#0047AB] text-white border-[#0047AB]'
+                    : 'bg-white text-[#404040] border-[#E7E3DB] hover:border-[#0047AB]'
+                }`}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+          {/* Slots for the active day */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {(days[activeDay]?.slots || []).map((iso) => (
+              <button
+                key={iso}
+                type="button"
+                disabled={holding}
+                onClick={() => void pickSlot(iso)}
+                className="border border-[#E7E3DB] bg-white px-4 py-3.5 text-[15px] font-semibold text-[#1C1C1C] tabular-nums transition-all hover:border-[#0047AB] hover:text-[#0047AB] disabled:opacity-50 disabled:cursor-wait"
+              >
+                {fmtTime(iso)}
+              </button>
+            ))}
+          </div>
+          {holdError && (
+            <p role="alert" className="text-center text-[13px] text-[#9E5E41] font-semibold mt-6">
+              {holdError}
+            </p>
+          )}
+        </div>
+      )}
+
+      {hold && (
+        <HoldModal
+          slotIso={hold.slotIso}
+          holdExpiresAt={hold.holdExpiresAt}
+          onPay={payNow}
+          onClose={closeModal}
+          onExpire={onExpire}
+        />
+      )}
+    </>
+  );
+};
+
+// ── Page ─────────────────────────────────────────────────────────────────────
+
 const ConsultationPage: React.FC = () => {
-  const { user, isLoading: authLoading, signIn, apiFetch } = useAuth();
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { user, isLoading: authLoading, signIn } = useAuth();
 
   useEffect(() => {
     const prev = document.title;
@@ -122,31 +451,6 @@ const ConsultationPage: React.FC = () => {
       document.title = prev;
     };
   }, []);
-
-  const handleBook = async () => {
-    setError(null);
-    setSubmitting(true);
-    // GA4 e-commerce begin-checkout signal (env-gated; no-op on localhost).
-    trackEvent('consultation_initiated', { value: 99 });
-    try {
-      // apiFetch attaches the x-session-token; the server reads the email from
-      // the session, so no body is needed.
-      const res = await apiFetch('/api/payments/ameria/initiate', {
-        method: 'POST',
-        body: JSON.stringify({}),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.redirectUrl) {
-        setError(data?.error || "We couldn't start checkout. Please try again.");
-        setSubmitting(false);
-        return;
-      }
-      window.location.href = data.redirectUrl;
-    } catch {
-      setError('Network error. Please check your connection and try again.');
-      setSubmitting(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-white font-body text-[#1C1C1C]">
@@ -164,8 +468,8 @@ const ConsultationPage: React.FC = () => {
             on <em className="italic text-[#0047AB]">your space.</em>
           </h1>
           <p className="text-[18px] text-[#404040] max-w-[600px] mx-auto mb-7 leading-relaxed">
-            A paid virtual consultation with the studio. Bring your questions, photos, or a Pinterest
-            board — and walk away with concrete direction.
+            A paid virtual consultation with the studio. Pick a time that suits you, pay securely, and
+            we'll meet on Google Meet — the invite lands in your inbox automatically.
           </p>
           <div className="inline-flex items-baseline gap-2.5 mb-7">
             <span className="font-display text-[46px] leading-none">$99</span>
@@ -178,15 +482,9 @@ const ConsultationPage: React.FC = () => {
               href="#book"
               className="inline-flex items-center justify-center gap-2.5 bg-[#0047AB] text-white px-10 py-5 text-[14px] font-bold uppercase tracking-[0.2em] transition-all hover:bg-[#0036a0] hover:-translate-y-0.5"
             >
-              Book &amp; pay $99
+              Choose your time
             </a>
           </div>
-          <span className="block mt-5 text-[13px] text-[#6B6B6B]">
-            Just want a free chat first?{' '}
-            <a href="#faq" className="text-[#0047AB] font-semibold">
-              That option's still here →
-            </a>
-          </span>
         </div>
       </section>
 
@@ -196,13 +494,8 @@ const ConsultationPage: React.FC = () => {
           <SectionHead label="What's included" title="What the session covers." />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-[22px] max-w-[900px] mx-auto">
             {INCLUDED.map((c) => (
-              <div
-                key={c.n}
-                className="flex gap-4 bg-white border border-[#E7E3DB] rounded-md px-7 py-6"
-              >
-                <div className="font-display text-[30px] text-[#0047AB] leading-none flex-shrink-0">
-                  {c.n}
-                </div>
+              <div key={c.n} className="flex gap-4 bg-white border border-[#E7E3DB] rounded-md px-7 py-6">
+                <div className="font-display text-[30px] text-[#0047AB] leading-none flex-shrink-0">{c.n}</div>
                 <div>
                   <h3 className="font-display text-[21px] leading-tight mb-1">{c.title}</h3>
                   <p className="text-[13.5px] text-[#404040] leading-relaxed">{c.body}</p>
@@ -221,93 +514,41 @@ const ConsultationPage: React.FC = () => {
               No risk if you go further
             </span>
             <p className="font-display text-[clamp(24px,3vw,32px)] leading-snug mt-3">
-              Your <em className="italic">$99 is fully creditable</em> toward a Designature design
-              project — if you book one within 30 days.
+              Your <em className="italic">$99 is fully creditable</em> toward a Designature design project —
+              if you book one within 30 days.
             </p>
           </div>
         </div>
       </section>
 
-      {/* BOOKING FORM */}
+      {/* BOOKING — slot picker */}
       <section id="book" className="bg-[#FAFAFA] border-t border-[#E7E3DB] py-[72px] px-6 scroll-mt-24">
         <div className="max-w-[1180px] mx-auto">
-          <SectionHead label="Book your session" title="Reserve your 45 minutes." />
-          <div className="max-w-[560px] mx-auto bg-white border border-[#E7E3DB] rounded-lg px-10 pt-10 pb-9 shadow-[0_20px_50px_rgba(0,0,0,0.06)]">
-            <div className="flex items-baseline justify-between mb-6">
-              <h3 className="font-display text-[26px]">Book &amp; pay</h3>
-              <span className="font-display text-[30px] text-[#0047AB]">$99</span>
-            </div>
+          <SectionHead label="Book your session" title="Pick a time that works." />
 
-            {authLoading ? (
-              <p className="text-[13px] text-[#6B6B6B]">Loading…</p>
-            ) : !user ? (
-              <>
-                <p className="text-[14.5px] text-[#404040] leading-relaxed mb-5">
-                  Sign in with Google to book — your booking link will go to your verified inbox.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => signIn({ source: 'consultation' })}
-                  className="w-full inline-flex items-center justify-center gap-3 border border-[#1C1C1C]/20 bg-white px-8 py-3.5 text-[13px] font-semibold text-[#1C1C1C] tracking-[0.02em] transition-colors hover:border-[#1C1C1C]/50 hover:bg-black/[0.02]"
-                >
-                  <GoogleG /> Sign in with Google
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="mb-5">
-                  <label className="block text-[10px] uppercase tracking-[0.18em] font-bold text-[#6B6B6B] mb-2">
-                    Booking link goes to
-                  </label>
-                  <div className="w-full border border-[#E7E3DB] bg-[#FAFAFA] px-4 py-3.5 text-[15px] text-[#1C1C1C] truncate">
-                    {user.email}
-                  </div>
-                  <p className="text-[12px] text-[#6B6B6B] mt-2">
-                    We'll send your booking link to{' '}
-                    <span className="text-[#1C1C1C] font-semibold">{user.email}</span>.
-                  </p>
-                </div>
-
-                {error && (
-                  <p role="alert" className="text-[13px] text-[#9E5E41] font-semibold mb-3">
-                    {error}
-                  </p>
-                )}
-
-                <button
-                  type="button"
-                  onClick={handleBook}
-                  disabled={submitting}
-                  className="w-full inline-flex items-center justify-center gap-2.5 bg-[#0047AB] text-white px-8 py-4 text-[13px] font-bold uppercase tracking-[0.2em] transition-all hover:bg-[#0036a0] disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {submitting ? 'Redirecting to secure payment…' : 'Book & pay $99 →'}
-                </button>
-              </>
-            )}
-
-            <p className="text-[12px] text-[#6B6B6B] leading-relaxed mt-4 text-center">
-              You'll be redirected to Ameriabank's secure payment page. After payment, we'll email you a
-              private link to pick your time.
-            </p>
-
-            <div className="flex flex-col gap-2.5 mt-5 pt-5 border-t border-[#E7E3DB]">
-              <div className="flex items-center gap-2.5 text-[12px] text-[#404040]">
-                <span className="w-5 text-center flex-shrink-0">🔒</span> Secure payment via Ameriabank
-                VPOS
-              </div>
-              <div className="flex items-center gap-2.5 text-[12px] text-[#404040]">
-                <span className="w-5 text-center flex-shrink-0">💳</span> Visa, Mastercard &amp; ArCa
-                accepted
-              </div>
-              <div className="flex items-center gap-2.5 text-[12px] text-[#404040]">
-                <span className="w-5 text-center flex-shrink-0">↩</span> Free cancel up to 24h before
-                — see{' '}
-                <a href="/refund" className="text-[#0047AB] font-semibold hover:text-[#9E5E41] transition-colors">
-                  Refund Policy
-                </a>
+          {authLoading ? (
+            <p className="text-center text-[14px] text-[#6B6B6B]">Loading…</p>
+          ) : !user ? (
+            <div className="max-w-[520px] mx-auto bg-white border border-[#E7E3DB] rounded-lg px-10 py-10 text-center shadow-[0_20px_50px_rgba(0,0,0,0.06)]">
+              <h3 className="font-display text-[26px] mb-3">Sign in to book</h3>
+              <p className="text-[14.5px] text-[#404040] leading-relaxed mb-6">
+                Sign in with Google to see live availability and reserve your 45 minutes. Your booking
+                confirmation goes to your verified inbox.
+              </p>
+              <button
+                type="button"
+                onClick={() => signIn({ source: 'consultation' })}
+                className="w-full inline-flex items-center justify-center gap-3 border border-[#1C1C1C]/20 bg-white px-8 py-3.5 text-[13px] font-semibold text-[#1C1C1C] tracking-[0.02em] transition-colors hover:border-[#1C1C1C]/50 hover:bg-black/[0.02]"
+              >
+                <GoogleG /> Sign in with Google
+              </button>
+              <div className="flex items-center justify-center gap-2.5 text-[12px] text-[#404040] mt-5">
+                <span>🔒</span> Secure payment via Ameriabank VPOS · Visa, Mastercard &amp; ArCa
               </div>
             </div>
-          </div>
+          ) : (
+            <SlotPicker />
+          )}
         </div>
       </section>
 
@@ -317,19 +558,11 @@ const ConsultationPage: React.FC = () => {
           <SectionHead label="Good to know" title="Questions, answered." />
           <div className="max-w-[760px] mx-auto">
             {FAQS.map((f, i) => (
-              <details
-                key={i}
-                open={f.open}
-                className="group border-b border-[#E7E3DB] py-1"
-              >
+              <details key={i} open={f.open} className="group border-b border-[#E7E3DB] py-1">
                 <summary className="list-none [&::-webkit-details-marker]:hidden cursor-pointer py-[18px] text-[16px] font-semibold flex justify-between items-center gap-4">
                   <span>{f.q}</span>
-                  <span className="font-display text-[26px] text-[#0047AB] leading-none group-open:hidden">
-                    +
-                  </span>
-                  <span className="font-display text-[26px] text-[#0047AB] leading-none hidden group-open:block">
-                    –
-                  </span>
+                  <span className="font-display text-[26px] text-[#0047AB] leading-none group-open:hidden">+</span>
+                  <span className="font-display text-[26px] text-[#0047AB] leading-none hidden group-open:block">–</span>
                 </summary>
                 <p className="text-[14px] text-[#404040] leading-relaxed pb-5 max-w-[640px]">{f.a}</p>
               </details>

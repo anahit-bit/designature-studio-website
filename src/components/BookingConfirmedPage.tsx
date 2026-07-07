@@ -6,14 +6,13 @@ import { useAuth } from '../AuthContext';
 import { trackEvent } from '../lib/analytics';
 
 /**
- * /booking/confirmed — shown after a verified payment (Rail B / I-025).
+ * /booking/confirmed — quiet receipt shown after a verified payment (I-025-v2).
  *
- * Ports WEBSITE-PLAN-booking-confirmed-mockup.html. The user just paid, so the
- * FOCAL action is a large cobalt "Pick your time →" button linking straight to
- * the Calendly URL (new tab) — they book right here, not via their inbox.
- * /api/payments/ameria/confirmation returns the Calendly URL UNCONDITIONALLY; the
- * paid-status + email it also returns just personalize the secondary banner. The
- * confirmation email is the FALLBACK for when they close the tab / book later.
+ * Book-first: the customer already picked their time on the way in, and Google
+ * Calendar has sent the invite with the Meet link + reminders. So this page is a
+ * calm confirmation — "You're booked for {slot}" + "check your inbox" — with NO
+ * booking CTA. The confirmation endpoint returns the paid status + the booked
+ * slot; we render the slot in the customer's local timezone.
  */
 
 const PREP: string[] = [
@@ -26,7 +25,32 @@ const PREP: string[] = [
 interface Confirmation {
   paid: boolean;
   email?: string;
-  calendlyUrl?: string;
+  slotStartTime?: string | null;
+}
+
+function fmtLongLocal(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
+/** "GMT+4" for the customer's own browser timezone — no city name. */
+function localGmtLabel(): string {
+  const mins = -new Date().getTimezoneOffset();
+  const sign = mins >= 0 ? '+' : '-';
+  const abs = Math.abs(mins);
+  const h = Math.floor(abs / 60);
+  const m = abs % 60;
+  return `GMT${sign}${h}${m ? ':' + String(m).padStart(2, '0') : ''}`;
 }
 
 const BookingConfirmedPage: React.FC = () => {
@@ -61,9 +85,7 @@ const BookingConfirmedPage: React.FC = () => {
             transaction_id: orderId,
             value: 99,
             currency: 'USD',
-            items: [
-              { item_id: 'consultation', item_name: 'Paid Consultation', price: 99, quantity: 1 },
-            ],
+            items: [{ item_id: 'consultation', item_name: 'Paid Consultation', price: 99, quantity: 1 }],
           });
         }
       })
@@ -75,7 +97,7 @@ const BookingConfirmedPage: React.FC = () => {
     };
   }, [orderId]);
 
-  const calendlyUrl = data?.calendlyUrl || '';
+  const slot = data?.slotStartTime || null;
 
   return (
     <div className="min-h-screen bg-white font-body text-[#1C1C1C]">
@@ -88,45 +110,23 @@ const BookingConfirmedPage: React.FC = () => {
             ✓
           </div>
           <h1 className="font-display tracking-architectural text-[clamp(40px,5vw,68px)] leading-[1.05] mb-4">
-            You're booked.
-            <br />
-            Now pick your time.
+            {!loaded ? (
+              "You're booked."
+            ) : slot ? (
+              <>
+                You're booked for
+                <br />
+                <em className="italic text-[#0047AB]">{fmtLongLocal(slot)}</em>.
+              </>
+            ) : (
+              "You're booked."
+            )}
           </h1>
-          <p className="text-[17px] text-[#404040] max-w-[540px] mx-auto leading-relaxed">
-            Your payment cleared. Use the link below to choose a 45-minute slot that works for you.
+          <p className="text-[17px] text-[#404040] max-w-[560px] mx-auto leading-relaxed">
+            Your payment cleared. Check your inbox — Google Calendar has sent your invitation with the{' '}
+            <b className="text-[#1C1C1C]">Google Meet link</b> and reminders.
+            {slot ? ` Times are shown in ${localGmtLabel()} (your local time).` : ''}
           </p>
-        </div>
-      </section>
-
-      {/* FOCAL CTA — the largest, most prominent element: book right here, now */}
-      <section className="text-center pt-2 pb-14 px-6">
-        <div className="max-w-[1180px] mx-auto">
-          {!loaded ? (
-            <div className="text-[14px] text-[#6B6B6B]">Loading…</div>
-          ) : calendlyUrl ? (
-            <>
-              <a
-                href={calendlyUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2.5 bg-[#0047AB] text-white px-12 py-6 text-[16px] font-bold uppercase tracking-[0.2em] shadow-[0_16px_36px_rgba(0,71,171,0.32)] transition-all hover:bg-[#0036a0] hover:-translate-y-0.5"
-              >
-                Pick your time →
-              </a>
-              <p className="text-[13px] text-[#6B6B6B] mt-4">
-                Google Meet link is auto-generated when you book.
-              </p>
-            </>
-          ) : (
-            <p className="text-[14px] text-[#404040] max-w-[520px] mx-auto leading-relaxed">
-              We've emailed your private booking link — please open it from your inbox to pick your
-              time, or write to{' '}
-              <a href="mailto:hello@designature.studio" className="text-[#0047AB] font-semibold">
-                hello@designature.studio
-              </a>
-              .
-            </p>
-          )}
         </div>
       </section>
 
@@ -137,8 +137,8 @@ const BookingConfirmedPage: React.FC = () => {
             {user?.name ? `Booking confirmed for ${user.name}.` : 'Booking confirmed.'}
           </b>{' '}
           We've emailed the details to{' '}
-          <b className="text-[#1C1C1C]">{user?.email || data?.email || 'your inbox'}</b> — if it's not
-          there in a few minutes, check your spam folder.
+          <b className="text-[#1C1C1C]">{user?.email || data?.email || 'your inbox'}</b> — if the calendar
+          invite isn't there in a few minutes, check your spam folder.
         </div>
       </div>
 
@@ -165,8 +165,12 @@ const BookingConfirmedPage: React.FC = () => {
             ))}
           </div>
           <p className="text-center max-w-[620px] mx-auto mt-10 text-[13.5px] text-[#6B6B6B] leading-relaxed">
-            A quiet reminder: your <b className="text-[#0047AB]">$99 credits toward a full design project</b> for the
-            next 30 days.
+            A quiet reminder: your <b className="text-[#0047AB]">$99 credits toward a full design project</b> for
+            the next 30 days. Need to reschedule or cancel? Reply to your confirmation email or write to{' '}
+            <a href="mailto:hello@designature.studio" className="text-[#0047AB] font-semibold">
+              hello@designature.studio
+            </a>
+            .
           </p>
         </div>
       </section>
