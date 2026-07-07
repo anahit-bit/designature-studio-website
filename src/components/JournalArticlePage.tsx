@@ -41,6 +41,33 @@ const MD_COMPONENTS = {
   hr: () => <hr className="my-10 border-black/10" />,
 };
 
+/**
+ * Split an article body into markdown + inline "From my studio" blocks. A
+ * `[studio]…[/studio]` marker renders as the terracotta studio-note box; every
+ * other chunk is normal markdown. Exported for unit testing.
+ */
+export function parseStudioBlocks(
+  body: string,
+): Array<{ type: 'md' | 'studio'; content: string }> {
+  return body
+    .split(/\[studio\]([\s\S]*?)\[\/studio\]/)
+    .map((content, i) => ({ type: (i % 2 === 1 ? 'studio' : 'md') as 'md' | 'studio', content }))
+    .filter((b) => b.content.trim() !== '');
+}
+
+/**
+ * The terracotta "From my studio" note box — used both inline (from `[studio]`
+ * markers in the body) and as the personalNotes end-of-article fallback.
+ */
+const StudioNote: React.FC<{ quote: string }> = ({ quote }) => (
+  <blockquote className="relative border border-[#9E5E41]/60 bg-white px-6 py-5 my-6 shadow-[0_6px_20px_rgba(158,94,65,0.08)]">
+    <span className="mb-2 block text-[11px] font-bold uppercase tracking-[0.12em] text-[#9E5E41]">
+      From my studio
+    </span>
+    <p className="font-display text-lg md:text-xl italic leading-snug text-[#0B2240]">“{quote}”</p>
+  </blockquote>
+);
+
 const JournalArticlePage: React.FC = () => {
   const { slug = '' } = useParams<{ slug: string }>();
   const [post, setPost] = useState<BlogPost | null>(null);
@@ -82,7 +109,9 @@ const JournalArticlePage: React.FC = () => {
   }, []);
 
   const date = formatPostDate(post?.publishedAt);
-  const faq = post?.seo?.faq ?? [];
+  // Body drives the "From my studio" notes when it carries [studio] markers;
+  // otherwise the post's personalNotes array is used as a fallback.
+  const bodyHasStudioMarkers = !!post?.body && /\[studio\]/.test(post.body);
 
   // Read time from the body word count (~200 wpm).
   const readMin = useMemo(() => {
@@ -180,7 +209,7 @@ const JournalArticlePage: React.FC = () => {
                 </h2>
                 <div className="grid grid-cols-2 gap-2 md:gap-3">
                   {[
-                    { url: post.beforeImage, label: 'Before', cls: 'bg-[#4A4038]' },
+                    { url: post.beforeImage, label: 'Before', cls: 'bg-[#0B2240]' },
                     { url: post.afterImage, label: 'After · AI', cls: 'bg-[#9E5E41]' },
                   ].map((c) => (
                     <div key={c.label} className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
@@ -230,28 +259,28 @@ const JournalArticlePage: React.FC = () => {
               </div>
             )}
 
-            {/* Body */}
+            {/* Body — [studio]…[/studio] markers render inline as "From my studio" notes */}
             <div className="mt-10">
               {post.body ? (
-                <ReactMarkdown components={MD_COMPONENTS}>{post.body}</ReactMarkdown>
+                parseStudioBlocks(post.body).map((block, i) =>
+                  block.type === 'studio' ? (
+                    <StudioNote key={i} quote={block.content.trim()} />
+                  ) : (
+                    <ReactMarkdown key={i} components={MD_COMPONENTS}>
+                      {block.content}
+                    </ReactMarkdown>
+                  ),
+                )
               ) : (
                 <p className="text-sm text-black/50 italic">This article has no content yet.</p>
               )}
             </div>
 
-            {/* “From my studio” personal notes */}
-            {(post.personalNotes ?? []).length > 0 && (
-              <div className="mt-6 flex flex-col gap-4">
+            {/* “From my studio” notes — fallback for posts whose body has no [studio] markers */}
+            {!bodyHasStudioMarkers && (post.personalNotes ?? []).length > 0 && (
+              <div className="mt-6">
                 {(post.personalNotes ?? []).map((quote, i) => (
-                  <blockquote
-                    key={i}
-                    className="relative border border-[#9E5E41]/60 bg-white px-6 py-5 shadow-[0_6px_20px_rgba(158,94,65,0.08)]"
-                  >
-                    <span className="mb-2 block text-[11px] font-bold uppercase tracking-[0.12em] text-[#9E5E41]">
-                      From my studio
-                    </span>
-                    <p className="font-display text-lg md:text-xl italic leading-snug text-[#0B2240]">“{quote}”</p>
-                  </blockquote>
+                  <StudioNote key={i} quote={quote} />
                 ))}
               </div>
             )}
@@ -326,57 +355,29 @@ const JournalArticlePage: React.FC = () => {
               </div>
             )}
 
-            {/* FAQ */}
-            {faq.length > 0 && (
-              <section className="mt-16 pt-12 border-t border-black/10">
-                <h2 className="text-2xl md:text-3xl font-bold font-display tracking-tight mb-8">
-                  Frequently asked questions
-                </h2>
-                <div className="flex flex-col divide-y divide-black/8">
-                  {faq.map((item, i) => (
-                    <div key={i} className="py-5">
-                      <h3 className="text-base font-bold text-black mb-2">{item.question}</h3>
-                      <p className="text-[15px] text-black/75 leading-relaxed">{item.answer}</p>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
+            {/* NOTE: the visible FAQ section is intentionally not rendered. The
+                FAQPage JSON-LD (server/seo/jsonld.ts) + prerender still emit from
+                post.seo.faq, so structured data is unchanged. */}
 
-            {/* CTAs */}
-            <section className="mt-16 grid sm:grid-cols-2 gap-4">
-              <Link
-                to="/ai-vision"
-                className="group flex flex-col justify-between gap-6 border border-black/10 bg-[#FAFAFA] p-8 hover:border-black transition-colors"
-              >
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#9E5E41] mb-3">
-                    Free AI tool
-                  </p>
-                  <p className="text-xl font-bold font-display tracking-tight">
-                    See your room reimagined
-                  </p>
-                </div>
-                <span className="text-[11px] font-bold uppercase tracking-[0.25em] text-black group-hover:text-[#9E5E41] transition-colors">
+            {/* CTA band — centered brand buttons, both → AI Vision (matches the mockup) */}
+            <section className="mt-16 text-center">
+              <h2 className="text-3xl md:text-4xl font-bold font-display tracking-tight leading-tight mb-6">
+                Ready to see your room reimagined?
+              </h2>
+              <div className="flex flex-wrap justify-center gap-4">
+                <Link
+                  to="/ai-concepts"
+                  className="inline-flex items-center justify-center w-full sm:w-auto bg-[#0047AB] text-white text-[12px] font-bold uppercase tracking-[0.18em] px-[30px] py-[17px] hover:opacity-90 transition-opacity"
+                >
                   Try AI Vision free →
-                </span>
-              </Link>
-              <Link
-                to="/consultation"
-                className="group flex flex-col justify-between gap-6 border border-black/10 bg-black text-white p-8 hover:bg-[#111] transition-colors"
-              >
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-white/60 mb-3">
-                    Work with us
-                  </p>
-                  <p className="text-xl font-bold font-display tracking-tight">
-                    Bring your space to life
-                  </p>
-                </div>
-                <span className="text-[11px] font-bold uppercase tracking-[0.25em] text-white group-hover:text-[#9E5E41] transition-colors">
-                  Book a consultation →
-                </span>
-              </Link>
+                </Link>
+                <Link
+                  to="/ai-concepts"
+                  className="inline-flex items-center justify-center w-full sm:w-auto bg-black text-white text-[12px] font-bold uppercase tracking-[0.18em] px-[30px] py-[17px] hover:opacity-90 transition-opacity"
+                >
+                  Redesign your room →
+                </Link>
+              </div>
             </section>
 
             {/* Comments */}

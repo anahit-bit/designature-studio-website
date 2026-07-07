@@ -13,6 +13,10 @@ import type { ProjectData } from '../constants'
 import type { BlogPost, Category } from '../types'
 
 // ── Client ──────────────────────────────────────────────────────────────────
+// NOTE: reads the PUBLIC dataset anonymously (no token). Sanity only serves
+// documents whose _id has NO dot to anonymous readers (dotted ids are treated
+// like drafts — token-only). All content docs therefore use hyphen ids
+// (project-*, retailer-*, post-*, category-*), never dots.
 export const sanityClient = createClient({
   projectId: '305mgeeu',
   dataset: 'production',
