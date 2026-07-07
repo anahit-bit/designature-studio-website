@@ -664,6 +664,7 @@ const AdminPage: React.FC = () => {
             </span>
             <Link to="/admin/users" className="text-[#0047AB] hover:underline">View users →</Link>
             <Link to="/admin/orders" className="text-[#0047AB] hover:underline">View orders →</Link>
+            <Link to="/admin/comments" className="text-[#0047AB] hover:underline">View comments →</Link>
           </>
         }
       />
