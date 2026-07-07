@@ -59,15 +59,25 @@ export interface Category {
   order?: number;
 }
 
+/** One row of a post's shoppable list (`post.shoppingItems[]`). */
+export interface BlogShoppingItem {
+  name: string;
+  retailer?: string;
+  price?: string;
+  url?: string;
+}
+
 /**
- * A Journal post (`post` doc type in Sanity). `body` + `seo` are only populated by
- * the single-post fetch (`fetchPost`); list fetches (`fetchPosts`) omit them for weight.
+ * A Journal post (`post` doc type in Sanity). The heavier / single-post-only fields
+ * (`body`, `seo`, and all the structured layout fields below) are populated by the
+ * single-post fetch (`fetchPost`); list fetches (`fetchPosts`) omit them for weight.
  */
 export interface BlogPost {
   id: string;
   title: string;
   slug: string;
   excerpt?: string;
+  intro?: string; // lead paragraph shown before the hero image
   body?: string; // markdown
   coverImage?: string;
   category?: CategoryRef;
@@ -76,5 +86,13 @@ export interface BlogPost {
   publishedAt?: string;
   aiDisclosure?: boolean;
   seo?: BlogSeo;
+  // ── Structured layout modules (single-post view) ──
+  beforeImage?: string;
+  afterImage?: string;
+  beforeAfterCaption?: string;
+  versionImage?: string;
+  shoppingImage?: string;
+  shoppingItems?: BlogShoppingItem[];
+  personalNotes?: string[]; // “From my studio” quotes
 }
 

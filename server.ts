@@ -479,7 +479,7 @@ function recordLoginAttempt(ip: string, success: boolean): void {
 // ─── Server ────────────────────────────────────────────────────────────────
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   // Raised to 100 MB to accommodate base64-encoded room + reference images in one request
   app.use(express.json({ limit: "100mb" }));

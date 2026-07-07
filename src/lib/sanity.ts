@@ -202,7 +202,15 @@ const POSTS_QUERY = `*[_type == "post" && status == "published" && defined(slug.
 
 const POST_QUERY = `*[_type == "post" && status == "published" && slug.current == $slug][0] {
   ${POST_CARD_FIELDS},
+  intro,
   body,
+  beforeImage,
+  afterImage,
+  beforeAfterCaption,
+  versionImage,
+  shoppingImage,
+  "shoppingItems": shoppingItems[]{name, retailer, price, url},
+  "personalNotes": personalNotes[].quote,
   "seo": {
     "metaTitle": seo.metaTitle,
     "metaDescription": seo.metaDescription,
@@ -224,9 +232,17 @@ interface SanityPost {
   title: string
   slug: string
   excerpt?: string
+  intro?: string
   body?: string
   coverImage?: unknown
   coverImageAsset?: string | null
+  beforeImage?: string
+  afterImage?: string
+  beforeAfterCaption?: string
+  versionImage?: string
+  shoppingImage?: string
+  shoppingItems?: Array<{ name?: string; retailer?: string; price?: string; url?: string }> | null
+  personalNotes?: Array<string | null> | null
   category?: { title?: string; slug?: string } | null
   tags?: string[] | null
   author?: string
@@ -251,13 +267,30 @@ function toBlogPost(doc: SanityPost): BlogPost {
   const faq = (doc.seo?.faq ?? [])
     .filter((f) => f && f.question && f.answer)
     .map((f) => ({ question: f.question as string, answer: f.answer as string }))
+  const shoppingItems = (doc.shoppingItems ?? [])
+    .filter((i): i is { name: string; retailer?: string; price?: string; url?: string } => !!i && !!i.name)
+    .map((i) => ({
+      name: i.name,
+      retailer: i.retailer ?? undefined,
+      price: i.price ?? undefined,
+      url: i.url ?? undefined,
+    }))
+  const personalNotes = (doc.personalNotes ?? []).filter((q): q is string => !!q)
   return {
     id: doc.id,
     title: doc.title,
     slug: doc.slug,
     excerpt: doc.excerpt ?? undefined,
+    intro: doc.intro ?? undefined,
     body: doc.body ?? undefined,
     coverImage: cover,
+    beforeImage: doc.beforeImage ?? undefined,
+    afterImage: doc.afterImage ?? undefined,
+    beforeAfterCaption: doc.beforeAfterCaption ?? undefined,
+    versionImage: doc.versionImage ?? undefined,
+    shoppingImage: doc.shoppingImage ?? undefined,
+    shoppingItems: shoppingItems.length ? shoppingItems : undefined,
+    personalNotes: personalNotes.length ? personalNotes : undefined,
     category,
     tags: doc.tags ?? [],
     author: doc.author ?? undefined,

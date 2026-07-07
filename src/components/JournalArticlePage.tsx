@@ -16,7 +16,7 @@ import AIDisclosureBanner from './journal/AIDisclosureBanner';
 import Comments from './journal/Comments';
 import { formatPostDate } from './journal/PostCard';
 import { fetchPost } from '../lib/sanity';
-import { cld, cldSrcSet, DEFAULT_WIDTHS } from '../lib/cld';
+import { cld, cldSrcSet, DEFAULT_WIDTHS, CARD_WIDTHS } from '../lib/cld';
 import type { BlogPost } from '../types';
 
 // Markdown element styling (no typography plugin in this project — map by hand).
@@ -105,24 +105,68 @@ const JournalArticlePage: React.FC = () => {
               {post.title}
             </h1>
 
-            {post.excerpt && (
-              <p className="mt-6 text-lg text-black/70 font-light leading-relaxed">{post.excerpt}</p>
+            {/* Lead — the little intro before the hero image */}
+            {(post.intro || post.excerpt) && (
+              <p className="mt-6 text-lg text-black/70 font-light leading-relaxed">{post.intro || post.excerpt}</p>
             )}
 
-            {/* Cover */}
-            {post.coverImage && (
+            {/* Before / After — the signature module (falls back to a plain cover) */}
+            {post.beforeImage && post.afterImage ? (
+              <figure className="mt-10">
+                <div className="grid grid-cols-2 gap-2 md:gap-3">
+                  {[
+                    { url: post.beforeImage, label: 'Before', cls: 'bg-[#4A4038]' },
+                    { url: post.afterImage, label: 'After · AI', cls: 'bg-[#9E5E41]' },
+                  ].map((c) => (
+                    <div key={c.label} className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
+                      <span
+                        className={`absolute top-2.5 left-2.5 z-10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-white ${c.cls}`}
+                      >
+                        {c.label}
+                      </span>
+                      <img
+                        src={cld(c.url, 640, { crop: 'fill', aspectRatio: '4/3' })}
+                        srcSet={cldSrcSet(c.url, CARD_WIDTHS, { crop: 'fill', aspectRatio: '4/3' })}
+                        sizes="(min-width: 820px) 410px, 50vw"
+                        alt={`${post.title} — ${c.label}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+                {post.beforeAfterCaption && (
+                  <figcaption className="mt-3 text-center text-[12px] text-black/50">
+                    {post.beforeAfterCaption}
+                  </figcaption>
+                )}
+              </figure>
+            ) : post.coverImage ? (
               <div className="mt-10 aspect-[16/9] overflow-hidden bg-neutral-100">
                 <img
                   src={cld(post.coverImage, 1024, { crop: 'fill', aspectRatio: '16/9' })}
-                  srcSet={cldSrcSet(post.coverImage, DEFAULT_WIDTHS, {
-                    crop: 'fill',
-                    aspectRatio: '16/9',
-                  })}
+                  srcSet={cldSrcSet(post.coverImage, DEFAULT_WIDTHS, { crop: 'fill', aspectRatio: '16/9' })}
                   sizes="(min-width: 820px) 820px, 100vw"
                   alt={post.title}
                   className="w-full h-full object-cover"
                 />
               </div>
+            ) : null}
+
+            {/* Alternate version of the same room */}
+            {post.versionImage && (
+              <figure className="mt-4">
+                <img
+                  src={cld(post.versionImage, 1024, { crop: 'limit' })}
+                  srcSet={cldSrcSet(post.versionImage, DEFAULT_WIDTHS, { crop: 'limit' })}
+                  sizes="(min-width: 820px) 820px, 100vw"
+                  alt={`${post.title} — alternate version`}
+                  className="w-full"
+                  loading="lazy"
+                />
+                <figcaption className="mt-3 text-center text-[12px] text-black/50">
+                  Same room, a warmer alternative — from the same photo.
+                </figcaption>
+              </figure>
             )}
 
             {post.aiDisclosure && (
@@ -139,6 +183,78 @@ const JournalArticlePage: React.FC = () => {
                 <p className="text-sm text-black/50 italic">This article has no content yet.</p>
               )}
             </div>
+
+            {/* “From my studio” personal notes */}
+            {(post.personalNotes ?? []).length > 0 && (
+              <div className="mt-6 flex flex-col gap-4">
+                {(post.personalNotes ?? []).map((q, i) => (
+                  <blockquote
+                    key={i}
+                    className="relative rounded-xl border border-[#9E5E41]/60 bg-white px-6 py-5 shadow-[0_6px_20px_rgba(158,94,65,0.08)]"
+                  >
+                    <span className="mb-2 block text-[11px] font-bold uppercase tracking-[0.12em] text-[#9E5E41]">
+                      From my studio
+                    </span>
+                    <p className="font-display text-lg md:text-xl italic leading-snug text-[#0B2240]">“{q}”</p>
+                  </blockquote>
+                ))}
+              </div>
+            )}
+
+            {/* Shop this room */}
+            {(post.shoppingItems ?? []).length > 0 && (
+              <div className="mt-12 overflow-hidden rounded-2xl border border-black/10">
+                {post.shoppingImage && (
+                  <img
+                    src={cld(post.shoppingImage, 1024, { crop: 'limit' })}
+                    srcSet={cldSrcSet(post.shoppingImage, DEFAULT_WIDTHS, { crop: 'limit' })}
+                    sizes="(min-width: 820px) 820px, 100vw"
+                    alt="Shop this room"
+                    className="w-full"
+                    loading="lazy"
+                  />
+                )}
+                <div className="flex items-center justify-between gap-2 bg-[#0B2240] px-5 py-3.5 text-white">
+                  <span className="font-display text-xl">Shop this room</span>
+                  <span className="rounded-full bg-[#9E5E41] px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.08em]">
+                    Auto-generated list
+                  </span>
+                </div>
+                <ul>
+                  {(post.shoppingItems ?? []).map((it, i) => (
+                    <li key={i} className="flex items-baseline gap-2 border-t border-black/8 px-5 py-3">
+                      {it.url ? (
+                        <a
+                          href={it.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="border-b border-[#0047AB]/30 text-[15px] font-semibold text-[#0047AB] hover:border-[#0047AB]"
+                        >
+                          {it.name}
+                        </a>
+                      ) : (
+                        <span className="text-[15px] font-semibold text-[#0B2240]">{it.name}</span>
+                      )}
+                      {it.retailer && <span className="text-[12.5px] text-black/50">{it.retailer}</span>}
+                      {it.price && (
+                        <span className="ml-auto whitespace-nowrap text-[13.5px] font-semibold text-black/80">
+                          {it.price}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                <div className="border-t border-black/8 bg-[#FAF7F2] px-5 py-4">
+                  <p className="mb-2 text-[11.5px] italic text-black/50">
+                    Example matches — the live Shopping List builds an exact, shoppable list for your own room &amp; region.
+                  </p>
+                  <Link to="/ai-vision" className="text-[14px] font-semibold text-[#0B2240]">
+                    Want a list like this for your space?{' '}
+                    <span className="border-b border-[#0047AB]/30 text-[#0047AB]">Generate your shopping list →</span>
+                  </Link>
+                </div>
+              </div>
+            )}
 
             {/* Tags */}
             {(post.tags ?? []).length > 0 && (
