@@ -359,7 +359,7 @@ const JournalArticlePage: React.FC = () => {
                 FAQPage JSON-LD (server/seo/jsonld.ts) + prerender still emit from
                 post.seo.faq, so structured data is unchanged. */}
 
-            {/* CTA band — centered brand buttons, both → AI Vision (matches the mockup) */}
+            {/* CTA band — centered brand buttons: cobalt → AI Vision, black → consultation */}
             <section className="mt-16 text-center">
               <h2 className="text-3xl md:text-4xl font-bold font-display tracking-tight leading-tight mb-6">
                 Ready to see your room reimagined?
@@ -372,10 +372,10 @@ const JournalArticlePage: React.FC = () => {
                   Try AI Vision free →
                 </Link>
                 <Link
-                  to="/ai-concepts"
+                  to="/consultation"
                   className="inline-flex items-center justify-center w-full sm:w-auto bg-black text-white text-[12px] font-bold uppercase tracking-[0.18em] px-[30px] py-[17px] hover:opacity-90 transition-opacity"
                 >
-                  Redesign your room →
+                  Book a consultation →
                 </Link>
               </div>
             </section>
