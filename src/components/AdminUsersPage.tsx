@@ -209,8 +209,8 @@ const AdminUsersPage: React.FC = () => {
   const [yearFilter, setYearFilter] = useState<string>('all');
   const [lastSeenFilter, setLastSeenFilter] = useState<LastSeenWindow>('all');
 
-  // Sort
-  const [sortKey, setSortKey] = useState<SortKey>('lastLogin');
+  // Sort — always default to signup date, newest first (columns stay clickable).
+  const [sortKey, setSortKey] = useState<SortKey>('signupDate');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   useEffect(() => {
