@@ -32,6 +32,7 @@ import { SHOPPING_TAXONOMY, SHOPPING_TAXONOMY_IDS, categoryToTaxonomyId } from "
 // ─── Payments foundation (I-024 / B0): Postgres migration at boot ─────────────
 import { runMigrations } from "./db/migrate.js";
 import { getPool } from "./db/pgPool.js";
+import { loadState, saveState } from "./db/state.js";
 import { sendEmail } from "./lib/email.js";
 // ─── Payments Rail B (I-025): Ameriabank vPOS $99 consultation ────────────────
 import {
@@ -113,9 +114,23 @@ function isAdminEmail(email: string): boolean {
   return ADMIN_EMAILS.includes(email.trim().toLowerCase());
 }
 
-// ─── Simple JSON "database" stored in users.json ───────────────────────────
+// ─── JSON "database": in-memory object, durably persisted to Postgres ───────
+// Historically this lived ONLY in `users.json` on disk. On Railway that disk is
+// ephemeral (wiped every redeploy) → /admin reset to 0. Now the object is held
+// in memory (`dbCache`), write-through-persisted to the `app_state` Postgres row
+// on every writeDB(), and mirrored to the local file for dev convenience + a
+// fallback when Postgres is unreachable. See db/state.ts + db/migrate.ts.
 const DB_PATH = "./users.json";
 const DB_SEED_PATH = "./users.seed.json";
+
+// Which app_state row this process owns. Dev and prod share one Railway Postgres
+// instance, so isolate them: prod → 'main', local dev → 'dev'. Railway injects a
+// whole family of RAILWAY_* env vars, so detect the platform by ANY of them
+// (robust to Railway renaming individual vars). Override with APP_STATE_ID if
+// ever needed. Getting this wrong in prod would make prod read the dev row, so
+// keep the detection broad.
+const IS_RAILWAY = Object.keys(process.env).some((k) => k.startsWith("RAILWAY_"));
+const STATE_ID = (process.env.APP_STATE_ID || (IS_RAILWAY ? "main" : "dev")).trim();
 
 interface User {
   email: string;
@@ -129,6 +144,10 @@ interface User {
   auditQuota?: number;
   createdAt: string;
   lastUsed: string;
+  /** True for records imported from the Google Sheet historical roster that have
+   *  not yet signed in via Google (so no real googleId). Cleared on reconciliation
+   *  at their next login. Purely for admin visibility of the pre-existing roster. */
+  backfilled?: boolean;
 }
 
 function normalizeUserForFreeTier(user: User): { user: User; changed: boolean } {
@@ -343,7 +362,13 @@ async function expireStalePendingOrders(): Promise<void> {
   }
 }
 
-function readDB(): DB {
+// In-memory source of truth. Hydrated from Postgres at boot (hydrateDbFromPostgres),
+// or lazily from the local file if a helper touches the DB before boot / when
+// Postgres is unreachable (dev without DATABASE_URL).
+let dbCache: DB | null = null;
+
+/** The original file/seed load path — now a fallback, not the primary store. */
+function readDbFromFile(): DB {
   if (!existsSync(DB_PATH)) {
     if (existsSync(DB_SEED_PATH)) {
       writeFileSync(DB_PATH, readFileSync(DB_SEED_PATH, "utf-8"));
@@ -354,8 +379,205 @@ function readDB(): DB {
   return JSON.parse(readFileSync(DB_PATH, "utf-8"));
 }
 
+function readDB(): DB {
+  if (dbCache) return dbCache;
+  // Pre-boot / Postgres-less fallback: behave exactly like before this change so
+  // unit tests importing helpers (without startServer) and dev without a DB URL
+  // keep working off the file. Boot replaces this via hydrateDbFromPostgres().
+  dbCache = readDbFromFile();
+  return dbCache;
+}
+
+// Coalescing Postgres persister — always writes the LATEST dbCache, with at most
+// one write in flight and one queued. Bursts of writeDB() (some handlers write
+// two or three times) collapse into a small number of queries.
+let persisting = false;
+let persistQueued = false;
+async function persistState(): Promise<void> {
+  if (persisting) {
+    persistQueued = true;
+    return;
+  }
+  persisting = true;
+  try {
+    do {
+      persistQueued = false;
+      if (dbCache) await saveState(STATE_ID, dbCache);
+    } while (persistQueued);
+  } catch (err) {
+    // Non-fatal: the data is safe in memory + the file mirror; it just isn't
+    // durable across a redeploy until Postgres is reachable again.
+    console.error(
+      "[state] Postgres persist failed (data kept in memory + file mirror):",
+      err instanceof Error ? err.message : err,
+    );
+  } finally {
+    persisting = false;
+  }
+}
+
 function writeDB(db: DB) {
-  writeFileSync(DB_PATH, JSON.stringify(db, null, 2));
+  dbCache = db;
+  // Best-effort local file mirror — keeps dev debugging easy and provides a
+  // fallback read source. Never throw into the request path.
+  try {
+    writeFileSync(DB_PATH, JSON.stringify(db, null, 2));
+  } catch {
+    /* ignore — Postgres is the durable store */
+  }
+  // Durable write-through to Postgres (the fix for Railway's ephemeral disk).
+  void persistState();
+}
+
+/**
+ * Read the historical free-user roster from the Google Sheet (A–K columns).
+ * Used once, at boot, to backfill /admin so it isn't empty on day one — the sheet
+ * is the only durable record of everyone who signed in before this fix. Read-only;
+ * returns [] on any missing-credential / API error (never throws into boot).
+ * Column order A–K: created_at, email, name, provider, plan, first_login_at,
+ * last_login_at, login_count, country, tool_used, source.
+ */
+async function readFreeUsersFromSheet(): Promise<
+  Array<{ createdAt: string; email: string; name: string; firstLogin: string; lastLogin: string }>
+> {
+  const spreadsheetId = (
+    process.env.FREE_USERS_SPREADSHEET_ID || "14aFSp92YNw7DiBS-k3Ci7-pW_rIzQ_qURPkqzLirg0M"
+  ).trim();
+  const serviceAccountJson = (process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON || "").trim();
+  const keyFile = (process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_KEYFILE || "").trim();
+  if ((!serviceAccountJson && !keyFile) || !spreadsheetId) return [];
+
+  let credentials: any;
+  credentials = serviceAccountJson
+    ? JSON.parse(serviceAccountJson)
+    : JSON.parse(readFileSync(keyFile, "utf-8"));
+  if (typeof credentials?.private_key === "string" && credentials.private_key.includes("\\n")) {
+    credentials.private_key = credentials.private_key.replace(/\\n/g, "\n");
+  }
+  if (!credentials?.client_email || !credentials?.private_key) return [];
+
+  const jwtClient = new google.auth.JWT({
+    email: credentials.client_email,
+    key: credentials.private_key,
+    scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
+  });
+  const sheetsApi = google.sheets({ version: "v4", auth: jwtClient });
+
+  const meta = await sheetsApi.spreadsheets.get({
+    spreadsheetId,
+    fields: "sheets(properties(title))",
+  });
+  const firstSheetTitle = meta.data.sheets?.[0]?.properties?.title;
+  if (!firstSheetTitle) return [];
+
+  const existing = await sheetsApi.spreadsheets.values.get({
+    spreadsheetId,
+    range: `${firstSheetTitle}!A:K`,
+    majorDimension: "ROWS",
+  });
+  const rows = existing.data.values ?? [];
+  const out: Array<{ createdAt: string; email: string; name: string; firstLogin: string; lastLogin: string }> = [];
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i] || [];
+    const email = String(row[1] || "").trim();
+    if (!email) continue;
+    if (i === 0 && email.toLowerCase() === "email") continue; // header row
+    out.push({
+      createdAt: String(row[0] || ""),
+      email,
+      name: String(row[2] || ""),
+      firstLogin: String(row[5] || ""),
+      lastLogin: String(row[6] || ""),
+    });
+  }
+  return out;
+}
+
+/**
+ * One-time backfill of the historical roster into `dbCache.users`. Adds only
+ * emails not already present, keyed by `sheet:<email>` with `backfilled: true`
+ * and no googleId. They're upgraded to their real googleId key on next login
+ * (reconciliation in /api/auth/google). No-op if the sheet is unreadable.
+ */
+async function backfillUsersFromSheet(): Promise<void> {
+  if (!dbCache) return;
+  try {
+    const rows = await readFreeUsersFromSheet();
+    if (!rows.length) return;
+    const existingEmails = new Set(
+      Object.values(dbCache.users).map((u) => (u.email || "").trim().toLowerCase()),
+    );
+    let added = 0;
+    for (const r of rows) {
+      const emailLower = r.email.trim().toLowerCase();
+      if (!emailLower || existingEmails.has(emailLower)) continue;
+      dbCache.users[`sheet:${emailLower}`] = {
+        email: r.email.trim(),
+        name: r.name || r.email.trim(),
+        picture: "",
+        googleId: "",
+        generationsLeft: FREE_TIER_MAX_CONCEPTS,
+        shoppingListsLeft: FREE_TIER_MAX_SHOPPING_LISTS,
+        createdAt: r.createdAt || r.firstLogin || new Date().toISOString(),
+        lastUsed: r.lastLogin || r.createdAt || new Date().toISOString(),
+        backfilled: true,
+      };
+      existingEmails.add(emailLower);
+      added++;
+    }
+    if (added) console.log(`✅ backfilled ${added} historical user(s) from Google Sheet into app_state`);
+  } catch (err) {
+    console.error("[backfill] sheet backfill skipped:", err instanceof Error ? err.message : err);
+  }
+}
+
+/**
+ * Boot hydration: load the durable state from Postgres into `dbCache`. On a
+ * fresh row, seed from the local file then backfill the historical roster from
+ * the Google Sheet, and persist. If Postgres is unreachable, degrade to the
+ * file-backed behavior (identical to before this change → zero regression).
+ */
+async function hydrateDbFromPostgres(): Promise<void> {
+  // Keep the local file mirror in step with what we just loaded/seeded, so the
+  // on-disk users.json is never a stale snapshot for anyone inspecting it.
+  const mirrorToFile = () => {
+    try {
+      if (dbCache) writeFileSync(DB_PATH, JSON.stringify(dbCache, null, 2));
+    } catch {
+      /* ignore — Postgres is the durable store */
+    }
+  };
+  try {
+    const stored = (await loadState(STATE_ID)) as unknown as DB | null;
+    if (stored && typeof stored === "object" && stored.users) {
+      dbCache = stored;
+      const userCount = Object.keys(dbCache.users).length;
+      console.log(`✅ app_state hydrated from Postgres (id='${STATE_ID}', ${userCount} users)`);
+      if (userCount === 0) {
+        await backfillUsersFromSheet();
+        await saveState(STATE_ID, dbCache);
+      }
+      mirrorToFile();
+      return;
+    }
+    // First boot on this row — seed from file, backfill roster, persist.
+    dbCache = readDbFromFile();
+    if (!dbCache.users) dbCache.users = {};
+    console.log(
+      `app_state empty for id='${STATE_ID}' — seeding from file (${Object.keys(dbCache.users).length} users) + Google Sheet backfill`,
+    );
+    await backfillUsersFromSheet();
+    await saveState(STATE_ID, dbCache);
+    console.log(`✅ app_state initialized in Postgres (id='${STATE_ID}', ${Object.keys(dbCache.users).length} users)`);
+    mirrorToFile();
+  } catch (err) {
+    console.error(
+      "⚠️  app_state hydration failed — falling back to file-backed users.json (NOT durable across redeploys):",
+      err instanceof Error ? err.message : err,
+    );
+    dbCache = readDbFromFile();
+    if (!dbCache.users) dbCache.users = {};
+  }
 }
 
 // ─── Platform inventory (I-012) ─────────────────────────────────────────────
@@ -524,6 +746,12 @@ async function startServer() {
       err instanceof Error ? err.message : err,
     );
   }
+
+  // ── Admin durability: hydrate the in-memory DB from Postgres (app_state) ──
+  // MUST run after migrations (needs the app_state table) and before the app
+  // starts serving, so the first request sees the durable state, not the wiped
+  // ephemeral file. Degrades to file-backed if Postgres is unreachable.
+  await hydrateDbFromPostgres();
 
   // Sweep stale pending consultation orders → cancelled, every 5 minutes (I-025).
   // Run once at boot to clear anything left stale across a restart, then on an
@@ -906,22 +1134,48 @@ async function startServer() {
       // Get or create user
       const db = readDB();
       let user = db.users[googleId];
-      const isNewUser = !user;
+      let isNewUser = !user;
 
       if (!user) {
-        // New user — give 3 free generations + 3 shopping list runs
-        user = {
-          email,
-          name: name || email,
-          picture: picture || "",
-          googleId,
-          generationsLeft: FREE_TIER_MAX_CONCEPTS,
-          shoppingListsLeft: FREE_TIER_MAX_SHOPPING_LISTS,
-          createdAt: new Date().toISOString(),
-          lastUsed: new Date().toISOString(),
-        };
-        db.users[googleId] = user;
-        console.log(`New user registered: ${email}`);
+        // Before creating fresh, reconcile any record with the same email stored
+        // under a DIFFERENT key — e.g. a "sheet:<email>" placeholder backfilled
+        // from the historical roster (no googleId yet). Adopt it under the real
+        // googleId so we don't duplicate the account and we keep the original
+        // createdAt. Such a user pre-existed, so it's NOT a new signup.
+        const emailLower = email.trim().toLowerCase();
+        const priorKey = Object.keys(db.users).find(
+          (k) => k !== googleId && (db.users[k].email || "").trim().toLowerCase() === emailLower,
+        );
+        if (priorKey) {
+          const prior = db.users[priorKey];
+          delete db.users[priorKey];
+          user = {
+            ...prior,
+            email,
+            name: name || prior.name || email,
+            picture: picture || prior.picture || "",
+            googleId,
+            lastUsed: new Date().toISOString(),
+          };
+          delete user.backfilled;
+          db.users[googleId] = user;
+          isNewUser = false;
+          console.log(`Reconciled backfilled user ${email} → googleId ${googleId}`);
+        } else {
+          // New user — give 3 free generations + 3 shopping list runs
+          user = {
+            email,
+            name: name || email,
+            picture: picture || "",
+            googleId,
+            generationsLeft: FREE_TIER_MAX_CONCEPTS,
+            shoppingListsLeft: FREE_TIER_MAX_SHOPPING_LISTS,
+            createdAt: new Date().toISOString(),
+            lastUsed: new Date().toISOString(),
+          };
+          db.users[googleId] = user;
+          console.log(`New user registered: ${email}`);
+        }
       } else {
         // Existing user — update profile info
         user.email = email;
@@ -2500,13 +2754,16 @@ Output ONLY valid JSON with no markdown fences, no explanation:
   app.get("/api/admin/users", (req, res) => {
     if (!requireAdmin(req, res)) return; // I-011 drive-by: was unauthenticated, now admin-only
     const db = readDB();
-    const users = Object.values(db.users).map((u) => ({
-      email: u.email,
-      name: u.name,
-      generationsLeft: u.generationsLeft,
-      createdAt: u.createdAt,
-      lastUsed: u.lastUsed,
-    }));
+    const users = Object.values(db.users)
+      .slice()
+      .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")) // newest signup first
+      .map((u) => ({
+        email: u.email,
+        name: u.name,
+        generationsLeft: u.generationsLeft,
+        createdAt: u.createdAt,
+        lastUsed: u.lastUsed,
+      }));
     res.json({ total: users.length, users });
   });
 
@@ -2587,16 +2844,19 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       console.error("[admin/users-detail] consultation count query failed:", err);
     }
 
-    const users = Object.values(db.users).map((u) => ({
-      email: u.email,
-      name: u.name,
-      signupDate: u.createdAt,
-      lastLogin: u.lastUsed,
-      tier: tierOf(u),
-      totalActivityCount: counts[u.email.trim().toLowerCase()] || 0,
-      consultations: consultByGid[u.googleId]?.count || 0,
-      lastConsultation: consultByGid[u.googleId]?.last || null,
-    }));
+    const users = Object.values(db.users)
+      .slice()
+      .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")) // newest signup first
+      .map((u) => ({
+        email: u.email,
+        name: u.name,
+        signupDate: u.createdAt,
+        lastLogin: u.lastUsed,
+        tier: tierOf(u),
+        totalActivityCount: counts[u.email.trim().toLowerCase()] || 0,
+        consultations: consultByGid[u.googleId]?.count || 0,
+        lastConsultation: consultByGid[u.googleId]?.last || null,
+      }));
     res.json({ users });
   });
 

@@ -116,6 +116,21 @@ const BLOG_COMMENTS_SLUG_INDEX = `
     ON blog_comments (post_slug, status);
 `;
 
+// Durable app state (admin durability fix, 2026-07-09). The server historically
+// kept users + activityLog + apiCounters + serperUsage in a flat `users.json`
+// file. On Railway that file lives on the container's EPHEMERAL disk, so every
+// redeploy wiped it → /admin reset to 0 and prod never matched the Google Sheet.
+// This table is the durable home: one JSONB blob per environment row (id='main'
+// for prod, 'dev' for local — they share one Railway Postgres). The server keeps
+// the object in memory and write-throughs to this row on every writeDB().
+const APP_STATE_TABLE = `
+  CREATE TABLE IF NOT EXISTS app_state (
+    id         text        PRIMARY KEY,
+    data       jsonb       NOT NULL,
+    updated_at timestamptz NOT NULL DEFAULT now()
+  );
+`;
+
 /**
  * Create the payments tables if they don't exist. Logs a "ready" line per table.
  * Throws if the DB is unreachable — the caller (server boot) decides whether to
@@ -149,4 +164,7 @@ export async function runMigrations(): Promise<void> {
   await pool.query(BLOG_COMMENTS_TABLE);
   await pool.query(BLOG_COMMENTS_SLUG_INDEX);
   console.log("✅ blog_comments table ready");
+
+  await pool.query(APP_STATE_TABLE);
+  console.log("✅ app_state table ready");
 }
