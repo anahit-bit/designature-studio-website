@@ -96,12 +96,19 @@ const DNA_BANNER_DISMISSED_KEY = 'ai_vision_dna_banner_dismissed';
 export default function VisionExperience(p: VisionExperienceProps) {
   const { t } = useLanguage();
   // ── State derivation ──
-  // State 3 needs a live concept OR a room still loaded. After Reset the room is
-  // cleared but the archive is deliberately kept (so past concepts re-appear in the
-  // strip on the next generation) — without the roomImage guard the lingering archive
-  // would trap the tool in state 3 with no photo and no upload path (the Reset bug).
+  // State 3 (results) is driven SOLELY by live `results` from the current round.
+  // The archive (past concepts kept across a Reset) is supplemental — it only
+  // repopulates the variant strip *once a new concept is generated*; it must never
+  // drive the state on its own. Earlier the branch also fired on
+  // `sessionConceptArchive.length > 0 && roomImage`, which trapped the tool: after a
+  // Reset the archive lingers, so uploading a fresh room jumped straight back to the
+  // results hero (showing the stale concept) with no way to walk upload → setup →
+  // generate again (the Reset dead-end). With results empty, a loaded room lands in
+  // Setup (state 2) and a cleared room lands on the Landing (state 1) — either way an
+  // upload/configure path is available, and the archive still reappears in the strip
+  // after the next generation.
   const state: 1 | 2 | 3 =
-    p.results.length > 0 || (p.sessionConceptArchive.length > 0 && !!p.roomImage) ? 3 :
+    p.results.length > 0 ? 3 :
     p.roomImage ? 2 : 1;
 
   // ── Before/after slider — drag the divider ──

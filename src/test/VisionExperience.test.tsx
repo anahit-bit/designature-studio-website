@@ -203,8 +203,11 @@ describe('VisionExperience · Reset returns to empty-upload state (#reset-dead-e
 
   // Post-Reset shape: handleReset clears results + roomImage but DELIBERATELY keeps
   // the archive (so past concepts re-appear in the strip on the next generation).
-  // Before the fix, the lingering archive forced state 3 with no photo and no upload
-  // path — the reported dead-end. Now the state-3 archive branch is guarded by roomImage.
+  // State is driven SOLELY by live `results` — the archive is supplemental and never
+  // forces the result hero. Before the fix, a lingering archive forced state 3: with
+  // no room it trapped on a photo-less result hero, and once a NEW room was uploaded it
+  // jumped back to the result hero showing the stale concept — no path to generate
+  // again (the reported dead-end).
   const afterReset = {
     ...baseProps,
     roomImage: null,
@@ -223,13 +226,15 @@ describe('VisionExperience · Reset returns to empty-upload state (#reset-dead-e
     expect(container.querySelector('section.vision-result-hero')).toBeNull();
   });
 
-  it('still shows the result hero when a room is loaded with a lingering archive (regen path preserved)', () => {
-    // Guards the `&& roomImage` refinement: mid-session (e.g. a failed regeneration)
-    // the room is still loaded, so the result hero — and its error surface — must stay.
-    // `.vision-result-hero` is unique to state 3 (state 1 never renders it).
+  it('lands in Setup (not the result hero) when a fresh room is uploaded after Reset with a lingering archive', () => {
+    // The core Reset-dead-end fix: after Reset the archive persists, so uploading a new
+    // room must walk the user into Setup (state 2) to configure + generate — NOT snap
+    // back to the result hero showing the stale archived concept. `.vision-result-hero`
+    // is unique to state 3; Setup renders the style marquee and never the result hero.
     const { container } = renderWith({ ...afterReset, roomImage: baseProps.roomImage });
-    expect(container.querySelector('section.vision-result-hero')).not.toBeNull();
-    // Not the state-1 landing: its "Upload your room" CTA must be absent here.
+    expect(container.querySelector('section.vision-result-hero')).toBeNull();
+    expect(container.querySelector('.marquee-track')).not.toBeNull(); // Setup marquee
+    // Not the state-1 landing either: its "Upload your room" CTA must be absent.
     expect(screen.queryByText(/Upload your room/i)).not.toBeInTheDocument();
   });
 });
