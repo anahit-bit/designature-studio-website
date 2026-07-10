@@ -14,6 +14,8 @@ export interface Ga4Result {
   organicSearch: number;
   direct: number;
   social: number;
+  /** LLM referrals (ChatGPT / Perplexity / Copilot) — GA4's "AI Assistant" channel. GEO leading indicator. */
+  aiAssistant: number;
   topLandingPage: { path: string; sessions: number } | null;
   topCountry: { country: string; sessions: number } | null;
 }
@@ -25,6 +27,7 @@ const EMPTY: Omit<Ga4Result, "ok" | "error"> = {
   organicSearch: 0,
   direct: 0,
   social: 0,
+  aiAssistant: 0,
   topLandingPage: null,
   topCountry: null,
 };
@@ -76,6 +79,7 @@ export async function fetchGa4(rangeDays = 28): Promise<Ga4Result> {
       organicSearch: byChannel("Organic Search"),
       direct: byChannel("Direct"),
       social: byChannel("Organic Social") + byChannel("Paid Social"),
+      aiAssistant: byChannel("AI Assistant"),
       topLandingPage: landRow
         ? { path: landRow.dimensionValues?.[0]?.value || "", sessions: Number(landRow.metricValues?.[0]?.value || 0) }
         : null,

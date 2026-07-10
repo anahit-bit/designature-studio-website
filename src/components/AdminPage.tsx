@@ -100,6 +100,7 @@ interface Ga4Acq {
   organicSearch: number;
   direct: number;
   social: number;
+  aiAssistant: number;
   topLandingPage: { path: string; sessions: number } | null;
   topCountry: { country: string; sessions: number } | null;
 }
@@ -508,6 +509,17 @@ export const AcquisitionBody: React.FC<{ data: AcquisitionData | null }> = ({ da
         <AcqTile label="Bounce rate" value={ga4?.ok && ga4.bounceRatePct !== null ? `${ga4.bounceRatePct}%` : dash} sub={ga4?.ok ? `${num(ga4.totalSessions)} total sessions` : undefined} />
         <AcqTile label="Top entry page" value={ga4?.topLandingPage ? ga4.topLandingPage.path : dash} title={ga4?.topLandingPage?.path} sub={ga4?.topLandingPage ? `${num(ga4.topLandingPage.sessions)} sessions` : undefined} />
         <AcqTile label="Top country" value={country || dash} sub={ga4?.topCountry ? `${num(ga4.topCountry.sessions)} sessions` : undefined} />
+      </div>
+
+      {/* AI Assistant — GA4's LLM-referral channel; the GEO leading indicator. */}
+      <div className="mt-2 bg-white border border-[#DAD2C3] border-l-2 border-l-[#0047AB] p-3 flex items-center justify-between gap-4">
+        <div>
+          <p className="text-[9px] tracking-[0.22em] uppercase text-neutral-500 font-bold mb-0.5">AI Assistant · LLM referrals</p>
+          <p className="text-[10px] text-neutral-500">ChatGPT · Perplexity · Copilot — your GEO leading indicator</p>
+        </div>
+        <p className="font-serif text-[22px] text-black whitespace-nowrap">
+          {ga4?.ok ? num(ga4.aiAssistant) : dash} <span className="text-[11px] text-neutral-500">sessions</span>
+        </p>
       </div>
 
       <div className="mt-3 bg-white border border-[#DAD2C3] p-4">

@@ -14,6 +14,7 @@ const FULL: AcquisitionData = {
     organicSearch: 4,
     direct: 110,
     social: 26,
+    aiAssistant: 3,
     topLandingPage: { path: '/studio', sessions: 40 },
     topCountry: { country: 'Armenia', sessions: 75 },
   },
@@ -44,6 +45,7 @@ describe('AcquisitionBody', () => {
     expect(screen.getByText('Armenia')).toBeTruthy(); // top country (GA4 preferred)
     expect(screen.getByText('designature')).toBeTruthy(); // top query
     expect(screen.getByText(/336/)).toBeTruthy(); // impressions in header
+    expect(screen.getByText('AI Assistant · LLM referrals')).toBeTruthy(); // GEO tile
   });
 
   it('shows a not-configured note when configured=false', () => {
@@ -54,7 +56,7 @@ describe('AcquisitionBody', () => {
   it('degrades gracefully when GA4 failed but GSC is present', () => {
     render(<AcquisitionBody data={{
       ...FULL,
-      ga4: { ok: false, error: 'GA4 down', totalSessions: 0, bounceRatePct: null, channels: [], organicSearch: 0, direct: 0, social: 0, topLandingPage: null, topCountry: null },
+      ga4: { ok: false, error: 'GA4 down', totalSessions: 0, bounceRatePct: null, channels: [], organicSearch: 0, direct: 0, social: 0, aiAssistant: 0, topLandingPage: null, topCountry: null },
     }} />);
     expect(screen.getByText(/GA4: GA4 down/)).toBeTruthy();
     // GSC keywords still render

@@ -54,7 +54,7 @@ export async function getAcquisition(force = false): Promise<AcquisitionData> {
         configured: true,
         updatedAt: new Date().toISOString(),
         rangeDays: RANGE_DAYS,
-        ga4: { ok: false, error: err instanceof Error ? err.message : "failed", totalSessions: 0, bounceRatePct: null, channels: [], organicSearch: 0, direct: 0, social: 0, topLandingPage: null, topCountry: null },
+        ga4: { ok: false, error: err instanceof Error ? err.message : "failed", totalSessions: 0, bounceRatePct: null, channels: [], organicSearch: 0, direct: 0, social: 0, aiAssistant: 0, topLandingPage: null, topCountry: null },
         gsc: { ok: false, error: err instanceof Error ? err.message : "failed", clicks: 0, impressions: 0, ctrPct: 0, position: 0, topQueries: [], topPage: null, topCountry: null },
       } as AcquisitionData;
     })
