@@ -44,6 +44,7 @@ function ga4Client() {
           { dimensionValues: [{ value: 'Direct' }], metricValues: [{ value: '110' }, { value: '0.782' }] },
           { dimensionValues: [{ value: 'Organic Social' }], metricValues: [{ value: '26' }, { value: '0.462' }] },
           { dimensionValues: [{ value: 'Organic Search' }], metricValues: [{ value: '4' }, { value: '0.5' }] },
+          { dimensionValues: [{ value: 'AI Assistant' }], metricValues: [{ value: '3' }, { value: '0.333' }] },
         ] },
         { rows: [{ metricValues: [{ value: '170' }, { value: '0.6' }] }] },
         { rows: [{ dimensionValues: [{ value: '/studio' }], metricValues: [{ value: '40' }] }] },
@@ -95,6 +96,7 @@ describe('fetchGa4', () => {
     expect(r.direct).toBe(110);
     expect(r.organicSearch).toBe(4);
     expect(r.social).toBe(26); // Organic Social + Paid Social(0)
+    expect(r.aiAssistant).toBe(3); // GA4 "AI Assistant" channel
     expect(r.totalSessions).toBe(170);
     expect(r.bounceRatePct).toBe(60);
     expect(r.channels[0]).toEqual({ channel: 'Direct', sessions: 110, bounceRatePct: 78.2 });
