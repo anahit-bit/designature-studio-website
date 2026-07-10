@@ -10,7 +10,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { useAdminMe } from '../lib/adminAuth';
-import AdminTopBar from './admin/AdminTopBar';
+import AdminShell from './admin/AdminShell';
 
 type CommentStatus = 'pending' | 'approved' | 'rejected';
 
@@ -100,15 +100,7 @@ const AdminCommentsPage: React.FC = () => {
   if (!me.authed) return <Navigate to="/admin/login" replace />;
 
   return (
-    <div className="min-h-screen bg-white font-body">
-      <AdminTopBar
-        product="Comments"
-        rightSlot={
-          <Link to="/admin" className="text-[#0047AB] hover:underline">
-            ← Back to dashboard
-          </Link>
-        }
-      />
+    <AdminShell active="comments" title="Comments">
 
       {/* Filter bar */}
       <section className="bg-[#F4EFE7] border-b border-[#DAD2C3] py-6">
@@ -214,7 +206,7 @@ const AdminCommentsPage: React.FC = () => {
           )}
         </div>
       </section>
-    </div>
+    </AdminShell>
   );
 };
 

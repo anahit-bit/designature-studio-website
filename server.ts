@@ -211,6 +211,20 @@ interface DB {
    *  `source` is set on signup entries only (C-followup, 2026-05-19).
    *  `meta` carries structured event payload (e.g. payment order_id/amount). */
   activityLog?: Array<{ ts: string; userEmail: string; action: string; source?: string; meta?: Record<string, unknown> }>;
+  /** Durable feedback inbox (2026-07-10). The message body is written to a Google
+   *  Sheet via Apps Script for archive, but we ALSO keep it here so /admin has a
+   *  readable, ownable inbox that survives redeploys. Capped at 2000, FIFO. */
+  feedback?: Array<{
+    ts: string;
+    name: string;
+    email: string;
+    country?: string;
+    type: string;        // 'testimonial' | 'bug' | 'feature' | 'general'
+    message: string;
+    rating?: number | null;
+    projectType?: string;
+    status: 'new' | 'read';
+  }>;
 }
 
 /** UTC YYYY-MM-DD for daily-budget bucketing. */
@@ -1049,11 +1063,11 @@ async function startServer() {
   // Pulls the live newsletter list for the /admin newsletter section.
   // Returns the lifetime row count + the 5 newest rows.
   const NEWSLETTER_SHEET_ID = "1ADcawOqI2VElxwPSSuL-PGX3OjHehacod_ApDPRqFo4";
-  async function readNewsletterFromSheet(): Promise<{ count: number; recent: Array<{ email: string; signupDate: string; source: string }>; error?: string }> {
+  async function readNewsletterFromSheet(): Promise<{ count: number; recent: Array<{ email: string; signupDate: string; source: string }>; all: Array<{ email: string; signupDate: string; source: string }>; error?: string }> {
     const serviceAccountJson = (process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON || "").trim();
     const keyFile = (process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_KEYFILE || "").trim();
     if (!serviceAccountJson && !keyFile) {
-      return { count: 0, recent: [], error: "Sheet credentials not configured" };
+      return { count: 0, recent: [], all: [], error: "Sheet credentials not configured" };
     }
 
     let credentials: any;
@@ -1067,7 +1081,7 @@ async function startServer() {
         credentials.private_key = credentials.private_key.replace(/\\n/g, "\n");
       }
     } catch {
-      return { count: 0, recent: [], error: "Sheet credentials invalid" };
+      return { count: 0, recent: [], all: [], error: "Sheet credentials invalid" };
     }
 
     const jwtClient = new google.auth.JWT({
@@ -1082,7 +1096,7 @@ async function startServer() {
       fields: "sheets(properties(title))",
     });
     const sheetTitle = meta.data.sheets?.[0]?.properties?.title;
-    if (!sheetTitle) return { count: 0, recent: [], error: "Sheet has no tabs" };
+    if (!sheetTitle) return { count: 0, recent: [], all: [], error: "Sheet has no tabs" };
 
     const data = await sheetsApi.spreadsheets.values.get({
       spreadsheetId: NEWSLETTER_SHEET_ID,
@@ -1096,15 +1110,16 @@ async function startServer() {
     const headerOffset = rows[0] && String(rows[0][1] || "").trim().toLowerCase() === "email" ? 1 : 0;
     const body = rows.slice(headerOffset);
     const count = body.length;
-    const recent = body
-      .slice(-5)
+    // Newest first — powers both the dashboard recent-5 and the full Waitlist page.
+    const all = body
+      .slice()
       .reverse()
       .map((r) => ({
         email: String(r[1] || ""),
         signupDate: String(r[0] || ""),
         source: String(r[3] || ""),
       }));
-    return { count, recent };
+    return { count, recent: all.slice(0, 5), all };
   }
 
   // ── POST /api/auth/google — exchange Google ID token for session ──
@@ -1481,6 +1496,27 @@ async function startServer() {
         // I-016 — feedback submission. No auth on this endpoint; use submitted email or "anonymous".
         const submitterEmail = (typeof email === "string" && email.trim()) ? email.trim().toLowerCase() : ANON_USER;
         recordActivity(submitterEmail, "feedback_submit");
+        // Durable feedback inbox (2026-07-10): keep the full message so /admin has
+        // a readable, ownable inbox that survives redeploys (sheet = archive).
+        try {
+          const fdb = readDB();
+          if (!fdb.feedback) fdb.feedback = [];
+          fdb.feedback.push({
+            ts: new Date().toISOString(),
+            name: (name || "").trim(),
+            email: (email || "").trim(),
+            country: (country || "").trim(),
+            type,
+            message: (message || "").trim(),
+            rating: rating != null ? rating : null,
+            projectType: (project_type || "").trim(),
+            status: "new",
+          });
+          while (fdb.feedback.length > 2000) fdb.feedback.shift();
+          writeDB(fdb);
+        } catch (e) {
+          console.error("[feedback] durable store failed:", e);
+        }
       } else {
         console.error(`[FEEDBACK] Apps Script returned ok=false:`, data.error);
       }
@@ -2776,20 +2812,16 @@ Output ONLY valid JSON with no markdown fences, no explanation:
   // ?email=<urlenc>  → returns { user, activity } where activity is the user's
   //                    full activityLog history (newest first).
   //
-  // Tier rules:
-  //   "unlimited" — studio-owner allowlist (isConceptTestAccountEmail)
-  //   "paid"      — user.isPaid === true (non-owner)
-  //   "free"      — everyone else
+  // Tier rules (two types only — "unlimited" retired 2026-07, folded into "paid"):
+  //   "paid" — studio-owner allowlist (isConceptTestAccountEmail) OR user.isPaid === true
+  //   "free" — everyone else
   app.get("/api/admin/users-detail", async (req, res) => {
     if (!requireAdmin(req, res)) return;
     const db = readDB();
     const allActivity = db.activityLog || [];
 
-    const tierOf = (u: User): "unlimited" | "paid" | "free" => {
-      if (isConceptTestAccountEmail(u.email)) return "unlimited";
-      if (u.isPaid) return "paid";
-      return "free";
-    };
+    const tierOf = (u: User): "paid" | "free" =>
+      isConceptTestAccountEmail(u.email) || u.isPaid ? "paid" : "free";
 
     const emailQuery = typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : null;
 
@@ -2858,6 +2890,76 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         lastConsultation: consultByGid[u.googleId]?.last || null,
       }));
     res.json({ users });
+  });
+
+  // ── GET /api/admin/counts — sidebar badge counts (2026-07-10) ──────────────
+  // Cheap-ish rollup for the admin left-nav badges. DB counts are instant; the
+  // waitlist count comes from the newsletter Sheet (cached 60s so nav mounts are
+  // snappy). Each source degrades to 0 independently rather than 500-ing.
+  let waitlistCountCache: { val: number; exp: number } | null = null;
+  app.get("/api/admin/counts", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const db = readDB();
+    const users = Object.keys(db.users || {}).length;
+    const feedbackNew = (db.feedback || []).filter((f) => f.status === "new").length;
+    let comments = 0;
+    let orders = 0;
+    try {
+      const cr = await getPool().query(`SELECT COUNT(*)::int AS n FROM blog_comments WHERE status = 'pending'`);
+      comments = cr.rows[0]?.n || 0;
+    } catch { /* degrade */ }
+    try {
+      const orq = await getPool().query(
+        `SELECT COUNT(*)::int AS n FROM orders WHERE product_type = 'consultation' AND status = 'paid'`,
+      );
+      orders = orq.rows[0]?.n || 0;
+    } catch { /* degrade */ }
+    let waitlist = 0;
+    try {
+      if (waitlistCountCache && waitlistCountCache.exp > Date.now()) {
+        waitlist = waitlistCountCache.val;
+      } else {
+        waitlist = (await readNewsletterFromSheet()).count;
+        waitlistCountCache = { val: waitlist, exp: Date.now() + 60_000 };
+      }
+    } catch { /* degrade */ }
+    res.json({ users, comments, feedback: feedbackNew, waitlist, orders });
+  });
+
+  // ── GET /api/admin/feedback — durable feedback inbox (newest first) ────────
+  app.get("/api/admin/feedback", (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const db = readDB();
+    const items = (db.feedback || []).slice().reverse();
+    res.json({ items, newCount: items.filter((f) => f.status === "new").length });
+  });
+
+  // ── POST /api/admin/feedback/read — mark one (by ts) or all as read ────────
+  app.post("/api/admin/feedback/read", (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const { ts, all } = req.body || {};
+    const db = readDB();
+    if (!db.feedback) db.feedback = [];
+    let changed = 0;
+    for (const f of db.feedback) {
+      if ((all === true || (typeof ts === "string" && f.ts === ts)) && f.status !== "read") {
+        f.status = "read";
+        changed++;
+      }
+    }
+    if (changed) writeDB(db);
+    res.json({ ok: true, changed });
+  });
+
+  // ── GET /api/admin/waitlist — full paid-feature / newsletter list ──────────
+  app.get("/api/admin/waitlist", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    try {
+      const nl = await readNewsletterFromSheet();
+      res.json({ count: nl.count, items: nl.all, error: nl.error });
+    } catch (e: any) {
+      res.json({ count: 0, items: [], error: e?.message || "Sheet read failed" });
+    }
   });
 
   // ── GET /api/admin/usage — observability aggregator (I-011 · I-021b) ──

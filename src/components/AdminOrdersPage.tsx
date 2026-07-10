@@ -13,9 +13,9 @@
  * Data: GET /api/payments/ameria/orders. Actions: POST /refund | /cancel.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Navigate, Link } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAdminMe } from '../lib/adminAuth';
-import AdminTopBar from './admin/AdminTopBar';
+import AdminShell from './admin/AdminShell';
 
 type OrderStatus = 'pending' | 'paid' | 'failed' | 'refunded' | 'cancelled';
 
@@ -248,15 +248,7 @@ const AdminOrdersPage: React.FC = () => {
   if (!me.authed) return <Navigate to="/admin/login" replace />;
 
   return (
-    <div className="min-h-screen bg-white font-body">
-      <AdminTopBar
-        product="Orders"
-        rightSlot={
-          <Link to="/admin" className="text-[#0047AB] hover:underline">
-            ← Back to dashboard
-          </Link>
-        }
-      />
+    <AdminShell active="orders" title="Orders">
 
       {/* Filter bar */}
       <section className="bg-[#F4EFE7] border-b border-[#DAD2C3] py-6">
@@ -380,7 +372,7 @@ const AdminOrdersPage: React.FC = () => {
           }}
         />
       )}
-    </div>
+    </AdminShell>
   );
 };
 
