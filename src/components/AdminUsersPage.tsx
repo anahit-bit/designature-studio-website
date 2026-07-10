@@ -9,11 +9,11 @@
  * if not authed.
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { Navigate, Link } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAdminMe } from '../lib/adminAuth';
-import AdminTopBar from './admin/AdminTopBar';
+import AdminShell from './admin/AdminShell';
 
-type Tier = 'unlimited' | 'paid' | 'free';
+type Tier = 'paid' | 'free';
 
 interface UserRow {
   email: string;
@@ -246,7 +246,7 @@ const AdminUsersPage: React.FC = () => {
         if (sortKey === 'totalActivityCount') return dir * (a.totalActivityCount - b.totalActivityCount);
         if (sortKey === 'consultations') return dir * (a.consultations - b.consultations);
         if (sortKey === 'tier') {
-          const order = { free: 0, paid: 1, unlimited: 2 } as const;
+          const order = { free: 0, paid: 1 } as const;
           return dir * (order[a.tier] - order[b.tier]);
         }
         const av = a[sortKey] as string;
@@ -268,15 +268,7 @@ const AdminUsersPage: React.FC = () => {
   if (!me.authed) return <Navigate to="/admin/login" replace />;
 
   return (
-    <div className="min-h-screen bg-white font-body">
-      <AdminTopBar
-        product="Users"
-        rightSlot={
-          <Link to="/admin" className="text-[#0047AB] hover:underline">
-            ← Back to dashboard
-          </Link>
-        }
-      />
+    <AdminShell active="users" title="Users">
 
       {/* Filter bar */}
       <section className="bg-[#F4EFE7] border-b border-[#DAD2C3] py-6">
@@ -296,7 +288,6 @@ const AdminUsersPage: React.FC = () => {
               <option value="all">All tiers</option>
               <option value="free">Free</option>
               <option value="paid">Paid</option>
-              <option value="unlimited">Unlimited</option>
             </select>
             <span className="text-[10px] tracking-[0.22em] uppercase text-neutral-500 font-bold">Signup year</span>
             <select
@@ -393,8 +384,7 @@ const AdminUsersPage: React.FC = () => {
                         <td className="px-5 py-4 text-xs">
                           <span className={`inline-block text-[9px] tracking-[0.22em] uppercase font-bold px-2 py-0.5 ${
                             r.tier === 'free'      ? 'bg-black/[0.06] text-neutral-500' :
-                            r.tier === 'paid'      ? 'bg-[#0047AB] text-white' :
-                                                      'bg-black text-white'
+                                                      'bg-[#0047AB] text-white'
                           }`}>
                             {r.tier}
                           </span>
@@ -423,7 +413,7 @@ const AdminUsersPage: React.FC = () => {
       </section>
 
       {openEmail && <Drawer email={openEmail} onClose={() => setOpenEmail(null)} />}
-    </div>
+    </AdminShell>
   );
 };
 
