@@ -66,6 +66,8 @@ import { buildRobotsTxt } from "./server/config/bots.js";
 import { buildSitemap } from "./server/seo/sitemap.js";
 import { renderRoute, loadTemplate } from "./server/seo/render.js";
 import { absUrl } from "./server/seo/config.js";
+// ─── Legacy WordPress → canonical redirect map (GSC unindexed-pages fix) ───────
+import { legacyRedirects } from "./server/redirects.js";
 
 const FALLBACK_ENV_PATH = 'E:/Secrets/Website/.env';
 dotenv.config({
@@ -4051,6 +4053,13 @@ ${bodyHtml}
         .send(calendarSetupPage(`<h1 style="font-family:Georgia,serif;font-weight:400;">Token exchange failed</h1><p>Check the server logs. Confirm the redirect URI <code>${getCalendarRedirectUri()}</code> is registered in the Google Cloud OAuth client.</p>`));
     }
   });
+
+  // ─── Legacy WordPress redirects (GSC unindexed-pages fix, 2026-07-10) ────
+  // Maps dead pre-rebuild WP URLs to their canonical modern equivalents (301)
+  // and returns 410 Gone for old WP assets. MUST run before robots/sitemap and
+  // the SPA fallback so legacy paths never reach the client router. See
+  // server/redirects.ts + _Memory/2026-07-10-website-gsc-unindexed-fix-handoff.md.
+  app.use(legacyRedirects);
 
   // ─── GEO / SEO: robots.txt + sitemap.xml ────────────────────────────────
   // Registered before the dev/prod SPA branch so they resolve identically in
