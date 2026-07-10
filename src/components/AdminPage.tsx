@@ -90,6 +90,38 @@ interface UsageResponse {
 
 interface Counts { users: number; comments: number; feedback: number; waitlist: number; orders: number; }
 
+// ── Acquisition (I-027) — mirrors server/analytics/acquisition.ts ────────────
+interface Ga4Acq {
+  ok: boolean;
+  error?: string;
+  totalSessions: number;
+  bounceRatePct: number | null;
+  channels: Array<{ channel: string; sessions: number; bounceRatePct: number }>;
+  organicSearch: number;
+  direct: number;
+  social: number;
+  topLandingPage: { path: string; sessions: number } | null;
+  topCountry: { country: string; sessions: number } | null;
+}
+interface GscAcq {
+  ok: boolean;
+  error?: string;
+  clicks: number;
+  impressions: number;
+  ctrPct: number;
+  position: number;
+  topQueries: Array<{ query: string; clicks: number; impressions: number }>;
+  topPage: { page: string; clicks: number } | null;
+  topCountry: { country: string; clicks: number } | null;
+}
+export interface AcquisitionData {
+  configured: boolean;
+  updatedAt: string;
+  rangeDays: number;
+  ga4: Ga4Acq | null;
+  gsc: GscAcq | null;
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function relativeTime(iso: string): string {
@@ -422,27 +454,92 @@ const CostBody: React.FC<{ data: UsageResponse['cost'] }> = ({ data }) => (
   </>
 );
 
-const AcquisitionBody: React.FC = () => (
-  <div className="bg-[#FAFAFA] border border-dashed border-[#DAD2C3] p-7 flex items-center gap-6 flex-wrap">
-    <div className="flex-1 min-w-[280px]">
-      <p className="text-[9px] tracking-[0.32em] uppercase text-[#0047AB] font-bold mb-2">Awaiting I-007 · GA4 + Search Console</p>
-      <h3 className="font-serif text-[22px] leading-[1.15] text-black mb-1.5">Traffic sources, bounce rate, geographic distribution</h3>
-      <p className="text-[13px] text-neutral-500 leading-[1.55]">
-        These require Google Analytics 4 and Search Console integration (ticket I-007 on the backlog). When that
-        ships, this section comes alive — organic vs direct vs social traffic, top entry pages, where visitors
-        are coming from, which keywords brought them.
-      </p>
-    </div>
-    <div className="grid grid-cols-3 gap-2 flex-1 min-w-[360px] opacity-50">
-      {['Organic search', 'Direct', 'Social', 'Bounce rate', 'Top entry page', 'Top country'].map((l) => (
-        <div key={l} className="bg-white border border-[#DAD2C3] p-3">
-          <p className="text-[9px] tracking-[0.22em] uppercase text-neutral-500 font-bold mb-1">{l}</p>
-          <p className="font-serif text-[22px] text-black">—</p>
-        </div>
-      ))}
-    </div>
+const AcqTile: React.FC<{ label: string; value: React.ReactNode; sub?: string; title?: string }> = ({ label, value, sub, title }) => (
+  <div className="bg-white border border-[#DAD2C3] p-3">
+    <p className="text-[9px] tracking-[0.22em] uppercase text-neutral-500 font-bold mb-1">{label}</p>
+    <p className="font-serif text-[22px] text-black leading-tight truncate" title={title}>{value}</p>
+    {sub && <p className="text-[10px] text-neutral-500 mt-0.5">{sub}</p>}
   </div>
 );
+
+const num = (n: number) => n.toLocaleString('en-US');
+
+export const AcquisitionBody: React.FC<{ data: AcquisitionData | null }> = ({ data }) => {
+  if (!data) return <p className="text-sm text-neutral-500 italic py-3">Loading…</p>;
+
+  if (!data.configured) {
+    return (
+      <div className="bg-[#FAFAFA] border border-dashed border-[#DAD2C3] p-7">
+        <p className="text-[9px] tracking-[0.32em] uppercase text-[#0047AB] font-bold mb-2">Not configured</p>
+        <p className="text-[13px] text-neutral-500 leading-[1.55]">
+          Set <code className="font-mono text-[12px]">GA4_PROPERTY_ID</code> and grant the Sheets service account read
+          access in Search Console + GA4. See the I-027 plan in memory.
+        </p>
+      </div>
+    );
+  }
+
+  const ga4 = data.ga4;
+  const gsc = data.gsc;
+  const dash = <span className="text-neutral-300">—</span>;
+  const country = ga4?.topCountry?.country || (gsc?.topCountry ? gsc.topCountry.country : null);
+
+  return (
+    <div>
+      <div className="flex items-baseline justify-between flex-wrap gap-2 mb-3">
+        <p className="text-[11px] text-neutral-500">
+          Last {data.rangeDays} days · GA4 + Search Console · updated {relativeTime(data.updatedAt)}
+        </p>
+        {gsc?.ok && (
+          <p className="text-[11px] text-neutral-500">
+            Search: <strong className="text-black">{num(gsc.clicks)}</strong> clicks · <strong className="text-black">{num(gsc.impressions)}</strong> impr · {gsc.ctrPct}% CTR · pos {gsc.position}
+          </p>
+        )}
+      </div>
+
+      {ga4 && !ga4.ok && (
+        <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 px-3 py-2 mb-3">GA4: {ga4.error || 'unavailable'}</p>
+      )}
+
+      <div className="grid grid-cols-3 gap-2">
+        <AcqTile label="Organic search" value={ga4?.ok ? num(ga4.organicSearch) : dash} sub="sessions" />
+        <AcqTile label="Direct" value={ga4?.ok ? num(ga4.direct) : dash} sub="sessions" />
+        <AcqTile label="Social" value={ga4?.ok ? num(ga4.social) : dash} sub="sessions" />
+        <AcqTile label="Bounce rate" value={ga4?.ok && ga4.bounceRatePct !== null ? `${ga4.bounceRatePct}%` : dash} sub={ga4?.ok ? `${num(ga4.totalSessions)} total sessions` : undefined} />
+        <AcqTile label="Top entry page" value={ga4?.topLandingPage ? ga4.topLandingPage.path : dash} title={ga4?.topLandingPage?.path} sub={ga4?.topLandingPage ? `${num(ga4.topLandingPage.sessions)} sessions` : undefined} />
+        <AcqTile label="Top country" value={country || dash} sub={ga4?.topCountry ? `${num(ga4.topCountry.sessions)} sessions` : undefined} />
+      </div>
+
+      <div className="mt-3 bg-white border border-[#DAD2C3] p-4">
+        <p className="text-[9px] tracking-[0.22em] uppercase text-neutral-500 font-bold mb-2">Top search queries · Google (28d)</p>
+        {!gsc?.ok ? (
+          <p className="text-xs text-neutral-500 italic">Search Console: {gsc?.error || 'unavailable'}</p>
+        ) : gsc.topQueries.length === 0 ? (
+          <p className="text-xs text-neutral-500 italic">No query impressions in range.</p>
+        ) : (
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr>
+                <th className="text-left px-1.5 py-1.5 text-[9px] tracking-[0.22em] uppercase text-neutral-500 font-bold border-b border-[#DAD2C3]">Query</th>
+                <th className="text-right px-1.5 py-1.5 text-[9px] tracking-[0.22em] uppercase text-neutral-500 font-bold border-b border-[#DAD2C3]">Clicks</th>
+                <th className="text-right px-1.5 py-1.5 text-[9px] tracking-[0.22em] uppercase text-neutral-500 font-bold border-b border-[#DAD2C3]">Impr</th>
+              </tr>
+            </thead>
+            <tbody>
+              {gsc.topQueries.map((q, i) => (
+                <tr key={`${q.query}-${i}`} className="border-b border-[#DAD2C3] last:border-b-0">
+                  <td className="px-1.5 py-1.5 text-neutral-700 truncate max-w-[420px]" title={q.query}>{q.query}</td>
+                  <td className="px-1.5 py-1.5 text-right text-neutral-700 tabular-nums">{num(q.clicks)}</td>
+                  <td className="px-1.5 py-1.5 text-right text-neutral-700 tabular-nums">{num(q.impressions)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const PlatformsBody: React.FC<{ items: Platform[] }> = ({ items }) => (
   <div className="grid grid-cols-3 gap-3.5">
@@ -545,6 +642,7 @@ const AdminPage: React.FC = () => {
   const navigate = useNavigate();
   const [data, setData] = useState<UsageResponse | null>(null);
   const [counts, setCounts] = useState<Counts | null>(null);
+  const [acquisition, setAcquisition] = useState<AcquisitionData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
 
@@ -572,6 +670,12 @@ const AdminPage: React.FC = () => {
     fetch('/api/admin/counts', { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (!cancelled && d) setCounts(d); })
+      .catch(() => {});
+
+    // Acquisition (I-027) — server-cached ~6h, so fetch once on mount (not polled).
+    fetch('/api/admin/acquisition', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!cancelled && d) setAcquisition(d); })
       .catch(() => {});
 
     const id = window.setInterval(load, POLL_MS);
@@ -659,7 +763,7 @@ const AdminPage: React.FC = () => {
           </CollapsibleSection>
 
           <CollapsibleSection title="Acquisition" sub="Where do visitors come from?" storageKey="acquisition" defaultOpen={false}>
-            <AcquisitionBody />
+            <AcquisitionBody data={acquisition} />
           </CollapsibleSection>
 
           <CollapsibleSection title="Shopping incident view" sub="Last 100 Serper calls · forensic trail" storageKey="incident" defaultOpen={false}>

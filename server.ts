@@ -68,6 +68,8 @@ import { renderRoute, loadTemplate } from "./server/seo/render.js";
 import { absUrl } from "./server/seo/config.js";
 // ─── Legacy WordPress → canonical redirect map (GSC unindexed-pages fix) ───────
 import { legacyRedirects } from "./server/redirects.js";
+// ─── Acquisition read-back (I-027): GA4 Data API + Search Console → /admin ─────
+import { getAcquisition } from "./server/analytics/acquisition.js";
 
 const FALLBACK_ENV_PATH = 'E:/Secrets/Website/.env';
 dotenv.config({
@@ -2926,6 +2928,21 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       }
     } catch { /* degrade */ }
     res.json({ users, comments, feedback: feedbackNew, waitlist, orders });
+  });
+
+  // ── GET /api/admin/acquisition — GA4 + Search Console read-back (I-027) ────
+  // Traffic sources, bounce, geo, top entry page, organic keywords. Cached
+  // ~6h in-process (see server/analytics/acquisition.ts) so the polled admin
+  // dashboard never hammers the Google APIs. Returns {configured:false} when
+  // creds / GA4_PROPERTY_ID are missing.
+  app.get("/api/admin/acquisition", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    try {
+      res.json(await getAcquisition());
+    } catch (err) {
+      console.error("[acquisition] fetch failed:", err instanceof Error ? err.message : err);
+      res.status(500).json({ error: "acquisition unavailable" });
+    }
   });
 
   // ── GET /api/admin/feedback — durable feedback inbox (newest first) ────────
