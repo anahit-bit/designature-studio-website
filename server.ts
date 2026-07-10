@@ -70,6 +70,8 @@ import { absUrl } from "./server/seo/config.js";
 import { legacyRedirects } from "./server/redirects.js";
 // ─── Acquisition read-back (I-027): GA4 Data API + Search Console → /admin ─────
 import { getAcquisition } from "./server/analytics/acquisition.js";
+// ─── Internal/owner accounts excluded from /admin analytics aggregates ────────
+import { isInternalAccount } from "./server/internalAccounts.js";
 
 const FALLBACK_ENV_PATH = 'E:/Secrets/Website/.env';
 dotenv.config({
@@ -2904,7 +2906,8 @@ Output ONLY valid JSON with no markdown fences, no explanation:
   app.get("/api/admin/counts", async (req, res) => {
     if (!requireAdmin(req, res)) return;
     const db = readDB();
-    const users = Object.keys(db.users || {}).length;
+    // Exclude internal/owner accounts to match the /api/admin/usage aggregates.
+    const users = Object.values(db.users || {}).filter((u) => !isInternalAccount(u.email)).length;
     const feedbackNew = (db.feedback || []).filter((f) => f.status === "new").length;
     let comments = 0;
     let orders = 0;
@@ -2997,8 +3000,12 @@ Output ONLY valid JSON with no markdown fences, no explanation:
   app.get("/api/admin/usage", async (req, res) => {
     if (!requireAdmin(req, res)) return;
     const db = readDB();
-    const userList = Object.values(db.users);
-    const allActivity = db.activityLog || [];
+    // Exclude internal/owner accounts from ALL analytics aggregates so the owner's
+    // own testing doesn't skew the numbers (see server/internalAccounts.ts). The
+    // raw activity feed below is left unfiltered (it's a forensic log).
+    const allActivityRaw = db.activityLog || [];
+    const userList = Object.values(db.users).filter((u) => !isInternalAccount(u.email));
+    const allActivity = allActivityRaw.filter((e) => !isInternalAccount(e.userEmail));
     const now = Date.now();
     const dayMs = 24 * 60 * 60 * 1000;
     const sevenDaysAgo = now - 7 * dayMs;
@@ -3193,7 +3200,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
     res.json({
       counters,
-      activity: allActivity.slice(-50).reverse(), // newest first
+      activity: allActivityRaw.slice(-50).reverse(), // forensic feed — unfiltered (newest first)
       platforms: PLATFORMS,
       serperLog: (db.serperLog || []).slice(-100).reverse(), // newest first
       users: {
