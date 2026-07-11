@@ -85,7 +85,7 @@ const TEMPLATE = `<!DOCTYPE html>
   <meta property="og:title" content="old og" />
   <meta property="og:image" content="old-og.jpg" />
   <meta property="twitter:card" content="summary_large_image" />
-  <link rel="canonical" href="https://designature.studio/old" />
+  <link rel="canonical" href="https://www.designature.studio/old" />
   <link rel="preload" as="image" href="https://cdn/hero.jpg" fetchpriority="high" />
 </head>
 <body class="font-body"><div id="root"></div><script type="module" src="/src/main.tsx"></script></body></html>`;
@@ -105,7 +105,7 @@ describe('bots allowlist', () => {
   });
 
   it('robots.txt allows every listed bot, disallows private paths, and lists the sitemap', () => {
-    const txt = buildRobotsTxt('https://designature.studio/sitemap.xml');
+    const txt = buildRobotsTxt('https://www.designature.studio/sitemap.xml');
     for (const bot of ALLOWED_BOTS) {
       expect(txt).toContain(`User-agent: ${bot}`);
     }
@@ -113,7 +113,7 @@ describe('bots allowlist', () => {
       expect(txt).toContain(`Disallow: ${path}`);
     }
     expect(txt).toContain('User-agent: *');
-    expect(txt).toContain('Sitemap: https://designature.studio/sitemap.xml');
+    expect(txt).toContain('Sitemap: https://www.designature.studio/sitemap.xml');
     // Key AI crawlers explicitly present.
     for (const bot of ['GPTBot', 'OAI-SearchBot', 'PerplexityBot', 'ClaudeBot', 'Google-Extended', 'Bingbot', 'Googlebot']) {
       expect(txt).toContain(bot);
@@ -157,7 +157,7 @@ describe('route classification + metadata', () => {
       expect(meta.title.length).toBeGreaterThan(10);
       expect(meta.description.length).toBeGreaterThan(50);
       expect(meta.noindex).toBe(false);
-      expect(meta.canonical.startsWith('https://designature.studio')).toBe(true);
+      expect(meta.canonical.startsWith('https://www.designature.studio')).toBe(true);
       titles.add(meta.title);
       descs.add(meta.description);
     }
@@ -177,7 +177,7 @@ describe('route classification + metadata', () => {
     expect(meta.title).toContain('Feminine Apartment');
     expect(meta.description).toContain('feminine apartment redesign');
     expect(meta.ogImage).toBe(SAMPLE_PROJECT.imageUrl);
-    expect(meta.canonical).toBe('https://designature.studio/portfolio/0022');
+    expect(meta.canonical).toBe('https://www.designature.studio/portfolio/0022');
     expect(meta.noindex).toBe(false);
   });
 
@@ -237,7 +237,7 @@ describe('sitemap', () => {
   it('renders valid XML with escaped, absolute locs', () => {
     const xml = renderSitemapXml([{ path: '/x?a=1&b=2', lastmod: '2026-01-02', priority: 0.5 }]);
     expect(xml.startsWith('<?xml')).toBe(true);
-    expect(xml).toContain('<loc>https://designature.studio/x?a=1&amp;b=2</loc>');
+    expect(xml).toContain('<loc>https://www.designature.studio/x?a=1&amp;b=2</loc>');
     expect(xml).toContain('<lastmod>2026-01-02</lastmod>');
     expect(xml).toContain('<priority>0.5</priority>');
   });
@@ -245,9 +245,9 @@ describe('sitemap', () => {
   it('includes every static route + Sanity project slugs', async () => {
     const xml = await buildSitemap(1000);
     for (const r of STATIC_SITEMAP_ROUTES) {
-      expect(xml).toContain(`<loc>https://designature.studio${r.path === '/' ? '/' : r.path}</loc>`);
+      expect(xml).toContain(`<loc>https://www.designature.studio${r.path === '/' ? '/' : r.path}</loc>`);
     }
-    expect(xml).toContain('<loc>https://designature.studio/portfolio/0022</loc>');
+    expect(xml).toContain('<loc>https://www.designature.studio/portfolio/0022</loc>');
   });
 });
 
@@ -260,8 +260,8 @@ describe('HTML injection', () => {
     expect(html).not.toContain('old default description');
     expect(html).not.toContain('old og');
     // canonical + og:url
-    expect(html).toContain('<link rel="canonical" href="https://designature.studio/"');
-    expect(html).toContain('property="og:url" content="https://designature.studio/"');
+    expect(html).toContain('<link rel="canonical" href="https://www.designature.studio/"');
+    expect(html).toContain('property="og:url" content="https://www.designature.studio/"');
     expect(html).toContain('name="twitter:card" content="summary_large_image"');
     // preload preserved
     expect(html).toContain('rel="preload"');
@@ -315,7 +315,7 @@ describe('journal (Phase 2) routes', () => {
     expect(meta.title).toContain('Journal');
     expect(meta.description.length).toBeGreaterThan(50);
     expect(meta.noindex).toBe(false);
-    expect(meta.canonical).toBe('https://designature.studio/journal');
+    expect(meta.canonical).toBe('https://www.designature.studio/journal');
   });
 
   it('resolves article meta from the post (prefers seo.metaTitle/Description + coverImage)', () => {
@@ -324,7 +324,7 @@ describe('journal (Phase 2) routes', () => {
     expect(meta.title).toBe('Lighting a Living Room — A Practical Guide');
     expect(meta.description).toContain('layered approach');
     expect(meta.ogImage).toBe(SAMPLE_POST.coverImage);
-    expect(meta.canonical).toBe('https://designature.studio/journal/light-a-living-room');
+    expect(meta.canonical).toBe('https://www.designature.studio/journal/light-a-living-room');
     expect(meta.noindex).toBe(false);
   });
 
@@ -375,9 +375,9 @@ describe('journal (Phase 2) routes', () => {
 
   it('includes journal post + category slugs in the sitemap', async () => {
     const xml = await buildSitemap(2000);
-    expect(xml).toContain('<loc>https://designature.studio/journal</loc>');
-    expect(xml).toContain('<loc>https://designature.studio/journal/light-a-living-room</loc>');
-    expect(xml).toContain('<loc>https://designature.studio/journal/category/how-to</loc>');
+    expect(xml).toContain('<loc>https://www.designature.studio/journal</loc>');
+    expect(xml).toContain('<loc>https://www.designature.studio/journal/light-a-living-room</loc>');
+    expect(xml).toContain('<loc>https://www.designature.studio/journal/category/how-to</loc>');
   });
 
   it('prerenders article title + body text + FAQ through renderRoute', async () => {

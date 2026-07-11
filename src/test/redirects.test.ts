@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchLegacyRedirect, legacyRedirects } from '../../server/redirects';
+import { matchLegacyRedirect, legacyRedirects, trailingSlashRedirect } from '../../server/redirects';
 
 /** Minimal Express req/res stub for exercising the middleware. */
 function runMiddleware(path: string) {
@@ -157,5 +157,42 @@ describe('legacyRedirects middleware', () => {
     expect(r.nextCalled).toBe(true);
     expect(r.redirectStatus).toBeNull();
     expect(r.sentStatus).toBeNull();
+  });
+});
+
+describe('trailingSlashRedirect middleware', () => {
+  function run(path: string, url?: string) {
+    let redirectedTo: string | null = null;
+    let redirectStatus: number | null = null;
+    let nextCalled = false;
+    const req = { path, url: url ?? path } as any;
+    const res = {
+      redirect(status: number, target: string) { redirectStatus = status; redirectedTo = target; },
+    } as any;
+    trailingSlashRedirect(req, res, () => { nextCalled = true; });
+    return { redirectedTo, redirectStatus, nextCalled };
+  }
+
+  it('301s a trailing slash to the bare path', () => {
+    const r = run('/portfolio/');
+    expect(r.redirectStatus).toBe(301);
+    expect(r.redirectedTo).toBe('/portfolio');
+    expect(r.nextCalled).toBe(false);
+  });
+
+  it('preserves the query string', () => {
+    const r = run('/journal/', '/journal/?page=2');
+    expect(r.redirectedTo).toBe('/journal?page=2');
+  });
+
+  it('leaves the root path and bare paths alone', () => {
+    expect(run('/').nextCalled).toBe(true);
+    expect(run('/portfolio').nextCalled).toBe(true);
+  });
+
+  it('never rewrites /api/* routes', () => {
+    const r = run('/api/admin/usage/');
+    expect(r.nextCalled).toBe(true);
+    expect(r.redirectStatus).toBeNull();
   });
 });

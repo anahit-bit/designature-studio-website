@@ -67,7 +67,7 @@ import { buildSitemap } from "./server/seo/sitemap.js";
 import { renderRoute, loadTemplate } from "./server/seo/render.js";
 import { absUrl } from "./server/seo/config.js";
 // ─── Legacy WordPress → canonical redirect map (GSC unindexed-pages fix) ───────
-import { legacyRedirects } from "./server/redirects.js";
+import { legacyRedirects, trailingSlashRedirect } from "./server/redirects.js";
 // ─── Acquisition read-back (I-027): GA4 Data API + Search Console → /admin ─────
 import { getAcquisition } from "./server/analytics/acquisition.js";
 // ─── Internal/owner accounts excluded from /admin analytics aggregates ────────
@@ -4084,6 +4084,9 @@ ${bodyHtml}
   // the SPA fallback so legacy paths never reach the client router. See
   // server/redirects.ts + _Memory/2026-07-10-website-gsc-unindexed-fix-handoff.md.
   app.use(legacyRedirects);
+  // Canonicalize trailing slashes (/foo/ → /foo). After legacyRedirects so
+  // /blog/ resolves via the legacy rule; before robots/sitemap + the SPA.
+  app.use(trailingSlashRedirect);
 
   // ─── GEO / SEO: robots.txt + sitemap.xml ────────────────────────────────
   // Registered before the dev/prod SPA branch so they resolve identically in
