@@ -12,9 +12,11 @@
  *   valid without them; add them here when confirmed for a richer LocalBusiness.
  */
 
-/** Canonical origin. Apex → www is handled at the DNS/redirect layer; we emit
- *  the apex here to match the values already shipped in index.html. */
-export const SITE_URL = "https://designature.studio";
+/** Canonical origin = www — the public host. The apex (designature.studio)
+ *  301-redirects to www, so emitting www here makes every canonical / OG /
+ *  JSON-LD / sitemap URL match the redirect destination. One consistent signal
+ *  to Google (previously we emitted apex, which contradicted the redirect). */
+export const SITE_URL = "https://www.designature.studio";
 
 /** Absolute-URL helper. Ensures a single leading slash and no double origin. */
 export function absUrl(pathOrUrl: string): string {

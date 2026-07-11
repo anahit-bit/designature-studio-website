@@ -99,3 +99,22 @@ export function legacyRedirects(req: Request, res: Response, next: NextFunction)
   }
   res.redirect(301, hit.target as string);
 }
+
+/**
+ * Canonicalize trailing slashes: `/portfolio/` → `/portfolio` (301), preserving
+ * the query string. Kills duplicate slash/non-slash URLs at the source so Google
+ * sees one canonical path per page (stronger than relying on the canonical tag).
+ *
+ * Skips the root `/`, anything already without a trailing slash, and `/api/*`
+ * (API routes are matched exactly and must not be rewritten). Mount AFTER
+ * legacyRedirects (so `/blog/` hits the legacy rule directly) and before the SPA.
+ */
+export function trailingSlashRedirect(req: Request, res: Response, next: NextFunction): void {
+  const p = req.path;
+  if (p.length > 1 && p.endsWith("/") && !p.startsWith("/api/")) {
+    const q = req.url.slice(p.length); // preserve ?query / #hash
+    res.redirect(301, p.replace(/\/+$/, "") + q);
+    return;
+  }
+  next();
+}
