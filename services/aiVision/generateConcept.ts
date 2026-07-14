@@ -1,11 +1,10 @@
 /**
- * AI-029 Phase 3 — concept generation orchestrator.
+ * AI-029 — concept generation orchestrator.
  *
- * Routes to the virtual-staging engine (fal) when a fal key is present — it
- * keeps the real room and only adds furniture, so it never invents doorways or
- * windows — and falls back to the Gemini engine on any staging failure (or when
- * no fal key is configured), so a provider outage never blocks a user. Returns
- * which engine actually produced the image.
+ * DEFAULT is the improved Gemini engine (owner decision 2026-07-14: AI-029
+ * parked here). The fal virtual-staging engine remains on this branch but is
+ * opt-in only — set AI_VISION_ENGINE=staging to route to it (it falls back to
+ * Gemini on failure). Returns which engine actually produced the image.
  */
 
 import { generateConceptImage, type ImageGenerationInput } from "./imageGeneration.js";
@@ -20,7 +19,13 @@ export interface GenerateConceptResult {
 export async function generateConcept(
   input: ImageGenerationInput
 ): Promise<GenerateConceptResult> {
-  if (isStagingAvailable()) {
+  // AI-029 parked (2026-07-14): the improved Gemini engine is the DEFAULT.
+  // The fal virtual-staging engine is kept on this branch but opt-in only —
+  // set AI_VISION_ENGINE=staging to try it. Unset (default) = improved Gemini.
+  const forcedEngine = (process.env.AI_VISION_ENGINE || "").trim().toLowerCase();
+  const stagingRequested = forcedEngine === "staging";
+
+  if (stagingRequested && isStagingAvailable()) {
     try {
       const url = await generateConceptImageStaging({
         roomPhoto: input.roomPhoto,
