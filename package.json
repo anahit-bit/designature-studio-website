@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
+    "@fal-ai/client": "^1.10.1",
     "@google/genai": "^1.41.0",
     "@sanity/client": "^7.21.0",
     "@types/bcryptjs": "^2.4.6",

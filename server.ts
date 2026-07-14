@@ -16,8 +16,10 @@ import { GoogleGenAI } from "@google/genai";
 
 // ─── AI Vision pipeline services ──────────────────────────────────────────────
 import { extractStyleBrief } from "./services/aiVision/styleExtraction.js";
-import { generateConceptImage } from "./services/aiVision/imageGeneration.js";
+import { generateConcept } from "./services/aiVision/generateConcept.js";
 import { getCacheKey, getCachedBrief, setCachedBrief } from "./services/aiVision/styleCache.js";
+import { analyzeRoomStructure, renderSpatialConstraints, isSingleWallShot } from "./services/aiVision/spatialAnalysis.js";
+import { getSpatialCacheKey, getCachedStructure, setCachedStructure } from "./services/aiVision/spatialCache.js";
 import { STYLE_NAME_TO_PRESET, ROOM_NAME_TO_TYPE } from "./services/aiVision/stylePresets.js";
 
 // ─── Shopping List search-accuracy (#12): price + direct-link + match helpers ─
@@ -793,6 +795,7 @@ async function startServer() {
   // ════════════════════════════════════════════════════════════════════════
   const CALL_COSTS: Record<string, number> = {
     gemini:     0.0001,
+    fal:        0.02,   // AI-029 Phase 3 — Flux apartment-staging ≈ $0.021/megapixel
     cloudinary: 0,
     serper:     0.02,
     sheets:     0,
@@ -802,6 +805,7 @@ async function startServer() {
   /** Free-tier hard caps per provider (monthly unless noted) — used for cost bars. */
   const PROVIDER_FREE_CAPS: Record<string, { window: 'daily' | 'monthly'; limit: number; label: string }> = {
     gemini:     { window: 'daily',   limit: 1500, label: '1,500 / day' },
+    fal:        { window: 'monthly', limit:    0, label: 'pay-as-you-go' },
     cloudinary: { window: 'monthly', limit:   25, label: '25 credits / mo' },
     serper:     { window: 'daily',   limit:  200, label: '200 / day' },
     sheets:     { window: 'monthly', limit:    0, label: 'no fixed cap' },
@@ -2550,6 +2554,43 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     res.json({ ok: true, email: user.email, generationsLeft: user.generationsLeft });
   });
 
+  // ── POST /api/ai-vision/analyze-structure — AI-029 Phase 1.5 pre-check ──
+  //
+  // Runs (cached) spatial analysis on the uploaded room photo BEFORE any
+  // generation is spent, so the UI can softly warn when the photo shows only
+  // one wall (head-on) — the case where the generator must invent side walls
+  // and can't hold the real proportions. Does NOT decrement quota. The cached
+  // structure is reused by /generate, so this adds no net Gemini cost.
+  app.post("/api/ai-vision/analyze-structure", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+
+    const { roomPhoto } = req.body ?? {};
+    if (!roomPhoto || typeof roomPhoto !== "string") {
+      return res.status(400).json({ error: "Room photo is required." });
+    }
+    const m = (roomPhoto as string).match(/^data:([^;]+);base64,(.+)$/s);
+    if (!m) return res.status(400).json({ error: "Room photo must be a data URL." });
+    const parsedRoom = { mimeType: m[1], data: m[2] };
+
+    try {
+      const spatialKey = getSpatialCacheKey(parsedRoom.data);
+      let structure = getCachedStructure(spatialKey);
+      if (!structure) {
+        structure = await analyzeRoomStructure(parsedRoom);
+        if (structure) {
+          setCachedStructure(spatialKey, structure);
+          bumpApiCount("gemini"); // AI-029 — analysis (reused by /generate via cache)
+        }
+      }
+      return res.json({ singleWall: isSingleWallShot(structure) });
+    } catch (err: any) {
+      // Non-fatal: a failed pre-check must never block the user from generating.
+      console.warn("[AI Vision] analyze-structure failed (non-fatal):", err?.message ?? err);
+      return res.json({ singleWall: false });
+    }
+  });
+
   // ── POST /api/ai-vision/generate — two-step concept generation ──
   //
   // Step 1: extract style brief from reference images (or use hardcoded preset brief).
@@ -2660,14 +2701,36 @@ Output ONLY valid JSON, no markdown fences, no commentary:
         ? ROOM_NAME_TO_TYPE[roomType as string]
         : undefined;
 
-      const conceptDataUrl = await generateConceptImage({
+      // ── Step 1.5 (AI-029): spatial grounding (cached by room photo) ──────────
+      // Measure the room's fixed architecture so Step 2 can preserve each wall,
+      // window, and door at its exact position — and NOT invent out-of-frame
+      // walls. Non-fatal: on any failure we fall back to the plain prompt.
+      const spatialKey = getSpatialCacheKey(parsedRoom.data);
+      let structure = getCachedStructure(spatialKey);
+      if (!structure) {
+        structure = await analyzeRoomStructure(parsedRoom);
+        if (structure) {
+          setCachedStructure(spatialKey, structure);
+          bumpApiCount("gemini"); // AI-029 — spatial analysis (skipped on cache hit / variations)
+        }
+      }
+      const spatialConstraints = renderSpatialConstraints(structure);
+
+      // AI-029 Phase 3 — virtual-staging engine (fal) by default: keeps the real
+      // room and only adds furniture, so it never invents doorways/windows. Auto
+      // Gemini fallback. `spatialConstraints`/`sourceStructure` are used only by
+      // the Gemini fallback path.
+      const { url: conceptDataUrl, engine } = await generateConcept({
         roomPhoto: parsedRoom,
         styleBrief,
         roomType: resolvedRoomType,
         variationSeed: typeof variationSeed === "number" ? variationSeed : undefined,
+        spatialConstraints,
+        sourceStructure: structure,
       });
-      // I-010 — concept image generation. Retries undercount in v1 (NOTE: services/aiVision/imageGeneration.ts retries up to 2× on quota errors; instrument inside the service to capture retries accurately).
-      bumpApiCount("gemini");
+      // I-010 — concept image generation. Attribute cost to the engine actually used.
+      bumpApiCount(engine === "staging" ? "fal" : "gemini");
+      console.log(`[AI Vision] concept generated via ${engine}`);
       recordActivity(user.email, "generate_vision"); // I-016
 
       return res.json({
