@@ -11,7 +11,7 @@ import { trackCalendly } from '../lib/track';
 import { ConsultationServicesBridge, useStartProjectCta } from './ConsultationCTA';
 
 const SERVICES_HERO = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1771143071/services_1_oatiib.jpg';
-const CALENDLY_URL = 'https://calendly.com/designature-studio-us/free_consultation';
+const CALENDLY_URL = 'https://calendly.com/hello-designature/quick-conversation';
 
 const ServicesPage: React.FC = () => {
   const { t, language, navigateTo } = useLanguage();

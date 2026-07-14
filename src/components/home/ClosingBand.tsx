@@ -3,7 +3,7 @@ import { useLanguage } from '../../LanguageContext';
 import { trackCalendly } from '../../lib/track';
 import { useStartProjectCta } from '../ConsultationCTA';
 
-const CALENDLY_URL = 'https://calendly.com/designature-studio-us/free_consultation';
+const CALENDLY_URL = 'https://calendly.com/hello-designature/quick-conversation';
 
 const ClosingBand: React.FC = () => {
   const { t } = useLanguage();

@@ -46,7 +46,7 @@ describe('Regression: links and email flows', () => {
     // After I-016, the click goes through trackCalendly() which fires a tracker POST
     // then opens the tab with noopener+noreferrer (security best practice).
     expect(openSpy).toHaveBeenCalledWith(
-      'https://calendly.com/designature-studio-us/free_consultation',
+      'https://calendly.com/hello-designature/quick-conversation',
       '_blank',
       'noopener,noreferrer'
     );

@@ -22,7 +22,7 @@ import { trackCalendly, trackVisionStart, trackShoppingStart } from '../lib/trac
 import { trackEvent } from '../lib/analytics';
 import { popSigninSource } from '../lib/signinSource';
 
-const CALENDLY_URL = 'https://calendly.com/designature-studio-us/free_consultation';
+const CALENDLY_URL = 'https://calendly.com/hello-designature/quick-conversation';
 
 /** Free tier: max generated concepts in the UI row (paid tier can be raised later). */
 const FREE_TIER_MAX_CONCEPT_SLOTS = 3;
