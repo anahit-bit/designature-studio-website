@@ -10,6 +10,11 @@ import { GoogleGenAI } from "@google/genai";
 import sharp from "sharp";
 import type { RoomType } from "./stylePresets.js";
 import { buildGenerationPrompt } from "./promptTemplates.js";
+import {
+  analyzeRoomStructure,
+  spatialMetrics,
+  type RoomStructure,
+} from "./spatialAnalysis.js";
 
 export interface ImageGenerationInput {
   /** Base64 data (without prefix) and MIME type of the room photo. */
@@ -20,6 +25,18 @@ export interface ImageGenerationInput {
   roomType?: RoomType;
   /** Increment each time "Generate Variation" is clicked in the session. */
   variationSeed?: number;
+  /**
+   * AI-029 — pre-rendered coordinate-grounded architecture constraints from
+   * spatialAnalysis. Omit/empty when unavailable (prompt falls back cleanly).
+   */
+  spatialConstraints?: string;
+  /**
+   * AI-029 Phase 2b — the measured source structure. When present, the output
+   * is re-analyzed and, if the room was widened past tolerance (window shrank
+   * as a share of the frame), one corrective retry is attempted. Omit to skip
+   * verification entirely.
+   */
+  sourceStructure?: RoomStructure | null;
 }
 
 /**
@@ -40,6 +57,7 @@ export async function generateConceptImage(
     styleBrief: input.styleBrief,
     roomType: input.roomType,
     variationSeed: input.variationSeed,
+    spatialConstraints: input.spatialConstraints,
   });
 
   // ── Preprocess room photo: resize large images before sending to Gemini ──
@@ -98,19 +116,32 @@ export async function generateConceptImage(
   // on the longest edge so the hero stays crisp on high-DPR displays.
   const TARGET_LONG_EDGE = 1800;
 
+  // AI-029 Phase 2b — proportion verification. Compare the generated window's
+  // share of the frame to the source; if it shrank by more than the tolerance
+  // (i.e. the room was widened / camera pulled back), retry once with a
+  // corrective instruction. Bounded to 1 retry to cap cost + latency.
+  const expectedMetrics = spatialMetrics(input.sourceStructure ?? null);
+  const MAX_PROPORTION_RETRIES = 1;
+  const PROPORTION_TOLERANCE = 0.12; // absolute drop in window width fraction
+
   const generateOne = async (
     retryCount = 0,
-    aspectRetryCount = 0
+    aspectRetryCount = 0,
+    proportionRetryCount = 0,
+    proportionNote = ""
   ): Promise<string> => {
     let response: any;
     try {
       // AI-030g: on aspect-retry, append a strong final constraint to the
       // prompt so Gemini knows the previous output was wrong-aspect and
       // the new attempt must respect chosenAspect.
-      const effectivePrompt =
-        aspectRetryCount > 0
-          ? `${prompt}\n\nCRITICAL FINAL CONSTRAINT: the output image MUST be ${chosenAspect} aspect ratio. The previous attempt produced the wrong aspect. Do NOT change the room's orientation. Output format: ${chosenAspect}.`
-          : prompt;
+      let effectivePrompt = prompt;
+      if (aspectRetryCount > 0) {
+        effectivePrompt += `\n\nCRITICAL FINAL CONSTRAINT: the output image MUST be ${chosenAspect} aspect ratio. The previous attempt produced the wrong aspect. Do NOT change the room's orientation. Output format: ${chosenAspect}.`;
+      }
+      if (proportionNote) {
+        effectivePrompt += proportionNote;
+      }
 
       const config: any = {
         temperature: 0.4,
@@ -149,7 +180,7 @@ export async function generateConceptImage(
           `[ai-vision] imageConfig.aspectRatio rejected — falling back to default aspect. Error: ${err?.message}`
         );
         useImageConfig = false;
-        return generateOne(retryCount, aspectRetryCount);
+        return generateOne(retryCount, aspectRetryCount, proportionRetryCount, proportionNote);
       }
       console.error("[ai-vision] Step 2 FAILED:", err?.message ?? err);
       console.error("[ai-vision] Step 2 error details:", JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
@@ -191,12 +222,38 @@ export async function generateConceptImage(
           console.warn(
             `[ai-vision] Output aspect ${outputAspect.toFixed(2)} != input ${inputAspect.toFixed(2)}, retrying (attempt ${aspectRetryCount + 1}/${MAX_ASPECT_RETRIES})`
           );
-          return generateOne(retryCount, aspectRetryCount + 1);
+          return generateOne(retryCount, aspectRetryCount + 1, proportionRetryCount, proportionNote);
         }
         if (!aspectMatches) {
           console.warn(
             `[ai-vision] Aspect retry budget exhausted (${MAX_ASPECT_RETRIES}), accepting output aspect ${outputAspect.toFixed(2)}`
           );
+        }
+
+        // AI-029 Phase 2b — proportion verification. Re-measure the output and,
+        // if the room was widened past tolerance, retry once with a correction.
+        // Only runs when a source structure was supplied and budget remains.
+        if (expectedMetrics && proportionRetryCount < MAX_PROPORTION_RETRIES) {
+          const outStructure = await analyzeRoomStructure({
+            data: outputBuffer.toString("base64"),
+            mimeType: mime,
+          });
+          const outMetrics = spatialMetrics(outStructure);
+          if (outMetrics) {
+            // Positive drift = window is a smaller share of the frame than the
+            // source ⇒ the room was widened / the camera pulled back.
+            const drift = expectedMetrics.windowWidthFrac - outMetrics.windowWidthFrac;
+            console.log(
+              `[ai-vision] Proportion check: source window=${(expectedMetrics.windowWidthFrac * 100).toFixed(0)}% output=${(outMetrics.windowWidthFrac * 100).toFixed(0)}% drift=${(drift * 100).toFixed(0)}pt`
+            );
+            if (drift > PROPORTION_TOLERANCE) {
+              const note = `\n\nCRITICAL PROPORTION CORRECTION: the previous attempt widened the room — the main window filled only ${(outMetrics.windowWidthFrac * 100).toFixed(0)}% of the image width, but in the real room it fills about ${(expectedMetrics.windowWidthFrac * 100).toFixed(0)}%. Do NOT widen the room, add extra wall beside the window, zoom out, or pull the camera back. Frame it tighter so the window fills ~${(expectedMetrics.windowWidthFrac * 100).toFixed(0)}% of the width, exactly as in the original photo.`;
+              console.warn(
+                `[ai-vision] Proportion drift ${(drift * 100).toFixed(0)}pt > tol ${(PROPORTION_TOLERANCE * 100).toFixed(0)}pt — retrying (attempt ${proportionRetryCount + 1}/${MAX_PROPORTION_RETRIES})`
+              );
+              return generateOne(retryCount, aspectRetryCount, proportionRetryCount + 1, note);
+            }
+          }
         }
 
         // AI-030g: upscale to TARGET_LONG_EDGE for crisp hero rendering on
@@ -230,7 +287,7 @@ export async function generateConceptImage(
     // If no image part found, retry on transient failures
     if (retryCount < 2) {
       await delay(2000 * (retryCount + 1));
-      return generateOne(retryCount + 1, aspectRetryCount);
+      return generateOne(retryCount + 1, aspectRetryCount, proportionRetryCount, proportionNote);
     }
 
     throw new Error(

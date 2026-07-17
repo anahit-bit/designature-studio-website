@@ -42,6 +42,8 @@ const SAMPLE_AFTER = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776281
 interface VisionExperienceProps {
   roomImage: string | null;
   inspirationImages: string[];
+  /** AI-029 — true when the uploaded photo shows only one wall (head-on). */
+  structureWarning?: boolean;
   selectedStyle: string;
   setSelectedStyle: (s: string) => void;
   selectedRoom: string;
@@ -307,6 +309,9 @@ export default function VisionExperience(p: VisionExperienceProps) {
               >
                 ✦ Upload your room →
               </button>
+              <p className="text-[12px] text-white/65 leading-relaxed max-w-[400px] mx-auto">
+                For the most accurate result, capture the whole room — include the side walls where you can, so the concept keeps your true proportions.
+              </p>
             </div>
           </div>
         </div>
@@ -690,6 +695,15 @@ export default function VisionExperience(p: VisionExperienceProps) {
             <button type="button" onClick={() => replaceFileRef.current?.click()} className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/90 text-black text-[9px] font-bold uppercase tracking-[0.2em] px-4 py-2.5 hover:bg-white transition-colors">{t('ai.vision.changePhoto')}</button>
           </div>
           <p className="text-[10px] text-black/60 uppercase tracking-[0.16em] px-6 py-3">{t('ai.vision.keepProportions')}</p>
+          {/* AI-029 — soft single-wall warning (non-blocking; generate still works) */}
+          {p.structureWarning && (
+            <div className="mx-6 mb-5 flex items-start gap-2.5 bg-[#FBF3EC] border-l-2 border-[#9E5E41] px-4 py-3">
+              <span aria-hidden className="text-[#9E5E41] text-[13px] leading-none mt-[1px]">⚠</span>
+              <p className="text-[11px] leading-relaxed text-[#7a4630]">
+                <span className="font-bold">This photo shows only one wall.</span> For a concept that keeps your room’s real proportions, step back and capture the side walls too — otherwise the AI has to guess the room’s width. You can still generate this photo as-is.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* RIGHT — controls (Step 1 always visible · refinements optional) */}

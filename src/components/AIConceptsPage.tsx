@@ -106,6 +106,9 @@ const AIConceptsPage: React.FC = () => {
   const [pinterestError, setPinterestError] = useState('');
   const [pinterestOpen, setPinterestOpen] = useState(false);
   const [roomImage, setRoomImage] = useState<string | null>(null);
+  // AI-029 Phase 1.5 — soft warning when the uploaded photo shows only one wall
+  // (head-on), where the generator can't hold the real proportions. Non-blocking.
+  const [roomStructureWarning, setRoomStructureWarning] = useState(false);
   const [roomAspectRatio, setRoomAspectRatio] = useState<string>('3/4');
   const [apiAspectRatio, setApiAspectRatio] = useState<"1:1" | "3:4" | "4:3" | "9:16" | "16:9">("3:4");
   const [selectedStyle, setSelectedStyle] = useState<string>('');
@@ -305,6 +308,7 @@ const AIConceptsPage: React.FC = () => {
     // AI Vision
     setInspirationImages([]);
     setRoomImage(null);
+    setRoomStructureWarning(false);
     setSelectedStyle('');
     setSelectedRoom('');
     setResults([]);
@@ -547,6 +551,17 @@ const AIConceptsPage: React.FC = () => {
     } else {
       readFile(Array.from(files)[0]).then((dataUrl) => {
         setRoomImage(dataUrl);
+        // AI-029 Phase 1.5 — soft single-wall pre-check (non-blocking). Reset
+        // first, then flag only if the analysis confirms a head-on one-wall shot.
+        setRoomStructureWarning(false);
+        apiFetch('/api/ai-vision/analyze-structure', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ roomPhoto: dataUrl }),
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => { if (d?.singleWall) setRoomStructureWarning(true); })
+          .catch(() => { /* non-fatal — a failed pre-check never blocks upload */ });
         const img = new Image();
         img.onload = () => {
           const ratio = img.width / img.height;
@@ -833,6 +848,7 @@ const AIConceptsPage: React.FC = () => {
     setSelectedConceptIndex(0);
     setInspirationImages([]);
     setRoomImage(null);
+    setRoomStructureWarning(false);
     setSelectedStyle('');
     setSelectedRoom('');
     setError(null);
@@ -1395,6 +1411,7 @@ const AIConceptsPage: React.FC = () => {
       {!authLoading && user && activeTool === 'vision' && (
         <VisionExperience
           roomImage={roomImage}
+          structureWarning={roomStructureWarning}
           inspirationImages={inspirationImages}
           selectedStyle={selectedStyle}
           setSelectedStyle={setSelectedStyle}
