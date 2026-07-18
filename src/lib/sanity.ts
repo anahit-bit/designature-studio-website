@@ -212,6 +212,7 @@ const POST_QUERY = `*[_type == "post" && status == "published" && slug.current =
   afterImage,
   beforeAfterCaption,
   versionImage,
+  "styleGallery": styleGallery[]{image, label},
   shoppingImage,
   "shoppingItems": shoppingItems[]{name, retailer, price, url},
   "personalNotes": personalNotes[].quote,
@@ -244,6 +245,7 @@ interface SanityPost {
   afterImage?: string
   beforeAfterCaption?: string
   versionImage?: string
+  styleGallery?: Array<{ image?: string; label?: string }> | null
   shoppingImage?: string
   shoppingItems?: Array<{ name?: string; retailer?: string; price?: string; url?: string }> | null
   personalNotes?: Array<string | null> | null
@@ -280,6 +282,9 @@ function toBlogPost(doc: SanityPost): BlogPost {
       url: i.url ?? undefined,
     }))
   const personalNotes = (doc.personalNotes ?? []).filter((q): q is string => !!q)
+  const styleGallery = (doc.styleGallery ?? [])
+    .filter((t): t is { image: string; label?: string } => !!t && !!t.image)
+    .map((t) => ({ image: t.image, label: t.label ?? '' }))
   return {
     id: doc.id,
     title: doc.title,
@@ -292,6 +297,7 @@ function toBlogPost(doc: SanityPost): BlogPost {
     afterImage: doc.afterImage ?? undefined,
     beforeAfterCaption: doc.beforeAfterCaption ?? undefined,
     versionImage: doc.versionImage ?? undefined,
+    styleGallery: styleGallery.length ? styleGallery : undefined,
     shoppingImage: doc.shoppingImage ?? undefined,
     shoppingItems: shoppingItems.length ? shoppingItems : undefined,
     personalNotes: personalNotes.length ? personalNotes : undefined,
