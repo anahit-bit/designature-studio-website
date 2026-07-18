@@ -35,4 +35,25 @@ describe('parseStudioBlocks', () => {
     const studio = parseStudioBlocks(body).find((b) => b.type === 'studio');
     expect(studio?.content.trim()).toBe('line one\nline two');
   });
+
+  it('emits a gallery segment for a standalone [gallery] token', () => {
+    const body = 'intro\n\n[gallery]\n\n## Next\n\nmore';
+    const blocks = parseStudioBlocks(body);
+    expect(blocks.map((b) => b.type)).toEqual(['md', 'gallery', 'md']);
+    expect(blocks[0].content).toContain('intro');
+    expect(blocks[1].content).toBe('');
+    expect(blocks[2].content).toContain('## Next');
+  });
+
+  it('interleaves studio + gallery markers in document order', () => {
+    const body = 'a\n\n[studio]note[/studio]\n\nb\n\n[gallery]\n\nc';
+    const blocks = parseStudioBlocks(body);
+    expect(blocks.map((b) => b.type)).toEqual(['md', 'studio', 'md', 'gallery', 'md']);
+  });
+
+  it('handles a [gallery] token at the very start with no leading md', () => {
+    const blocks = parseStudioBlocks('[gallery]\n\nbody');
+    expect(blocks.map((b) => b.type)).toEqual(['gallery', 'md']);
+    expect(blocks[1].content).toContain('body');
+  });
 });

@@ -91,6 +91,7 @@ export interface BlogPost {
   afterImage?: string;
   beforeAfterCaption?: string;
   versionImage?: string;
+  styleGallery?: { image: string; label: string }[]; // "one photo → many styles" grid, placed via a [gallery] body marker
   shoppingImage?: string;
   shoppingItems?: BlogShoppingItem[];
   personalNotes?: string[]; // “From my studio” quotes

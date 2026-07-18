@@ -42,17 +42,28 @@ const MD_COMPONENTS = {
 };
 
 /**
- * Split an article body into markdown + inline "From my studio" blocks. A
- * `[studio]…[/studio]` marker renders as the terracotta studio-note box; every
- * other chunk is normal markdown. Exported for unit testing.
+ * Split an article body into ordered inline segments. A `[studio]…[/studio]`
+ * marker renders as the terracotta studio-note box; a standalone `[gallery]`
+ * token renders the post's style gallery; every other chunk is normal markdown.
+ * Segments are emitted in document order. Exported for unit testing.
  */
 export function parseStudioBlocks(
   body: string,
-): Array<{ type: 'md' | 'studio'; content: string }> {
-  return body
-    .split(/\[studio\]([\s\S]*?)\[\/studio\]/)
-    .map((content, i) => ({ type: (i % 2 === 1 ? 'studio' : 'md') as 'md' | 'studio', content }))
-    .filter((b) => b.content.trim() !== '');
+): Array<{ type: 'md' | 'studio' | 'gallery'; content: string }> {
+  const out: Array<{ type: 'md' | 'studio' | 'gallery'; content: string }> = [];
+  body.split(/\[studio\]([\s\S]*?)\[\/studio\]/).forEach((chunk, i) => {
+    if (i % 2 === 1) {
+      // Captured [studio]…[/studio] content.
+      if (chunk.trim() !== '') out.push({ type: 'studio', content: chunk });
+      return;
+    }
+    // A normal chunk — further split on standalone [gallery] tokens.
+    chunk.split(/\[gallery\]/).forEach((piece, j) => {
+      if (j > 0) out.push({ type: 'gallery', content: '' });
+      if (piece.trim() !== '') out.push({ type: 'md', content: piece });
+    });
+  });
+  return out;
 }
 
 /**
@@ -67,6 +78,43 @@ const StudioNote: React.FC<{ quote: string }> = ({ quote }) => (
     <p className="font-display text-lg md:text-xl italic leading-snug text-[#0B2240]">“{quote}”</p>
   </blockquote>
 );
+
+/**
+ * "One photo, many styles" grid — rendered inline where a `[gallery]` marker
+ * sits in the body. Each tile is a 3/4 image with a navy label chip bottom-left.
+ * 3 columns on desktop, 2 on mobile. Renders nothing when there are no items.
+ * Exported for unit testing.
+ */
+export const StyleGallery: React.FC<{
+  items?: { image: string; label: string }[];
+  caption?: string;
+}> = ({ items, caption }) => {
+  if (!items || items.length === 0) return null;
+  return (
+    <div className="my-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+        {items.map((it, i) => (
+          <div key={i} className="relative overflow-hidden bg-neutral-100">
+            <img
+              src={cld(it.image, 480, { crop: 'fill', aspectRatio: '3/4' })}
+              srcSet={cldSrcSet(it.image, CARD_WIDTHS, { crop: 'fill', aspectRatio: '3/4' })}
+              sizes="(min-width: 820px) 267px, 50vw"
+              alt={it.label}
+              loading="lazy"
+              className="block w-full aspect-[3/4] object-cover"
+            />
+            {it.label && (
+              <span className="absolute left-0 bottom-0 bg-[#0B2240]/[0.86] px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white">
+                {it.label}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+      {caption && <p className="mt-3 text-center text-[12px] text-black/50">{caption}</p>}
+    </div>
+  );
+};
 
 const JournalArticlePage: React.FC = () => {
   const { slug = '' } = useParams<{ slug: string }>();
@@ -265,6 +313,8 @@ const JournalArticlePage: React.FC = () => {
                 parseStudioBlocks(post.body).map((block, i) =>
                   block.type === 'studio' ? (
                     <StudioNote key={i} quote={block.content.trim()} />
+                  ) : block.type === 'gallery' ? (
+                    <StyleGallery key={i} items={post.styleGallery} />
                   ) : (
                     <ReactMarkdown key={i} components={MD_COMPONENTS}>
                       {block.content}
