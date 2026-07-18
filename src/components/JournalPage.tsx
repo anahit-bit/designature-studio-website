@@ -137,13 +137,27 @@ const JournalPage: React.FC = () => {
     });
   }, [posts, category, tag, q]);
 
+  // The Journal hero photo + Featured card are PINNED to the FIRST blog (the
+  // earliest published post), so adding a newer post never bumps the hero.
+  // Ask the owner before changing which post is featured.
+  const firstBlog = useMemo(() => {
+    const dated = (posts ?? []).filter((p) => p.publishedAt);
+    const pool = dated.length ? dated : (posts ?? []);
+    if (pool.length === 0) return null;
+    return pool.reduce((oldest, p) => {
+      const t = p.publishedAt ? new Date(p.publishedAt).getTime() : Infinity;
+      const o = oldest.publishedAt ? new Date(oldest.publishedAt).getTime() : Infinity;
+      return t < o ? p : oldest;
+    });
+  }, [posts]);
+
   // Featured split-card only when no filter is active (never disturbs the filtered set).
   const hasFilters = !!(category || tag || q);
-  const showFeatured = !hasFilters && filtered.length > 0;
-  const featured = showFeatured ? filtered[0] : null;
-  const gridPosts = showFeatured ? filtered.slice(1) : filtered;
+  const showFeatured = !hasFilters && filtered.length > 0 && !!firstBlog;
+  const featured = showFeatured ? firstBlog : null;
+  const gridPosts = showFeatured ? filtered.filter((p) => p.id !== featured!.id) : filtered;
 
-  const heroImg = posts?.[0]?.coverImage || JOURNAL_HERO_FALLBACK;
+  const heroImg = (featured ?? posts?.[0])?.coverImage || JOURNAL_HERO_FALLBACK;
 
   const catLink =
     'text-[12px] font-bold uppercase tracking-[0.16em] pb-1 transition-colors';
