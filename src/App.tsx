@@ -30,6 +30,9 @@ import JournalCategoryPage from './components/JournalCategoryPage';
 import JournalArticlePage from './components/JournalArticlePage';
 import Blog from './components/Blog';
 import Footer from './components/Footer';
+import AccountPage from './components/account/AccountPage';
+import { useAuth } from './AuthContext';
+import { USE_MOCK_ACCOUNT } from './lib/accountApi';
 import RouteTracker from './components/RouteTracker';
 import HomeHeroText from './components/home/HomeHeroText';
 import HomeImageBand from './components/home/HomeImageBand';
@@ -105,6 +108,25 @@ const DeliverablesRoute: React.FC = () => (
   </div>
 );
 
+// AC-001 — User Dashboard. Gated to signed-in users in real mode; in mock mode
+// (VITE_USE_MOCK_ACCOUNT default true) it renders regardless so all tiers can be
+// previewed locally. The fixed site Header needs top padding on this plain page.
+const AccountRoute: React.FC = () => {
+  const { user, isLoading } = useAuth();
+  if (!USE_MOCK_ACCOUNT && !isLoading && !user) {
+    return <Navigate to="/login?next=/account" replace />;
+  }
+  return (
+    <div className="min-h-screen bg-white font-body">
+      <Header />
+      <div className="pt-28 lg:pt-32">
+        <AccountPage />
+      </div>
+      <Footer />
+    </div>
+  );
+};
+
 const App: React.FC = () => (
   <BrowserRouter>
     <RouteTracker />
@@ -133,6 +155,7 @@ const App: React.FC = () => (
             <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
             <Route path="/booking/failed" element={<BookingFailedPage />} />
             <Route path="/deliverables" element={<DeliverablesRoute />} />
+            <Route path="/account" element={<AccountRoute />} />
             <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route path="/admin/users" element={<AdminUsersPage />} />
             <Route path="/admin/orders" element={<AdminOrdersPage />} />

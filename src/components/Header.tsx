@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, ArrowRight, LogOut } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 import { useAuth } from '../AuthContext';
@@ -14,6 +15,8 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
   const { language, setLanguage, t, navigateTo, currentPage } = useLanguage();
   const { user, isLoading: authLoading, signOut } = useAuth();
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  const routerNavigate = useNavigate();
+  const location = useLocation();
 
   // Close account dropdown when clicking outside
   useEffect(() => {
@@ -171,6 +174,30 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
     );
   };
 
+  // AC-001 — "My studio" account link. Visible ONLY when authenticated.
+  // Uses react-router (the /account route lives outside LanguageContext's Page map).
+  const isAccountActive = location.pathname.startsWith('/account');
+  const MyStudioLink = ({ inMobileMenu = false }: { inMobileMenu?: boolean }) => {
+    if (!user) return null;
+    const color = inMobileMenu
+      ? 'text-black hover:text-[#0047AB]'
+      : isAccountActive
+        ? (onDarkBg ? 'text-white' : 'text-black')
+        : (onDarkBg ? 'text-white/75 hover:text-white' : 'text-black/70 hover:text-black');
+    return (
+      <button
+        onClick={() => {
+          routerNavigate('/account');
+          window.scrollTo({ top: 0 });
+          if (inMobileMenu) setIsMobileMenuOpen(false);
+        }}
+        className={`${inMobileMenu ? 'text-base md:text-lg' : 'text-[11px]'} font-body font-bold uppercase tracking-[0.18em] transition-colors ${color}`}
+      >
+        My studio
+      </button>
+    );
+  };
+
   return (
     <>
       <style>{`
@@ -251,6 +278,7 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
           </nav>
 
           <div className="hidden lg:flex items-center gap-8">
+            <MyStudioLink />
             <SecondaryCTA />
             <CTAButton />
           </div>
@@ -301,6 +329,16 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
                 {link.name}
               </a>
             ))}
+            {user && (
+              <div
+                className={`transition-all duration-700 ${
+                  isMobileMenuOpen ? 'translate-x-0 opacity-100' : 'translate-x-12 opacity-0'
+                }`}
+                style={{ transitionDelay: `${navLinks.length * 50}ms` }}
+              >
+                <MyStudioLink inMobileMenu />
+              </div>
+            )}
           </nav>
 
           <div className="px-8 pb-10 md:px-16 md:pb-16 flex flex-col items-center gap-6">

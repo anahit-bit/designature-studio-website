@@ -1,0 +1,323 @@
+/**
+ * AC-001 — User Dashboard typed API client.
+ *
+ * Every account-area fetch (/api/user/*, /api/subscriptions/*, /api/billing/*,
+ * /api/payment-methods/*, /api/consultation/cancel) goes through this module so
+ * that swapping mock data for the real backend is a single flag flip.
+ *
+ * Behind VITE_USE_MOCK_ACCOUNT (default "true") every method delegates to
+ * src/lib/accountApi.mock.ts and returns hand-crafted mock data. When the flag
+ * is "false" the real fetch implementations below run — most of those endpoints
+ * are NOT built yet (a follow-on backend ticket, AC-001-backend, lands them), so
+ * each is marked with `// TODO(AC-001-backend)`.
+ *
+ * Types mirror spec section 11 exactly. Do not drift from the shapes here without
+ * updating the spec + the backend contract.
+ */
+
+import { getStoredToken } from '../sessionClient';
+import * as mock from './accountApi.mock';
+
+// ── env flag ──────────────────────────────────────────────────────────────
+/** Default TRUE — the account UI ships mock-first until the backend endpoints exist. */
+export const USE_MOCK_ACCOUNT: boolean =
+  ((import.meta as any)?.env?.VITE_USE_MOCK_ACCOUNT ?? 'true') !== 'false';
+
+// ── shared types (spec §11) ─────────────────────────────────────────────────
+export type PlanTier = 'free' | 'design' | 'studio';
+export type PlanStatus = 'active' | 'canceled' | 'past_due' | 'grace';
+export type ChargeStatus = 'paid' | 'failed' | null;
+
+export type ToolKey =
+  | 'ai_vision'
+  | 'shopping'
+  | 'room_audit'
+  | 'style_quiz'
+  | 'design_brief'
+  | 'cultural';
+
+export interface AccountUser {
+  id: string;
+  email: string;
+  name: string;
+  picture: string | null;
+}
+
+export interface Plan {
+  tier: PlanTier;
+  status: PlanStatus;
+  renewsAt: string | null; // ISO
+  periodEndAt: string | null; // ISO — set when canceled-but-still-active
+  latestChargeStatus: ChargeStatus;
+  /** Only present when latestChargeStatus === 'failed'. */
+  gracePeriodEndsAt?: string | null;
+}
+
+/** One tool's usage this cycle. `cap === null` means unlimited; `cap === 0` means locked/not in tier. */
+export interface QuotaEntry {
+  used: number;
+  cap: number | null;
+  resetsAt: string | null;
+}
+
+export interface Quota {
+  aiVision: QuotaEntry;
+  shopping: QuotaEntry;
+  roomAudit: QuotaEntry;
+  styleQuiz: QuotaEntry;
+  designBrief: QuotaEntry;
+  cultural: QuotaEntry;
+}
+
+export interface ActivityItem {
+  id: string;
+  tool: ToolKey;
+  title: string;
+  createdAt: string; // ISO
+  thumbnailUrl: string | null;
+}
+
+export type BookingKind = 'paid_consult' | 'quick_chat';
+
+export interface NextBooking {
+  id: string;
+  slotStartTime: string; // ISO
+  meetLink: string | null;
+  kind: BookingKind;
+}
+
+export interface DashboardData {
+  user: AccountUser;
+  plan: Plan;
+  quota: Quota;
+  recentActivity: ActivityItem[];
+  nextBooking: NextBooking | null;
+  counts: {
+    libraryTotal: number;
+    upcomingBookings: number;
+  };
+}
+
+export interface LibraryItem {
+  id: string;
+  tool: ToolKey;
+  title: string;
+  createdAt: string; // ISO
+  thumbnailUrl: string | null;
+  fullPreviewUrl?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
+export interface LibraryPage {
+  items: LibraryItem[];
+  total: number;
+  page: number;
+}
+
+export interface Booking {
+  id: string;
+  slotStartTime: string; // ISO
+  endTime?: string | null;
+  meetLink: string | null;
+  rescheduleUrl: string | null;
+  kind: BookingKind;
+  amount: number; // USD, 0 for free chats
+  state: 'upcoming' | 'past';
+}
+
+export interface BookingsResult {
+  upcoming: Booking[];
+  past: Booking[];
+}
+
+export type BillingRowStatus = 'paid' | 'pending' | 'failed' | 'refunded';
+
+export interface BillingRow {
+  orderId: string;
+  date: string; // ISO
+  description: string;
+  amount: number; // USD
+  status: BillingRowStatus;
+  invoiceUrl: string | null;
+}
+
+export interface BillingHistory {
+  rows: BillingRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface PaymentMethod {
+  brand: string; // 'VISA' | 'MASTERCARD' | ...
+  last4: string;
+  expMonth: number;
+  expYear: number;
+  cardholderName: string;
+}
+
+export interface NotificationPrefs {
+  productUpdates: boolean;
+  journalNew: boolean;
+  bookingReminders: boolean;
+}
+
+/** Studio-tier project folders (AC-003 backend; UI-only stub here). */
+export interface ProjectFolder {
+  id: string;
+  name: string;
+  coverUrl: string | null;
+  itemCount: number;
+}
+
+export interface LibraryFilters {
+  tool?: ToolKey | 'all';
+  from?: string;
+  to?: string;
+  search?: string;
+  page?: number;
+}
+
+// ── real fetch helper ────────────────────────────────────────────────────────
+async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = getStoredToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...((options.headers as Record<string, string>) || {}),
+  };
+  if (token) headers['x-session-token'] = token;
+  const res = await fetch(path, { ...options, headers });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body?.error || `Request failed (${res.status})`);
+  }
+  if (res.status === 204) return undefined as unknown as T;
+  return res.json() as Promise<T>;
+}
+
+// ── client surface ───────────────────────────────────────────────────────────
+export const accountApi = {
+  // reads
+  getDashboard(): Promise<DashboardData> {
+    if (USE_MOCK_ACCOUNT) return mock.getDashboard();
+    // TODO(AC-001-backend): GET /api/user/dashboard
+    return api<DashboardData>('/api/user/dashboard');
+  },
+
+  getLibrary(filters: LibraryFilters = {}): Promise<LibraryPage> {
+    if (USE_MOCK_ACCOUNT) return mock.getLibrary(filters);
+    // TODO(AC-001-backend): GET /api/user/library?tool=&from=&to=&page=
+    const q = new URLSearchParams();
+    if (filters.tool && filters.tool !== 'all') q.set('tool', filters.tool);
+    if (filters.from) q.set('from', filters.from);
+    if (filters.to) q.set('to', filters.to);
+    if (filters.search) q.set('q', filters.search);
+    if (filters.page) q.set('page', String(filters.page));
+    return api<LibraryPage>(`/api/user/library?${q.toString()}`);
+  },
+
+  getProjectFolders(): Promise<ProjectFolder[]> {
+    if (USE_MOCK_ACCOUNT) return mock.getProjectFolders();
+    // TODO(AC-003-backend): GET /api/user/project-folders
+    return api<ProjectFolder[]>('/api/user/project-folders');
+  },
+
+  getBookings(): Promise<BookingsResult> {
+    if (USE_MOCK_ACCOUNT) return mock.getBookings();
+    // TODO(AC-001-backend): GET /api/user/bookings?state=
+    return api<BookingsResult>('/api/user/bookings');
+  },
+
+  getBillingHistory(page = 1): Promise<BillingHistory> {
+    if (USE_MOCK_ACCOUNT) return mock.getBillingHistory(page);
+    // TODO(AC-001-backend): GET /api/billing/history?page=
+    return api<BillingHistory>(`/api/billing/history?page=${page}`);
+  },
+
+  getPaymentMethod(): Promise<PaymentMethod | null> {
+    if (USE_MOCK_ACCOUNT) return mock.getPaymentMethod();
+    // TODO(AC-001-backend): GET /api/payment-methods/current
+    return api<PaymentMethod | null>('/api/payment-methods/current');
+  },
+
+  getNotificationPrefs(): Promise<NotificationPrefs> {
+    if (USE_MOCK_ACCOUNT) return mock.getNotificationPrefs();
+    // TODO(AC-001-backend): GET /api/user/notifications
+    return api<NotificationPrefs>('/api/user/notifications');
+  },
+
+  // mutations
+  cancelSubscription(reason?: string): Promise<Plan> {
+    if (USE_MOCK_ACCOUNT) return mock.cancelSubscription(reason);
+    // TODO(AC-001-backend): POST /api/subscriptions/cancel
+    return api<Plan>('/api/subscriptions/cancel', {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  },
+
+  resumeSubscription(): Promise<Plan> {
+    if (USE_MOCK_ACCOUNT) return mock.resumeSubscription();
+    // TODO(AC-001-backend): POST /api/subscriptions/resume
+    return api<Plan>('/api/subscriptions/resume', { method: 'POST' });
+  },
+
+  changePlan(toTier: Exclude<PlanTier, 'free'>): Promise<Plan> {
+    if (USE_MOCK_ACCOUNT) return mock.changePlan(toTier);
+    // TODO(AC-001-backend): POST /api/subscriptions/change-plan
+    return api<Plan>('/api/subscriptions/change-plan', {
+      method: 'POST',
+      body: JSON.stringify({ toTier }),
+    });
+  },
+
+  /** Kicks off the Ameria vPOS card-binding flow. Returns a redirect URL in real mode. */
+  replacePaymentMethod(): Promise<{ redirectUrl: string | null }> {
+    if (USE_MOCK_ACCOUNT) return mock.replacePaymentMethod();
+    // TODO(AC-001-backend): POST /api/payment-methods/replace
+    return api<{ redirectUrl: string | null }>('/api/payment-methods/replace', {
+      method: 'POST',
+    });
+  },
+
+  removePaymentMethod(): Promise<void> {
+    if (USE_MOCK_ACCOUNT) return mock.removePaymentMethod();
+    // TODO(AC-001-backend): DELETE /api/payment-methods/current
+    return api<void>('/api/payment-methods/current', { method: 'DELETE' });
+  },
+
+  cancelConsultation(orderId: string): Promise<Booking> {
+    if (USE_MOCK_ACCOUNT) return mock.cancelConsultation(orderId);
+    // TODO(AC-001-backend): POST /api/consultation/cancel
+    return api<Booking>('/api/consultation/cancel', {
+      method: 'POST',
+      body: JSON.stringify({ orderId }),
+    });
+  },
+
+  updateProfile(name: string): Promise<AccountUser> {
+    if (USE_MOCK_ACCOUNT) return mock.updateProfile(name);
+    // TODO(AC-001-backend): PATCH /api/user/profile
+    return api<AccountUser>('/api/user/profile', {
+      method: 'PATCH',
+      body: JSON.stringify({ name }),
+    });
+  },
+
+  updateNotifications(prefs: Partial<NotificationPrefs>): Promise<NotificationPrefs> {
+    if (USE_MOCK_ACCOUNT) return mock.updateNotifications(prefs);
+    // TODO(AC-001-backend): PATCH /api/user/notifications
+    return api<NotificationPrefs>('/api/user/notifications', {
+      method: 'PATCH',
+      body: JSON.stringify(prefs),
+    });
+  },
+
+  deleteAccount(): Promise<void> {
+    if (USE_MOCK_ACCOUNT) return mock.deleteAccount();
+    // TODO(AC-001-backend): DELETE /api/user/me
+    return api<void>('/api/user/me', { method: 'DELETE' });
+  },
+};
+
+export type AccountApi = typeof accountApi;
