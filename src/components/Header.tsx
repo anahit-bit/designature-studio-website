@@ -6,6 +6,7 @@ import { useLanguage } from '../LanguageContext';
 import { useAuth } from '../AuthContext';
 import { trackCalendly } from '../lib/track';
 import { setSigninSource } from '../lib/signinSource';
+import { USE_MOCK_ACCOUNT } from '../lib/accountApi';
 import Logo from './Logo';
 
 const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
@@ -174,11 +175,13 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
     );
   };
 
-  // AC-001 — "My studio" account link. Visible ONLY when authenticated.
+  // AC-001 — "My studio" account link. Visible when authenticated; also shown in
+  // mock mode (VITE_USE_MOCK_ACCOUNT) so the dashboard is testable on localhost
+  // without a real Google sign-in. In production (mock off) it stays auth-gated.
   // Uses react-router (the /account route lives outside LanguageContext's Page map).
   const isAccountActive = location.pathname.startsWith('/account');
   const MyStudioLink = ({ inMobileMenu = false }: { inMobileMenu?: boolean }) => {
-    if (!user) return null;
+    if (!user && !USE_MOCK_ACCOUNT) return null;
     const color = inMobileMenu
       ? 'text-black hover:text-[#0047AB]'
       : isAccountActive
@@ -329,7 +332,7 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
                 {link.name}
               </a>
             ))}
-            {user && (
+            {(user || USE_MOCK_ACCOUNT) && (
               <div
                 className={`transition-all duration-700 ${
                   isMobileMenuOpen ? 'translate-x-0 opacity-100' : 'translate-x-12 opacity-0'
