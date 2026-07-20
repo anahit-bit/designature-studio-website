@@ -27,17 +27,6 @@ interface ProviderCounter {
   history?: Array<{ date: string; count: number }>;
 }
 
-interface Platform {
-  name: string;
-  owner_email: string;
-  monthly_cost: string;
-  free_tier_quota: string | null;
-  renewal_date: string | null;
-  powers: string;
-  criticality: number;
-  annual_cost?: string | null;
-}
-
 interface ActivityEntry { ts: string; userEmail: string; action: string; }
 interface SerperLogEntry { ts: string; userEmail: string; query: string; count: number; source: string; }
 interface FunnelRow { name: string; status: 'live' | 'offline'; started: number; completed: number; pct: number; }
@@ -55,7 +44,6 @@ interface CostProviderRow {
 interface UsageResponse {
   counters: Record<string, ProviderCounter>;
   activity: ActivityEntry[];
-  platforms: Platform[];
   serperLog: SerperLogEntry[];
   users: { total: number; signups7d: number; logins24h: number; paid: number; free: number };
   shoppingStatus:
@@ -148,13 +136,6 @@ function fmtUsd(n: number | null | undefined): string {
   if (n === null || n === undefined) return '—';
   if (n < 0.01) return '$0.00';
   return `$${n.toFixed(2)}`;
-}
-
-function daysUntil(dateStr: string | null): number | null {
-  if (!dateStr) return null;
-  const t = Date.parse(dateStr);
-  if (!Number.isFinite(t)) return null;
-  return Math.ceil((t - Date.now()) / (24 * 60 * 60 * 1000));
 }
 
 function readableSource(slug: string): string {
@@ -553,51 +534,6 @@ export const AcquisitionBody: React.FC<{ data: AcquisitionData | null }> = ({ da
   );
 };
 
-const PlatformsBody: React.FC<{ items: Platform[] }> = ({ items }) => (
-  <div className="grid grid-cols-3 gap-3.5">
-    {items.map((p) => {
-      const days = daysUntil(p.renewal_date);
-      const renewClass = days !== null && days < 60 ? 'soon' : '';
-      return (
-        <div key={p.name} className="bg-white border border-[#DAD2C3] p-[18px] flex flex-col gap-2.5">
-          <div className="flex justify-between items-start">
-            <div>
-              <div className="text-sm font-bold text-black tracking-[0.02em]">{p.name}</div>
-              <div className="text-[11px] text-neutral-500 mt-0.5">{p.powers}</div>
-            </div>
-            <div className="flex gap-[3px]" title={`Criticality ${p.criticality}/5`}>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <span key={n} className={`inline-block w-1.5 h-1.5 rounded-full ${n <= p.criticality ? 'bg-[#0047AB]' : 'bg-[#DAD2C3]'}`} />
-              ))}
-            </div>
-          </div>
-          <div className="grid grid-cols-[80px_1fr] gap-y-1 gap-x-3 text-[11px]">
-            <span className="text-[9px] font-bold tracking-[0.18em] uppercase text-neutral-500">Cost/mo</span>
-            <span className="text-black font-medium">{p.monthly_cost}</span>
-            {p.annual_cost && (<>
-              <span className="text-[9px] font-bold tracking-[0.18em] uppercase text-neutral-500">Cost/yr</span>
-              <span className="text-black font-medium">{p.annual_cost}</span>
-            </>)}
-            {p.free_tier_quota && (<>
-              <span className="text-[9px] font-bold tracking-[0.18em] uppercase text-neutral-500">Free tier</span>
-              <span className="text-black font-medium">{p.free_tier_quota}</span>
-            </>)}
-            <span className="text-[9px] font-bold tracking-[0.18em] uppercase text-neutral-500">Owner</span>
-            <span className="text-black font-medium font-mono text-[10px]">{p.owner_email}</span>
-          </div>
-          <div className="mt-1 pt-2.5 border-t border-[#DAD2C3] text-[10px] text-neutral-500 tracking-[0.04em]">
-            {p.renewal_date ? (
-              <>Renews <strong className={renewClass === 'soon' ? 'text-amber-700' : 'text-black'}>{days} days</strong> · {p.renewal_date}</>
-            ) : (
-              <span>Pay-as-you-go / no fixed renewal</span>
-            )}
-          </div>
-        </div>
-      );
-    })}
-  </div>
-);
-
 const IncidentBody: React.FC<{ rows: SerperLogEntry[]; status: UsageResponse['shoppingStatus'] }> = ({ rows, status }) => {
   const pillClass = status.disabled ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-800';
   const pillText = status.disabled
@@ -768,10 +704,6 @@ const AdminPage: React.FC = () => {
 
           <CollapsibleSection title="Cost & API health" sub="Per-provider usage vs free-tier ceiling · est." storageKey="cost" defaultOpen={false}>
             <CostBody data={data.cost} />
-          </CollapsibleSection>
-
-          <CollapsibleSection title="Platforms" sub={`${data.platforms.length} services · ownership · renewals`} storageKey="platforms" defaultOpen={false}>
-            <PlatformsBody items={data.platforms} />
           </CollapsibleSection>
 
           <CollapsibleSection title="Acquisition" sub="Where do visitors come from?" storageKey="acquisition" defaultOpen={false}>
