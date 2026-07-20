@@ -233,6 +233,10 @@ interface DB {
     projectType?: string;
     status: 'new' | 'read';
   }>;
+  /** Owner-editable platform/subscription inventory (I-012 → durable + editable,
+   *  2026-07-19). Seeded from server/config/platforms.json on first boot, then
+   *  lives here in app_state so owner edits survive Railway redeploys. */
+  platforms?: Platform[];
 }
 
 /** UTC YYYY-MM-DD for daily-budget bucketing. */
@@ -619,9 +623,56 @@ const PLATFORMS_PATH = "./server/config/platforms.json";
 let PLATFORMS: Platform[] = [];
 try {
   PLATFORMS = JSON.parse(readFileSync(PLATFORMS_PATH, "utf-8")) as Platform[];
-  console.log(`[platforms] loaded ${PLATFORMS.length} entries from ${PLATFORMS_PATH}`);
+  console.log(`[platforms] loaded ${PLATFORMS.length} seed entries from ${PLATFORMS_PATH}`);
 } catch (err) {
   console.error(`[platforms] failed to load ${PLATFORMS_PATH}:`, err);
+}
+
+/**
+ * The live platform inventory. Once boot has seeded `dbCache.platforms` (durable,
+ * owner-editable), that is the source of truth; the JSON file is only the seed and
+ * a fallback if the durable copy is somehow empty (e.g. Postgres unreachable at
+ * boot before seeding ran).
+ */
+function getPlatforms(): Platform[] {
+  return dbCache?.platforms && dbCache.platforms.length > 0 ? dbCache.platforms : PLATFORMS;
+}
+
+/**
+ * Normalize/validate one client-submitted platform row. Returns a clean Platform
+ * or null when the row is unusable (missing name). Keeps the durable store tidy
+ * and prevents malformed rows from breaking the admin UI later.
+ */
+function normalizePlatform(raw: any): Platform | null {
+  if (!raw || typeof raw !== "object") return null;
+  const name = String(raw.name ?? "").trim();
+  if (!name) return null;
+  const orNull = (v: any): string | null => {
+    const s = String(v ?? "").trim();
+    return s === "" ? null : s;
+  };
+  return {
+    name,
+    owner_email: String(raw.owner_email ?? "").trim(),
+    monthly_cost: String(raw.monthly_cost ?? "").trim(),
+    annual_cost: orNull(raw.annual_cost),
+    free_tier_quota: orNull(raw.free_tier_quota),
+    renewal_date: orNull(raw.renewal_date),
+    powers: String(raw.powers ?? "").trim(),
+    criticality: Math.max(1, Math.min(5, Math.round(Number(raw.criticality)) || 1)),
+  };
+}
+
+/**
+ * Seed the durable platform inventory on first boot for this app_state row. No-op
+ * once `dbCache.platforms` is populated, so owner edits are never overwritten.
+ */
+async function ensurePlatformsSeeded(): Promise<void> {
+  if (!dbCache) return;
+  if (Array.isArray(dbCache.platforms) && dbCache.platforms.length > 0) return;
+  dbCache.platforms = PLATFORMS.map((p) => ({ ...p }));
+  console.log(`✅ seeded ${dbCache.platforms.length} platforms into app_state (id='${STATE_ID}')`);
+  writeDB(dbCache);
 }
 
 // ─── Session store (in-memory, keyed by session token) ─────────────────────
@@ -774,6 +825,10 @@ async function startServer() {
   // starts serving, so the first request sees the durable state, not the wiped
   // ephemeral file. Degrades to file-backed if Postgres is unreachable.
   await hydrateDbFromPostgres();
+
+  // Seed the durable platform inventory once (owner-editable thereafter). Must run
+  // after hydration so it can check whether this app_state row already has edits.
+  await ensurePlatformsSeeded();
 
   // Sweep stale pending consultation orders → cancelled, every 5 minutes (I-025).
   // Run once at boot to clear anything left stale across a restart, then on an
@@ -3047,6 +3102,94 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     }
   });
 
+  // ── Platform inventory (owner-editable, durable via app_state) ────────────
+  //   GET  /api/admin/platforms         → { items: Platform[] }  (live durable copy)
+  //   PUT  /api/admin/platforms         → replace the whole list { items: Platform[] }
+  // The whole-list PUT keeps the server simple (no per-row ids) and matches the
+  // single-owner editing model: the admin edits the table then saves it wholesale.
+  app.get("/api/admin/platforms", (req, res) => {
+    if (!requireAdmin(req, res)) return;
+
+    // Attach live usage for the providers we meter, so the tab can show "how much
+    // is already used" per platform (Serper especially). Keyed by provider slug;
+    // the client maps a platform's name → slug. Only providers with a counter
+    // window appear. Serper always appears (+ its daily budget + offline flag).
+    const db = readDB();
+    const counters = db.apiCounters || {};
+    const todayUtc = utcDateString();
+    const month = utcMonthString();
+    const SHOPPING_DISABLED = (process.env.SHOPPING_DISABLED || "false").toLowerCase() === "true";
+    const SERPER_DAILY_BUDGET = (() => {
+      const parsed = parseInt(process.env.SERPER_DAILY_BUDGET || "200", 10);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : 200;
+    })();
+
+    const usage: Record<string, {
+      todayCount: number;
+      monthCount: number;
+      window: 'daily' | 'monthly';
+      windowLimit: number;
+      windowLabel: string;
+      monthCostEst: number;
+      dailyBudget?: number;
+      disabled?: boolean;
+    }> = {};
+    for (const key of Object.keys(PROVIDER_FREE_CAPS)) {
+      const c = counters[key];
+      const todayCount = c?.daily?.date === todayUtc ? c.daily.count : 0;
+      const monthCount = c?.monthly?.date === month ? c.monthly.count : 0;
+      // Skip silent providers to keep the payload tight — but always surface Serper.
+      if (key !== "serper" && todayCount === 0 && monthCount === 0) continue;
+      const cap = PROVIDER_FREE_CAPS[key];
+      usage[key] = {
+        todayCount,
+        monthCount,
+        window: cap.window,
+        windowLimit: cap.limit,
+        windowLabel: cap.label,
+        monthCostEst: monthCount * (CALL_COSTS[key] ?? 0),
+      };
+    }
+    // Serper extras: authoritative today count from serperUsage (same figure the
+    // daily-budget gate uses), the real daily budget, and the kill-switch state.
+    const serperToday = db.serperUsage && db.serperUsage.date === todayUtc ? db.serperUsage.count : 0;
+    const serperMonth = counters.serper?.monthly?.date === month ? counters.serper.monthly.count : 0;
+    usage.serper = {
+      todayCount: serperToday,
+      monthCount: serperMonth,
+      window: "daily",
+      windowLimit: PROVIDER_FREE_CAPS.serper.limit,
+      windowLabel: PROVIDER_FREE_CAPS.serper.label,
+      monthCostEst: serperMonth * (CALL_COSTS.serper ?? 0.02),
+      dailyBudget: SERPER_DAILY_BUDGET,
+      disabled: SHOPPING_DISABLED,
+    };
+
+    res.json({ items: getPlatforms(), usage });
+  });
+
+  app.put("/api/admin/platforms", (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const items = Array.isArray(req.body?.items) ? req.body.items : null;
+    if (!items) {
+      res.status(400).json({ error: "expected { items: Platform[] }" });
+      return;
+    }
+    const clean: Platform[] = [];
+    for (const raw of items) {
+      const p = normalizePlatform(raw);
+      if (!p) {
+        res.status(400).json({ error: "every platform needs a name" });
+        return;
+      }
+      clean.push(p);
+    }
+    const db = readDB();
+    db.platforms = clean;
+    writeDB(db);
+    res.json({ ok: true, items: clean });
+  });
+
   // ── GET /api/admin/usage — observability aggregator (I-011 · I-021b) ──
   // Powers the /admin dashboard. Single roundtrip returns:
   //   counters         per-provider rolling counters + 30d history (I-010 + I-021b)
@@ -3264,7 +3407,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     res.json({
       counters,
       activity: allActivityRaw.slice(-50).reverse(), // forensic feed — unfiltered (newest first)
-      platforms: PLATFORMS,
+      platforms: getPlatforms(),
       serperLog: (db.serperLog || []).slice(-100).reverse(), // newest first
       users: {
         total: userList.length,
