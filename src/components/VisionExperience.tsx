@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Download, RefreshCw, Pencil, Share2 } from 'lucide-react';
+import { X, Download, RefreshCw, Pencil, Share2, Bookmark, Check } from 'lucide-react';
 import { cld, cldSrcSet } from '../lib/cld';
 import { useLanguage } from '../LanguageContext';
+import { getStoredToken } from '../sessionClient';
+import { accountApi } from '../lib/accountApi';
 import FeedbackBand from './FeedbackBand';
 import Marquee from './studio/Marquee';
 import { STYLES } from './AIVisionShowcase';
@@ -99,6 +101,34 @@ const DNA_BANNER_DISMISSED_KEY = 'ai_vision_dna_banner_dismissed';
 
 export default function VisionExperience(p: VisionExperienceProps) {
   const { t } = useLanguage();
+
+  // ── AC-002 — "Save to My Studio": persist the shown concept to the user's
+  // Library so they can re-open/download it later. Gated on a real session
+  // (getStoredToken, no AuthProvider dependency); a no-op preview otherwise.
+  const [savedConceptUrls, setSavedConceptUrls] = useState<Set<string>>(new Set());
+  const [savingConcept, setSavingConcept] = useState(false);
+  const canSaveLibrary = !!getStoredToken();
+  const conceptSaved = !!p.selectedConceptUrl && savedConceptUrls.has(p.selectedConceptUrl);
+  const handleSaveConcept = async () => {
+    if (!p.selectedConceptUrl || savingConcept || conceptSaved) return;
+    setSavingConcept(true);
+    try {
+      const style = p.selectedStyle ? p.translateStyle(p.selectedStyle) : 'Concept';
+      const room = p.selectedRoom || 'Room';
+      await accountApi.saveLibraryItem({
+        tool: 'ai_vision',
+        title: `${room} — ${style}`,
+        imageDataUrl: p.selectedConceptUrl,
+      });
+      const url = p.selectedConceptUrl;
+      setSavedConceptUrls((prev) => new Set(prev).add(url));
+    } catch {
+      /* non-fatal — the concept is still downloadable */
+    } finally {
+      setSavingConcept(false);
+    }
+  };
+
   // ── State derivation ──
   // State 3 (results) is driven SOLELY by live `results` from the current round.
   // The archive (past concepts kept across a Reset) is supplemental — it only
@@ -638,6 +668,21 @@ export default function VisionExperience(p: VisionExperienceProps) {
                 title="Download"
               >
                 <Download className="w-[18px] h-[18px]" />
+              </button>
+            )}
+            {p.selectedConceptUrl && canSaveLibrary && (
+              <button
+                type="button"
+                onClick={handleSaveConcept}
+                disabled={savingConcept || conceptSaved}
+                className="px-5 py-3 bg-transparent text-white border border-white/40 hover:border-white text-[10px] font-bold uppercase tracking-[0.22em] inline-flex items-center gap-2 disabled:opacity-60"
+                title="Save this concept to My Studio"
+              >
+                {conceptSaved ? (
+                  <><Check className="w-3 h-3" /> Saved</>
+                ) : (
+                  <><Bookmark className="w-3 h-3" /> {savingConcept ? 'Saving…' : 'Save'}</>
+                )}
               </button>
             )}
             <button

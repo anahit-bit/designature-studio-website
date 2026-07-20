@@ -23,6 +23,17 @@ import * as mock from './accountApi.mock';
 export const USE_MOCK_ACCOUNT: boolean =
   ((import.meta as any)?.env?.VITE_USE_MOCK_ACCOUNT ?? 'true') !== 'false';
 
+/**
+ * Whether a real session exists. The Library loop (dashboard + saved items) is
+ * LIVE on the backend, so when the user is actually signed in we hit the real
+ * endpoints regardless of the mock flag; logged-out previews (and the dev tier
+ * switcher) still get mock data. Billing/bookings/subscription calls stay mock —
+ * there is no live subscription rail yet.
+ */
+function signedIn(): boolean {
+  return !!getStoredToken();
+}
+
 // ── shared types (spec §11) ─────────────────────────────────────────────────
 export type PlanTier = 'free' | 'design' | 'studio';
 export type PlanStatus = 'active' | 'canceled' | 'past_due' | 'grace';
@@ -114,6 +125,18 @@ export interface LibraryPage {
   page: number;
 }
 
+/** Payload for saving a generated output into the user's Library. */
+export interface SaveLibraryPayload {
+  tool: ToolKey;
+  title: string;
+  /** base64 data URL of an image output (AI Vision concept, audit render) — uploaded to Cloudinary server-side. */
+  imageDataUrl?: string;
+  /** Pre-hosted thumbnail (e.g. an already-Cloudinary URL). */
+  thumbnailUrl?: string;
+  /** Tool-specific payload: shopping items, style DNA, audit scores, etc. */
+  metadata?: Record<string, unknown>;
+}
+
 export interface Booking {
   id: string;
   slotStartTime: string; // ISO
@@ -197,23 +220,44 @@ async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 // ── client surface ───────────────────────────────────────────────────────────
 export const accountApi = {
-  // reads
+  // reads — the Library loop is LIVE, so prefer the real endpoint when signed in.
   getDashboard(): Promise<DashboardData> {
-    if (USE_MOCK_ACCOUNT) return mock.getDashboard();
-    // TODO(AC-001-backend): GET /api/user/dashboard
-    return api<DashboardData>('/api/user/dashboard');
+    if (signedIn()) return api<DashboardData>('/api/user/dashboard');
+    return mock.getDashboard();
   },
 
   getLibrary(filters: LibraryFilters = {}): Promise<LibraryPage> {
-    if (USE_MOCK_ACCOUNT) return mock.getLibrary(filters);
-    // TODO(AC-001-backend): GET /api/user/library?tool=&from=&to=&page=
-    const q = new URLSearchParams();
-    if (filters.tool && filters.tool !== 'all') q.set('tool', filters.tool);
-    if (filters.from) q.set('from', filters.from);
-    if (filters.to) q.set('to', filters.to);
-    if (filters.search) q.set('q', filters.search);
-    if (filters.page) q.set('page', String(filters.page));
-    return api<LibraryPage>(`/api/user/library?${q.toString()}`);
+    if (signedIn()) {
+      const q = new URLSearchParams();
+      if (filters.tool && filters.tool !== 'all') q.set('tool', filters.tool);
+      if (filters.from) q.set('from', filters.from);
+      if (filters.to) q.set('to', filters.to);
+      if (filters.search) q.set('q', filters.search);
+      if (filters.page) q.set('page', String(filters.page));
+      return api<LibraryPage>(`/api/user/library?${q.toString()}`);
+    }
+    return mock.getLibrary(filters);
+  },
+
+  getLibraryItem(id: string): Promise<LibraryItem> {
+    if (signedIn()) return api<LibraryItem>(`/api/user/library/${encodeURIComponent(id)}`);
+    return mock.getLibraryItem(id);
+  },
+
+  /** Save a generated output to the user's Library (AI Vision concept, Shopping list, …). */
+  saveLibraryItem(payload: SaveLibraryPayload): Promise<LibraryItem> {
+    if (signedIn())
+      return api<LibraryItem>('/api/user/library', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    return mock.saveLibraryItem(payload);
+  },
+
+  deleteLibraryItem(id: string): Promise<void> {
+    if (signedIn())
+      return api<void>(`/api/user/library/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    return mock.deleteLibraryItem(id);
   },
 
   getProjectFolders(): Promise<ProjectFolder[]> {

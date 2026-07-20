@@ -30,6 +30,7 @@ import type {
   PlanTier,
   ProjectFolder,
   Quota,
+  SaveLibraryPayload,
 } from './accountApi';
 
 // ── dev toggles (localStorage) ───────────────────────────────────────────────
@@ -347,10 +348,15 @@ export function getDashboard(): Promise<DashboardData> {
   });
 }
 
+// Items saved during this preview session (mock equivalent of the real Library).
+let sessionSaved: LibraryItem[] = [];
+
 export function getLibrary(filters: LibraryFilters = {}): Promise<LibraryPage> {
   const tier = getMockTier();
-  if (tier === 'free') return delay({ items: [], total: 0, page: 1 });
-  let items = LIBRARY;
+  if (tier === 'free' && sessionSaved.length === 0) {
+    return delay({ items: [], total: 0, page: 1 });
+  }
+  let items = [...sessionSaved, ...(tier === 'free' ? [] : LIBRARY)];
   if (filters.tool && filters.tool !== 'all') {
     items = items.filter((i) => i.tool === filters.tool);
   }
@@ -359,6 +365,31 @@ export function getLibrary(filters: LibraryFilters = {}): Promise<LibraryPage> {
     items = items.filter((i) => i.title.toLowerCase().includes(q));
   }
   return delay({ items, total: items.length, page: filters.page ?? 1 });
+}
+
+export function getLibraryItem(id: string): Promise<LibraryItem> {
+  const found = [...sessionSaved, ...LIBRARY].find((i) => i.id === id);
+  if (!found) return Promise.reject(new Error('Not found'));
+  return delay(found);
+}
+
+export function saveLibraryItem(payload: SaveLibraryPayload): Promise<LibraryItem> {
+  const item: LibraryItem = {
+    id: `sess-${sessionSaved.length + 1}-${payload.tool}`,
+    tool: payload.tool,
+    title: payload.title,
+    createdAt: new Date().toISOString(),
+    thumbnailUrl: payload.thumbnailUrl ?? payload.imageDataUrl ?? null,
+    fullPreviewUrl: payload.imageDataUrl ?? null,
+    metadata: payload.metadata ?? {},
+  };
+  sessionSaved = [item, ...sessionSaved];
+  return delay(item);
+}
+
+export function deleteLibraryItem(id: string): Promise<void> {
+  sessionSaved = sessionSaved.filter((i) => i.id !== id);
+  return delay(undefined);
 }
 
 export function getProjectFolders(): Promise<ProjectFolder[]> {

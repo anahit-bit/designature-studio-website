@@ -2835,6 +2835,252 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     }
   });
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // AC-001 / AC-002 — User Dashboard: saved Library + dashboard summary.
+  // All routes are auth'd (requireAuth → googleId). Library rows live in the
+  // `saved_items` Postgres table; image outputs are uploaded to Cloudinary so the
+  // stored URLs are durable and re-downloadable. The subscription/billing side of
+  // the dashboard is still mock on the client (no live tier rail yet), so only the
+  // "save your work → see it in Library → download later" loop is wired here.
+  // ══════════════════════════════════════════════════════════════════════════
+  const LIBRARY_TOOLS = [
+    "ai_vision",
+    "shopping",
+    "room_audit",
+    "style_quiz",
+    "design_brief",
+    "cultural",
+  ];
+
+  // Map a saved_items DB row → the LibraryItem shape the client expects.
+  function rowToLibraryItem(r: any) {
+    return {
+      id: r.id,
+      tool: r.tool,
+      title: r.title,
+      createdAt:
+        r.created_at instanceof Date ? r.created_at.toISOString() : r.created_at,
+      thumbnailUrl: r.thumbnail_url ?? null,
+      fullPreviewUrl: r.full_url ?? null,
+      metadata: r.metadata ?? {},
+    };
+  }
+
+  // POST /api/user/library — save a generated output to the user's Library.
+  // Body: { tool, title, imageDataUrl?, thumbnailUrl?, metadata? }. A data-URL
+  // image is uploaded to Cloudinary first; on upload failure the row is still
+  // saved (without an image) so the user never silently loses their work.
+  app.post("/api/user/library", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    const db = readDB();
+    const user = db.users[googleId];
+    if (!user) return res.status(404).json({ error: "User not found." });
+
+    const { tool, title, imageDataUrl, thumbnailUrl, metadata } = req.body ?? {};
+    if (!tool || !LIBRARY_TOOLS.includes(tool)) {
+      return res.status(400).json({ error: "Invalid or missing tool." });
+    }
+    if (!title || typeof title !== "string" || !title.trim()) {
+      return res.status(400).json({ error: "A title is required." });
+    }
+
+    let fullUrl: string | null = null;
+    let thumb: string | null = typeof thumbnailUrl === "string" ? thumbnailUrl : null;
+
+    if (typeof imageDataUrl === "string" && imageDataUrl.startsWith("data:")) {
+      try {
+        const up = await cloudinary.uploader.upload(imageDataUrl, {
+          folder: "user-library",
+          resource_type: "image",
+        });
+        bumpApiCount("cloudinary"); // I-010
+        fullUrl = up.secure_url;
+        thumb =
+          thumb ??
+          cloudinary.url(up.public_id, {
+            width: 400,
+            height: 500,
+            crop: "fill",
+            quality: "auto",
+            fetch_format: "auto",
+            secure: true,
+          });
+      } catch (e: any) {
+        console.error("[library] Cloudinary upload failed:", e?.message ?? e);
+        // fall through — save the row without an image rather than 500
+      }
+    }
+
+    try {
+      const r = await getPool().query(
+        `INSERT INTO saved_items (user_id, user_email, tool, title, thumbnail_url, full_url, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+         RETURNING *`,
+        [
+          googleId,
+          user.email,
+          tool,
+          title.trim().slice(0, 200),
+          thumb,
+          fullUrl,
+          JSON.stringify(metadata ?? {}),
+        ]
+      );
+      recordActivity(user.email, `save_${tool}`); // I-016
+      return res.status(201).json(rowToLibraryItem(r.rows[0]));
+    } catch (e: any) {
+      console.error("[library] insert failed:", e?.message ?? e);
+      return res.status(500).json({ error: "Could not save to your library." });
+    }
+  });
+
+  // GET /api/user/library?tool=&q= — the user's saved items, newest first.
+  app.get("/api/user/library", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    const tool = typeof req.query.tool === "string" ? req.query.tool : null;
+    const q =
+      typeof req.query.q === "string" ? req.query.q.trim().toLowerCase() : null;
+    try {
+      const params: any[] = [googleId];
+      let where = "user_id = $1";
+      if (tool && tool !== "all" && LIBRARY_TOOLS.includes(tool)) {
+        params.push(tool);
+        where += ` AND tool = $${params.length}`;
+      }
+      if (q) {
+        params.push(`%${q}%`);
+        where += ` AND lower(title) LIKE $${params.length}`;
+      }
+      const r = await getPool().query(
+        `SELECT * FROM saved_items WHERE ${where} ORDER BY created_at DESC LIMIT 200`,
+        params
+      );
+      return res.json({
+        items: r.rows.map(rowToLibraryItem),
+        total: r.rowCount,
+        page: 1,
+      });
+    } catch (e: any) {
+      console.error("[library] list failed:", e?.message ?? e);
+      return res.status(500).json({ error: "Could not load your library." });
+    }
+  });
+
+  // GET /api/user/library/:id — one saved item (for open / re-download).
+  app.get("/api/user/library/:id", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    try {
+      const r = await getPool().query(
+        `SELECT * FROM saved_items WHERE id = $1 AND user_id = $2`,
+        [req.params.id, googleId]
+      );
+      if (r.rowCount === 0) return res.status(404).json({ error: "Not found." });
+      return res.json(rowToLibraryItem(r.rows[0]));
+    } catch (e: any) {
+      console.error("[library] get-one failed:", e?.message ?? e);
+      return res.status(500).json({ error: "Could not load that item." });
+    }
+  });
+
+  // DELETE /api/user/library/:id — remove one of the user's saved items.
+  app.delete("/api/user/library/:id", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    try {
+      const r = await getPool().query(
+        `DELETE FROM saved_items WHERE id = $1 AND user_id = $2`,
+        [req.params.id, googleId]
+      );
+      if (r.rowCount === 0) return res.status(404).json({ error: "Not found." });
+      return res.status(204).end();
+    } catch (e: any) {
+      console.error("[library] delete failed:", e?.message ?? e);
+      return res.status(500).json({ error: "Could not delete that item." });
+    }
+  });
+
+  // GET /api/user/dashboard — Overview + rail summary in one call. Plan/quota
+  // reflect the real account (free for everyone; unlimited "studio" for the
+  // owner/demo accounts — no paid tier rail exists yet). Recent activity + the
+  // library count come from saved_items.
+  app.get("/api/user/dashboard", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    const db = readDB();
+    const user = db.users[googleId];
+    if (!user) return res.status(404).json({ error: "User not found." });
+
+    const unlimited = isConceptTestAccountEmail(user.email);
+    const tier: "free" | "studio" = unlimited ? "studio" : "free";
+    const cap = (c: number) => (unlimited ? null : c);
+    const used = (c: number, left: number) =>
+      unlimited ? 0 : Math.max(0, c - (left ?? 0));
+
+    let recentActivity: any[] = [];
+    let libraryTotal = 0;
+    try {
+      const rr = await getPool().query(
+        `SELECT id, tool, title, thumbnail_url, created_at
+           FROM saved_items WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5`,
+        [googleId]
+      );
+      recentActivity = rr.rows.map((r: any) => ({
+        id: r.id,
+        tool: r.tool,
+        title: r.title,
+        createdAt:
+          r.created_at instanceof Date ? r.created_at.toISOString() : r.created_at,
+        thumbnailUrl: r.thumbnail_url ?? null,
+      }));
+      const cc = await getPool().query(
+        `SELECT COUNT(*)::int AS n FROM saved_items WHERE user_id = $1`,
+        [googleId]
+      );
+      libraryTotal = cc.rows[0]?.n ?? 0;
+    } catch (e: any) {
+      console.error("[dashboard] saved_items read failed:", e?.message ?? e);
+      // degrade gracefully — an empty library is better than a 500 here
+    }
+
+    return res.json({
+      user: {
+        id: googleId,
+        email: user.email,
+        name: user.name,
+        picture: user.picture || null,
+      },
+      plan: {
+        tier,
+        status: "active",
+        renewsAt: null,
+        periodEndAt: null,
+        latestChargeStatus: null,
+      },
+      quota: {
+        aiVision: {
+          used: used(FREE_TIER_MAX_CONCEPTS, user.generationsLeft),
+          cap: cap(FREE_TIER_MAX_CONCEPTS),
+          resetsAt: null,
+        },
+        shopping: {
+          used: used(FREE_TIER_MAX_SHOPPING_LISTS, user.shoppingListsLeft ?? 0),
+          cap: cap(FREE_TIER_MAX_SHOPPING_LISTS),
+          resetsAt: null,
+        },
+        roomAudit: { used: 0, cap: unlimited ? null : 1, resetsAt: null },
+        styleQuiz: { used: 0, cap: unlimited ? null : 5, resetsAt: null },
+        designBrief: { used: 0, cap: unlimited ? null : 1, resetsAt: null },
+        cultural: { used: 0, cap: unlimited ? null : 1, resetsAt: null },
+      },
+      recentActivity,
+      nextBooking: null,
+      counts: { libraryTotal, upcomingBookings: 0 },
+    });
+  });
+
   // ── POST /api/room-audit/analyze — run Gemini room audit server-side ──
   app.post("/api/room-audit/analyze", async (req, res) => {
     const googleId = requireAuth(req, res);
