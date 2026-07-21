@@ -29,6 +29,7 @@ const baseProps = {
   handleDrop: () => {},
   handleGenerate: () => {},
   handleReset: () => {},
+  handleEdit: () => {},
   handleDownload: () => {},
   handleTrySampleRoom: () => {},
   removeInspirationImage: () => {},
@@ -73,6 +74,17 @@ describe('VisionExperience · Shop-this-room handoff (#22)', () => {
     fireEvent.click(screen.getByText(/Shop this room/i));
     expect(onShopThisRoom).toHaveBeenCalledTimes(1);
     expect(onShopThisRoom).toHaveBeenCalledWith(baseProps.selectedConceptUrl);
+  });
+
+  it('"Edit" button returns to setup by calling handleEdit (keeps the photo)', () => {
+    const handleEdit = vi.fn();
+    render(
+      <MemoryRouter><LanguageProvider>
+        <VisionExperience {...baseProps} handleEdit={handleEdit} />
+      </LanguageProvider></MemoryRouter>
+    );
+    fireEvent.click(screen.getByTitle(/change the style or room/i));
+    expect(handleEdit).toHaveBeenCalledTimes(1);
   });
 
   it('closes the result with the $99-review conversion band + a full-project fallback', () => {

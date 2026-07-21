@@ -861,6 +861,32 @@ const AIConceptsPage: React.FC = () => {
     variationSeedRef.current = 0;
   };
 
+  // ── Edit — return to the setup screen keeping the room, inspirations, and
+  //    style/room selections, so the user can change the style and regenerate
+  //    without re-uploading the photo (vs Reset, which clears everything).
+  const handleEdit = () => {
+    if (results.length > 0 && !lastGenWasSampleRef.current) {
+      setSessionConceptArchive((prev) => {
+        const next = [...prev];
+        for (const r of results) {
+          if (!next.includes(r)) next.push(r);
+        }
+        return next;
+      });
+    }
+    lastGenWasSampleRef.current = false;
+    setResults([]); // drops State 3 (results) → State 2 (setup)
+    setSelectedConceptIndex(0);
+    setError(null);
+    setValidationError(null);
+    setShoppingResults([]);
+    setShoppingItems([]);
+    setShoppingDone(false);
+    setShoppingError(null);
+    variationSeedRef.current = 0;
+    // roomImage, inspirationImages, selectedStyle, selectedRoom are retained.
+  };
+
   // ── Shopping search ──
   // ── PDF Download ──
   const handleDownloadShoppingPDF = async () => {
@@ -1428,6 +1454,7 @@ const AIConceptsPage: React.FC = () => {
           handleDrop={handleDrop}
           handleGenerate={handleGenerate}
           handleReset={handleReset}
+          handleEdit={handleEdit}
           handleDownload={handleDownload}
           handleTrySampleRoom={handleTrySampleRoom}
           removeInspirationImage={removeInspirationImage}
