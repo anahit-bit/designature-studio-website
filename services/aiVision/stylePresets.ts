@@ -87,13 +87,13 @@ export const STYLE_BRIEFS: Record<StylePreset, string> = {
 `.trim(),
 
   mid_century: `
-1. COLOR PALETTE: Walnut Brown #6B4226, Mustard Yellow #D4A437, Avocado Green #6B7A3F, Burnt Orange #C75D2B, Cream #EFE6D2, Teal Blue #2E5C6E, Warm White #F4EDDC.
-2. MATERIALS & FINISHES: rich walnut and teak with rounded edges, molded plywood, fiberglass, polished brass and chrome, full-grain leather, textured wool, geometric patterned fabrics.
-3. FURNITURE CHARACTER: clean tapered legs, organic curves, low-slung profiles, splayed bases. Iconic silhouettes — egg chairs, tulip tables, spindle backs. Functional, sculptural, and lifted off the floor for visual lightness.
-4. LIGHTING: starburst chandeliers, atomic-era pendants, arc floor lamps with marble bases, brass globe sconces. Warm and direct, often as design statements in their own right.
-5. WALL & CEILING TREATMENT: matte painted walls in warm neutrals, occasional accent walls in saturated period colors, wood paneling on one wall, flat clean ceilings.
-6. DECOR & STYLING: abstract geometric art, ceramic sculptures in earthy glazes, vintage atomic clocks, sculptural ceramics, monstera and rubber plants in ceramic pots, vinyl records, curated coffee table books.
-7. OVERALL MOOD: optimistic, sculptural, design-forward. The 1950s-60s era is celebrated through clean lines and warm materials that feel both retro and timeless.
+1. COLOR PALETTE: Walnut Brown #6B4226, Warm Cream #F0E9D8, Soft Sage #97A48B, Muted Rust #B3663D, Warm Off-White #F5EFE0, Deep Teal #2E5C6E, Warm Grey #8A8478.
+2. MATERIALS & FINISHES: warm walnut and white-oak veneers with clean straight or gently curved edges, matte-finished woods (no glossy lacquer), brushed brass hardware used sparingly, subtle leather in caramel or cognac, matte ceramics, natural wool boucle, and linen. Avoid fiberglass, chrome, and any retro period hardware.
+3. FURNITURE CHARACTER: contemporary silhouettes influenced by mid-century — clean tapered legs, low-slung profiles, refined proportions lifted off the floor for visual lightness. These are modern pieces, not literal period reproductions: no iconic novelty chairs, no pedestal-base reproductions, no turned or dowel-style chair backs. Restrained, refined, modern first — the mid-century reference is felt in the proportion and rhythm, not in a recognizable retro silhouette.
+4. LIGHTING: slim brass or matte-black pendant lamps, arc floor lamps with restrained bases, understated brass sconces. Sculptural but calm — no radiating spoke or spike chandeliers, no space-age or retro-era pendants.
+5. WALL & CEILING TREATMENT: matte painted walls in warm neutrals, one optional feature wall in walnut or oak vertical slats (thin, tight rhythm — not thick period panels), simple flat ceilings, no retro-era trim.
+6. DECOR & STYLING: abstract art in muted tones, one sculptural ceramic vessel, curated design books, one architectural plant (fiddle leaf, rubber plant, monstera) in a matte planter. No retro novelty clocks, no record collections, no obviously period-kitsch objects. Surfaces are calm and considered.
+7. OVERALL MOOD: warm, design-forward, contemporary. Mid-century warmth and rhythm without the period furniture — a modern interior that references the era through proportion and material, feeling both quiet and confident.
 `.trim(),
 
   modern: `
