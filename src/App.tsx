@@ -108,13 +108,17 @@ const DeliverablesRoute: React.FC = () => (
   </div>
 );
 
-// AC-001 — User Dashboard. Gated to signed-in users in real mode; in mock mode
-// (VITE_USE_MOCK_ACCOUNT default true) it renders regardless so all tiers can be
-// previewed locally. The fixed site Header needs top padding on this plain page.
+// AC-001 — User Dashboard. PAID-ONLY: only signed-in paying users (isPaid; today
+// that's the owner/unlimited accounts until a subscription rail exists) may reach
+// it. Not signed in → login; signed in but free → /pricing to upgrade. In mock
+// mode (VITE_USE_MOCK_ACCOUNT default true) the gate is bypassed so all tiers can
+// be previewed locally. The fixed site Header needs top padding on this plain page.
 const AccountRoute: React.FC = () => {
   const { user, isLoading } = useAuth();
-  if (!USE_MOCK_ACCOUNT && !isLoading && !user) {
-    return <Navigate to="/login?next=/account" replace />;
+  if (!USE_MOCK_ACCOUNT) {
+    if (isLoading) return null; // avoid a redirect flash while /api/auth/me resolves
+    if (!user) return <Navigate to="/login?next=/account" replace />;
+    if (!user.isPaid) return <Navigate to="/pricing" replace />;
   }
   return (
     <div className="min-h-screen bg-white font-body">

@@ -174,12 +174,12 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
     );
   };
 
-  // AC-001 — "My studio" account link. Visible ONLY when signed in — never for
-  // logged-out visitors. Uses react-router (the /account route lives outside
-  // LanguageContext's Page map).
+  // AC-001 — "My studio" account link. PAID-ONLY: shown only to signed-in paying
+  // users (user.isPaid) — never for logged-out visitors or free accounts. Uses
+  // react-router (the /account route lives outside LanguageContext's Page map).
   const isAccountActive = location.pathname.startsWith('/account');
   const MyStudioLink = ({ inMobileMenu = false }: { inMobileMenu?: boolean }) => {
-    if (!user) return null;
+    if (!user?.isPaid) return null;
     const color = inMobileMenu
       ? 'text-black hover:text-[#0047AB]'
       : isAccountActive
@@ -330,7 +330,7 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
                 {link.name}
               </a>
             ))}
-            {user && (
+            {user?.isPaid && (
               <div
                 className={`transition-all duration-700 ${
                   isMobileMenuOpen ? 'translate-x-0 opacity-100' : 'translate-x-12 opacity-0'
