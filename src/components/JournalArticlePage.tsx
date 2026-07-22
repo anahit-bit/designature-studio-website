@@ -116,6 +116,38 @@ export const StyleGallery: React.FC<{
   );
 };
 
+/**
+ * End-of-article CTA band. The primary (cobalt) button + heading are per-post:
+ * `heading`, `label`, and `href` come from the post and fall back to the AI-Vision
+ * defaults when absent. The black "Book a consultation" secondary is always fixed.
+ * Exported for unit testing.
+ */
+export const CtaBand: React.FC<{ heading?: string; label?: string; href?: string }> = ({
+  heading,
+  label,
+  href,
+}) => (
+  <section className="mt-16 text-center">
+    <h2 className="text-3xl md:text-4xl font-bold font-display tracking-tight leading-tight mb-6">
+      {heading || 'See your space, reimagined'}
+    </h2>
+    <div className="flex flex-wrap justify-center gap-4">
+      <Link
+        to={href || '/ai-concepts'}
+        className="inline-flex items-center justify-center w-full sm:w-auto bg-[#0047AB] text-white text-[12px] font-bold uppercase tracking-[0.18em] px-[30px] py-[17px] hover:opacity-90 transition-opacity"
+      >
+        {label || 'Try AI Vision free'} →
+      </Link>
+      <Link
+        to="/consultation"
+        className="inline-flex items-center justify-center w-full sm:w-auto bg-black text-white text-[12px] font-bold uppercase tracking-[0.18em] px-[30px] py-[17px] hover:opacity-90 transition-opacity"
+      >
+        Book a consultation →
+      </Link>
+    </div>
+  </section>
+);
+
 const JournalArticlePage: React.FC = () => {
   const { slug = '' } = useParams<{ slug: string }>();
   const [post, setPost] = useState<BlogPost | null>(null);
@@ -409,26 +441,8 @@ const JournalArticlePage: React.FC = () => {
                 FAQPage JSON-LD (server/seo/jsonld.ts) + prerender still emit from
                 post.seo.faq, so structured data is unchanged. */}
 
-            {/* CTA band — centered brand buttons: cobalt → AI Vision, black → consultation */}
-            <section className="mt-16 text-center">
-              <h2 className="text-3xl md:text-4xl font-bold font-display tracking-tight leading-tight mb-6">
-                Ready to see your room reimagined?
-              </h2>
-              <div className="flex flex-wrap justify-center gap-4">
-                <Link
-                  to="/ai-concepts"
-                  className="inline-flex items-center justify-center w-full sm:w-auto bg-[#0047AB] text-white text-[12px] font-bold uppercase tracking-[0.18em] px-[30px] py-[17px] hover:opacity-90 transition-opacity"
-                >
-                  Try AI Vision free →
-                </Link>
-                <Link
-                  to="/consultation"
-                  className="inline-flex items-center justify-center w-full sm:w-auto bg-black text-white text-[12px] font-bold uppercase tracking-[0.18em] px-[30px] py-[17px] hover:opacity-90 transition-opacity"
-                >
-                  Book a consultation →
-                </Link>
-              </div>
-            </section>
+            {/* CTA band — per-post cobalt primary (heading/label/href), fixed black secondary */}
+            <CtaBand heading={post.ctaHeading} label={post.ctaLabel} href={post.ctaHref} />
 
             {/* Comments */}
             <Comments slug={post.slug} />
