@@ -179,13 +179,21 @@ export async function initPayment(args: {
   orderId: number | string;
   description: string;
   opaque: string;
+  /**
+   * When present, InitPayment registers a card BINDING under this ID: after the
+   * customer completes this first (CIT + 3DS) payment on the hosted page, the
+   * card is tokenised to `cardHolderId` and can be charged later, without any
+   * card entry, via `makeBindingPayment`. Omit for one-off payments (the
+   * consultation flow). This is the entry point for the subscription rail.
+   */
+  cardHolderId?: string;
 }): Promise<InitPaymentResult> {
   const cfg = getAmeriaConfig();
   if (!cfg.baseUrl || !cfg.clientId || !cfg.username || !cfg.password) {
     throw new Error("Ameria vPOS env is incomplete (base URL / client id / username / password).");
   }
   const url = `${cfg.baseUrl}api/VPOS/InitPayment`;
-  const body = {
+  const body: Record<string, unknown> = {
     ClientID: cfg.clientId,
     Username: cfg.username,
     Password: cfg.password,
@@ -196,6 +204,7 @@ export async function initPayment(args: {
     BackURL: cfg.callbackUrl,
     Opaque: args.opaque,
   };
+  if (args.cardHolderId) body.CardHolderID = args.cardHolderId;
   const raw = await postJson(url, body);
   return {
     paymentId: raw?.PaymentID ?? null,
@@ -247,6 +256,129 @@ export async function cancelPayment(paymentId: string): Promise<CancelResult> {
     PaymentID: paymentId,
     Username: cfg.username,
     Password: cfg.password,
+  });
+  return {
+    responseCode: raw?.ResponseCode ?? null,
+    responseMessage: raw?.ResponseMessage ?? null,
+    raw,
+  };
+}
+
+// ── Binding (recurring) transactions ────────────────────────────────────────
+// The subscription rail. A card is bound once via initPayment({cardHolderId})
+// (CIT + 3DS on the hosted page); thereafter makeBindingPayment charges it
+// server-to-server (MIT — no customer, no browser). PaymentType 6 = Binding.
+
+/** vPOS PaymentType enum value for binding transactions. */
+export const PAYMENT_TYPE_BINDING = 6;
+
+export interface BindingPaymentResult {
+  paymentId: string | null;
+  responseCode: string | number | null;
+  responseMessage: string | null;
+  paymentState: string | null;
+  orderId: string | number | null;
+  cardHolderId: string | null;
+  bindingId: string | null;
+  approvedAmount: number | string | null;
+  cardNumber: string | null;
+  raw: unknown;
+}
+
+export interface CardBinding {
+  CardHolderID?: string;
+  CardPan?: string;
+  ExpDate?: string;
+  IsAvtive?: boolean; // (sic) — spelled this way in the vPOS 3.1 response
+}
+
+export interface GetBindingsResult {
+  responseCode: string | number | null;
+  responseMessage: string | null;
+  bindings: CardBinding[];
+  raw: unknown;
+}
+
+/**
+ * MakeBindingPayment — charge a previously-bound card with NO customer
+ * interaction (the recurring engine). `cardHolderId` must already have a
+ * successful bound payment behind it (see initPayment). OrderID must be fresh
+ * and unique per charge (in sandbox, within the allowed range). Success = "00".
+ */
+export async function makeBindingPayment(args: {
+  cardHolderId: string;
+  orderId: number | string;
+  description: string;
+  opaque: string;
+  /** Override the amount (e.g. a proration). Defaults to the mode's amount. */
+  amount?: number;
+  /** Override the currency. Defaults to the mode's currency. */
+  currency?: string;
+}): Promise<BindingPaymentResult> {
+  const cfg = getAmeriaConfig();
+  if (!cfg.baseUrl || !cfg.clientId || !cfg.username || !cfg.password) {
+    throw new Error("Ameria vPOS env is incomplete (base URL / client id / username / password).");
+  }
+  const url = `${cfg.baseUrl}api/VPOS/MakeBindingPayment`;
+  const raw = await postJson(url, {
+    ClientID: cfg.clientId,
+    Username: cfg.username,
+    Password: cfg.password,
+    CardHolderID: args.cardHolderId,
+    Amount: args.amount ?? cfg.amount,
+    OrderID: args.orderId,
+    Currency: args.currency ?? cfg.currency,
+    Description: args.description,
+    BackURL: cfg.callbackUrl,
+    PaymentType: PAYMENT_TYPE_BINDING,
+    Opaque: args.opaque,
+  });
+  return {
+    paymentId: raw?.PaymentID ?? null,
+    responseCode: raw?.ResponseCode ?? null,
+    responseMessage: raw?.ResponseMessage ?? null,
+    paymentState: raw?.PaymentState ?? null,
+    orderId: raw?.OrderID ?? null,
+    cardHolderId: raw?.CardHolderID ?? null,
+    bindingId: raw?.BindingID ?? null,
+    approvedAmount: raw?.ApprovedAmount ?? null,
+    cardNumber: raw?.CardNumber ?? null,
+    raw,
+  };
+}
+
+/** GetBindings — list the cards bound for this merchant (PaymentType 6). Used to
+ *  read a saved card's masked PAN + expiry (for the "update card" prompt). */
+export async function getBindings(paymentType = PAYMENT_TYPE_BINDING): Promise<GetBindingsResult> {
+  const cfg = getAmeriaConfig();
+  const url = `${cfg.baseUrl}api/VPOS/GetBindings`;
+  const raw = await postJson(url, {
+    ClientID: cfg.clientId,
+    Username: cfg.username,
+    Password: cfg.password,
+    PaymentType: paymentType,
+  });
+  return {
+    responseCode: raw?.ResponseCode ?? null,
+    responseMessage: raw?.ResponseMessage ?? null,
+    bindings: Array.isArray(raw?.CardBindingFileds) ? raw.CardBindingFileds : [],
+    raw,
+  };
+}
+
+/** DeactivateBinding — switch a saved card off (used on cancellation). Success = "00". */
+export async function deactivateBinding(
+  cardHolderId: string,
+  paymentType = PAYMENT_TYPE_BINDING,
+): Promise<RefundResult> {
+  const cfg = getAmeriaConfig();
+  const url = `${cfg.baseUrl}api/VPOS/DeactivateBinding`;
+  const raw = await postJson(url, {
+    ClientID: cfg.clientId,
+    Username: cfg.username,
+    Password: cfg.password,
+    CardHolderID: cardHolderId,
+    PaymentType: paymentType,
   });
   return {
     responseCode: raw?.ResponseCode ?? null,
