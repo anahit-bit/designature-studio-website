@@ -145,12 +145,22 @@ export const LibraryTab: React.FC<{
               className="border border-black/10 group cursor-pointer hover:border-black/25 transition-colors"
             >
               <div className="relative overflow-hidden bg-[#FAFAFA]" style={{ aspectRatio: '4 / 5' }}>
-                {item.thumbnailUrl && (
+                {item.thumbnailUrl ? (
                   <img
                     src={item.thumbnailUrl}
                     alt={item.title}
                     className="w-full h-full object-cover"
                   />
+                ) : (
+                  <div
+                    className="w-full h-full flex items-center justify-center"
+                    style={{ background: 'linear-gradient(135deg,#0B2240 0%,#9E5E41 100%)' }}
+                  >
+                    {(() => {
+                      const { Icon } = TOOL_META[item.tool];
+                      return <Icon className="w-10 h-10 text-white/85" strokeWidth={1.25} />;
+                    })()}
+                  </div>
                 )}
                 <span className="absolute top-[10px] left-[10px] bg-[#0A0A0A]/55 text-white text-[9px] font-bold tracking-[0.2em] uppercase px-2 py-1">
                   {TOOL_META[item.tool].label}
