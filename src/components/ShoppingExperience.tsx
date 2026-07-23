@@ -9,6 +9,7 @@ import { SHOPPING_LOGOS, LogoChip } from './ShoppingListShowcase';
 import { SHOPPING_TAXONOMY, SHOPPING_TAXONOMY_IDS, categoryToTaxonomyId } from '../data/shoppingTaxonomy';
 import { parsePrice } from '../lib/priceParse';
 import { accountApi } from '../lib/accountApi';
+import { fingerprint, isSaved, markSaved } from '../lib/savedMarks';
 
 // Locked Shopping hero (lock §11 · folder "Inputs").
 const SHOP_HERO = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1780414472/Example_03_xyljim.png';
@@ -109,8 +110,10 @@ const ShoppingExperience: React.FC<Props> = (p) => {
   // upload); sourceImg gives the list a thumbnail when available.
   const [listSaved, setListSaved] = useState(false);
   const [savingList, setSavingList] = useState(false);
+  const listMark = p.shoppingResults.length ? fingerprint(JSON.stringify(p.shoppingResults)) : '';
+  const listAlreadySaved = listSaved || (!!listMark && isSaved(listMark));
   const handleSaveList = async () => {
-    if (savingList || listSaved || p.shoppingResults.length === 0) return;
+    if (savingList || listAlreadySaved || p.shoppingResults.length === 0) return;
     if (!isPaidUser) { p.navigateTo('pricing'); return; } // saving is paid-only
     setSavingList(true);
     try {
@@ -121,6 +124,7 @@ const ShoppingExperience: React.FC<Props> = (p) => {
         thumbnailUrl: sourceImg ?? undefined,
         metadata: { items: p.shoppingResults, country: p.shoppingCountry },
       });
+      if (listMark) markSaved(listMark);
       setListSaved(true);
     } catch {
       /* non-fatal — the list is still downloadable as a PDF */
@@ -543,7 +547,7 @@ const ShoppingExperience: React.FC<Props> = (p) => {
                 <button type="button" onClick={() => void p.handleDownloadShoppingPDF()} className="w-full bg-black text-white text-[12px] font-bold uppercase tracking-[0.22em] py-4 flex items-center justify-center gap-2 hover:bg-black/85 transition">{t('ai.shopli.downloadPdf')}</button>
                 <div className="paid">
                   <span className="lockchip">🔒 {t('ai.shopli.paid')}</span>
-                  <button type="button" onClick={handleSaveList} disabled={savingList || listSaved} className="w-full inline-flex items-center justify-center gap-2 border border-[#0047AB] text-[#0047AB] text-[11px] font-bold uppercase tracking-[0.2em] py-3.5 hover:bg-[#0047AB]/5 transition disabled:opacity-60">{listSaved ? '✓ Saved to My Studio' : savingList ? 'Saving…' : t('ai.shopli.saveList')}</button>
+                  <button type="button" onClick={handleSaveList} disabled={savingList || listAlreadySaved} className="w-full inline-flex items-center justify-center gap-2 border border-[#0047AB] text-[#0047AB] text-[11px] font-bold uppercase tracking-[0.2em] py-3.5 hover:bg-[#0047AB]/5 transition disabled:opacity-60">{listAlreadySaved ? '✓ Saved to My Studio' : savingList ? 'Saving…' : t('ai.shopli.saveList')}</button>
                 </div>
                 <p className="text-[11px] text-black/60 text-center leading-relaxed">{t('ai.shopli.disclaimer')}</p>
               </div>

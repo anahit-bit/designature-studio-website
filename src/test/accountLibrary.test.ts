@@ -10,6 +10,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { accountApi } from '../lib/accountApi';
 import * as mock from '../lib/accountApi.mock';
 import { SESSION_KEY } from '../sessionClient';
+import { fingerprint, isSaved, markSaved } from '../lib/savedMarks';
 
 function installLocalStorage() {
   const store: Record<string, string> = {};
@@ -132,5 +133,36 @@ describe('accountApi real-vs-mock routing', () => {
     expect(url).toBe('/api/user/library');
     expect(init.method).toBe('POST');
     expect((init.headers as Record<string, string>)['x-session-token']).toBe('fake-token');
+  });
+
+  it('bulkDeleteLibraryItems POSTs the ids to the bulk endpoint when signed in', async () => {
+    window.localStorage.setItem(SESSION_KEY, 'fake-token');
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ deleted: 2 }),
+    });
+    global.fetch = fetchSpy as any;
+
+    const n = await accountApi.bulkDeleteLibraryItems(['a', 'b']);
+    expect(n).toBe(2);
+    const [url, init] = fetchSpy.mock.calls[0];
+    expect(url).toBe('/api/user/library/bulk-delete');
+    expect(JSON.parse(init.body)).toEqual({ ids: ['a', 'b'] });
+  });
+});
+
+describe('savedMarks (persistent Saved state)', () => {
+  it('marks and reads a fingerprint across "sessions"', () => {
+    const mark = fingerprint('data:image/png;base64,ABCDEF');
+    expect(isSaved(mark)).toBe(false);
+    markSaved(mark);
+    expect(isSaved(mark)).toBe(true);
+    // same input → same fingerprint (survives a page reload)
+    expect(isSaved(fingerprint('data:image/png;base64,ABCDEF'))).toBe(true);
+  });
+
+  it('different content yields a different fingerprint', () => {
+    expect(fingerprint('concept-A')).not.toBe(fingerprint('concept-B'));
   });
 });

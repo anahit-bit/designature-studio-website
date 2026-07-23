@@ -1,10 +1,11 @@
 /** AC-001 — Library tab. Filter chips + grid of saved items; Studio project-folders strip; free-tier upsell empty state. */
 import React, { useState } from 'react';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Check } from 'lucide-react';
 import { Button, Eyebrow, Skeleton, ErrorBanner, TOOL_META, fmtMonthDay } from '../ui';
 import { useResource } from '../useResource';
 import { accountApi, type PlanTier, type ToolKey, type LibraryItem } from '../../../lib/accountApi';
 import { LibraryItemModal } from '../modals/LibraryItemModal';
+import { Modal, ModalActions } from '../modals/Modal';
 
 type ChipKey = ToolKey | 'all';
 const CHIPS: { key: ChipKey; label: string }[] = [
@@ -64,12 +65,42 @@ export const LibraryTab: React.FC<{
   const [chip, setChip] = useState<ChipKey>('all');
   const [search, setSearch] = useState('');
   const [openItem, setOpenItem] = useState<LibraryItem | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [confirmBulk, setConfirmBulk] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const paid = tier !== 'free';
 
   const { data, loading, error, reload } = useResource(
     () => accountApi.getLibrary({ tool: chip, search: search || undefined }),
     [chip, search]
   );
+
+  const items = data?.items ?? [];
+  const allSelected = items.length > 0 && selected.size === items.length;
+  const toggleSel = (id: string) =>
+    setSelected((prev) => {
+      const n = new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+  const selectAll = () =>
+    setSelected(allSelected ? new Set() : new Set(items.map((i) => i.id)));
+  const exitSelect = () => {
+    setSelectMode(false);
+    setSelected(new Set());
+  };
+  const doBulkDelete = async () => {
+    setDeleting(true);
+    try {
+      await accountApi.bulkDeleteLibraryItems([...selected]);
+      setConfirmBulk(false);
+      exitSelect();
+      reload();
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   if (!paid) {
     return (
@@ -133,6 +164,38 @@ export const LibraryTab: React.FC<{
         />
       </div>
 
+      {/* select / bulk-delete toolbar */}
+      {!loading && items.length > 0 && (
+        <div className="flex items-center gap-3 mb-4 flex-wrap">
+          {!selectMode ? (
+            <button
+              onClick={() => setSelectMode(true)}
+              className="font-body text-[11px] font-bold tracking-[0.14em] uppercase text-[#0A0A0A] border border-black/15 px-3 py-2 hover:border-black/45"
+            >
+              Select
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={selectAll}
+                className="font-body text-[11px] font-bold tracking-[0.14em] uppercase text-[#0A0A0A] border border-black/15 px-3 py-2 hover:border-black/45"
+              >
+                {allSelected ? 'Clear all' : 'Select all'}
+              </button>
+              <span className="text-[13px] text-[#6B6B6B] font-body">{selected.size} selected</span>
+              <div className="ml-auto flex gap-2">
+                <Button size="sm" variant="danger" disabled={selected.size === 0} onClick={() => setConfirmBulk(true)}>
+                  Delete ({selected.size})
+                </Button>
+                <Button size="sm" variant="secondary" onClick={exitSelect}>
+                  Cancel
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {error && <ErrorBanner onRetry={reload} />}
 
       {loading ? (
@@ -152,8 +215,12 @@ export const LibraryTab: React.FC<{
           {data.items.map((item) => (
             <div
               key={item.id}
-              onClick={() => setOpenItem(item)}
-              className="border border-black/10 group cursor-pointer hover:border-black/25 transition-colors"
+              onClick={() => (selectMode ? toggleSel(item.id) : setOpenItem(item))}
+              className={`border group cursor-pointer transition-colors ${
+                selectMode && selected.has(item.id)
+                  ? 'border-[#0047AB] ring-2 ring-[#0047AB]'
+                  : 'border-black/10 hover:border-black/25'
+              }`}
             >
               <div className="relative overflow-hidden bg-[#FAFAFA]" style={{ aspectRatio: '4 / 5' }}>
                 {item.thumbnailUrl ? (
@@ -176,13 +243,24 @@ export const LibraryTab: React.FC<{
                 <span className="absolute top-[10px] left-[10px] bg-[#0A0A0A]/55 text-white text-[9px] font-bold tracking-[0.2em] uppercase px-2 py-1">
                   {TOOL_META[item.tool].label}
                 </span>
-                <button
-                  aria-label="Open item"
-                  onClick={(e) => { e.stopPropagation(); setOpenItem(item); }}
-                  className="absolute top-2 right-2 text-white bg-black/40 w-[26px] h-[26px] flex items-center justify-center hover:bg-black/60"
-                >
-                  <MoreHorizontal className="w-4 h-4" />
-                </button>
+                {selectMode ? (
+                  <div
+                    aria-hidden
+                    className={`absolute top-2 right-2 w-[26px] h-[26px] border-2 flex items-center justify-center ${
+                      selected.has(item.id) ? 'bg-[#0047AB] border-[#0047AB]' : 'bg-black/40 border-white'
+                    }`}
+                  >
+                    {selected.has(item.id) && <Check className="w-4 h-4 text-white" />}
+                  </div>
+                ) : (
+                  <button
+                    aria-label="Open item"
+                    onClick={(e) => { e.stopPropagation(); setOpenItem(item); }}
+                    className="absolute top-2 right-2 text-white bg-black/40 w-[26px] h-[26px] flex items-center justify-center hover:bg-black/60"
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
+                )}
               </div>
               <div className="p-3">
                 <div className="font-display text-[17px] leading-[1.15] text-[#0A0A0A]">
@@ -222,6 +300,26 @@ export const LibraryTab: React.FC<{
         onClose={() => setOpenItem(null)}
         onDeleted={() => reload()}
       />
+
+      <Modal
+        open={confirmBulk}
+        onClose={() => !deleting && setConfirmBulk(false)}
+        title={`Delete ${selected.size} item${selected.size === 1 ? '' : 's'}?`}
+      >
+        <p className="font-body text-[13px] text-[#6B6B6B] mb-[18px]">
+          This <b className="text-[#9E5E41]">permanently</b> deletes the selected item
+          {selected.size === 1 ? '' : 's'} from your library — including any generated images.
+          This cannot be undone.
+        </p>
+        <ModalActions>
+          <Button size="sm" variant="secondary" onClick={() => setConfirmBulk(false)} disabled={deleting}>
+            Keep {selected.size === 1 ? 'it' : 'them'}
+          </Button>
+          <Button size="sm" variant="danger" onClick={doBulkDelete} disabled={deleting}>
+            {deleting ? 'Deleting…' : `Delete ${selected.size}`}
+          </Button>
+        </ModalActions>
+      </Modal>
     </section>
   );
 };

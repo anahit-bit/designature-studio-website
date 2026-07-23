@@ -4,6 +4,7 @@ import { cld, cldSrcSet } from '../lib/cld';
 import { useLanguage } from '../LanguageContext';
 import { getStoredToken } from '../sessionClient';
 import { accountApi } from '../lib/accountApi';
+import { fingerprint, isSaved, markSaved } from '../lib/savedMarks';
 import FeedbackBand from './FeedbackBand';
 import Marquee from './studio/Marquee';
 import { STYLES } from './AIVisionShowcase';
@@ -105,11 +106,14 @@ export default function VisionExperience(p: VisionExperienceProps) {
   // ── AC-002 — "Save to My Studio": persist the shown concept to the user's
   // Library (paid feature) so they can re-open/download/share it later. Free users
   // get an upsell instead of a fake "Saved". `signedIn` guards the preview no-op.
-  const [savedConceptUrls, setSavedConceptUrls] = useState<Set<string>>(new Set());
+  const [savedMarks, setSavedMarks] = useState<Set<string>>(new Set());
   const [savingConcept, setSavingConcept] = useState(false);
   const signedIn = !!getStoredToken();
   const canSaveLibrary = signedIn && p.isPaid; // saving to the Library is paid-only
-  const conceptSaved = !!p.selectedConceptUrl && savedConceptUrls.has(p.selectedConceptUrl);
+  // Mark persists in localStorage → the button stays "Saved" even after leaving
+  // and returning to this concept (the server also dedups, so no duplicate rows).
+  const conceptMark = p.selectedConceptUrl ? fingerprint(p.selectedConceptUrl) : '';
+  const conceptSaved = !!conceptMark && (savedMarks.has(conceptMark) || isSaved(conceptMark));
   const handleSaveConcept = async () => {
     if (!p.selectedConceptUrl || savingConcept || conceptSaved || !p.isPaid) return;
     setSavingConcept(true);
@@ -121,8 +125,8 @@ export default function VisionExperience(p: VisionExperienceProps) {
         title: `${room} — ${style}`,
         imageDataUrl: p.selectedConceptUrl,
       });
-      const url = p.selectedConceptUrl;
-      setSavedConceptUrls((prev) => new Set(prev).add(url));
+      markSaved(conceptMark);
+      setSavedMarks((prev) => new Set(prev).add(conceptMark));
     } catch {
       /* non-fatal — the concept is still downloadable */
     } finally {

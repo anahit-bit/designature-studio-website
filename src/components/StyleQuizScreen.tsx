@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../LanguageContext';
 import { useAuth } from '../AuthContext';
 import { accountApi } from '../lib/accountApi';
+import { fingerprint, isSaved, markSaved } from '../lib/savedMarks';
 import { QUIZ_IMAGE_WEIGHTS, TIER_POINTS } from '../data/quizImageWeights';
 import { cld, cldSrcSet } from '../lib/cld';
 import { trackQuizStart, trackQuizComplete } from '../lib/track';
@@ -538,9 +539,12 @@ const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignI
     }
   };
 
+  // Persists across navigation/reload (server also dedups) → save DNA only once.
+  const dnaMark = quizResult.length ? fingerprint(JSON.stringify(quizResult)) : '';
+  const styleAlreadySaved = styleSaved || (!!dnaMark && isSaved(dnaMark));
   const handleSaveStyle = async () => {
     if (!isPaid) { setQuizSaveModalOpen(true); return; }
-    if (styleSaved) return; // already saved this DNA — save only once
+    if (styleAlreadySaved) return; // already saved this DNA — save only once
     const top = quizResult[0]?.style || 'Your style';
     setStyleSaved(true); // optimistic — prevents double-clicks / duplicate rows
     try {
@@ -550,6 +554,7 @@ const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignI
         thumbnailUrl: QUIZ_ROOMS_FALLBACK[top]?.[0]?.url,
         metadata: { result: quizResult },
       });
+      if (dnaMark) markSaved(dnaMark);
       showQuizToast(t('ai.quiz.savedToast'));
     } catch {
       setStyleSaved(false); // let them retry on failure
@@ -800,9 +805,9 @@ const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignI
               {/* SAVE — greyed + lockchip for free (D6); never a sign-in veil */}
               <div className="paid">
                 <span className="lockchip">🔒 {t('ai.quiz.lockStudio')}</span>
-                <button type="button" onClick={handleSaveStyle} disabled={styleSaved && isPaid}
+                <button type="button" onClick={handleSaveStyle} disabled={styleAlreadySaved && isPaid}
                   className="w-full border border-black/15 text-black/70 text-[11px] font-bold uppercase tracking-[0.14em] py-3.5 hover:border-black/45 hover:text-black transition disabled:opacity-50 disabled:cursor-default disabled:hover:border-black/15 disabled:hover:text-black/70">
-                  {styleSaved && isPaid ? '✓ Saved' : `♥ ${t('ai.quiz.saveStyle')}`}
+                  {styleAlreadySaved && isPaid ? '✓ Saved' : `♥ ${t('ai.quiz.saveStyle')}`}
                 </button>
               </div>
             </div>

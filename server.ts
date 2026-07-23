@@ -2894,6 +2894,25 @@ Output ONLY valid JSON, no markdown fences, no commentary:
       return res.status(400).json({ error: "A title is required." });
     }
 
+    // Dedup: same user + same content → return the existing row (idempotent Save)
+    // and skip the (re)upload entirely, so leaving/returning can't create a copy.
+    const contentHash = createHash("sha256")
+      .update(
+        `${tool}|${typeof imageDataUrl === "string" ? imageDataUrl : JSON.stringify(metadata ?? {})}`
+      )
+      .digest("hex");
+    try {
+      const dup = await getPool().query(
+        `SELECT * FROM saved_items WHERE user_id = $1 AND content_hash = $2 LIMIT 1`,
+        [googleId, contentHash]
+      );
+      if (dup.rowCount && dup.rowCount > 0) {
+        return res.status(200).json(rowToLibraryItem(dup.rows[0]));
+      }
+    } catch (e: any) {
+      console.error("[library] dedup check failed:", e?.message ?? e);
+    }
+
     let fullUrl: string | null = null;
     let thumb: string | null = typeof thumbnailUrl === "string" ? thumbnailUrl : null;
 
@@ -2923,8 +2942,8 @@ Output ONLY valid JSON, no markdown fences, no commentary:
 
     try {
       const r = await getPool().query(
-        `INSERT INTO saved_items (user_id, user_email, tool, title, thumbnail_url, full_url, metadata)
-         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        `INSERT INTO saved_items (user_id, user_email, tool, title, thumbnail_url, full_url, metadata, content_hash)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)
          RETURNING *`,
         [
           googleId,
@@ -2934,11 +2953,26 @@ Output ONLY valid JSON, no markdown fences, no commentary:
           thumb,
           fullUrl,
           JSON.stringify(metadata ?? {}),
+          contentHash,
         ]
       );
       recordActivity(user.email, `save_${tool}`); // I-016
       return res.status(201).json(rowToLibraryItem(r.rows[0]));
     } catch (e: any) {
+      // Unique (user_id, content_hash) race → it already exists; return that row.
+      if (e?.code === "23505") {
+        try {
+          const ex = await getPool().query(
+            `SELECT * FROM saved_items WHERE user_id = $1 AND content_hash = $2 LIMIT 1`,
+            [googleId, contentHash]
+          );
+          if (ex.rowCount && ex.rowCount > 0) {
+            return res.status(200).json(rowToLibraryItem(ex.rows[0]));
+          }
+        } catch {
+          /* fall through to 500 */
+        }
+      }
       console.error("[library] insert failed:", e?.message ?? e);
       return res.status(500).json({ error: "Could not save to your library." });
     }
@@ -3011,6 +3045,28 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     }
   });
 
+  // POST /api/user/library/bulk-delete — remove several of the user's items at once.
+  app.post("/api/user/library/bulk-delete", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    const ids: string[] = Array.isArray(req.body?.ids)
+      ? req.body.ids.filter(
+          (x: any) => typeof x === "string" && /^[0-9a-f-]{36}$/i.test(x)
+        )
+      : [];
+    if (ids.length === 0) return res.status(400).json({ error: "No valid ids provided." });
+    try {
+      const r = await getPool().query(
+        `DELETE FROM saved_items WHERE user_id = $1 AND id = ANY($2::uuid[])`,
+        [googleId, ids]
+      );
+      return res.json({ deleted: r.rowCount ?? 0 });
+    } catch (e: any) {
+      console.error("[library] bulk-delete failed:", e?.message ?? e);
+      return res.status(500).json({ error: "Could not delete those items." });
+    }
+  });
+
   // GET /api/user/dashboard — Overview + rail summary in one call. Plan/quota
   // reflect the real account (free for everyone; unlimited "studio" for the
   // owner/demo accounts — no paid tier rail exists yet). Recent activity + the
@@ -3031,8 +3087,9 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     let recentActivity: any[] = [];
     let libraryTotal = 0;
     try {
+      // One round-trip: recent 5 + total (COUNT(*) OVER() = full match count pre-LIMIT).
       const rr = await getPool().query(
-        `SELECT id, tool, title, thumbnail_url, created_at
+        `SELECT id, tool, title, thumbnail_url, created_at, COUNT(*) OVER()::int AS total
            FROM saved_items WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5`,
         [googleId]
       );
@@ -3044,11 +3101,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
           r.created_at instanceof Date ? r.created_at.toISOString() : r.created_at,
         thumbnailUrl: r.thumbnail_url ?? null,
       }));
-      const cc = await getPool().query(
-        `SELECT COUNT(*)::int AS n FROM saved_items WHERE user_id = $1`,
-        [googleId]
-      );
-      libraryTotal = cc.rows[0]?.n ?? 0;
+      libraryTotal = rr.rows[0]?.total ?? 0;
     } catch (e: any) {
       console.error("[dashboard] saved_items read failed:", e?.message ?? e);
       // degrade gracefully — an empty library is better than a 500 here

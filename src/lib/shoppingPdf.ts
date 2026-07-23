@@ -163,7 +163,8 @@ export async function buildShoppingListPdf(
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(7);
         doc.setTextColor(0, 71, 171);
-        const label = `View at ${product.source || 'retailer'} →`;
+        // Plain ASCII only — jsPDF's helvetica (WinAnsi) renders "→" as garbage.
+        const label = `View at ${product.source || 'retailer'}`;
         doc.textWithLink(label, margin + 3, y, { url: product.link });
         y += 5;
       }

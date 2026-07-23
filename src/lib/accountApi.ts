@@ -291,6 +291,20 @@ export const accountApi = {
     return mock.deleteLibraryItem(id);
   },
 
+  /** Delete several saved items at once. Returns how many were removed. */
+  async bulkDeleteLibraryItems(ids: string[]): Promise<number> {
+    if (ids.length === 0) return 0;
+    if (signedIn()) {
+      const r = await api<{ deleted: number }>('/api/user/library/bulk-delete', {
+        method: 'POST',
+        body: JSON.stringify({ ids }),
+      });
+      return r.deleted ?? 0;
+    }
+    for (const id of ids) await mock.deleteLibraryItem(id);
+    return ids.length;
+  },
+
   getProjectFolders(): Promise<ProjectFolder[]> {
     if (USE_MOCK_ACCOUNT) return mock.getProjectFolders();
     // TODO(AC-003-backend): GET /api/user/project-folders

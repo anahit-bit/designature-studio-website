@@ -167,6 +167,17 @@ const SAVED_ITEMS_SHARE_INDEX = `
   CREATE INDEX IF NOT EXISTS idx_saved_items_share_token ON saved_items (share_token);
 `;
 
+// Dedup: a content fingerprint so the same generated output can't be saved twice
+// by the same user (idempotent Save). Partial-unique on (user_id, content_hash).
+const SAVED_ITEMS_HASH_COLUMN = `
+  ALTER TABLE saved_items ADD COLUMN IF NOT EXISTS content_hash text;
+`;
+const SAVED_ITEMS_HASH_INDEX = `
+  CREATE UNIQUE INDEX IF NOT EXISTS uq_saved_items_user_hash
+    ON saved_items (user_id, content_hash)
+    WHERE content_hash IS NOT NULL;
+`;
+
 /**
  * Create the payments tables if they don't exist. Logs a "ready" line per table.
  * Throws if the DB is unreachable — the caller (server boot) decides whether to
@@ -208,5 +219,7 @@ export async function runMigrations(): Promise<void> {
   await pool.query(SAVED_ITEMS_USER_INDEX);
   await pool.query(SAVED_ITEMS_SHARE_COLUMNS);
   await pool.query(SAVED_ITEMS_SHARE_INDEX);
+  await pool.query(SAVED_ITEMS_HASH_COLUMN);
+  await pool.query(SAVED_ITEMS_HASH_INDEX);
   console.log("✅ saved_items table ready");
 }
