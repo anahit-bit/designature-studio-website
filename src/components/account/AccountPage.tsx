@@ -71,7 +71,7 @@ const AccountPage: React.FC = () => {
 
   const onSignOut = useCallback(async () => {
     await signOut();
-    navigate('/');
+    navigate('/ai-concepts');
   }, [signOut, navigate]);
 
   const onResume = useCallback(async () => {

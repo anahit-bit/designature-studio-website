@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Header from './components/Header';
 import PortfolioPage from './components/PortfolioPage';
 import ProjectDetail from './components/ProjectDetail';
@@ -116,6 +116,20 @@ const DeliverablesRoute: React.FC = () => (
 // be previewed locally. The fixed site Header needs top padding on this plain page.
 const AccountRoute: React.FC = () => {
   const { user, isLoading } = useAuth();
+  const navigate = useNavigate();
+  const wasAuthedRef = React.useRef(false);
+
+  // When a signed-in user logs out — manually OR via the inactivity auto-logout
+  // (SessionInactivityGuard) — leave the paid dashboard and return to the AI
+  // Studio. Never redirects a never-authenticated mock/preview visitor.
+  React.useEffect(() => {
+    if (user) {
+      wasAuthedRef.current = true;
+    } else if (wasAuthedRef.current) {
+      navigate('/ai-concepts', { replace: true });
+    }
+  }, [user, navigate]);
+
   if (!USE_MOCK_ACCOUNT) {
     if (isLoading) return null; // avoid a redirect flash while /api/auth/me resolves
     if (!user) return <Navigate to="/login?next=/account" replace />;
