@@ -137,13 +137,13 @@ export const STYLE_BRIEFS: Record<StylePreset, string> = {
 `.trim(),
 
   maximalist: `
-1. COLOR PALETTE: Deep Peacock #1B4D6E, Dusty Rose #D4918C, Antique Gold #C9A062, Marigold #E8952C, Emerald #2A6B4A, Cream #F2E9D8, Soft Black #1C1C1C.
-2. MATERIALS & FINISHES: velvet and brocade upholstery, lacquered and gilded surfaces, antique brass and bronze hardware, patterned ceramic tiles, damask and jacquard fabrics, fringed textiles, mother-of-pearl inlays, tortoiseshell and bone accents.
-3. FURNITURE CHARACTER: ornate and layered, with carved wooden frames, button-tufted upholstery, fringed edges, curved silhouettes, and mixed eras. Substantial, theatrical, generously scaled. Pieces overlap visually rather than standing apart.
-4. LIGHTING: dramatic chandeliers with crystals or tiers, ornate brass sconces with fabric shades, table lamps with patterned bases and fringed shades. Layered and theatrical, warm and jewel-like.
-5. WALL & CEILING TREATMENT: richly patterned wallpaper or fabric-covered panels, bold saturated paint colors, decorative moldings and dadoes, painted or wallpapered ceilings, gallery walls edge-to-edge.
-6. DECOR & STYLING: dense gallery walls with mixed frames, collections of ceramics and books, sculptural objects layered on every surface, potted palms and trailing plants, decorative cushions stacked, antique mirrors and framed art in multiples.
-7. OVERALL MOOD: opulent, layered, celebratory. Every surface contributes — the room is a composition of accumulated beauty and personal narrative.
+1. COLOR PALETTE: high-saturation, joyful, contemporary — Marigold #E8952C, Hot Pink #E24885, Cobalt #2A6BB0, Emerald #2A6B4A, Turmeric Yellow #F0B429, Coral #E85E4A, Peacock Teal #147A80. Multiple saturated colors coexist on the same wall or upholstery.
+2. MATERIALS & FINISHES: mix of matte and glossy — velvet upholstery in solid saturated colors, lacquered wood in bold colors, rattan and cane, ceramic tile in playful patterns, contemporary printed cottons and linens in large-scale florals, geometric, and animal prints. Brass hardware in matte finish.
+3. FURNITURE CHARACTER: contemporary and eclectic silhouettes chosen for character — a curved modular sofa in cobalt velvet, mid-century lounge chairs in playful colors, a lacquered coffee table, a rattan accent chair, an oversized floor cushion. Pieces are BOLD and STATEMENT but CURRENT — clean straight or gently curved lines, off-the-floor tapered legs, refined proportions.
+4. LIGHTING: sculptural contemporary pendants (contemporary rattan or paper lanterns, playful architectural pendants), colorful table lamps with printed shades, arc floor lamps. Playful, sculptural, current.
+5. WALL & CEILING TREATMENT: bold saturated paint colors, one feature wall in a contemporary patterned wallpaper (large-scale florals, murals, geometric, checkerboard), a dense gallery wall using mixed modern frames (thin black, thin brass, colored), painted color on the ceiling optional. Ceilings stay flat and modern.
+6. DECOR & STYLING: dense gallery wall with modern art (posters, abstract prints, contemporary photography, colorful paintings), stacked art books, curated ceramics in saturated colors, many houseplants (monstera, palms, trailing pothos, rubber plants), layered patterned rugs, playful objects (contemporary sculpture, colorful vases, collected ceramics).
+7. OVERALL MOOD: joyful, personal, current, saturated. Maximum color and pattern from a modern vocabulary. The room reads like a curated contemporary home whose owner loves color and character.
 `.trim(),
 
   biophilic: `
