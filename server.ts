@@ -2877,6 +2877,15 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     const user = db.users[googleId];
     if (!user) return res.status(404).json({ error: "User not found." });
 
+    // Paid-only: the Library (and the dashboard it feeds) is a paid feature. Today
+    // that's owner/unlimited accounts until a subscription rail sets isPaid.
+    const isPaidUser = isConceptTestAccountEmail(user.email) || user.isPaid === true;
+    if (!isPaidUser) {
+      return res
+        .status(403)
+        .json({ error: "Saving to your library is a paid feature.", code: "paid_required" });
+    }
+
     const { tool, title, imageDataUrl, thumbnailUrl, metadata } = req.body ?? {};
     if (!tool || !LIBRARY_TOOLS.includes(tool)) {
       return res.status(400).json({ error: "Invalid or missing tool." });
@@ -3079,6 +3088,34 @@ Output ONLY valid JSON, no markdown fences, no commentary:
       nextBooking: null,
       counts: { libraryTotal, upcomingBookings: 0 },
     });
+  });
+
+  // GET /api/share/:id — PUBLIC (no auth) read of one saved item, for shareable
+  // links. The item's UUID is the share token (unguessable). Returns only the
+  // presentational fields — never the owner's identity.
+  app.get("/api/share/:id", async (req, res) => {
+    try {
+      const r = await getPool().query(
+        `SELECT id, tool, title, thumbnail_url, full_url, metadata, created_at
+           FROM saved_items WHERE id = $1`,
+        [req.params.id]
+      );
+      if (r.rowCount === 0) return res.status(404).json({ error: "Not found." });
+      const row = r.rows[0];
+      return res.json({
+        id: row.id,
+        tool: row.tool,
+        title: row.title,
+        thumbnailUrl: row.thumbnail_url ?? null,
+        fullPreviewUrl: row.full_url ?? null,
+        metadata: row.metadata ?? {},
+        createdAt:
+          row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
+      });
+    } catch (e: any) {
+      console.error("[share] get failed:", e?.message ?? e);
+      return res.status(500).json({ error: "Could not load that item." });
+    }
   });
 
   // ── POST /api/room-audit/analyze — run Gemini room audit server-side ──

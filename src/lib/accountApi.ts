@@ -244,6 +244,22 @@ export const accountApi = {
     return mock.getLibraryItem(id);
   },
 
+  /** PUBLIC read of a saved item by id — powers shareable /shared/:id links (no auth). */
+  async getSharedItem(id: string): Promise<LibraryItem> {
+    const res = await fetch(`/api/share/${encodeURIComponent(id)}`);
+    if (!res.ok) {
+      if (!signedIn()) return mock.getLibraryItem(id); // preview fallback
+      throw new Error('Not found');
+    }
+    return res.json() as Promise<LibraryItem>;
+  },
+
+  /** Absolute shareable URL for a saved item. */
+  shareUrl(id: string): string {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    return `${origin}/shared/${id}`;
+  },
+
   /** Save a generated output to the user's Library (AI Vision concept, Shopping list, …). */
   saveLibraryItem(payload: SaveLibraryPayload): Promise<LibraryItem> {
     if (signedIn())

@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { MoreHorizontal } from 'lucide-react';
 import { Button, Eyebrow, Skeleton, ErrorBanner, TOOL_META, fmtMonthDay } from '../ui';
 import { useResource } from '../useResource';
-import { accountApi, type PlanTier, type ToolKey } from '../../../lib/accountApi';
+import { accountApi, type PlanTier, type ToolKey, type LibraryItem } from '../../../lib/accountApi';
+import { LibraryItemModal } from '../modals/LibraryItemModal';
 
 type ChipKey = ToolKey | 'all';
 const CHIPS: { key: ChipKey; label: string }[] = [
@@ -51,6 +52,7 @@ export const LibraryTab: React.FC<{
 }> = ({ tier, onTryFree, onSeePlans }) => {
   const [chip, setChip] = useState<ChipKey>('all');
   const [search, setSearch] = useState('');
+  const [openItem, setOpenItem] = useState<LibraryItem | null>(null);
   const paid = tier !== 'free';
 
   const { data, loading, error, reload } = useResource(
@@ -137,7 +139,11 @@ export const LibraryTab: React.FC<{
       ) : data && data.items.length > 0 ? (
         <div className="grid gap-[18px]" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))' }}>
           {data.items.map((item) => (
-            <div key={item.id} className="border border-black/10 group">
+            <div
+              key={item.id}
+              onClick={() => setOpenItem(item)}
+              className="border border-black/10 group cursor-pointer hover:border-black/25 transition-colors"
+            >
               <div className="relative overflow-hidden bg-[#FAFAFA]" style={{ aspectRatio: '4 / 5' }}>
                 {item.thumbnailUrl && (
                   <img
@@ -150,7 +156,8 @@ export const LibraryTab: React.FC<{
                   {TOOL_META[item.tool].label}
                 </span>
                 <button
-                  aria-label="Item options"
+                  aria-label="Open item"
+                  onClick={(e) => { e.stopPropagation(); setOpenItem(item); }}
                   className="absolute top-2 right-2 text-white bg-black/40 w-[26px] h-[26px] flex items-center justify-center hover:bg-black/60"
                 >
                   <MoreHorizontal className="w-4 h-4" />
@@ -178,6 +185,12 @@ export const LibraryTab: React.FC<{
           </Button>
         </div>
       )}
+
+      <LibraryItemModal
+        item={openItem}
+        onClose={() => setOpenItem(null)}
+        onDeleted={() => reload()}
+      />
     </section>
   );
 };

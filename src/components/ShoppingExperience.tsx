@@ -111,6 +111,7 @@ const ShoppingExperience: React.FC<Props> = (p) => {
   const [savingList, setSavingList] = useState(false);
   const handleSaveList = async () => {
     if (savingList || listSaved || p.shoppingResults.length === 0) return;
+    if (!isPaidUser) { p.navigateTo('pricing'); return; } // saving is paid-only
     setSavingList(true);
     try {
       const count = p.shoppingResults.length;

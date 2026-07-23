@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../LanguageContext';
 import { useAuth } from '../AuthContext';
+import { accountApi } from '../lib/accountApi';
 import { QUIZ_IMAGE_WEIGHTS, TIER_POINTS } from '../data/quizImageWeights';
 import { cld, cldSrcSet } from '../lib/cld';
 import { trackQuizStart, trackQuizComplete } from '../lib/track';
@@ -535,9 +536,19 @@ const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignI
     }
   };
 
-  const handleSaveStyle = () => {
+  const handleSaveStyle = async () => {
     if (!isPaid) { setQuizSaveModalOpen(true); return; }
-    showQuizToast(t('ai.quiz.savedToast'));
+    const top = quizResult[0]?.style || 'Your style';
+    try {
+      await accountApi.saveLibraryItem({
+        tool: 'style_quiz',
+        title: `Style DNA — ${top}`,
+        metadata: { result: quizResult },
+      });
+      showQuizToast(t('ai.quiz.savedToast'));
+    } catch {
+      showQuizToast('Could not save — please try again.');
+    }
   };
 
   const showSampleResult = () => {

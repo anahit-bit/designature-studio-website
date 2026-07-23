@@ -31,6 +31,7 @@ import JournalArticlePage from './components/JournalArticlePage';
 import Blog from './components/Blog';
 import Footer from './components/Footer';
 import AccountPage from './components/account/AccountPage';
+import SharedItemPage from './components/SharedItemPage';
 import { useAuth } from './AuthContext';
 import { USE_MOCK_ACCOUNT } from './lib/accountApi';
 import RouteTracker from './components/RouteTracker';
@@ -160,6 +161,7 @@ const App: React.FC = () => (
             <Route path="/booking/failed" element={<BookingFailedPage />} />
             <Route path="/deliverables" element={<DeliverablesRoute />} />
             <Route path="/account" element={<AccountRoute />} />
+            <Route path="/shared/:id" element={<SharedItemPage />} />
             <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route path="/admin/users" element={<AdminUsersPage />} />
             <Route path="/admin/orders" element={<AdminOrdersPage />} />

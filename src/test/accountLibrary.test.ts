@@ -103,6 +103,20 @@ describe('accountApi real-vs-mock routing', () => {
     expect(url).toContain('q=kitchen');
   });
 
+  it('shareUrl builds an absolute /shared/:id link', () => {
+    expect(accountApi.shareUrl('abc-123')).toContain('/shared/abc-123');
+  });
+
+  it('getSharedItem hits the PUBLIC /api/share/:id endpoint (no auth needed)', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ id: 'x', tool: 'ai_vision', title: 'T', createdAt: '', thumbnailUrl: null }),
+    });
+    global.fetch = fetchSpy as any;
+    await accountApi.getSharedItem('x');
+    expect(fetchSpy).toHaveBeenCalledWith('/api/share/x');
+  });
+
   it('POSTs a save to the REAL endpoint with the session header when signed in', async () => {
     window.localStorage.setItem(SESSION_KEY, 'fake-token');
     const fetchSpy = vi.fn().mockResolvedValue({
