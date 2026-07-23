@@ -3090,18 +3090,62 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     });
   });
 
-  // GET /api/share/:id — PUBLIC (no auth) read of one saved item, for shareable
-  // links. The item's UUID is the share token (unguessable). Returns only the
-  // presentational fields — never the owner's identity.
-  app.get("/api/share/:id", async (req, res) => {
+  // POST /api/user/library/:id/share — mint (or reuse) an expiring share token for
+  // one of the user's items. Reuses an existing, non-expired token so a link the
+  // user already shared stays valid; otherwise creates a fresh 30-day token.
+  app.post("/api/user/library/:id/share", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    const db = readDB();
+    const user = db.users[googleId];
+    if (!user) return res.status(404).json({ error: "User not found." });
+    const isPaidUser = isConceptTestAccountEmail(user.email) || user.isPaid === true;
+    if (!isPaidUser) {
+      return res.status(403).json({ error: "Sharing is a paid feature.", code: "paid_required" });
+    }
     try {
       const r = await getPool().query(
-        `SELECT id, tool, title, thumbnail_url, full_url, metadata, created_at
-           FROM saved_items WHERE id = $1`,
-        [req.params.id]
+        `UPDATE saved_items
+            SET share_token = CASE
+                  WHEN share_token IS NOT NULL AND share_expires_at > now() THEN share_token
+                  ELSE gen_random_uuid()::text END,
+                share_expires_at = CASE
+                  WHEN share_token IS NOT NULL AND share_expires_at > now() THEN share_expires_at
+                  ELSE now() + interval '30 days' END
+          WHERE id = $1 AND user_id = $2
+          RETURNING share_token, share_expires_at`,
+        [req.params.id, googleId]
       );
       if (r.rowCount === 0) return res.status(404).json({ error: "Not found." });
       const row = r.rows[0];
+      return res.json({
+        token: row.share_token,
+        expiresAt:
+          row.share_expires_at instanceof Date
+            ? row.share_expires_at.toISOString()
+            : row.share_expires_at,
+      });
+    } catch (e: any) {
+      console.error("[share] mint failed:", e?.message ?? e);
+      return res.status(500).json({ error: "Could not create a share link." });
+    }
+  });
+
+  // GET /api/share/:token — PUBLIC (no auth) read of one saved item by its expiring
+  // share token. Returns only presentational fields — never the owner's identity.
+  app.get("/api/share/:token", async (req, res) => {
+    try {
+      const r = await getPool().query(
+        `SELECT id, tool, title, thumbnail_url, full_url, metadata, created_at, share_expires_at
+           FROM saved_items WHERE share_token = $1`,
+        [req.params.token]
+      );
+      if (r.rowCount === 0) return res.status(404).json({ error: "Not found." });
+      const row = r.rows[0];
+      const exp = row.share_expires_at ? new Date(row.share_expires_at).getTime() : 0;
+      if (!exp || exp <= Date.now()) {
+        return res.status(410).json({ error: "This link has expired.", code: "expired" });
+      }
       return res.json({
         id: row.id,
         tool: row.tool,

@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { X, Download, Share2, Trash2, Check, ExternalLink } from 'lucide-react';
 import { Button, Eyebrow, TOOL_META, fmtMonthDay } from '../ui';
 import { accountApi, type LibraryItem } from '../../../lib/accountApi';
+import { buildShoppingListPdf, normalizeProducts } from '../../../lib/shoppingPdf';
 
 /** Force a Cloudinary URL to download instead of display (fl_attachment). */
 function downloadUrl(url: string): string {
@@ -16,28 +17,37 @@ function downloadUrl(url: string): string {
   return url;
 }
 
-const ShoppingList: React.FC<{ items: any[] }> = ({ items }) => (
-  <div className="flex flex-col divide-y divide-black/[0.07]">
-    {items.map((it, i) => {
-      const name = it?.name || it?.title || it?.query || `Item ${i + 1}`;
-      const price = it?.price || it?.priceText || '';
-      const link = it?.link || it?.url || it?.productUrl || null;
+/** Render saved shopping groups (each group = a category + its matched products). */
+const ShoppingList: React.FC<{ groups: any[] }> = ({ groups }) => (
+  <div className="flex flex-col gap-5">
+    {groups.map((group, gi) => {
+      const products = normalizeProducts(group);
+      if (products.length === 0) return null;
       return (
-        <div key={i} className="flex items-center justify-between gap-3 py-3">
-          <div className="min-w-0">
-            <div className="font-body text-[14px] text-[#0A0A0A] truncate">{name}</div>
-            {price && <div className="text-[12px] text-[#6B6B6B]">{price}</div>}
+        <div key={gi}>
+          <Eyebrow className="mb-2">{group?.item?.category || 'Items'}</Eyebrow>
+          <div className="flex flex-col divide-y divide-black/[0.07] border border-black/10">
+            {products.map((product, pi) => (
+              <div key={pi} className="flex items-center justify-between gap-3 px-3 py-3">
+                <div className="min-w-0">
+                  <div className="font-body text-[14px] text-[#0A0A0A] truncate">{product.title}</div>
+                  <div className="text-[12px] text-[#6B6B6B]">
+                    {[product.source, product.price].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+                {product.link && product.link !== '#' && (
+                  <a
+                    href={product.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#0047AB] text-[12px] font-bold inline-flex items-center gap-1 flex-shrink-0"
+                  >
+                    View <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
+            ))}
           </div>
-          {link && (
-            <a
-              href={link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[#0047AB] text-[12px] font-bold inline-flex items-center gap-1 flex-shrink-0"
-            >
-              View <ExternalLink className="w-3 h-3" />
-            </a>
-          )}
         </div>
       );
     })}
@@ -66,6 +76,7 @@ export const LibraryItemModal: React.FC<{
   onDeleted: (id: string) => void;
 }> = ({ item, onClose, onDeleted }) => {
   const [copied, setCopied] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [busy, setBusy] = useState(false);
   if (!item) return null;
 
@@ -80,34 +91,54 @@ export const LibraryItemModal: React.FC<{
       : [];
 
   const share = async () => {
-    const url = accountApi.shareUrl(item.id);
+    if (sharing) return;
+    setSharing(true);
     try {
-      await navigator.clipboard.writeText(url);
-    } catch {
-      /* clipboard blocked — still show the toast; url is in the title attr */
+      const { url } = await accountApi.createShareLink(item.id);
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch {
+        /* clipboard blocked — the toast still confirms; nothing sensitive lost */
+      }
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2500);
+    } finally {
+      setSharing(false);
     }
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 2000);
   };
 
-  const download = () => {
+  const slug = item.title.replace(/[^\w\-]+/g, '-');
+
+  const download = async () => {
+    // Shopping list → the same PDF the fresh generation produces.
+    if (item.tool === 'shopping' && shoppingItems.length > 0) {
+      await buildShoppingListPdf(shoppingItems, {
+        conceptImage:
+          typeof item.thumbnailUrl === 'string' && item.thumbnailUrl.startsWith('data:')
+            ? item.thumbnailUrl
+            : null,
+        filename: `${slug}.pdf`,
+      });
+      return;
+    }
+    // Image output → download the full-res image.
     if (imageSrc) {
       const a = document.createElement('a');
       a.href = downloadUrl(imageSrc);
-      a.download = `${item.title.replace(/[^\w\-]+/g, '-')}.jpg`;
+      a.download = `${slug}.jpg`;
       a.target = '_blank';
       document.body.appendChild(a);
       a.click();
       a.remove();
       return;
     }
-    // No image (list/quiz) — download a JSON snapshot.
+    // Anything else (e.g. style DNA) → a JSON snapshot.
     const blob = new Blob([JSON.stringify({ title: item.title, ...meta }, null, 2)], {
       type: 'application/json',
     });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `${item.title.replace(/[^\w\-]+/g, '-')}.json`;
+    a.download = `${slug}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -153,7 +184,7 @@ export const LibraryItemModal: React.FC<{
           {isImage && imageSrc ? (
             <img src={imageSrc} alt={item.title} className="w-full h-auto border border-black/[0.08]" />
           ) : shoppingItems.length > 0 ? (
-            <ShoppingList items={shoppingItems} />
+            <ShoppingList groups={shoppingItems} />
           ) : quizResult.length > 0 ? (
             <QuizDNA result={quizResult} />
           ) : (
@@ -164,16 +195,33 @@ export const LibraryItemModal: React.FC<{
         </div>
 
         {/* actions */}
-        <div className="flex flex-wrap gap-[10px] justify-end p-6 border-t border-black/[0.08]">
-          <Button size="sm" variant="danger" onClick={remove} disabled={busy}>
-            <Trash2 className="w-3 h-3" /> {busy ? 'Deleting…' : 'Delete'}
-          </Button>
-          <Button size="sm" variant="secondary" onClick={share} title={accountApi.shareUrl(item.id)}>
-            {copied ? <><Check className="w-3 h-3" /> Link copied</> : <><Share2 className="w-3 h-3" /> Share</>}
-          </Button>
-          <Button size="sm" variant="primary" onClick={download}>
-            <Download className="w-3 h-3" /> Download
-          </Button>
+        <div className="p-6 border-t border-black/[0.08]">
+          <div className="flex flex-wrap gap-[10px] justify-end">
+            <Button size="sm" variant="danger" onClick={remove} disabled={busy}>
+              <Trash2 className="w-3 h-3" /> {busy ? 'Deleting…' : 'Delete'}
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={share}
+              disabled={sharing}
+              title="Copies a shareable link (expires in 30 days)"
+            >
+              {copied ? (
+                <><Check className="w-3 h-3" /> Link copied</>
+              ) : (
+                <><Share2 className="w-3 h-3" /> {sharing ? 'Creating link…' : 'Share'}</>
+              )}
+            </Button>
+            <Button size="sm" variant="primary" onClick={() => void download()}>
+              <Download className="w-3 h-3" /> Download
+            </Button>
+          </div>
+          {copied && (
+            <div className="text-[11px] text-[#6B6B6B] text-right mt-2">
+              Anyone with the link can view this. It expires in 30 days.
+            </div>
+          )}
         </div>
       </div>
     </div>

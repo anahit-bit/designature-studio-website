@@ -157,6 +157,16 @@ const SAVED_ITEMS_USER_INDEX = `
     ON saved_items (user_id, created_at DESC);
 `;
 
+// Expiring shareable links: a random token minted on demand + an expiry. The public
+// /shared/:token viewer resolves items by token and rejects expired ones.
+const SAVED_ITEMS_SHARE_COLUMNS = `
+  ALTER TABLE saved_items ADD COLUMN IF NOT EXISTS share_token      text;
+  ALTER TABLE saved_items ADD COLUMN IF NOT EXISTS share_expires_at timestamptz;
+`;
+const SAVED_ITEMS_SHARE_INDEX = `
+  CREATE INDEX IF NOT EXISTS idx_saved_items_share_token ON saved_items (share_token);
+`;
+
 /**
  * Create the payments tables if they don't exist. Logs a "ready" line per table.
  * Throws if the DB is unreachable — the caller (server boot) decides whether to
@@ -196,5 +206,7 @@ export async function runMigrations(): Promise<void> {
 
   await pool.query(SAVED_ITEMS_TABLE);
   await pool.query(SAVED_ITEMS_USER_INDEX);
+  await pool.query(SAVED_ITEMS_SHARE_COLUMNS);
+  await pool.query(SAVED_ITEMS_SHARE_INDEX);
   console.log("✅ saved_items table ready");
 }

@@ -254,10 +254,25 @@ export const accountApi = {
     return res.json() as Promise<LibraryItem>;
   },
 
-  /** Absolute shareable URL for a saved item. */
-  shareUrl(id: string): string {
+  /** Absolute shareable URL for a share token. */
+  shareUrl(token: string): string {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    return `${origin}/shared/${id}`;
+    return `${origin}/shared/${token}`;
+  },
+
+  /** Mint (or reuse) an expiring share token for an item and return its link. */
+  async createShareLink(
+    id: string
+  ): Promise<{ token: string; url: string; expiresAt: string | null }> {
+    if (signedIn()) {
+      const r = await api<{ token: string; expiresAt: string | null }>(
+        `/api/user/library/${encodeURIComponent(id)}/share`,
+        { method: 'POST' }
+      );
+      return { token: r.token, url: accountApi.shareUrl(r.token), expiresAt: r.expiresAt };
+    }
+    // preview (logged out): the item id doubles as the token
+    return { token: id, url: accountApi.shareUrl(id), expiresAt: null };
   },
 
   /** Save a generated output to the user's Library (AI Vision concept, Shopping list, …). */
