@@ -191,9 +191,22 @@ export const STYLE_NAME_TO_PRESET: Record<string, StylePreset> = {
   "Biophilic":    "biophilic",
 };
 
+// Maps every room-picker label the frontend can send to a canonical RoomType.
+// Two label conventions exist and BOTH must resolve, or the server silently
+// falls back to `living_room` (wrong-room bug):
+//   • VisionExperience.tsx `ROOM_TYPES_FULL` — the LIVE chips — uses the short
+//     forms "Living" and "Dining" (the rest already match the full forms).
+//   • AIConceptsPage `ROOM_TYPES` (legacy) uses the full forms "Living Room" /
+//     "Dining Room".
+// Keep this in sync with ROOM_TYPES_FULL — the promptTemplates test asserts it.
 export const ROOM_NAME_TO_TYPE: Record<string, RoomType> = {
+  // Full forms (legacy AIConceptsPage chips)
   "Living Room": "living_room",
   "Dining Room": "dining_room",
+  // Short forms (live VisionExperience chips)
+  "Living":      "living_room",
+  "Dining":      "dining_room",
+  // Identical in both conventions
   "Bedroom":     "bedroom",
   "Kitchen":     "kitchen",
   "Bathroom":    "bathroom",
