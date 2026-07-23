@@ -17,6 +17,16 @@ const CHIPS: { key: ChipKey; label: string }[] = [
   { key: 'cultural', label: 'Cultural Advisor' },
 ];
 
+// Deep-link hash for the AI Studio (/ai-concepts#<hash>). Only the four live tools
+// have a hash; the rest (and "All") open the studio landing.
+const CHIP_TO_HASH: Partial<Record<ChipKey, string>> = {
+  ai_vision: 'vision',
+  shopping: 'shopping',
+  room_audit: 'audit',
+  style_quiz: 'quiz',
+};
+const chipLabelFor = (key: ChipKey) => CHIPS.find((c) => c.key === key)?.label ?? 'concept';
+
 const ProjectStrip: React.FC = () => {
   const { data } = useResource(() => accountApi.getProjectFolders(), []);
   if (!data || data.length === 0) return null;
@@ -47,9 +57,10 @@ const ProjectStrip: React.FC = () => {
 
 export const LibraryTab: React.FC<{
   tier: PlanTier;
-  onTryFree: () => void;
+  /** Jump into the AI Studio; pass a tool hash (vision/shopping/audit/quiz) to deep-link. */
+  onTryTool: (toolHash?: string) => void;
   onSeePlans: () => void;
-}> = ({ tier, onTryFree, onSeePlans }) => {
+}> = ({ tier, onTryTool, onSeePlans }) => {
   const [chip, setChip] = useState<ChipKey>('all');
   const [search, setSearch] = useState('');
   const [openItem, setOpenItem] = useState<LibraryItem | null>(null);
@@ -77,7 +88,7 @@ export const LibraryTab: React.FC<{
             once you upgrade.
           </p>
           <div className="flex gap-3 justify-center flex-wrap">
-            <Button variant="primary" onClick={onTryFree}>
+            <Button variant="primary" onClick={() => onTryTool()}>
               Try a tool free →
             </Button>
             <Button variant="secondary" onClick={onSeePlans}>
@@ -190,8 +201,18 @@ export const LibraryTab: React.FC<{
               ? 'No saved items match this filter.'
               : 'Generate a concept, list, or audit and it saves here automatically.'}
           </p>
-          <Button variant="primary" onClick={onTryFree}>
-            Try a tool →
+          <Button variant="primary" onClick={() => onTryTool(CHIP_TO_HASH[chip])}>
+            {chip === 'all' ? 'Open the AI Studio →' : `Create a ${chipLabelFor(chip)} →`}
+          </Button>
+        </div>
+      )}
+
+      {/* Persistent CTA — always offer a way to create more, even with saved items. */}
+      {!loading && data && data.items.length > 0 && (
+        <div className="mt-10 border-t border-[#DAD2C3] pt-8 text-center">
+          <p className="text-[#6B6B6B] font-body mb-4">Ready to make another?</p>
+          <Button variant="primary" onClick={() => onTryTool(CHIP_TO_HASH[chip])}>
+            {chip === 'all' ? 'Open the AI Studio →' : `Create another ${chipLabelFor(chip)} →`}
           </Button>
         </div>
       )}

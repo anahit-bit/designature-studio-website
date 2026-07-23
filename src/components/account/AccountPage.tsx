@@ -167,7 +167,7 @@ const AccountPage: React.FC = () => {
         {activeTab === 'library' && (
           <LibraryTab
             tier={tier}
-            onTryFree={() => navigate('/ai-concepts')}
+            onTryTool={(hash) => navigate(hash ? `/ai-concepts#${hash}` : '/ai-concepts')}
             onSeePlans={() => navigate('/pricing')}
           />
         )}
