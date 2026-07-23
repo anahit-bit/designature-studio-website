@@ -12,6 +12,29 @@ export interface ShoppingProduct {
   link?: string;
 }
 
+// Brand rule: every generated document carries the latest Cloudinary logo. The
+// brand asset is an SVG, so we deliver it rasterized (f_png) for jsPDF's addImage.
+const LOGO_HORIZONTAL_LIGHT_PNG =
+  'https://res.cloudinary.com/dys2k5muv/image/upload/f_png,w_600/v1779686901/brand/designature-horizontal-oxide-rust.svg';
+const LOGO_ASPECT = 820 / 250; // horizontal logo native ratio (w/h)
+
+/** Fetch a URL and return it as a data URL (for jsPDF). Null on any failure. */
+async function fetchAsDataUrl(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return await new Promise<string | null>((resolve) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result as string);
+      fr.onerror = () => resolve(null);
+      fr.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
 /** Normalize a group into a flat product list (paid uses `products`, free uses `byRetailer`). */
 export function normalizeProducts(group: any): ShoppingProduct[] {
   if (group?.products && group.products.length > 0) return group.products;
@@ -36,25 +59,47 @@ export async function buildShoppingListPdf(
   const contentW = pageW - margin * 2;
   let y = margin;
 
-  // ── Header ──
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(18);
-  doc.setTextColor(10, 10, 10);
-  doc.text('DESIGNATURE', margin, y);
+  // ── Header (brand logo — always, per brand rule) ──
+  const logoData = await fetchAsDataUrl(LOGO_HORIZONTAL_LIGHT_PNG);
+  if (logoData) {
+    try {
+      const logoH = 9; // mm
+      doc.addImage(logoData, 'PNG', margin, y, logoH * LOGO_ASPECT, logoH);
+    } catch {
+      // rasterization/addImage failed — fall back to the wordmark text
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.setTextColor(10, 10, 10);
+      doc.text('DESIGNATURE', margin, y + 6);
+    }
+  } else {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(10, 10, 10);
+    doc.text('DESIGNATURE', margin, y + 6);
+  }
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(150, 100, 80);
-  doc.text('ONLINE INTERIOR DESIGN STUDIO', margin, y + 5);
+  doc.text('ONLINE INTERIOR DESIGN STUDIO', margin, y + 13);
   doc.setTextColor(150, 150, 150);
-  doc.text('designature.studio', pageW - margin, y + 2, { align: 'right' });
-  y += 12;
+  doc.text('designature.studio', pageW - margin, y + 4, { align: 'right' });
+  y += 20;
 
-  // ── Concept image ──
+  // ── Concept image (aspect-preserved, capped so it never overflows) ──
   if (conceptImage) {
     try {
-      const imgH = Math.round(contentW * 0.5);
-      doc.addImage(conceptImage, 'JPEG', margin, y, contentW, imgH);
-      y += imgH + 4;
+      const props = doc.getImageProperties(conceptImage);
+      let imgW = contentW;
+      let imgH = contentW * (props.height / props.width);
+      const MAX_H = 120; // mm
+      if (imgH > MAX_H) {
+        imgH = MAX_H;
+        imgW = imgH * (props.width / props.height);
+      }
+      const imgX = margin + (contentW - imgW) / 2;
+      doc.addImage(conceptImage, 'JPEG', imgX, y, imgW, imgH);
+      y += imgH + 5;
     } catch {
       /* skip if image fails */
     }
