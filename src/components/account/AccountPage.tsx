@@ -169,6 +169,7 @@ const AccountPage: React.FC = () => {
             tier={tier}
             onTryTool={(hash) => navigate(hash ? `/ai-concepts#${hash}` : '/ai-concepts')}
             onSeePlans={() => navigate('/pricing')}
+            onChanged={() => dashboard.reload()}
           />
         )}
 

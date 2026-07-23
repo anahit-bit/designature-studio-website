@@ -1,6 +1,6 @@
 /** AC-001 — Library tab. Filter chips + grid of saved items; Studio project-folders strip; free-tier upsell empty state. */
-import React, { useState } from 'react';
-import { MoreHorizontal, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { MoreHorizontal, Check, LayoutGrid, Rows3, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button, Eyebrow, Skeleton, ErrorBanner, TOOL_META, fmtMonthDay } from '../ui';
 import { useResource } from '../useResource';
 import { accountApi, type PlanTier, type ToolKey, type LibraryItem } from '../../../lib/accountApi';
@@ -61,7 +61,9 @@ export const LibraryTab: React.FC<{
   /** Jump into the AI Studio; pass a tool hash (vision/shopping/audit/quiz) to deep-link. */
   onTryTool: (toolHash?: string) => void;
   onSeePlans: () => void;
-}> = ({ tier, onTryTool, onSeePlans }) => {
+  /** Fired after a save-set change (delete) so the rail badge / dashboard count refreshes. */
+  onChanged?: () => void;
+}> = ({ tier, onTryTool, onSeePlans, onChanged }) => {
   const [chip, setChip] = useState<ChipKey>('all');
   const [search, setSearch] = useState('');
   const [openItem, setOpenItem] = useState<LibraryItem | null>(null);
@@ -69,6 +71,8 @@ export const LibraryTab: React.FC<{
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmBulk, setConfirmBulk] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [compact, setCompact] = useState(false); // thumbnails view
+  const [page, setPage] = useState(1);
   const paid = tier !== 'free';
 
   const { data, loading, error, reload } = useResource(
@@ -77,6 +81,14 @@ export const LibraryTab: React.FC<{
   );
 
   const items = data?.items ?? [];
+
+  // Pagination — 9 per page in the large grid, 24 in the compact thumbnails view.
+  const pageSize = compact ? 24 : 9;
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const pageItems = items.slice((safePage - 1) * pageSize, safePage * pageSize);
+  // Reset to page 1 whenever the result set or page size changes.
+  useEffect(() => setPage(1), [chip, search, compact, items.length]);
   const allSelected = items.length > 0 && selected.size === items.length;
   const toggleSel = (id: string) =>
     setSelected((prev) => {
@@ -97,6 +109,7 @@ export const LibraryTab: React.FC<{
       setConfirmBulk(false);
       exitSelect();
       reload();
+      onChanged?.();
     } finally {
       setDeleting(false);
     }
@@ -168,12 +181,21 @@ export const LibraryTab: React.FC<{
       {!loading && items.length > 0 && (
         <div className="flex items-center gap-3 mb-4 flex-wrap">
           {!selectMode ? (
-            <button
-              onClick={() => setSelectMode(true)}
-              className="font-body text-[11px] font-bold tracking-[0.14em] uppercase text-[#0A0A0A] border border-black/15 px-3 py-2 hover:border-black/45"
-            >
-              Select
-            </button>
+            <>
+              <button
+                onClick={() => setSelectMode(true)}
+                className="font-body text-[11px] font-bold tracking-[0.14em] uppercase text-[#0A0A0A] border border-black/15 px-3 py-2 hover:border-black/45"
+              >
+                Select
+              </button>
+              <button
+                onClick={() => setCompact((v) => !v)}
+                className="ml-auto inline-flex items-center gap-2 font-body text-[11px] font-bold tracking-[0.14em] uppercase text-[#0A0A0A] border border-black/15 px-3 py-2 hover:border-black/45"
+                title={compact ? 'Switch to large cards' : 'Switch to compact thumbnails'}
+              >
+                {compact ? <><LayoutGrid className="w-3.5 h-3.5" /> Large</> : <><Rows3 className="w-3.5 h-3.5" /> Thumbnails</>}
+              </button>
+            </>
           ) : (
             <>
               <button
@@ -211,8 +233,13 @@ export const LibraryTab: React.FC<{
           ))}
         </div>
       ) : data && data.items.length > 0 ? (
-        <div className="grid gap-[18px]" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))' }}>
-          {data.items.map((item) => (
+        <div
+          className={compact ? 'grid gap-3' : 'grid gap-[18px]'}
+          style={{
+            gridTemplateColumns: `repeat(auto-fill,minmax(${compact ? '128px' : '240px'},1fr))`,
+          }}
+        >
+          {pageItems.map((item) => (
             <div
               key={item.id}
               onClick={() => (selectMode ? toggleSel(item.id) : setOpenItem(item))}
@@ -262,11 +289,15 @@ export const LibraryTab: React.FC<{
                   </button>
                 )}
               </div>
-              <div className="p-3">
-                <div className="font-display text-[17px] leading-[1.15] text-[#0A0A0A]">
+              <div className={compact ? 'p-2' : 'p-3'}>
+                <div
+                  className={`font-display text-[#0A0A0A] ${compact ? 'text-[12px] leading-tight truncate' : 'text-[17px] leading-[1.15]'}`}
+                >
                   {item.title}
                 </div>
-                <div className="text-[11px] text-[#6B6B6B] mt-1">Saved {fmtMonthDay(item.createdAt)}</div>
+                {!compact && (
+                  <div className="text-[11px] text-[#6B6B6B] mt-1">Saved {fmtMonthDay(item.createdAt)}</div>
+                )}
               </div>
             </div>
           ))}
@@ -285,6 +316,31 @@ export const LibraryTab: React.FC<{
         </div>
       )}
 
+      {/* Pagination */}
+      {!loading && items.length > pageSize && (
+        <div className="flex items-center justify-center gap-5 mt-7">
+          <button
+            aria-label="Previous page"
+            disabled={safePage <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            className="w-9 h-9 border border-black/15 flex items-center justify-center hover:border-black/45 disabled:opacity-25 disabled:cursor-default"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-[13px] text-[#6B6B6B] font-body">
+            Page {safePage} of {totalPages}
+          </span>
+          <button
+            aria-label="Next page"
+            disabled={safePage >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            className="w-9 h-9 border border-black/15 flex items-center justify-center hover:border-black/45 disabled:opacity-25 disabled:cursor-default"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Persistent CTA — always offer a way to create more, even with saved items. */}
       {!loading && data && data.items.length > 0 && (
         <div className="mt-10 border-t border-[#DAD2C3] pt-8 text-center">
@@ -298,7 +354,10 @@ export const LibraryTab: React.FC<{
       <LibraryItemModal
         item={openItem}
         onClose={() => setOpenItem(null)}
-        onDeleted={() => reload()}
+        onDeleted={() => {
+          reload();
+          onChanged?.();
+        }}
       />
 
       <Modal
