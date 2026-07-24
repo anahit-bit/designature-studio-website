@@ -31,6 +31,14 @@ describe('classifyKind', () => {
   it('defaults to free when name has no "paid"', () => {
     expect(classifyKind(undefined, 'Quick Conversation', CFG)).toBe('free');
   });
+  it('uses the per-account hint when no URI match', () => {
+    // A free-account event oddly named — the hint (we know the token) wins over the name.
+    expect(classifyKind('https://api.calendly.com/event_types/OTHER', 'Paid-sounding name', CFG, 'free')).toBe('free');
+    expect(classifyKind(undefined, 'anything', CFG, 'paid')).toBe('paid');
+  });
+  it('URI match still beats the hint', () => {
+    expect(classifyKind(CFG.paidEventTypeUri, 'x', CFG, 'free')).toBe('paid');
+  });
 });
 
 describe('normalizeBooking', () => {

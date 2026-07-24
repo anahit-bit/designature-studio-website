@@ -695,6 +695,40 @@ function upsertBookingRecord(db: DB, booking: StoredBooking): StoredBooking {
   return row;
 }
 
+/**
+ * Poll both Calendly accounts → sync new bookers into HubSpot. This is the
+ * free-plan alternative to Calendly webhooks (which require a paid plan): a
+ * periodic reconcile. Idempotent — a booking already marked hubspot.synced in the
+ * durable store is skipped, so contacts are created/updated exactly once. No-op
+ * unless BOTH Calendly and HubSpot are configured.
+ */
+async function syncBookingsToHubspot(): Promise<void> {
+  try {
+    if (!isBookingsConfigured() || !isHubspotConfigured()) return;
+    const live = await fetchBookings();
+    if (!live.bookings.length) return;
+    const db = readDB();
+    let changed = false;
+    for (const b of live.bookings) {
+      const existing = (db.calendlyBookings || []).find((x) => x.inviteeUri === b.inviteeUri);
+      let hubspot = existing?.hubspot;
+      // Sync active bookings that haven't been synced yet (cancellations aren't pushed).
+      if (b.status === "active" && !hubspot?.synced) {
+        const r = await upsertContactBooking({ email: b.email, name: b.name, kind: b.kind });
+        if (r.configured) {
+          hubspot = { synced: r.ok, at: new Date().toISOString(), error: r.ok ? undefined : r.error };
+          if (!r.ok) console.error("[calendly-sync] HubSpot upsert failed:", r.error);
+        }
+      }
+      upsertBookingRecord(db, { ...b, hubspot });
+      changed = true;
+    }
+    if (changed) writeDB(db);
+  } catch (e) {
+    console.error("[calendly-sync]", (e as Error)?.message || e);
+  }
+}
+
 // ─── Session store (in-memory, keyed by session token) ─────────────────────
 const sessions: Record<string, string> = {}; // token → googleId
 
@@ -865,6 +899,13 @@ async function startServer() {
   void expireStalePendingOrders();
   const expireTimer = setInterval(() => void expireStalePendingOrders(), 5 * 60 * 1000);
   expireTimer.unref();
+
+  // Poll Calendly → HubSpot every 3 min (free Calendly plan can't use webhooks).
+  // Best-effort, idempotent. Runs shortly after boot, then on an interval; the
+  // timer is unref'd so it never keeps the process alive on its own.
+  setTimeout(() => void syncBookingsToHubspot(), 15_000).unref();
+  const calendlySyncTimer = setInterval(() => void syncBookingsToHubspot(), 3 * 60 * 1000);
+  calendlySyncTimer.unref();
 
   // ════════════════════════════════════════════════════════════════════════
   // I-021b · Per-provider cost estimates (USD per call).
@@ -3294,35 +3335,34 @@ Output ONLY valid JSON with no markdown fences, no explanation:
   });
 
   // ── GET /api/admin/consultations — booking tracker for the admin tab ──────
-  // Live-reads recent Calendly bookings when a token is configured, merges each
-  // row's stored HubSpot-sync status, and folds in any webhook-only rows. Falls
-  // back to the durable store alone when no token is set.
+  // Live-reads recent bookings from BOTH Calendly accounts (whichever tokens are
+  // set), merges each row's stored HubSpot-sync status, folds in webhook rows,
+  // and reports per-account connection state. Falls back to the durable store
+  // alone when no token is set.
   app.get("/api/admin/consultations", async (req, res) => {
     if (!requireAdmin(req, res)) return;
     const db = readDB();
     const stored: StoredBooking[] = Array.isArray(db.calendlyBookings) ? db.calendlyBookings : [];
-    const storedByUri = new Map(stored.map((b) => [b.inviteeUri, b]));
+    const merged = new Map<string, StoredBooking>(stored.map((b) => [b.inviteeUri, b]));
 
-    let orgWide = false;
-    let freeVisible = false;
-    let liveError: string | null = null;
-    const merged = new Map<string, StoredBooking>(storedByUri);
+    let paidConnected = false;
+    let freeConnected = false;
+    let paidError: string | null = null;
+    let freeError: string | null = null;
 
     if (isBookingsConfigured()) {
-      try {
-        const live = await fetchBookings();
-        orgWide = live.orgWide;
-        freeVisible = live.freeVisible;
-        for (const b of live.bookings) {
-          const prev = storedByUri.get(b.inviteeUri);
-          merged.set(b.inviteeUri, { ...b, hubspot: prev?.hubspot });
-        }
-        // Persist merged live rows so hubspot status + webhook rows stay coherent.
-        for (const b of merged.values()) upsertBookingRecord(db, b);
-        writeDB(db);
-      } catch (e) {
-        liveError = e instanceof Error ? e.message : "Calendly read failed";
+      const live = await fetchBookings();
+      paidConnected = live.paidConfigured && !live.paidError;
+      freeConnected = live.freeConfigured && !live.freeError;
+      paidError = live.paidError;
+      freeError = live.freeError;
+      for (const b of live.bookings) {
+        const prev = merged.get(b.inviteeUri);
+        merged.set(b.inviteeUri, { ...b, hubspot: prev?.hubspot });
       }
+      // Persist merged live rows so hubspot status + webhook rows stay coherent.
+      for (const b of merged.values()) upsertBookingRecord(db, b);
+      writeDB(db);
     }
 
     const all = Array.from(merged.values()).sort(
@@ -3330,10 +3370,11 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     );
     res.json({
       configured: isBookingsConfigured(),
-      orgWide,
-      freeVisible,
+      paidConnected,
+      freeConnected,
+      paidError,
+      freeError,
       hubspotConfigured: isHubspotConfigured(),
-      liveError,
       free: all.filter((b) => b.kind === "free"),
       paid: all.filter((b) => b.kind === "paid"),
     });

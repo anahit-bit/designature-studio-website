@@ -1,10 +1,15 @@
 /**
  * One-time Calendly webhook subscription setup.
  *
+ * ⚠️ PAID CALENDLY PLAN ONLY. Calendly gates webhook subscriptions to Standard+
+ * plans; on a Free plan this call returns 403 and the app instead syncs via
+ * POLLING (server.ts `syncBookingsToHubspot`, every ~3 min) — no setup needed.
+ * Run this only if the account is on a paid plan and you want instant syncing.
+ *
  * Creates an `invitee.created` + `invitee.canceled` subscription pointed at our
- * server, scoped to the organisation (so it fires for BOTH the free + paid event
- * types when they share one Calendly org). Generates a signing key, registers it,
- * and prints it — paste that into CALENDLY_WEBHOOK_SIGNING_KEY.
+ * server. Generates a signing key, registers it, and prints it — paste that into
+ * CALENDLY_WEBHOOK_SIGNING_KEY. NOTE: one subscription is per-account; with two
+ * separate accounts (free + paid) you'd run this once per account token.
  *
  * Requires CALENDLY_ADMIN_TOKEN — a Personal Access Token with scopes:
  *   webhook_subscription:write, organization/user read, users:read
