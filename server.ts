@@ -87,6 +87,16 @@ import { legacyRedirects, trailingSlashRedirect } from "./server/redirects.js";
 import { getAcquisition } from "./server/analytics/acquisition.js";
 // ─── Internal/owner accounts excluded from /admin analytics aggregates ────────
 import { isInternalAccount } from "./server/internalAccounts.js";
+// ─── Free-tier quota logic (pure, unit-tested in src/test/quotaEnforcement.test.ts) ─
+import {
+  FREE_TIER_MAX_CONCEPTS,
+  FREE_TIER_MAX_SHOPPING_LISTS,
+  UNLIMITED_QUOTA,
+  UNLIMITED_ACCOUNT_EMAILS,
+  isUnlimitedAccountEmail,
+  normalizeUserForFreeTier,
+  refundGenerations,
+} from "./server/quota.js";
 
 const FALLBACK_ENV_PATH = 'E:/Secrets/Website/.env';
 dotenv.config({
@@ -97,9 +107,6 @@ dotenv.config({
     : undefined,
 });
 
-/** Free tier caps (UI + API). Paid tier can be added later with an `isPaid` flag. */
-const FREE_TIER_MAX_CONCEPTS = 3;
-const FREE_TIER_MAX_SHOPPING_LISTS = 3;
 /** Free tier: identify enumerates ALL items, but Serper only searches the top N;
  *  the rest come back as a `teaser` (names only) to drive the upgrade hook. Paid = all. */
 const FREE_TIER_MAX_ITEMS = 4;
@@ -113,18 +120,11 @@ const MAX_LIST_ITEMS = (() => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 12;
 })();
 
-/** Accounts that get unlimited quotas — never clamped or decremented. */
-const UNLIMITED_ACCOUNT_EMAILS = [
-  "anahit@designature.studio",
-  "anahit.ghasabyan@gmail.com",
-];
-
 /** @deprecated kept for call-sites that haven't been updated yet */
 const CONCEPT_TEST_ACCOUNT_EMAIL = UNLIMITED_ACCOUNT_EMAILS[0];
 
-function isConceptTestAccountEmail(email: string): boolean {
-  return UNLIMITED_ACCOUNT_EMAILS.includes(email.trim().toLowerCase());
-}
+/** Alias for {@link isUnlimitedAccountEmail} — kept for the many existing call-sites. */
+const isConceptTestAccountEmail = isUnlimitedAccountEmail;
 
 /**
  * I-011 — admin allowlist for /api/admin/* endpoints.
@@ -171,34 +171,10 @@ interface User {
   backfilled?: boolean;
 }
 
-function normalizeUserForFreeTier(user: User): { user: User; changed: boolean } {
-  let changed = false;
-  const u = { ...user };
-  const isUnlimited = isConceptTestAccountEmail(u.email);
-
-  if (isUnlimited) {
-    // Unlimited accounts (owner/demo) — force 999, never clamp
-    if (u.generationsLeft !== 999) { u.generationsLeft = 999; changed = true; }
-    if (u.shoppingListsLeft !== 999) { u.shoppingListsLeft = 999; changed = true; }
-  } else {
-    // Everyone else — enforce free-tier caps regardless of isPaid flag.
-    // (No paid tier exists yet; isPaid on the user record is only used for
-    //  audit access in the API response, not for quota bypass.)
-    if (u.generationsLeft > FREE_TIER_MAX_CONCEPTS) {
-      u.generationsLeft = FREE_TIER_MAX_CONCEPTS;
-      changed = true;
-    }
-    if (typeof u.shoppingListsLeft !== "number" || Number.isNaN(u.shoppingListsLeft)) {
-      u.shoppingListsLeft = FREE_TIER_MAX_SHOPPING_LISTS;
-      changed = true;
-    }
-    if (u.shoppingListsLeft > FREE_TIER_MAX_SHOPPING_LISTS) {
-      u.shoppingListsLeft = FREE_TIER_MAX_SHOPPING_LISTS;
-      changed = true;
-    }
-  }
-  return { user: u, changed };
-}
+// normalizeUserForFreeTier lives in ./server/quota.ts (imported above) so the
+// free-tier lifetime-cap logic is unit-tested. See that file for the rules:
+// missing/corrupt counters default to 0, existing counters only clamp DOWN, and
+// nothing here ever refills toward the cap.
 
 interface SerperLogEntry {
   ts: string;
@@ -1467,51 +1443,16 @@ async function startServer() {
     res.json({ ok: true });
   });
 
-  // ── POST /api/generation/use — consume one generation ──
-  app.post("/api/generation/use", (req, res) => {
-    const googleId = requireAuth(req, res);
-    if (!googleId) return;
-
-    const { count = 1 } = req.body;
-
-    const db = readDB();
-    const user = db.users[googleId];
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    if (user.generationsLeft < count) {
-      return res.status(403).json({ error: "No generations left", generationsLeft: user.generationsLeft });
-    }
-
-    if (user.generationsLeft < 999) user.generationsLeft -= count;
-    user.lastUsed = new Date().toISOString();
-    db.users[googleId] = user;
-    writeDB(db);
-
-    res.json({ generationsLeft: user.generationsLeft });
-  });
-
-  // ── POST /api/generation/restore — restore generations on failure ──
-  app.post("/api/generation/restore", (req, res) => {
-    const googleId = requireAuth(req, res);
-    if (!googleId) return;
-
-    const { count = 1 } = req.body;
-
-    const db = readDB();
-    const user = db.users[googleId];
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    const cap = isConceptTestAccountEmail(user.email) ? 999 : FREE_TIER_MAX_CONCEPTS;
-    user.generationsLeft = Math.min(cap, user.generationsLeft + count);
-    db.users[googleId] = user;
-    writeDB(db);
-
-    res.json({ generationsLeft: user.generationsLeft });
-  });
+  // ── Quota consumption is server-authoritative ────────────────────────────────
+  // There are intentionally NO client-callable /api/generation/use or
+  // /api/generation/restore endpoints. Free tier is a HARD LIFETIME cap and the
+  // client must never be able to move a quota counter in either direction.
+  //
+  // Each generation endpoint owns its own quota lifecycle: it decrements BEFORE
+  // calling the AI provider and, if the provider fails, credits back EXACTLY what
+  // it decremented (bounded by the pre-decrement balance) in the SAME request —
+  // see /api/ai-vision/generate and /api/room-audit/analyze, and the shared
+  // refundGenerations() helper in ./server/quota.ts.
 
   // ── Testimonials cache ──────────────────────────────────────────────────────
   let testimonialsCache: { data: any; expires: number } | null = null;
@@ -2742,7 +2683,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
         });
     }
 
-    // ── Quota check + decrement ────────────────────────────────────────────────
+    // ── Quota check + decrement (server-authoritative) ─────────────────────────
     const db = readDB();
     const user = db.users[googleId];
     if (!user) return res.status(404).json({ error: "User not found." });
@@ -2752,11 +2693,17 @@ Output ONLY valid JSON, no markdown fences, no commentary:
         .status(403)
         .json({ error: "No generations left.", generationsLeft: 0 });
     }
-    if (!isSampleRun && user.generationsLeft < 999) {
+    // Remember the balance BEFORE the decrement so a failed generation can be
+    // refunded to EXACTLY this value — never above it. `quotaDecremented` gates
+    // the refund so sample/unlimited runs (which never decrement) never gain credit.
+    const genBeforeDecrement = user.generationsLeft;
+    let quotaDecremented = false;
+    if (!isSampleRun && user.generationsLeft < UNLIMITED_QUOTA) {
       user.generationsLeft -= 1;
       user.lastUsed = new Date().toISOString();
       db.users[googleId] = user;
       writeDB(db);
+      quotaDecremented = true;
     } else if (isSampleRun) {
       console.log(`[AI Vision] Sample run for ${user.email} — quota not decremented (${user.generationsLeft} remaining)`);
     }
@@ -2852,18 +2799,22 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     } catch (err: any) {
       console.error("[AI Vision] Generation failed:", err?.message ?? err);
 
-      // Restore quota on generation failure
-      try {
-        const dbRetry = readDB();
-        const u = dbRetry.users[googleId];
-        if (u && u.generationsLeft < 999) {
-          const cap = isConceptTestAccountEmail(u.email) ? 999 : FREE_TIER_MAX_CONCEPTS;
-          u.generationsLeft = Math.min(cap, u.generationsLeft + 1);
-          dbRetry.users[googleId] = u;
-          writeDB(dbRetry);
+      // Server-authoritative refund: only if THIS request decremented, credit back
+      // exactly the 1 it took — never above the pre-decrement balance (genBeforeDecrement).
+      if (quotaDecremented) {
+        try {
+          const dbRetry = readDB();
+          const u = dbRetry.users[googleId];
+          if (u && u.generationsLeft < UNLIMITED_QUOTA) {
+            const cap = isConceptTestAccountEmail(u.email) ? UNLIMITED_QUOTA : FREE_TIER_MAX_CONCEPTS;
+            u.generationsLeft = refundGenerations(u.generationsLeft, 1, genBeforeDecrement, cap);
+            dbRetry.users[googleId] = u;
+            writeDB(dbRetry);
+            console.log(`[AI Vision] Refunded 1 generation to ${u.email} after failure (now ${u.generationsLeft})`);
+          }
+        } catch (restoreErr) {
+          console.error("[AI Vision] Failed to restore quota after error:", restoreErr);
         }
-      } catch (restoreErr) {
-        console.error("[AI Vision] Failed to restore quota after error:", restoreErr);
       }
 
       const msg: string = err?.message ?? "";
@@ -2899,6 +2850,30 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     }
     const matches = imageDataUrl.match(/^data:(image\/[\w+]+);base64,(.+)$/);
     if (!matches) return res.status(400).json({ error: "Invalid image format." });
+
+    // ── Quota check + decrement (server-authoritative) ─────────────────────────
+    // Free-tier room audits draw from the SAME generationsLeft pool as concepts.
+    // Decrement is owned here (not by any client-callable endpoint): we take the
+    // credit BEFORE the Gemini call and refund it in the catch below if Gemini
+    // fails or returns an unusable result — bounded so a failure can only ever
+    // undo this request's decrement. Paid/owner accounts are never metered.
+    const db = readDB();
+    const user = db.users[googleId];
+    if (!user) return res.status(404).json({ error: "User not found." });
+
+    const isMeteredAudit = !user.isPaid && !isConceptTestAccountEmail(user.email);
+    const auditBeforeDecrement = user.generationsLeft;
+    let auditQuotaDecremented = false;
+    if (isMeteredAudit) {
+      if (user.generationsLeft <= 0) {
+        return res.status(403).json({ error: "No generations left.", generationsLeft: 0 });
+      }
+      user.generationsLeft -= 1;
+      user.lastUsed = new Date().toISOString();
+      db.users[googleId] = user;
+      writeDB(db);
+      auditQuotaDecremented = true;
+    }
 
     try {
       const apiKey = process.env.GEMINI_API_KEY ?? "";
@@ -2945,20 +2920,46 @@ Output ONLY valid JSON with no markdown fences, no explanation:
           .join("") ?? "";
       const cleaned = rawText.replace(/```json|```/g, "").trim();
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        return res.status(422).json({ error: "Could not parse audit results." });
-      }
+      // Throw (don't early-return) on any unusable result so the catch below
+      // refunds the quota this request took — a failed audit must not burn credit.
+      if (!jsonMatch) throw new Error("Could not parse audit results.");
       const parsed = JSON.parse(jsonMatch[0]);
+      if (
+        typeof parsed?.overallScore !== "number" ||
+        !Array.isArray(parsed?.dimensions) ||
+        parsed.dimensions.length < 6 ||
+        !Array.isArray(parsed?.fixNow)
+      ) {
+        throw new Error("Incomplete audit response");
+      }
       // I-016 — log generate_audit with the user's email
       try {
         const auditDb = readDB();
         const auditUser = auditDb.users[googleId];
         if (auditUser) recordActivity(auditUser.email, "generate_audit");
       } catch { /* non-fatal */ }
-      return res.json({ result: parsed });
+      return res.json({ result: parsed, generationsLeft: user.generationsLeft });
 
     } catch (err: any) {
       console.error("[Room Audit] analyze error:", err?.message ?? err);
+
+      // Server-authoritative refund: only if THIS request decremented, credit back
+      // exactly the 1 it took — never above the pre-decrement balance.
+      if (auditQuotaDecremented) {
+        try {
+          const dbRetry = readDB();
+          const u = dbRetry.users[googleId];
+          if (u && u.generationsLeft < UNLIMITED_QUOTA) {
+            const cap = isConceptTestAccountEmail(u.email) ? UNLIMITED_QUOTA : FREE_TIER_MAX_CONCEPTS;
+            u.generationsLeft = refundGenerations(u.generationsLeft, 1, auditBeforeDecrement, cap);
+            dbRetry.users[googleId] = u;
+            writeDB(dbRetry);
+            console.log(`[Room Audit] Refunded 1 generation to ${u.email} after failure (now ${u.generationsLeft})`);
+          }
+        } catch (restoreErr) {
+          console.error("[Room Audit] Failed to restore quota after error:", restoreErr);
+        }
+      }
       return res.status(500).json({ error: "Audit failed. Please try again." });
     }
   });

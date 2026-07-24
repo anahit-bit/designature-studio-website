@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Download, RefreshCw } from 'lucide-react';
+import { X, Download, RefreshCw, Pencil, Share2 } from 'lucide-react';
 import { cld, cldSrcSet } from '../lib/cld';
 import { useLanguage } from '../LanguageContext';
 import FeedbackBand from './FeedbackBand';
@@ -59,6 +59,8 @@ interface VisionExperienceProps {
   handleDrop: (e: React.DragEvent, type: 'inspiration' | 'room') => void;
   handleGenerate: (isVariation?: boolean, isSampleRun?: boolean) => void;
   handleReset: () => void;
+  /** AI Vision — return to the setup screen keeping room + inspirations + selections. */
+  handleEdit: () => void;
   handleDownload: (dataUrl: string, n?: number) => void;
   handleTrySampleRoom: () => void;
   removeInspirationImage: (i: number) => void;
@@ -601,32 +603,51 @@ export default function VisionExperience(p: VisionExperienceProps) {
               Your {p.selectedRoom || 'room'}{p.selectedStyle ? `, ${p.translateStyle(p.selectedStyle)}` : ''}.
             </h3>
           </div>
-          <div className="flex gap-2 flex-wrap">
+          {/* Result actions — utility actions are icon-only (label via title +
+              aria-label); only the Shop this room conversion CTA keeps its words,
+              so the bar stays compact and doesn't run the full width. */}
+          <div className="flex gap-2 flex-wrap items-center">
             {p.generationsLeft > 0 && (
               <button
                 type="button"
                 onClick={() => p.handleGenerate(true, false)}
                 disabled={p.isProcessing}
-                className="px-5 py-3 bg-transparent text-white border border-white/40 hover:border-white text-[10px] font-bold uppercase tracking-[0.22em] inline-flex items-center gap-2 disabled:opacity-40"
+                className="w-11 h-11 flex items-center justify-center bg-transparent text-white border border-white/40 hover:border-white hover:bg-white/[0.06] transition-colors disabled:opacity-40"
+                aria-label="Variation"
+                title="Generate a variation"
               >
-                <RefreshCw className="w-3 h-3" /> Variation
+                <RefreshCw className="w-[18px] h-[18px]" />
               </button>
             )}
+            <button
+              type="button"
+              onClick={p.handleEdit}
+              disabled={p.isProcessing}
+              className="w-11 h-11 flex items-center justify-center bg-transparent text-white border border-white/40 hover:border-white hover:bg-white/[0.06] transition-colors disabled:opacity-40"
+              aria-label="Edit"
+              title="Change the style or room — keeps your photo"
+            >
+              <Pencil className="w-[18px] h-[18px]" />
+            </button>
             {p.selectedConceptUrl && (
               <button
                 type="button"
                 onClick={() => p.selectedConceptUrl && p.handleDownload(p.selectedConceptUrl, p.selectedConceptIndex + 1)}
-                className="px-5 py-3 bg-transparent text-white border border-white/40 hover:border-white text-[10px] font-bold uppercase tracking-[0.22em] inline-flex items-center gap-2"
+                className="w-11 h-11 flex items-center justify-center bg-transparent text-white border border-white/40 hover:border-white hover:bg-white/[0.06] transition-colors"
+                aria-label="Download"
+                title="Download"
               >
-                <Download className="w-3 h-3" /> Download
+                <Download className="w-[18px] h-[18px]" />
               </button>
             )}
             <button
               type="button"
               onClick={handleShare}
-              className="px-5 py-3 bg-transparent text-white border border-white/40 hover:border-white text-[10px] font-bold uppercase tracking-[0.22em]"
+              className="w-11 h-11 flex items-center justify-center bg-transparent text-white border border-white/40 hover:border-white hover:bg-white/[0.06] transition-colors"
+              aria-label="Share"
+              title="Share"
             >
-              Share
+              <Share2 className="w-[18px] h-[18px]" />
             </button>
             {p.selectedConceptUrl && (
               <button
@@ -641,11 +662,11 @@ export default function VisionExperience(p: VisionExperienceProps) {
               type="button"
               onClick={p.handleReset}
               disabled={p.isProcessing}
-              className="px-3 py-3 bg-transparent text-white/70 border border-white/25 hover:border-white/55 hover:text-white text-[10px] font-bold uppercase tracking-[0.22em] inline-flex items-center gap-1 disabled:opacity-40"
+              className="w-11 h-11 flex items-center justify-center bg-transparent text-white/70 border border-white/25 hover:text-white hover:border-white/55 transition-colors disabled:opacity-40"
               aria-label="Reset"
               title="Start over"
             >
-              <X className="w-3 h-3" /> Reset
+              <X className="w-[18px] h-[18px]" />
             </button>
           </div>
         </div>
