@@ -54,6 +54,9 @@ const AccountPage: React.FC = () => {
   const [modal, setModal] = useState<ModalKind>(null);
   const [modalBooking, setModalBooking] = useState<Booking | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  // Live library total reported by the Library tab — keeps the rail badge in sync
+  // even when a save/delete happened after the dashboard's own count was fetched.
+  const [liveLibraryTotal, setLiveLibraryTotal] = useState<number | null>(null);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -131,7 +134,7 @@ const AccountPage: React.FC = () => {
       <AccountRail
         user={data.user}
         plan={plan}
-        libraryCount={data.counts.libraryTotal}
+        libraryCount={liveLibraryTotal ?? data.counts.libraryTotal}
         upcomingCount={data.counts.upcomingBookings}
         activeTab={activeTab}
         onNav={goTab}
@@ -170,6 +173,7 @@ const AccountPage: React.FC = () => {
             onTryTool={(hash) => navigate(hash ? `/ai-concepts#${hash}` : '/ai-concepts')}
             onSeePlans={() => navigate('/pricing')}
             onChanged={() => dashboard.reload()}
+            onTotalChange={setLiveLibraryTotal}
           />
         )}
 

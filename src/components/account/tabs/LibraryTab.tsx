@@ -63,7 +63,9 @@ export const LibraryTab: React.FC<{
   onSeePlans: () => void;
   /** Fired after a save-set change (delete) so the rail badge / dashboard count refreshes. */
   onChanged?: () => void;
-}> = ({ tier, onTryTool, onSeePlans, onChanged }) => {
+  /** Reports the live unfiltered library total so the rail badge stays in sync. */
+  onTotalChange?: (total: number) => void;
+}> = ({ tier, onTryTool, onSeePlans, onChanged, onTotalChange }) => {
   const [chip, setChip] = useState<ChipKey>('all');
   const [search, setSearch] = useState('');
   const [openItem, setOpenItem] = useState<LibraryItem | null>(null);
@@ -89,6 +91,11 @@ export const LibraryTab: React.FC<{
   const pageItems = items.slice((safePage - 1) * pageSize, safePage * pageSize);
   // Reset to page 1 whenever the result set or page size changes.
   useEffect(() => setPage(1), [chip, search, compact, items.length]);
+
+  // Keep the rail badge in sync with the real library size (unfiltered view only).
+  useEffect(() => {
+    if (data && chip === 'all' && !search) onTotalChange?.(data.total);
+  }, [data, chip, search, onTotalChange]);
   const allSelected = items.length > 0 && selected.size === items.length;
   const toggleSel = (id: string) =>
     setSelected((prev) => {
