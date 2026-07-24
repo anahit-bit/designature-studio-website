@@ -37,13 +37,13 @@ export type RoomType =
 export const STYLE_BRIEFS: Record<StylePreset, string> = {
 
   art_deco: `
-1. COLOR PALETTE: Deep Emerald #1F4E3D, Black Onyx #1A1A1A, Antique Gold #C9A062, Cream Ivory #F2E9D8, Burgundy #6B1F2A, Champagne #E8D5A8, Charcoal #2E2E2E.
-2. MATERIALS & FINISHES: high-gloss lacquered ebony and walnut, polished black marble with white veining, polished brass and gold-tone metal, mirrored glass surfaces, velvet upholstery in jewel tones, patterned inlays of mother-of-pearl or shagreen.
-3. FURNITURE CHARACTER: bold geometric silhouettes, stepped and fan-shaped forms, generous curves balanced with sharp angles, substantial proportions, symmetrical arrangements, rounded armchairs and curved sofas with brass detailing.
-4. LIGHTING: dramatic statement fixtures — sunburst chandeliers, frosted glass globe pendants, brass sconces with stepped detailing. Warm moody lighting with strong contrast. Layered table and floor lamps with silk shades.
-5. WALL & CEILING TREATMENT: high-gloss painted walls in rich tones, geometric wallpaper or panel insets, mirrored panels, stepped crown moldings, ceiling rosettes, gilded trim accents.
-6. DECOR & STYLING: gold-framed mirrors, geometric sculptures, crystal decanters and barware, fan-shaped or sunburst motifs, lacquered boxes, palm fronds in tall brass vases, framed period art.
-7. OVERALL MOOD: glamorous, opulent, theatrical. Confident symmetry and rich materials create a sense of polished luxury and 1920s sophistication.
+1. COLOR PALETTE: restrained jewel tones balanced with warm neutrals — Deep Forest #2E4E3D, Warm Terracotta #B87A5E, Brushed Brass #B8935E, Cream Ivory #F2E9D8, Muted Burgundy #7A3A42, Warm Charcoal #3A3A3A, Warm Off-White #F5EFE0. Jewel tones appear as accents on one wall or key furniture, not saturating every surface.
+2. MATERIALS & FINISHES: matte and satin-finished woods (warm walnut, white oak) with subtle grain, matte brass hardware with a brushed finish, honed marble (not polished) with subtle veining, velvet upholstery in warm jewel tones used on one or two pieces, linen and boucle for balance, ceramic accents.
+3. FURNITURE CHARACTER: contemporary silhouettes with Art Deco-influenced proportion — clean geometric lines, gentle curves balanced with straight edges, refined tapered or fluted legs, rounded backs on lounge chairs, low-slung profiles lifted off the floor. Restrained and modern first; Art Deco felt through proportion and geometric rhythm, not literal period silhouettes.
+4. LIGHTING: contemporary fixtures with geometric detail — slim brass linear pendants with frosted glass, fluted globe pendants, understated wall sconces with rounded shades, floor lamps with matte brass bases. Warm ambient lighting, layered but calm.
+5. WALL & CEILING TREATMENT: matte painted walls in warm neutrals with one accent wall in a jewel tone or a subtle fluted-wood treatment, contemporary geometric wallpaper on a single feature wall (thin scale, calm rhythm), simple flat ceilings with a restrained painted or plaster finish. Slim brass reveal trim used sparingly at wall-to-ceiling junctions.
+6. DECOR & STYLING: framed abstract or graphic art with geometric composition, one sculptural ceramic vessel in a matte finish, curated design books, one architectural plant in a matte brass or ceramic planter, considered objects placed with generous negative space between them. Surfaces feel edited, not layered.
+7. OVERALL MOOD: warm, considered, design-forward, contemporary. Art Deco warmth and geometric rhythm without the period furniture — a modern interior that references the era through proportion, material warmth, and restrained detail, feeling both quiet and confident.
 `.trim(),
 
   bohemian: `
@@ -87,13 +87,13 @@ export const STYLE_BRIEFS: Record<StylePreset, string> = {
 `.trim(),
 
   mid_century: `
-1. COLOR PALETTE: Walnut Brown #6B4226, Mustard Yellow #D4A437, Avocado Green #6B7A3F, Burnt Orange #C75D2B, Cream #EFE6D2, Teal Blue #2E5C6E, Warm White #F4EDDC.
-2. MATERIALS & FINISHES: rich walnut and teak with rounded edges, molded plywood, fiberglass, polished brass and chrome, full-grain leather, textured wool, geometric patterned fabrics.
-3. FURNITURE CHARACTER: clean tapered legs, organic curves, low-slung profiles, splayed bases. Iconic silhouettes — egg chairs, tulip tables, spindle backs. Functional, sculptural, and lifted off the floor for visual lightness.
-4. LIGHTING: starburst chandeliers, atomic-era pendants, arc floor lamps with marble bases, brass globe sconces. Warm and direct, often as design statements in their own right.
-5. WALL & CEILING TREATMENT: matte painted walls in warm neutrals, occasional accent walls in saturated period colors, wood paneling on one wall, flat clean ceilings.
-6. DECOR & STYLING: abstract geometric art, ceramic sculptures in earthy glazes, vintage atomic clocks, sculptural ceramics, monstera and rubber plants in ceramic pots, vinyl records, curated coffee table books.
-7. OVERALL MOOD: optimistic, sculptural, design-forward. The 1950s-60s era is celebrated through clean lines and warm materials that feel both retro and timeless.
+1. COLOR PALETTE: Walnut Brown #6B4226, Warm Cream #F0E9D8, Soft Sage #97A48B, Muted Rust #B3663D, Warm Off-White #F5EFE0, Deep Teal #2E5C6E, Warm Grey #8A8478.
+2. MATERIALS & FINISHES: warm walnut and white-oak veneers with clean straight or gently curved edges, matte-finished woods (no glossy lacquer), brushed brass hardware used sparingly, subtle leather in caramel or cognac, matte ceramics, natural wool boucle, and linen. Avoid fiberglass, chrome, and any retro period hardware.
+3. FURNITURE CHARACTER: contemporary silhouettes influenced by mid-century — clean tapered legs, low-slung profiles, refined proportions lifted off the floor for visual lightness. These are modern pieces, not literal period reproductions: no iconic novelty chairs, no pedestal-base reproductions, no turned or dowel-style chair backs. Restrained, refined, modern first — the mid-century reference is felt in the proportion and rhythm, not in a recognizable retro silhouette.
+4. LIGHTING: slim brass or matte-black pendant lamps, arc floor lamps with restrained bases, understated brass sconces. Sculptural but calm — no radiating spoke or spike chandeliers, no space-age or retro-era pendants.
+5. WALL & CEILING TREATMENT: matte painted walls in warm neutrals, one optional feature wall in walnut or oak vertical slats (thin, tight rhythm — not thick period panels), simple flat ceilings, no retro-era trim.
+6. DECOR & STYLING: abstract art in muted tones, one sculptural ceramic vessel, curated design books, one architectural plant (fiddle leaf, rubber plant, monstera) in a matte planter. No retro novelty clocks, no record collections, no obviously period-kitsch objects. Surfaces are calm and considered.
+7. OVERALL MOOD: warm, design-forward, contemporary. Mid-century warmth and rhythm without the period furniture — a modern interior that references the era through proportion and material, feeling both quiet and confident.
 `.trim(),
 
   modern: `
@@ -137,13 +137,13 @@ export const STYLE_BRIEFS: Record<StylePreset, string> = {
 `.trim(),
 
   maximalist: `
-1. COLOR PALETTE: Deep Peacock #1B4D6E, Dusty Rose #D4918C, Antique Gold #C9A062, Marigold #E8952C, Emerald #2A6B4A, Cream #F2E9D8, Soft Black #1C1C1C.
-2. MATERIALS & FINISHES: velvet and brocade upholstery, lacquered and gilded surfaces, antique brass and bronze hardware, patterned ceramic tiles, damask and jacquard fabrics, fringed textiles, mother-of-pearl inlays, tortoiseshell and bone accents.
-3. FURNITURE CHARACTER: ornate and layered, with carved wooden frames, button-tufted upholstery, fringed edges, curved silhouettes, and mixed eras. Substantial, theatrical, generously scaled. Pieces overlap visually rather than standing apart.
-4. LIGHTING: dramatic chandeliers with crystals or tiers, ornate brass sconces with fabric shades, table lamps with patterned bases and fringed shades. Layered and theatrical, warm and jewel-like.
-5. WALL & CEILING TREATMENT: richly patterned wallpaper or fabric-covered panels, bold saturated paint colors, decorative moldings and dadoes, painted or wallpapered ceilings, gallery walls edge-to-edge.
-6. DECOR & STYLING: dense gallery walls with mixed frames, collections of ceramics and books, sculptural objects layered on every surface, potted palms and trailing plants, decorative cushions stacked, antique mirrors and framed art in multiples.
-7. OVERALL MOOD: opulent, layered, celebratory. Every surface contributes — the room is a composition of accumulated beauty and personal narrative.
+1. COLOR PALETTE: high-saturation, joyful, contemporary — Marigold #E8952C, Hot Pink #E24885, Cobalt #2A6BB0, Emerald #2A6B4A, Turmeric Yellow #F0B429, Coral #E85E4A, Peacock Teal #147A80. Multiple saturated colors coexist on the same wall or upholstery.
+2. MATERIALS & FINISHES: mix of matte and glossy — velvet upholstery in solid saturated colors, lacquered wood in bold colors, rattan and cane, ceramic tile in playful patterns, contemporary printed cottons and linens in large-scale florals, geometric, and animal prints. Brass hardware in matte finish.
+3. FURNITURE CHARACTER: contemporary and eclectic silhouettes chosen for character — a curved modular sofa in cobalt velvet, mid-century lounge chairs in playful colors, a lacquered coffee table, a rattan accent chair, an oversized floor cushion. Pieces are BOLD and STATEMENT but CURRENT — clean straight or gently curved lines, off-the-floor tapered legs, refined proportions.
+4. LIGHTING: sculptural contemporary pendants (contemporary rattan or paper lanterns, playful architectural pendants), colorful table lamps with printed shades, arc floor lamps. Playful, sculptural, current.
+5. WALL & CEILING TREATMENT: bold saturated paint colors, one feature wall in a contemporary patterned wallpaper (large-scale florals, murals, geometric, checkerboard), a dense gallery wall using mixed modern frames (thin black, thin brass, colored), painted color on the ceiling optional. Ceilings stay flat and modern.
+6. DECOR & STYLING: dense gallery wall with modern art (posters, abstract prints, contemporary photography, colorful paintings), stacked art books, curated ceramics in saturated colors, many houseplants (monstera, palms, trailing pothos, rubber plants), layered patterned rugs, playful objects (contemporary sculpture, colorful vases, collected ceramics).
+7. OVERALL MOOD: joyful, personal, current, saturated. Maximum color and pattern from a modern vocabulary. The room reads like a curated contemporary home whose owner loves color and character.
 `.trim(),
 
   biophilic: `
@@ -191,9 +191,22 @@ export const STYLE_NAME_TO_PRESET: Record<string, StylePreset> = {
   "Biophilic":    "biophilic",
 };
 
+// Maps every room-picker label the frontend can send to a canonical RoomType.
+// Two label conventions exist and BOTH must resolve, or the server silently
+// falls back to `living_room` (wrong-room bug):
+//   • VisionExperience.tsx `ROOM_TYPES_FULL` — the LIVE chips — uses the short
+//     forms "Living" and "Dining" (the rest already match the full forms).
+//   • AIConceptsPage `ROOM_TYPES` (legacy) uses the full forms "Living Room" /
+//     "Dining Room".
+// Keep this in sync with ROOM_TYPES_FULL — the promptTemplates test asserts it.
 export const ROOM_NAME_TO_TYPE: Record<string, RoomType> = {
+  // Full forms (legacy AIConceptsPage chips)
   "Living Room": "living_room",
   "Dining Room": "dining_room",
+  // Short forms (live VisionExperience chips)
+  "Living":      "living_room",
+  "Dining":      "dining_room",
+  // Identical in both conventions
   "Bedroom":     "bedroom",
   "Kitchen":     "kitchen",
   "Bathroom":    "bathroom",

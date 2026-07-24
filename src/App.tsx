@@ -25,6 +25,7 @@ import AdminCommentsPage from './components/AdminCommentsPage';
 import AdminWaitlistPage from './components/AdminWaitlistPage';
 import AdminFeedbackPage from './components/AdminFeedbackPage';
 import AdminPlatformsPage from './components/AdminPlatformsPage';
+import AdminConsultationsPage from './components/AdminConsultationsPage';
 import JournalPage from './components/JournalPage';
 import JournalCategoryPage from './components/JournalCategoryPage';
 import JournalArticlePage from './components/JournalArticlePage';
@@ -183,6 +184,7 @@ const App: React.FC = () => (
             <Route path="/admin/waitlist" element={<AdminWaitlistPage />} />
             <Route path="/admin/feedback" element={<AdminFeedbackPage />} />
             <Route path="/admin/platforms" element={<AdminPlatformsPage />} />
+            <Route path="/admin/consultations" element={<AdminConsultationsPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

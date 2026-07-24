@@ -63,6 +63,19 @@ import {
   insertEvent as calendarInsertEvent,
   deleteEvent as calendarDeleteEvent,
 } from "./services/calendar/googleCalendar.js";
+// ─── Calendly booking tracking + HubSpot sync (admin Consultations tab) ────────
+import {
+  type ConsultationBooking,
+  isBookingsConfigured,
+  fetchBookings,
+  normalizeBooking,
+  getBookingsConfig,
+} from "./services/consultation/calendlyBookings.js";
+import {
+  verifyCalendlySignature,
+  parseWebhookPayload,
+} from "./services/consultation/calendlyWebhook.js";
+import { upsertContactBooking, isHubspotConfigured } from "./services/crm/hubspot.js";
 // ─── GEO / SEO (Phase 1): robots, sitemap, per-route meta + JSON-LD injection ──
 import { buildRobotsTxt } from "./server/config/bots.js";
 import { buildSitemap } from "./server/seo/sitemap.js";
@@ -74,6 +87,16 @@ import { legacyRedirects, trailingSlashRedirect } from "./server/redirects.js";
 import { getAcquisition } from "./server/analytics/acquisition.js";
 // ─── Internal/owner accounts excluded from /admin analytics aggregates ────────
 import { isInternalAccount } from "./server/internalAccounts.js";
+// ─── Free-tier quota logic (pure, unit-tested in src/test/quotaEnforcement.test.ts) ─
+import {
+  FREE_TIER_MAX_CONCEPTS,
+  FREE_TIER_MAX_SHOPPING_LISTS,
+  UNLIMITED_QUOTA,
+  UNLIMITED_ACCOUNT_EMAILS,
+  isUnlimitedAccountEmail,
+  normalizeUserForFreeTier,
+  refundGenerations,
+} from "./server/quota.js";
 
 const FALLBACK_ENV_PATH = 'E:/Secrets/Website/.env';
 dotenv.config({
@@ -84,9 +107,6 @@ dotenv.config({
     : undefined,
 });
 
-/** Free tier caps (UI + API). Paid tier can be added later with an `isPaid` flag. */
-const FREE_TIER_MAX_CONCEPTS = 3;
-const FREE_TIER_MAX_SHOPPING_LISTS = 3;
 /** Free tier: identify enumerates ALL items, but Serper only searches the top N;
  *  the rest come back as a `teaser` (names only) to drive the upgrade hook. Paid = all. */
 const FREE_TIER_MAX_ITEMS = 4;
@@ -100,18 +120,11 @@ const MAX_LIST_ITEMS = (() => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 12;
 })();
 
-/** Accounts that get unlimited quotas — never clamped or decremented. */
-const UNLIMITED_ACCOUNT_EMAILS = [
-  "anahit@designature.studio",
-  "anahit.ghasabyan@gmail.com",
-];
-
 /** @deprecated kept for call-sites that haven't been updated yet */
 const CONCEPT_TEST_ACCOUNT_EMAIL = UNLIMITED_ACCOUNT_EMAILS[0];
 
-function isConceptTestAccountEmail(email: string): boolean {
-  return UNLIMITED_ACCOUNT_EMAILS.includes(email.trim().toLowerCase());
-}
+/** Alias for {@link isUnlimitedAccountEmail} — kept for the many existing call-sites. */
+const isConceptTestAccountEmail = isUnlimitedAccountEmail;
 
 /**
  * I-011 — admin allowlist for /api/admin/* endpoints.
@@ -158,34 +171,10 @@ interface User {
   backfilled?: boolean;
 }
 
-function normalizeUserForFreeTier(user: User): { user: User; changed: boolean } {
-  let changed = false;
-  const u = { ...user };
-  const isUnlimited = isConceptTestAccountEmail(u.email);
-
-  if (isUnlimited) {
-    // Unlimited accounts (owner/demo) — force 999, never clamp
-    if (u.generationsLeft !== 999) { u.generationsLeft = 999; changed = true; }
-    if (u.shoppingListsLeft !== 999) { u.shoppingListsLeft = 999; changed = true; }
-  } else {
-    // Everyone else — enforce free-tier caps regardless of isPaid flag.
-    // (No paid tier exists yet; isPaid on the user record is only used for
-    //  audit access in the API response, not for quota bypass.)
-    if (u.generationsLeft > FREE_TIER_MAX_CONCEPTS) {
-      u.generationsLeft = FREE_TIER_MAX_CONCEPTS;
-      changed = true;
-    }
-    if (typeof u.shoppingListsLeft !== "number" || Number.isNaN(u.shoppingListsLeft)) {
-      u.shoppingListsLeft = FREE_TIER_MAX_SHOPPING_LISTS;
-      changed = true;
-    }
-    if (u.shoppingListsLeft > FREE_TIER_MAX_SHOPPING_LISTS) {
-      u.shoppingListsLeft = FREE_TIER_MAX_SHOPPING_LISTS;
-      changed = true;
-    }
-  }
-  return { user: u, changed };
-}
+// normalizeUserForFreeTier lives in ./server/quota.ts (imported above) so the
+// free-tier lifetime-cap logic is unit-tested. See that file for the rules:
+// missing/corrupt counters default to 0, existing counters only clamp DOWN, and
+// nothing here ever refills toward the cap.
 
 interface SerperLogEntry {
   ts: string;
@@ -237,6 +226,11 @@ interface DB {
    *  2026-07-19). Seeded from server/config/platforms.json on first boot, then
    *  lives here in app_state so owner edits survive Railway redeploys. */
   platforms?: Platform[];
+  /** Calendly bookings (free "Quick Conversation" + paid "Paid Consultation"),
+   *  captured by the webhook and/or a live API refresh. Durable so the admin
+   *  Consultations tab + HubSpot-sync status survive redeploys. Keyed/deduped by
+   *  inviteeUri. Capped FIFO. */
+  calendlyBookings?: Array<ConsultationBooking & { hubspot?: { synced: boolean; at?: string; error?: string } }>;
 }
 
 /** UTC YYYY-MM-DD for daily-budget bucketing. */
@@ -675,6 +669,32 @@ async function ensurePlatformsSeeded(): Promise<void> {
   writeDB(dbCache);
 }
 
+// ─── Calendly booking store (durable, app_state) ────────────────────────────
+// Deduped by inviteeUri. The webhook writes here on invitee.created/canceled; a
+// live admin refresh merges API reads in while preserving each row's HubSpot
+// sync status. Capped FIFO so the blob can't grow unbounded.
+const CALENDLY_BOOKINGS_CAP = 2000;
+type StoredBooking = ConsultationBooking & { hubspot?: { synced: boolean; at?: string; error?: string } };
+
+/** Insert or update a booking by inviteeUri. `patch` shallow-merges (e.g. status,
+ *  hubspot). Preserves an existing row's hubspot status unless the patch sets it.
+ *  Caller is responsible for writeDB(). */
+function upsertBookingRecord(db: DB, booking: StoredBooking): StoredBooking {
+  const list: StoredBooking[] = Array.isArray(db.calendlyBookings) ? db.calendlyBookings : [];
+  const idx = list.findIndex((b) => b.inviteeUri === booking.inviteeUri);
+  let row: StoredBooking;
+  if (idx >= 0) {
+    row = { ...list[idx], ...booking, hubspot: booking.hubspot ?? list[idx].hubspot };
+    list[idx] = row;
+  } else {
+    row = booking;
+    list.push(row);
+  }
+  while (list.length > CALENDLY_BOOKINGS_CAP) list.shift();
+  db.calendlyBookings = list;
+  return row;
+}
+
 // ─── Session store (in-memory, keyed by session token) ─────────────────────
 const sessions: Record<string, string> = {}; // token → googleId
 
@@ -797,8 +817,17 @@ async function startServer() {
   // makes the edge proxy miss the app → 502. Keep the app on 3000 to match.
   const PORT = 3000;
 
-  // Raised to 100 MB to accommodate base64-encoded room + reference images in one request
-  app.use(express.json({ limit: "100mb" }));
+  // Raised to 100 MB to accommodate base64-encoded room + reference images in one request.
+  // `verify` stashes the raw bytes so webhook routes can HMAC-check the exact body
+  // (Calendly signs the raw payload; re-serializing the parsed JSON would not match).
+  app.use(
+    express.json({
+      limit: "100mb",
+      verify: (req, _res, buf) => {
+        (req as any).rawBody = buf;
+      },
+    }),
+  );
 
   // ── Cloudinary Configuration ──
   cloudinary.config({
@@ -1414,51 +1443,16 @@ async function startServer() {
     res.json({ ok: true });
   });
 
-  // ── POST /api/generation/use — consume one generation ──
-  app.post("/api/generation/use", (req, res) => {
-    const googleId = requireAuth(req, res);
-    if (!googleId) return;
-
-    const { count = 1 } = req.body;
-
-    const db = readDB();
-    const user = db.users[googleId];
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    if (user.generationsLeft < count) {
-      return res.status(403).json({ error: "No generations left", generationsLeft: user.generationsLeft });
-    }
-
-    if (user.generationsLeft < 999) user.generationsLeft -= count;
-    user.lastUsed = new Date().toISOString();
-    db.users[googleId] = user;
-    writeDB(db);
-
-    res.json({ generationsLeft: user.generationsLeft });
-  });
-
-  // ── POST /api/generation/restore — restore generations on failure ──
-  app.post("/api/generation/restore", (req, res) => {
-    const googleId = requireAuth(req, res);
-    if (!googleId) return;
-
-    const { count = 1 } = req.body;
-
-    const db = readDB();
-    const user = db.users[googleId];
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    const cap = isConceptTestAccountEmail(user.email) ? 999 : FREE_TIER_MAX_CONCEPTS;
-    user.generationsLeft = Math.min(cap, user.generationsLeft + count);
-    db.users[googleId] = user;
-    writeDB(db);
-
-    res.json({ generationsLeft: user.generationsLeft });
-  });
+  // ── Quota consumption is server-authoritative ────────────────────────────────
+  // There are intentionally NO client-callable /api/generation/use or
+  // /api/generation/restore endpoints. Free tier is a HARD LIFETIME cap and the
+  // client must never be able to move a quota counter in either direction.
+  //
+  // Each generation endpoint owns its own quota lifecycle: it decrements BEFORE
+  // calling the AI provider and, if the provider fails, credits back EXACTLY what
+  // it decremented (bounded by the pre-decrement balance) in the SAME request —
+  // see /api/ai-vision/generate and /api/room-audit/analyze, and the shared
+  // refundGenerations() helper in ./server/quota.ts.
 
   // ── Testimonials cache ──────────────────────────────────────────────────────
   let testimonialsCache: { data: any; expires: number } | null = null;
@@ -2690,7 +2684,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
         });
     }
 
-    // ── Quota check + decrement ────────────────────────────────────────────────
+    // ── Quota check + decrement (server-authoritative) ─────────────────────────
     const db = readDB();
     const user = db.users[googleId];
     if (!user) return res.status(404).json({ error: "User not found." });
@@ -2700,11 +2694,17 @@ Output ONLY valid JSON, no markdown fences, no commentary:
         .status(403)
         .json({ error: "No generations left.", generationsLeft: 0 });
     }
-    if (!isSampleRun && user.generationsLeft < 999) {
+    // Remember the balance BEFORE the decrement so a failed generation can be
+    // refunded to EXACTLY this value — never above it. `quotaDecremented` gates
+    // the refund so sample/unlimited runs (which never decrement) never gain credit.
+    const genBeforeDecrement = user.generationsLeft;
+    let quotaDecremented = false;
+    if (!isSampleRun && user.generationsLeft < UNLIMITED_QUOTA) {
       user.generationsLeft -= 1;
       user.lastUsed = new Date().toISOString();
       db.users[googleId] = user;
       writeDB(db);
+      quotaDecremented = true;
     } else if (isSampleRun) {
       console.log(`[AI Vision] Sample run for ${user.email} — quota not decremented (${user.generationsLeft} remaining)`);
     }
@@ -2800,18 +2800,22 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     } catch (err: any) {
       console.error("[AI Vision] Generation failed:", err?.message ?? err);
 
-      // Restore quota on generation failure
-      try {
-        const dbRetry = readDB();
-        const u = dbRetry.users[googleId];
-        if (u && u.generationsLeft < 999) {
-          const cap = isConceptTestAccountEmail(u.email) ? 999 : FREE_TIER_MAX_CONCEPTS;
-          u.generationsLeft = Math.min(cap, u.generationsLeft + 1);
-          dbRetry.users[googleId] = u;
-          writeDB(dbRetry);
+      // Server-authoritative refund: only if THIS request decremented, credit back
+      // exactly the 1 it took — never above the pre-decrement balance (genBeforeDecrement).
+      if (quotaDecremented) {
+        try {
+          const dbRetry = readDB();
+          const u = dbRetry.users[googleId];
+          if (u && u.generationsLeft < UNLIMITED_QUOTA) {
+            const cap = isConceptTestAccountEmail(u.email) ? UNLIMITED_QUOTA : FREE_TIER_MAX_CONCEPTS;
+            u.generationsLeft = refundGenerations(u.generationsLeft, 1, genBeforeDecrement, cap);
+            dbRetry.users[googleId] = u;
+            writeDB(dbRetry);
+            console.log(`[AI Vision] Refunded 1 generation to ${u.email} after failure (now ${u.generationsLeft})`);
+          }
+        } catch (restoreErr) {
+          console.error("[AI Vision] Failed to restore quota after error:", restoreErr);
         }
-      } catch (restoreErr) {
-        console.error("[AI Vision] Failed to restore quota after error:", restoreErr);
       }
 
       const msg: string = err?.message ?? "";
@@ -3244,6 +3248,30 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     const matches = imageDataUrl.match(/^data:(image\/[\w+]+);base64,(.+)$/);
     if (!matches) return res.status(400).json({ error: "Invalid image format." });
 
+    // ── Quota check + decrement (server-authoritative) ─────────────────────────
+    // Free-tier room audits draw from the SAME generationsLeft pool as concepts.
+    // Decrement is owned here (not by any client-callable endpoint): we take the
+    // credit BEFORE the Gemini call and refund it in the catch below if Gemini
+    // fails or returns an unusable result — bounded so a failure can only ever
+    // undo this request's decrement. Paid/owner accounts are never metered.
+    const db = readDB();
+    const user = db.users[googleId];
+    if (!user) return res.status(404).json({ error: "User not found." });
+
+    const isMeteredAudit = !user.isPaid && !isConceptTestAccountEmail(user.email);
+    const auditBeforeDecrement = user.generationsLeft;
+    let auditQuotaDecremented = false;
+    if (isMeteredAudit) {
+      if (user.generationsLeft <= 0) {
+        return res.status(403).json({ error: "No generations left.", generationsLeft: 0 });
+      }
+      user.generationsLeft -= 1;
+      user.lastUsed = new Date().toISOString();
+      db.users[googleId] = user;
+      writeDB(db);
+      auditQuotaDecremented = true;
+    }
+
     try {
       const apiKey = process.env.GEMINI_API_KEY ?? "";
       if (!apiKey) throw new Error("GEMINI_API_KEY is not set.");
@@ -3289,20 +3317,46 @@ Output ONLY valid JSON with no markdown fences, no explanation:
           .join("") ?? "";
       const cleaned = rawText.replace(/```json|```/g, "").trim();
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        return res.status(422).json({ error: "Could not parse audit results." });
-      }
+      // Throw (don't early-return) on any unusable result so the catch below
+      // refunds the quota this request took — a failed audit must not burn credit.
+      if (!jsonMatch) throw new Error("Could not parse audit results.");
       const parsed = JSON.parse(jsonMatch[0]);
+      if (
+        typeof parsed?.overallScore !== "number" ||
+        !Array.isArray(parsed?.dimensions) ||
+        parsed.dimensions.length < 6 ||
+        !Array.isArray(parsed?.fixNow)
+      ) {
+        throw new Error("Incomplete audit response");
+      }
       // I-016 — log generate_audit with the user's email
       try {
         const auditDb = readDB();
         const auditUser = auditDb.users[googleId];
         if (auditUser) recordActivity(auditUser.email, "generate_audit");
       } catch { /* non-fatal */ }
-      return res.json({ result: parsed });
+      return res.json({ result: parsed, generationsLeft: user.generationsLeft });
 
     } catch (err: any) {
       console.error("[Room Audit] analyze error:", err?.message ?? err);
+
+      // Server-authoritative refund: only if THIS request decremented, credit back
+      // exactly the 1 it took — never above the pre-decrement balance.
+      if (auditQuotaDecremented) {
+        try {
+          const dbRetry = readDB();
+          const u = dbRetry.users[googleId];
+          if (u && u.generationsLeft < UNLIMITED_QUOTA) {
+            const cap = isConceptTestAccountEmail(u.email) ? UNLIMITED_QUOTA : FREE_TIER_MAX_CONCEPTS;
+            u.generationsLeft = refundGenerations(u.generationsLeft, 1, auditBeforeDecrement, cap);
+            dbRetry.users[googleId] = u;
+            writeDB(dbRetry);
+            console.log(`[Room Audit] Refunded 1 generation to ${u.email} after failure (now ${u.generationsLeft})`);
+          }
+        } catch (restoreErr) {
+          console.error("[Room Audit] Failed to restore quota after error:", restoreErr);
+        }
+      }
       return res.status(500).json({ error: "Audit failed. Please try again." });
     }
   });
@@ -3585,6 +3639,101 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     db.platforms = clean;
     writeDB(db);
     res.json({ ok: true, items: clean });
+  });
+
+  // ── Calendly booking webhook (public, signature-verified) ─────────────────
+  // Calendly POSTs invitee.created / invitee.canceled here. On a fresh, valid
+  // signature we normalise the booking, upsert the contact into HubSpot (tagging
+  // free vs paid via booking_type), and persist it to the durable store so the
+  // admin Consultations tab shows it. Always 200s quickly on a valid signature so
+  // Calendly doesn't retry; auth failures get 401 (and are NOT recorded).
+  app.post("/api/calendly/webhook", async (req, res) => {
+    const signingKey = (process.env.CALENDLY_WEBHOOK_SIGNING_KEY || "").trim();
+    if (!signingKey) {
+      console.error("[calendly-webhook] CALENDLY_WEBHOOK_SIGNING_KEY not set — rejecting");
+      return res.status(503).json({ error: "webhook not configured" });
+    }
+    const raw = (req as any).rawBody as Buffer | undefined;
+    const ok = verifyCalendlySignature(raw ?? JSON.stringify(req.body ?? {}), req.header("Calendly-Webhook-Signature"), signingKey);
+    if (!ok) {
+      console.error("[calendly-webhook] signature verification failed");
+      return res.status(401).json({ error: "invalid signature" });
+    }
+
+    const parsed = parseWebhookPayload(req.body);
+    if (!parsed) return res.status(200).json({ ok: true, ignored: "unparseable" });
+    // We only act on invitee lifecycle events.
+    if (parsed.event !== "invitee.created" && parsed.event !== "invitee.canceled") {
+      return res.status(200).json({ ok: true, ignored: parsed.event });
+    }
+
+    const cfg = getBookingsConfig();
+    const booking = normalizeBooking(parsed.scheduledEvent, parsed.invitee, cfg, "webhook");
+    if (!booking) return res.status(200).json({ ok: true, ignored: "no invitee email" });
+
+    // On cancel, just flip status. On create, sync to HubSpot (best-effort).
+    let hubspot: StoredBooking["hubspot"];
+    if (parsed.event === "invitee.created") {
+      const r = await upsertContactBooking({ email: booking.email, name: booking.name, kind: booking.kind });
+      hubspot = r.configured
+        ? { synced: r.ok, at: new Date().toISOString(), error: r.ok ? undefined : r.error }
+        : undefined;
+      if (r.configured && !r.ok) console.error("[calendly-webhook] HubSpot sync failed:", r.error);
+    } else {
+      booking.status = "canceled";
+    }
+
+    const db = readDB();
+    upsertBookingRecord(db, { ...booking, ...(hubspot ? { hubspot } : {}) });
+    logActivity(db, booking.email, `calendly_${booking.kind}_${parsed.event === "invitee.created" ? "booked" : "canceled"}`);
+    writeDB(db);
+    return res.status(200).json({ ok: true });
+  });
+
+  // ── GET /api/admin/consultations — booking tracker for the admin tab ──────
+  // Live-reads recent Calendly bookings when a token is configured, merges each
+  // row's stored HubSpot-sync status, and folds in any webhook-only rows. Falls
+  // back to the durable store alone when no token is set.
+  app.get("/api/admin/consultations", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const db = readDB();
+    const stored: StoredBooking[] = Array.isArray(db.calendlyBookings) ? db.calendlyBookings : [];
+    const storedByUri = new Map(stored.map((b) => [b.inviteeUri, b]));
+
+    let orgWide = false;
+    let freeVisible = false;
+    let liveError: string | null = null;
+    const merged = new Map<string, StoredBooking>(storedByUri);
+
+    if (isBookingsConfigured()) {
+      try {
+        const live = await fetchBookings();
+        orgWide = live.orgWide;
+        freeVisible = live.freeVisible;
+        for (const b of live.bookings) {
+          const prev = storedByUri.get(b.inviteeUri);
+          merged.set(b.inviteeUri, { ...b, hubspot: prev?.hubspot });
+        }
+        // Persist merged live rows so hubspot status + webhook rows stay coherent.
+        for (const b of merged.values()) upsertBookingRecord(db, b);
+        writeDB(db);
+      } catch (e) {
+        liveError = e instanceof Error ? e.message : "Calendly read failed";
+      }
+    }
+
+    const all = Array.from(merged.values()).sort(
+      (a, b) => Date.parse(b.createdAt || b.startTime || "") - Date.parse(a.createdAt || a.startTime || ""),
+    );
+    res.json({
+      configured: isBookingsConfigured(),
+      orgWide,
+      freeVisible,
+      hubspotConfigured: isHubspotConfigured(),
+      liveError,
+      free: all.filter((b) => b.kind === "free"),
+      paid: all.filter((b) => b.kind === "paid"),
+    });
   });
 
   // ── GET /api/admin/usage — observability aggregator (I-011 · I-021b) ──
