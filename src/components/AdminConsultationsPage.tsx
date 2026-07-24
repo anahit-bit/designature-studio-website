@@ -27,13 +27,29 @@ interface Booking {
 
 interface Payload {
   configured: boolean;
-  orgWide: boolean;
-  freeVisible: boolean;
+  paidConnected: boolean;
+  freeConnected: boolean;
+  paidError: string | null;
+  freeError: string | null;
   hubspotConfigured: boolean;
-  liveError: string | null;
   free: Booking[];
   paid: Booking[];
 }
+
+const ConnDot: React.FC<{ label: string; connected: boolean; error: string | null; token: string }> = ({ label, connected, error, token }) => {
+  const state = connected ? 'connected' : error ? 'error' : 'not connected';
+  const color = connected ? 'bg-green-500' : error ? 'bg-red-500' : 'bg-neutral-300';
+  return (
+    <div className="flex items-center gap-2 text-[12px]">
+      <span className={`inline-block w-2 h-2 rounded-full ${color}`} />
+      <span className="text-neutral-700 font-semibold">{label}</span>
+      <span className={`${error ? 'text-red-600' : 'text-neutral-500'}`} title={error || ''}>
+        {state}{!connected && !error && <> · set <code className="font-mono text-[11px]">{token}</code></>}
+        {error && <> · {error.slice(0, 80)}</>}
+      </span>
+    </div>
+  );
+};
 
 function fmtWhen(iso: string): string {
   const d = new Date(iso);
@@ -158,45 +174,43 @@ const AdminConsultationsPage: React.FC = () => {
           <div className="bg-[#FAFAFA] border border-dashed border-[#DAD2C3] p-7 mb-6">
             <p className="text-[9px] tracking-[0.32em] uppercase text-[#0047AB] font-bold mb-2">Not configured</p>
             <p className="text-[13px] text-neutral-600 leading-[1.6]">
-              Add <code className="font-mono text-[12px]">CALENDLY_ADMIN_TOKEN</code> (a Calendly Personal Access Token) to read bookings,
-              and <code className="font-mono text-[12px]">HUBSPOT_ACCESS_TOKEN</code> to auto-sync contacts. See the setup notes in memory.
+              The free and paid calls live under two separate Calendly accounts, so each needs its own Personal Access Token:
+              <code className="font-mono text-[12px]"> CALENDLY_PAID_TOKEN</code> and <code className="font-mono text-[12px]">CALENDLY_FREE_TOKEN</code>.
+              Add <code className="font-mono text-[12px]">HUBSPOT_ACCESS_TOKEN</code> to auto-sync bookers as contacts. See the setup notes in memory.
             </p>
           </div>
         )}
 
         {data && data.configured && (
           <>
-            {data.liveError && (
-              <div className="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm">
-                Live Calendly read failed: {data.liveError} — showing stored bookings.
+            {/* Per-account connection status (two separate Calendly logins). */}
+            <div className="mb-6 bg-white border border-[#DAD2C3] px-5 py-4 flex flex-col gap-2.5">
+              <ConnDot label="Paid account" connected={data.paidConnected} error={data.paidError} token="CALENDLY_PAID_TOKEN" />
+              <ConnDot label="Free account" connected={data.freeConnected} error={data.freeError} token="CALENDLY_FREE_TOKEN" />
+              <div className="flex items-center gap-2 text-[12px]">
+                <span className={`inline-block w-2 h-2 rounded-full ${data.hubspotConfigured ? 'bg-green-500' : 'bg-neutral-300'}`} />
+                <span className="text-neutral-700 font-semibold">HubSpot sync</span>
+                <span className="text-neutral-500">
+                  {data.hubspotConfigured
+                    ? 'on · new bookers tagged free/paid (polls every few min)'
+                    : <>off · set <code className="font-mono text-[11px]">HUBSPOT_ACCESS_TOKEN</code></>}
+                </span>
               </div>
-            )}
-            {!data.freeVisible && (
-              <div className="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 text-amber-800 text-[13px]">
-                The current token only sees the <strong>paid</strong> account. To include free "Quick Conversation" bookings, set{' '}
-                <code className="font-mono text-[12px]">CALENDLY_ADMIN_TOKEN</code> to an org-wide Personal Access Token that covers both events.
-                (Webhook-captured free bookings will still appear here once the webhook is live.)
-              </div>
-            )}
-            {!data.hubspotConfigured && (
-              <div className="mb-6 px-4 py-3 bg-[#F4EFE7] border border-[#DAD2C3] text-neutral-600 text-[13px]">
-                HubSpot sync is off — add <code className="font-mono text-[12px]">HUBSPOT_ACCESS_TOKEN</code> to start tagging new bookers as contacts.
-              </div>
-            )}
+            </div>
 
             <Section
               title="Free · Quick Conversation"
               sub="15-min intro calls"
               rows={data.free}
               hubspotConfigured={data.hubspotConfigured}
-              empty={data.freeVisible ? 'No free bookings yet.' : 'Free bookings not visible with the current token.'}
+              empty={data.freeConnected ? 'No free bookings yet.' : 'Connect the free account (CALENDLY_FREE_TOKEN) to see these.'}
             />
             <Section
               title="Paid · Consultation"
               sub="paid sessions"
               rows={data.paid}
               hubspotConfigured={data.hubspotConfigured}
-              empty="No paid bookings yet."
+              empty={data.paidConnected ? 'No paid bookings yet.' : 'Connect the paid account (CALENDLY_PAID_TOKEN) to see these.'}
             />
           </>
         )}
