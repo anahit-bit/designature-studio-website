@@ -43,7 +43,7 @@ type ModalKind = 'cancelPlan' | 'cancelBooking' | 'updateCard' | 'delete' | null
 const AccountPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
 
   const rawTab = searchParams.get('tab') as AccountTab | null;
   const activeTab: AccountTab = rawTab && TABS.includes(rawTab) ? rawTab : 'overview';
@@ -251,8 +251,8 @@ const AccountPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── dev-only tier / plan-state switcher (mock mode) ── */}
-      {USE_MOCK_ACCOUNT && (
+      {/* ── dev-only tier / plan-state switcher (mock preview only, never when signed in) ── */}
+      {USE_MOCK_ACCOUNT && !user && (
         <div className="fixed bottom-4 left-4 z-[400] bg-white border border-black/15 shadow-lg p-3 text-[10px] font-body">
           <div className="font-bold tracking-[0.18em] uppercase text-[#6B6B6B] mb-2">
             Preview as (mock)
