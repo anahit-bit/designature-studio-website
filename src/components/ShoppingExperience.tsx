@@ -547,7 +547,7 @@ const ShoppingExperience: React.FC<Props> = (p) => {
                 <button type="button" onClick={() => void p.handleDownloadShoppingPDF()} className="w-full bg-black text-white text-[12px] font-bold uppercase tracking-[0.22em] py-4 flex items-center justify-center gap-2 hover:bg-black/85 transition">{t('ai.shopli.downloadPdf')}</button>
                 <div className="paid">
                   <span className="lockchip">🔒 {t('ai.shopli.paid')}</span>
-                  <button type="button" onClick={handleSaveList} disabled={savingList || listAlreadySaved} className="w-full inline-flex items-center justify-center gap-2 border border-[#0047AB] text-[#0047AB] text-[11px] font-bold uppercase tracking-[0.2em] py-3.5 hover:bg-[#0047AB]/5 transition disabled:opacity-60">{listAlreadySaved ? '✓ Saved to My Studio' : savingList ? 'Saving…' : t('ai.shopli.saveList')}</button>
+                  <button type="button" onClick={handleSaveList} disabled={savingList || listAlreadySaved} className="w-full inline-flex items-center justify-center gap-2 border border-[#0047AB] text-[#0047AB] text-[11px] font-bold uppercase tracking-[0.2em] py-3.5 hover:bg-[#0047AB]/5 transition disabled:opacity-60">{listAlreadySaved ? '✓ Saved to My account' : savingList ? 'Saving…' : t('ai.shopli.saveList')}</button>
                 </div>
                 <p className="text-[11px] text-black/60 text-center leading-relaxed">{t('ai.shopli.disclaimer')}</p>
               </div>

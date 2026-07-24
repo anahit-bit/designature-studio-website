@@ -1,5 +1,5 @@
 /**
- * AC-001 — User Dashboard ("My studio") shell.
+ * AC-001 — User Dashboard ("My account") shell.
  *
  * - Tabs are URL-driven via ?tab= (overview is the default, param omitted).
  * - One /api/user/dashboard fetch powers the rail + Overview; each other tab

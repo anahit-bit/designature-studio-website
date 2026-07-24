@@ -103,7 +103,7 @@ const DNA_BANNER_DISMISSED_KEY = 'ai_vision_dna_banner_dismissed';
 export default function VisionExperience(p: VisionExperienceProps) {
   const { t } = useLanguage();
 
-  // ── AC-002 — "Save to My Studio": persist the shown concept to the user's
+  // ── AC-002 — "Save to My account": persist the shown concept to the user's
   // Library (paid feature) so they can re-open/download/share it later. Free users
   // get an upsell instead of a fake "Saved". `signedIn` guards the preview no-op.
   const [savedMarks, setSavedMarks] = useState<Set<string>>(new Set());
@@ -682,7 +682,7 @@ export default function VisionExperience(p: VisionExperienceProps) {
                   onClick={handleSaveConcept}
                   disabled={savingConcept || conceptSaved}
                   className="px-5 py-3 bg-transparent text-white border border-white/40 hover:border-white text-[10px] font-bold uppercase tracking-[0.22em] inline-flex items-center gap-2 disabled:opacity-60"
-                  title="Save this concept to My Studio so you can re-open, download and share it later"
+                  title="Save this concept to My account so you can re-open, download and share it later"
                 >
                   {conceptSaved ? (
                     <><Check className="w-3 h-3" /> Saved</>

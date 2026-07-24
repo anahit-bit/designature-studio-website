@@ -83,8 +83,8 @@ describe('Header Component', () => {
     expect(screen.getAllByText(/Try AI free/i).length).toBeGreaterThan(0);
     // Account chip / "Go to Studio" should NOT appear when logged out
     expect(screen.queryByText(/Go to Studio/i)).not.toBeInTheDocument();
-    // AC-001 — "My studio" must NEVER appear for logged-out visitors
-    expect(screen.queryByText(/My studio/i)).not.toBeInTheDocument();
+    // AC-001 — "My account" must NEVER appear for logged-out visitors
+    expect(screen.queryByText(/My account/i)).not.toBeInTheDocument();
   });
 
   it('keeps the primary "Let\'s chat" CTA visible alongside the secondary CTA', () => {
@@ -133,8 +133,8 @@ describe('Header Component', () => {
     // "Try AI free" should NOT appear when logged in
     expect(screen.queryByText(/Try AI free/i)).not.toBeInTheDocument();
 
-    // AC-001 — dashboard is PAID-ONLY: a signed-in FREE user must NOT see "My studio"
-    expect(screen.queryByText(/My studio/i)).not.toBeInTheDocument();
+    // AC-001 — dashboard is PAID-ONLY: a signed-in FREE user must NOT see "My account"
+    expect(screen.queryByText(/My account/i)).not.toBeInTheDocument();
 
     // Account chip button has aria-label = user name; clicking opens dropdown with Sign out
     const chipButtons = screen.getAllByRole('button', { name: 'QA User' });
@@ -142,7 +142,7 @@ describe('Header Component', () => {
     expect(screen.getAllByText(/Sign out/i).length).toBeGreaterThan(0);
   });
 
-  it('shows "My studio" only for a signed-in PAID user', async () => {
+  it('shows "My account" only for a signed-in PAID user', async () => {
     const localStorageMock = (() => {
       let store: Record<string, string> = { ds_session_token: 'fake-token' };
       return {
@@ -175,7 +175,7 @@ describe('Header Component', () => {
     renderWithProvider(<Header />);
 
     await waitFor(() => {
-      expect(screen.getAllByText(/My studio/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/My account/i).length).toBeGreaterThan(0);
     });
   });
 });
