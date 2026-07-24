@@ -18,7 +18,8 @@ export type StylePreset =
   | "transitional"
   | "minimalist"
   | "maximalist"
-  | "biophilic";
+  | "biophilic"
+  | "dopamine";
 
 export type RoomType =
   | "living_room"
@@ -156,6 +157,16 @@ export const STYLE_BRIEFS: Record<StylePreset, string> = {
 7. OVERALL MOOD: restorative, alive, deeply connected to nature. The room breathes through its plants and materials, reducing stress and inviting quiet contemplation.
 `.trim(),
 
+  dopamine: `
+1. COLOR PALETTE: unapologetically joyful and saturated — Sunflower Yellow #F5C842, Bubblegum Pink #F58BB0, Sky Blue #6BB6E8, Fresh Mint #6ED9A8, Coral #F97C6E, Lilac #C8A6E8, Tangerine #F58A3B, Cream #FBF3E8. Multiple bright hues coexist on the same wall, upholstery, or object cluster.
+2. MATERIALS & FINISHES: mix of soft-touch and playful — velvet in saturated colors, matte lacquered wood, glossy ceramic, rattan and cane, bouclé fabric in bright hues, terrazzo, playful printed cottons, powder-coated metal. Surfaces feel tactile and inviting.
+3. FURNITURE CHARACTER: curved, rounded, playful silhouettes — marshmallow sofas, pill-shaped ottomans, kidney-shaped coffee tables, curvy accent chairs, mushroom lamps, oversized poufs. Contemporary shapes with a soft, huggable quality — every piece invites you to sit down.
+4. LIGHTING: playful sculptural fixtures — mushroom-shaped table lamps, colorful glass pendants, rainbow neon accents (used sparingly), rattan sunbursts, oversized paper globes. Warm, ambient, and cheerful — the room feels sunny even in winter.
+5. WALL & CEILING TREATMENT: bold paint colors including painted ceilings in coordinating bright tones, curved arch details on walls, color-blocked wall sections, playful murals or large-scale contemporary wallpaper (checkerboard, wavy stripes, retro-inspired florals). Ceilings stay flat but painted in a joyful color.
+6. DECOR & STYLING: curated contemporary art in bright colors, posters and prints with graphic shapes, sculptural ceramic vases in saturated colors, oversized houseplants (monstera, banana plant, fiddle leaf), curved shelves with playful objects, throw pillows in mixed prints, patterned rugs with rounded edges.
+7. OVERALL MOOD: joyful, mood-boosting, playful, saturated. The room is designed to lift the spirit the moment you walk in — every color and shape chosen for how it makes you feel. Curved edges, bright hues, and soft materials create a space that feels like a hug.
+`.trim(),
+
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -189,6 +200,7 @@ export const STYLE_NAME_TO_PRESET: Record<string, StylePreset> = {
   "Minimalist":   "minimalist",
   "Maximalist":   "maximalist",
   "Biophilic":    "biophilic",
+  "Dopamine":     "dopamine",
 };
 
 // Maps every room-picker label the frontend can send to a canonical RoomType.
