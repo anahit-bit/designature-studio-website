@@ -47,6 +47,30 @@ describe('buildGenerationPrompt · ROOM PROGRAM enforcement', () => {
     expect(section.toLowerCase()).toContain('bed');
   });
 
+  // Regression: the bed-as-centrepiece program used to fight the window on a
+  // head-on shot — the model seated the headboard on the window wall and
+  // relocated/replaced the window. The program now carries a window-preserving
+  // bed-placement rule that must reach the generation prompt.
+  it('bedroom program preserves the window and offsets the bed to a side wall', () => {
+    const prompt = buildGenerationPrompt({ styleBrief: BRIEF, roomType: 'bedroom' });
+    const section = genProgramSection(prompt).toLowerCase();
+    expect(section).toContain('bed placement');
+    expect(section).toContain('side wall');
+    // The headboard must never cover a window, and art must not hang over one.
+    expect(section).toContain('never cover it with the headboard');
+    expect(section).toContain('do not hang art over a window');
+    // The old wording that anchored the bed on the (window) wall is gone.
+    expect(section).not.toContain('art above the headboard');
+  });
+
+  it('kids_room program carries the same window-preserving bed rule', () => {
+    const prompt = buildGenerationPrompt({ styleBrief: BRIEF, roomType: 'kids_room' });
+    const section = genProgramSection(prompt).toLowerCase();
+    expect(section).toContain('bed placement');
+    expect(section).toContain('side wall');
+    expect(section).toContain('never cover it with the headboard');
+  });
+
   it('places the ROOM PROGRAM immediately before the architectural constraints, marked as authoritative', () => {
     const prompt = buildGenerationPrompt({ styleBrief: BRIEF, roomType: 'kitchen' });
     expect(prompt.indexOf('ROOM PROGRAM')).toBeLessThan(
