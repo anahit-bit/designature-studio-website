@@ -223,10 +223,13 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
         <div className="max-w-[1800px] mx-auto px-8 md:px-16 flex items-center">
           <div
             onClick={() => {
-              if (currentPage === 'home') {
+              // Use the real pathname (not LanguageContext's currentPage, which
+              // falls back to 'home' for unmapped routes like /account — that made
+              // the logo do nothing there). react-router navigates home from anywhere.
+              if (location.pathname === '/') {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               } else {
-                navigateTo('home');
+                routerNavigate('/');
                 window.scrollTo({ top: 0, behavior: 'auto' });
               }
             }}
