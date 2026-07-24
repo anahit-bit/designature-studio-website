@@ -30,7 +30,7 @@ const FREE_TIER_MAX_CONCEPT_SLOTS = 3;
 // All styles available in AI Vision chip selector (superset of quiz styles)
 const VISION_STYLES = [
   'Japandi', 'Modern', 'Mid-Century', 'Bohemian', 'Rustic', 'Art Deco',
-  'Industrial', 'Coastal', 'Minimalist', 'Maximalist', 'Biophilic'
+  'Industrial', 'Coastal', 'Minimalist', 'Maximalist', 'Dopamine', 'Biophilic'
 ];
 
 // ── Sample room + inspiration gallery shown in the empty state ─────────────

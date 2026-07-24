@@ -28,7 +28,7 @@ const THUMB_AFTER_OPTS = { quality: 'best' as const, enhance: true, sharpen: 60 
 
 export const VISION_STYLES_FULL = [
   'Mid-Century', 'Japandi', 'Coastal', 'Modern', 'Bohemian', 'Rustic',
-  'Industrial', 'Art Deco', 'Minimalist', 'Maximalist', 'Biophilic',
+  'Industrial', 'Art Deco', 'Minimalist', 'Maximalist', 'Dopamine', 'Biophilic',
 ] as const;
 
 export const ROOM_TYPES_FULL = [

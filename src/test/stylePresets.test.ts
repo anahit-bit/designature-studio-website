@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { STYLE_BRIEFS } from '../../services/aiVision/stylePresets';
+import { STYLE_BRIEFS, STYLE_NAME_TO_PRESET } from '../../services/aiVision/stylePresets';
 
 describe('mid_century preset · modern interpretation (not a literal 1950s-60s replica)', () => {
   const brief = STYLE_BRIEFS.mid_century.toLowerCase();
@@ -60,5 +60,27 @@ describe('maximalist preset · contemporary color + pattern (not a Baroque/Victo
 
   it('reads as playful or joyful, not palatial', () => {
     expect(brief).toMatch(/playful|joyful/);
+  });
+});
+
+describe('dopamine preset · joyful, saturated, curved (Dopamine Décor)', () => {
+  it('has a non-empty brief', () => {
+    expect(STYLE_BRIEFS.dopamine).toBeTruthy();
+    expect(STYLE_BRIEFS.dopamine.trim().length).toBeGreaterThan(0);
+  });
+
+  it('maps the "Dopamine" display label to the "dopamine" preset', () => {
+    expect(STYLE_NAME_TO_PRESET['Dopamine']).toBe('dopamine');
+  });
+
+  const brief = STYLE_BRIEFS.dopamine.toLowerCase();
+
+  it('reads as joyful and playful/curved/rounded', () => {
+    expect(brief).toContain('joyful');
+    expect(brief).toMatch(/curved|rounded|playful/);
+  });
+
+  it('names the saturated palette (Sunflower/Bubblegum/Coral)', () => {
+    expect(STYLE_BRIEFS.dopamine).toMatch(/Sunflower|Bubblegum|Coral/);
   });
 });
