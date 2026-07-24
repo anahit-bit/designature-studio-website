@@ -1754,6 +1754,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
           shoppingListsLeft: shopUser.shoppingListsLeft,
         });
       }
+      recordActivity(shopUser.email, "shopping_search"); // usage metering (AC-001 dashboard)
 
       const { items, country, budgetLevel, roomCap, scopeIds } = req.body;
       const gl = country || 'us';
@@ -3081,8 +3082,24 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     const unlimited = isConceptTestAccountEmail(user.email);
     const tier: "free" | "studio" = unlimited ? "studio" : "free";
     const cap = (c: number) => (unlimited ? null : c);
-    const used = (c: number, left: number) =>
-      unlimited ? 0 : Math.max(0, c - (left ?? 0));
+
+    // Actual usage THIS CYCLE (calendar month) from the activity log — so even
+    // Unlimited plans show what's been spent per tool. Capped tiers keep their
+    // remaining-based count (cap − left) which matches the "N / cap" they see.
+    const now = new Date();
+    const monthStartIso = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const log: any[] = Array.isArray(db.activityLog) ? db.activityLog : [];
+    const countAction = (action: string) =>
+      log.filter(
+        (e) => e?.userEmail === user.email && e?.action === action && e?.ts >= monthStartIso
+      ).length;
+    const usageCount = {
+      aiVision: countAction("generate_vision"),
+      shopping: countAction("shopping_search"),
+      roomAudit: countAction("generate_audit"),
+      styleQuiz: countAction("quiz_complete"),
+    };
+    const capUsed = (c: number, left: number) => Math.max(0, c - (left ?? 0));
 
     let recentActivity: any[] = [];
     let libraryTotal = 0;
@@ -3123,17 +3140,17 @@ Output ONLY valid JSON, no markdown fences, no commentary:
       },
       quota: {
         aiVision: {
-          used: used(FREE_TIER_MAX_CONCEPTS, user.generationsLeft),
+          used: unlimited ? usageCount.aiVision : capUsed(FREE_TIER_MAX_CONCEPTS, user.generationsLeft),
           cap: cap(FREE_TIER_MAX_CONCEPTS),
           resetsAt: null,
         },
         shopping: {
-          used: used(FREE_TIER_MAX_SHOPPING_LISTS, user.shoppingListsLeft ?? 0),
+          used: unlimited ? usageCount.shopping : capUsed(FREE_TIER_MAX_SHOPPING_LISTS, user.shoppingListsLeft ?? 0),
           cap: cap(FREE_TIER_MAX_SHOPPING_LISTS),
           resetsAt: null,
         },
-        roomAudit: { used: 0, cap: unlimited ? null : 1, resetsAt: null },
-        styleQuiz: { used: 0, cap: unlimited ? null : 5, resetsAt: null },
+        roomAudit: { used: unlimited ? usageCount.roomAudit : 0, cap: unlimited ? null : 1, resetsAt: null },
+        styleQuiz: { used: unlimited ? usageCount.styleQuiz : 0, cap: unlimited ? null : 5, resetsAt: null },
         designBrief: { used: 0, cap: unlimited ? null : 1, resetsAt: null },
         cultural: { used: 0, cap: unlimited ? null : 1, resetsAt: null },
       },

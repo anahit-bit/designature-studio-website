@@ -39,8 +39,11 @@ const UsageCard: React.FC<{ eyebrow: string; entry: QuotaEntry; tier: PlanTier }
   let reset: string;
   if (tier === 'free') {
     reset = locked ? 'Free tier — upgrade to unlock' : `Free tier — ${entry.cap}/month`;
+  } else if (unlimited) {
+    // Unlimited plans still show real spend this cycle.
+    reset = `${entry.used} used this cycle`;
   } else {
-    reset = unlimited ? 'Included with your plan' : `Resets ${fmtMonthDay(entry.resetsAt)}`;
+    reset = `Resets ${fmtMonthDay(entry.resetsAt)}`;
   }
 
   return (
@@ -66,7 +69,11 @@ const UsageCard: React.FC<{ eyebrow: string; entry: QuotaEntry; tier: PlanTier }
           />
         </div>
       )}
-      <div className="text-[11px] text-[#6B6B6B] mt-[10px] font-body">{reset}</div>
+      <div
+        className={`text-[11px] mt-[10px] font-body ${unlimited ? 'text-[#0A0A0A] font-semibold' : 'text-[#6B6B6B]'}`}
+      >
+        {reset}
+      </div>
     </div>
   );
 };
