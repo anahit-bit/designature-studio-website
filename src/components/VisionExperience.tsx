@@ -1,7 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Download, RefreshCw, Pencil, Share2 } from 'lucide-react';
+import { X, Download, RefreshCw, Pencil, Share2, Bookmark, Check } from 'lucide-react';
 import { cld, cldSrcSet } from '../lib/cld';
 import { useLanguage } from '../LanguageContext';
+import { getStoredToken } from '../sessionClient';
+import { accountApi } from '../lib/accountApi';
+import { fingerprint, isSaved, markSaved } from '../lib/savedMarks';
 import FeedbackBand from './FeedbackBand';
 import Marquee from './studio/Marquee';
 import { STYLES } from './AIVisionShowcase';
@@ -99,6 +102,38 @@ const DNA_BANNER_DISMISSED_KEY = 'ai_vision_dna_banner_dismissed';
 
 export default function VisionExperience(p: VisionExperienceProps) {
   const { t } = useLanguage();
+
+  // ── AC-002 — "Save to My account": persist the shown concept to the user's
+  // Library (paid feature) so they can re-open/download/share it later. Free users
+  // get an upsell instead of a fake "Saved". `signedIn` guards the preview no-op.
+  const [savedMarks, setSavedMarks] = useState<Set<string>>(new Set());
+  const [savingConcept, setSavingConcept] = useState(false);
+  const signedIn = !!getStoredToken();
+  const canSaveLibrary = signedIn && p.isPaid; // saving to the Library is paid-only
+  // Mark persists in localStorage → the button stays "Saved" even after leaving
+  // and returning to this concept (the server also dedups, so no duplicate rows).
+  const conceptMark = p.selectedConceptUrl ? fingerprint(p.selectedConceptUrl) : '';
+  const conceptSaved = !!conceptMark && (savedMarks.has(conceptMark) || isSaved(conceptMark));
+  const handleSaveConcept = async () => {
+    if (!p.selectedConceptUrl || savingConcept || conceptSaved || !p.isPaid) return;
+    setSavingConcept(true);
+    try {
+      const style = p.selectedStyle ? p.translateStyle(p.selectedStyle) : 'Concept';
+      const room = p.selectedRoom || 'Room';
+      await accountApi.saveLibraryItem({
+        tool: 'ai_vision',
+        title: `${room} — ${style}`,
+        imageDataUrl: p.selectedConceptUrl,
+      });
+      markSaved(conceptMark);
+      setSavedMarks((prev) => new Set(prev).add(conceptMark));
+    } catch {
+      /* non-fatal — the concept is still downloadable */
+    } finally {
+      setSavingConcept(false);
+    }
+  };
+
   // ── State derivation ──
   // State 3 (results) is driven SOLELY by live `results` from the current round.
   // The archive (past concepts kept across a Reset) is supplemental — it only
@@ -639,6 +674,32 @@ export default function VisionExperience(p: VisionExperienceProps) {
               >
                 <Download className="w-[18px] h-[18px]" />
               </button>
+            )}
+            {p.selectedConceptUrl && signedIn && (
+              canSaveLibrary ? (
+                <button
+                  type="button"
+                  onClick={handleSaveConcept}
+                  disabled={savingConcept || conceptSaved}
+                  className="px-5 py-3 bg-transparent text-white border border-white/40 hover:border-white text-[10px] font-bold uppercase tracking-[0.22em] inline-flex items-center gap-2 disabled:opacity-60"
+                  title="Save this concept to My account so you can re-open, download and share it later"
+                >
+                  {conceptSaved ? (
+                    <><Check className="w-3 h-3" /> Saved</>
+                  ) : (
+                    <><Bookmark className="w-3 h-3" /> {savingConcept ? 'Saving…' : 'Save'}</>
+                  )}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => p.navigateTo('pricing')}
+                  className="px-5 py-3 bg-transparent text-white/80 border border-white/25 hover:border-white/55 hover:text-white text-[10px] font-bold uppercase tracking-[0.22em] inline-flex items-center gap-2"
+                  title="Saving to your library is a paid feature — download to keep this one"
+                >
+                  <Bookmark className="w-3 h-3" /> Save · Design+
+                </button>
+              )
             )}
             <button
               type="button"
