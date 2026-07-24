@@ -37,13 +37,13 @@ export type RoomType =
 export const STYLE_BRIEFS: Record<StylePreset, string> = {
 
   art_deco: `
-1. COLOR PALETTE: Deep Emerald #1F4E3D, Black Onyx #1A1A1A, Antique Gold #C9A062, Cream Ivory #F2E9D8, Burgundy #6B1F2A, Champagne #E8D5A8, Charcoal #2E2E2E.
-2. MATERIALS & FINISHES: high-gloss lacquered ebony and walnut, polished black marble with white veining, polished brass and gold-tone metal, mirrored glass surfaces, velvet upholstery in jewel tones, patterned inlays of mother-of-pearl or shagreen.
-3. FURNITURE CHARACTER: bold geometric silhouettes, stepped and fan-shaped forms, generous curves balanced with sharp angles, substantial proportions, symmetrical arrangements, rounded armchairs and curved sofas with brass detailing.
-4. LIGHTING: dramatic statement fixtures — sunburst chandeliers, frosted glass globe pendants, brass sconces with stepped detailing. Warm moody lighting with strong contrast. Layered table and floor lamps with silk shades.
-5. WALL & CEILING TREATMENT: high-gloss painted walls in rich tones, geometric wallpaper or panel insets, mirrored panels, stepped crown moldings, ceiling rosettes, gilded trim accents.
-6. DECOR & STYLING: gold-framed mirrors, geometric sculptures, crystal decanters and barware, fan-shaped or sunburst motifs, lacquered boxes, palm fronds in tall brass vases, framed period art.
-7. OVERALL MOOD: glamorous, opulent, theatrical. Confident symmetry and rich materials create a sense of polished luxury and 1920s sophistication.
+1. COLOR PALETTE: restrained jewel tones balanced with warm neutrals — Deep Forest #2E4E3D, Warm Terracotta #B87A5E, Brushed Brass #B8935E, Cream Ivory #F2E9D8, Muted Burgundy #7A3A42, Warm Charcoal #3A3A3A, Warm Off-White #F5EFE0. Jewel tones appear as accents on one wall or key furniture, not saturating every surface.
+2. MATERIALS & FINISHES: matte and satin-finished woods (warm walnut, white oak) with subtle grain, matte brass hardware with a brushed finish, honed marble (not polished) with subtle veining, velvet upholstery in warm jewel tones used on one or two pieces, linen and boucle for balance, ceramic accents.
+3. FURNITURE CHARACTER: contemporary silhouettes with Art Deco-influenced proportion — clean geometric lines, gentle curves balanced with straight edges, refined tapered or fluted legs, rounded backs on lounge chairs, low-slung profiles lifted off the floor. Restrained and modern first; Art Deco felt through proportion and geometric rhythm, not literal period silhouettes.
+4. LIGHTING: contemporary fixtures with geometric detail — slim brass linear pendants with frosted glass, fluted globe pendants, understated wall sconces with rounded shades, floor lamps with matte brass bases. Warm ambient lighting, layered but calm.
+5. WALL & CEILING TREATMENT: matte painted walls in warm neutrals with one accent wall in a jewel tone or a subtle fluted-wood treatment, contemporary geometric wallpaper on a single feature wall (thin scale, calm rhythm), simple flat ceilings with a restrained painted or plaster finish. Slim brass reveal trim used sparingly at wall-to-ceiling junctions.
+6. DECOR & STYLING: framed abstract or graphic art with geometric composition, one sculptural ceramic vessel in a matte finish, curated design books, one architectural plant in a matte brass or ceramic planter, considered objects placed with generous negative space between them. Surfaces feel edited, not layered.
+7. OVERALL MOOD: warm, considered, design-forward, contemporary. Art Deco warmth and geometric rhythm without the period furniture — a modern interior that references the era through proportion, material warmth, and restrained detail, feeling both quiet and confident.
 `.trim(),
 
   bohemian: `

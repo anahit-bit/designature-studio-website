@@ -23,6 +23,39 @@ describe('mid_century preset · modern interpretation (not a literal 1950s-60s r
   });
 });
 
+describe('art_deco preset · restrained modern interpretation (not a literal 1920s Gatsby palace)', () => {
+  const brief = STYLE_BRIEFS.art_deco.toLowerCase();
+
+  it.each([
+    'sunburst',
+    'gilt',
+    'gilded',
+    'gatsby',
+    '1920s',
+    'high-gloss',
+    'ebony',
+    'polished brass',
+    'palm frond',
+    'gold-framed',
+    'sputnik',
+    'chinoiserie',
+  ])('does not reference the period-palace cliché "%s"', (banned) => {
+    expect(brief).not.toContain(banned);
+  });
+
+  it('anchors on a contemporary/modern read', () => {
+    expect(brief).toMatch(/contemporary|modern/);
+  });
+
+  it('names at least one restrained Deco-referencing material cue (brushed brass/walnut/fluted)', () => {
+    expect(brief).toMatch(/brushed brass|walnut|fluted/);
+  });
+
+  it('reads as restrained/considered/quiet, not opulent', () => {
+    expect(brief).toMatch(/restrained|considered|quiet/);
+  });
+});
+
 describe('maximalist preset · contemporary color + pattern (not a Baroque/Victorian palace)', () => {
   const brief = STYLE_BRIEFS.maximalist.toLowerCase();
 
