@@ -63,6 +63,19 @@ import {
   insertEvent as calendarInsertEvent,
   deleteEvent as calendarDeleteEvent,
 } from "./services/calendar/googleCalendar.js";
+// ─── Calendly booking tracking + HubSpot sync (admin Consultations tab) ────────
+import {
+  type ConsultationBooking,
+  isBookingsConfigured,
+  fetchBookings,
+  normalizeBooking,
+  getBookingsConfig,
+} from "./services/consultation/calendlyBookings.js";
+import {
+  verifyCalendlySignature,
+  parseWebhookPayload,
+} from "./services/consultation/calendlyWebhook.js";
+import { upsertContactBooking, isHubspotConfigured } from "./services/crm/hubspot.js";
 // ─── GEO / SEO (Phase 1): robots, sitemap, per-route meta + JSON-LD injection ──
 import { buildRobotsTxt } from "./server/config/bots.js";
 import { buildSitemap } from "./server/seo/sitemap.js";
@@ -213,6 +226,11 @@ interface DB {
    *  2026-07-19). Seeded from server/config/platforms.json on first boot, then
    *  lives here in app_state so owner edits survive Railway redeploys. */
   platforms?: Platform[];
+  /** Calendly bookings (free "Quick Conversation" + paid "Paid Consultation"),
+   *  captured by the webhook and/or a live API refresh. Durable so the admin
+   *  Consultations tab + HubSpot-sync status survive redeploys. Keyed/deduped by
+   *  inviteeUri. Capped FIFO. */
+  calendlyBookings?: Array<ConsultationBooking & { hubspot?: { synced: boolean; at?: string; error?: string } }>;
 }
 
 /** UTC YYYY-MM-DD for daily-budget bucketing. */
@@ -651,6 +669,32 @@ async function ensurePlatformsSeeded(): Promise<void> {
   writeDB(dbCache);
 }
 
+// ─── Calendly booking store (durable, app_state) ────────────────────────────
+// Deduped by inviteeUri. The webhook writes here on invitee.created/canceled; a
+// live admin refresh merges API reads in while preserving each row's HubSpot
+// sync status. Capped FIFO so the blob can't grow unbounded.
+const CALENDLY_BOOKINGS_CAP = 2000;
+type StoredBooking = ConsultationBooking & { hubspot?: { synced: boolean; at?: string; error?: string } };
+
+/** Insert or update a booking by inviteeUri. `patch` shallow-merges (e.g. status,
+ *  hubspot). Preserves an existing row's hubspot status unless the patch sets it.
+ *  Caller is responsible for writeDB(). */
+function upsertBookingRecord(db: DB, booking: StoredBooking): StoredBooking {
+  const list: StoredBooking[] = Array.isArray(db.calendlyBookings) ? db.calendlyBookings : [];
+  const idx = list.findIndex((b) => b.inviteeUri === booking.inviteeUri);
+  let row: StoredBooking;
+  if (idx >= 0) {
+    row = { ...list[idx], ...booking, hubspot: booking.hubspot ?? list[idx].hubspot };
+    list[idx] = row;
+  } else {
+    row = booking;
+    list.push(row);
+  }
+  while (list.length > CALENDLY_BOOKINGS_CAP) list.shift();
+  db.calendlyBookings = list;
+  return row;
+}
+
 // ─── Session store (in-memory, keyed by session token) ─────────────────────
 const sessions: Record<string, string> = {}; // token → googleId
 
@@ -773,8 +817,17 @@ async function startServer() {
   // makes the edge proxy miss the app → 502. Keep the app on 3000 to match.
   const PORT = 3000;
 
-  // Raised to 100 MB to accommodate base64-encoded room + reference images in one request
-  app.use(express.json({ limit: "100mb" }));
+  // Raised to 100 MB to accommodate base64-encoded room + reference images in one request.
+  // `verify` stashes the raw bytes so webhook routes can HMAC-check the exact body
+  // (Calendly signs the raw payload; re-serializing the parsed JSON would not match).
+  app.use(
+    express.json({
+      limit: "100mb",
+      verify: (req, _res, buf) => {
+        (req as any).rawBody = buf;
+      },
+    }),
+  );
 
   // ── Cloudinary Configuration ──
   cloudinary.config({
@@ -3189,6 +3242,101 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     db.platforms = clean;
     writeDB(db);
     res.json({ ok: true, items: clean });
+  });
+
+  // ── Calendly booking webhook (public, signature-verified) ─────────────────
+  // Calendly POSTs invitee.created / invitee.canceled here. On a fresh, valid
+  // signature we normalise the booking, upsert the contact into HubSpot (tagging
+  // free vs paid via booking_type), and persist it to the durable store so the
+  // admin Consultations tab shows it. Always 200s quickly on a valid signature so
+  // Calendly doesn't retry; auth failures get 401 (and are NOT recorded).
+  app.post("/api/calendly/webhook", async (req, res) => {
+    const signingKey = (process.env.CALENDLY_WEBHOOK_SIGNING_KEY || "").trim();
+    if (!signingKey) {
+      console.error("[calendly-webhook] CALENDLY_WEBHOOK_SIGNING_KEY not set — rejecting");
+      return res.status(503).json({ error: "webhook not configured" });
+    }
+    const raw = (req as any).rawBody as Buffer | undefined;
+    const ok = verifyCalendlySignature(raw ?? JSON.stringify(req.body ?? {}), req.header("Calendly-Webhook-Signature"), signingKey);
+    if (!ok) {
+      console.error("[calendly-webhook] signature verification failed");
+      return res.status(401).json({ error: "invalid signature" });
+    }
+
+    const parsed = parseWebhookPayload(req.body);
+    if (!parsed) return res.status(200).json({ ok: true, ignored: "unparseable" });
+    // We only act on invitee lifecycle events.
+    if (parsed.event !== "invitee.created" && parsed.event !== "invitee.canceled") {
+      return res.status(200).json({ ok: true, ignored: parsed.event });
+    }
+
+    const cfg = getBookingsConfig();
+    const booking = normalizeBooking(parsed.scheduledEvent, parsed.invitee, cfg, "webhook");
+    if (!booking) return res.status(200).json({ ok: true, ignored: "no invitee email" });
+
+    // On cancel, just flip status. On create, sync to HubSpot (best-effort).
+    let hubspot: StoredBooking["hubspot"];
+    if (parsed.event === "invitee.created") {
+      const r = await upsertContactBooking({ email: booking.email, name: booking.name, kind: booking.kind });
+      hubspot = r.configured
+        ? { synced: r.ok, at: new Date().toISOString(), error: r.ok ? undefined : r.error }
+        : undefined;
+      if (r.configured && !r.ok) console.error("[calendly-webhook] HubSpot sync failed:", r.error);
+    } else {
+      booking.status = "canceled";
+    }
+
+    const db = readDB();
+    upsertBookingRecord(db, { ...booking, ...(hubspot ? { hubspot } : {}) });
+    logActivity(db, booking.email, `calendly_${booking.kind}_${parsed.event === "invitee.created" ? "booked" : "canceled"}`);
+    writeDB(db);
+    return res.status(200).json({ ok: true });
+  });
+
+  // ── GET /api/admin/consultations — booking tracker for the admin tab ──────
+  // Live-reads recent Calendly bookings when a token is configured, merges each
+  // row's stored HubSpot-sync status, and folds in any webhook-only rows. Falls
+  // back to the durable store alone when no token is set.
+  app.get("/api/admin/consultations", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const db = readDB();
+    const stored: StoredBooking[] = Array.isArray(db.calendlyBookings) ? db.calendlyBookings : [];
+    const storedByUri = new Map(stored.map((b) => [b.inviteeUri, b]));
+
+    let orgWide = false;
+    let freeVisible = false;
+    let liveError: string | null = null;
+    const merged = new Map<string, StoredBooking>(storedByUri);
+
+    if (isBookingsConfigured()) {
+      try {
+        const live = await fetchBookings();
+        orgWide = live.orgWide;
+        freeVisible = live.freeVisible;
+        for (const b of live.bookings) {
+          const prev = storedByUri.get(b.inviteeUri);
+          merged.set(b.inviteeUri, { ...b, hubspot: prev?.hubspot });
+        }
+        // Persist merged live rows so hubspot status + webhook rows stay coherent.
+        for (const b of merged.values()) upsertBookingRecord(db, b);
+        writeDB(db);
+      } catch (e) {
+        liveError = e instanceof Error ? e.message : "Calendly read failed";
+      }
+    }
+
+    const all = Array.from(merged.values()).sort(
+      (a, b) => Date.parse(b.createdAt || b.startTime || "") - Date.parse(a.createdAt || a.startTime || ""),
+    );
+    res.json({
+      configured: isBookingsConfigured(),
+      orgWide,
+      freeVisible,
+      hubspotConfigured: isHubspotConfigured(),
+      liveError,
+      free: all.filter((b) => b.kind === "free"),
+      paid: all.filter((b) => b.kind === "paid"),
+    });
   });
 
   // ── GET /api/admin/usage — observability aggregator (I-011 · I-021b) ──
