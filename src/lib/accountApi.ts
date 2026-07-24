@@ -19,9 +19,24 @@ import { getStoredToken } from '../sessionClient';
 import * as mock from './accountApi.mock';
 
 // ── env flag ──────────────────────────────────────────────────────────────
-/** Default TRUE — the account UI ships mock-first until the backend endpoints exist. */
+/**
+ * Mock/preview mode. Default OFF so PRODUCTION is safe by default — the real
+ * auth gate + real endpoints are enforced without depending on a build-time env
+ * var. Opt in for logged-out local preview (dev switcher, all tiers) by setting
+ * VITE_USE_MOCK_ACCOUNT=true. NOTE: signed-in users always hit the real backend
+ * (see `signedIn()`); this flag only governs the logged-out preview + the
+ * not-yet-real billing/subscription calls.
+ */
 export const USE_MOCK_ACCOUNT: boolean =
-  ((import.meta as any)?.env?.VITE_USE_MOCK_ACCOUNT ?? 'true') !== 'false';
+  ((import.meta as any)?.env?.VITE_USE_MOCK_ACCOUNT ?? 'false') === 'true';
+
+/**
+ * Billing / bookings / subscription / profile calls have NO live backend yet
+ * (no subscription rail exists). They ALWAYS return mock, independent of preview
+ * mode, so those tabs render instead of hitting dead endpoints. Flip to true
+ * (per-method) when the real rail ships.
+ */
+const BILLING_LIVE: boolean = false;
 
 /**
  * Whether a real session exists. The Library loop (dashboard + saved items) is
@@ -306,38 +321,38 @@ export const accountApi = {
   },
 
   getProjectFolders(): Promise<ProjectFolder[]> {
-    if (USE_MOCK_ACCOUNT) return mock.getProjectFolders();
+    if (!BILLING_LIVE) return mock.getProjectFolders();
     // TODO(AC-003-backend): GET /api/user/project-folders
     return api<ProjectFolder[]>('/api/user/project-folders');
   },
 
   getBookings(): Promise<BookingsResult> {
-    if (USE_MOCK_ACCOUNT) return mock.getBookings();
+    if (!BILLING_LIVE) return mock.getBookings();
     // TODO(AC-001-backend): GET /api/user/bookings?state=
     return api<BookingsResult>('/api/user/bookings');
   },
 
   getBillingHistory(page = 1): Promise<BillingHistory> {
-    if (USE_MOCK_ACCOUNT) return mock.getBillingHistory(page);
+    if (!BILLING_LIVE) return mock.getBillingHistory(page);
     // TODO(AC-001-backend): GET /api/billing/history?page=
     return api<BillingHistory>(`/api/billing/history?page=${page}`);
   },
 
   getPaymentMethod(): Promise<PaymentMethod | null> {
-    if (USE_MOCK_ACCOUNT) return mock.getPaymentMethod();
+    if (!BILLING_LIVE) return mock.getPaymentMethod();
     // TODO(AC-001-backend): GET /api/payment-methods/current
     return api<PaymentMethod | null>('/api/payment-methods/current');
   },
 
   getNotificationPrefs(): Promise<NotificationPrefs> {
-    if (USE_MOCK_ACCOUNT) return mock.getNotificationPrefs();
+    if (!BILLING_LIVE) return mock.getNotificationPrefs();
     // TODO(AC-001-backend): GET /api/user/notifications
     return api<NotificationPrefs>('/api/user/notifications');
   },
 
   // mutations
   cancelSubscription(reason?: string): Promise<Plan> {
-    if (USE_MOCK_ACCOUNT) return mock.cancelSubscription(reason);
+    if (!BILLING_LIVE) return mock.cancelSubscription(reason);
     // TODO(AC-001-backend): POST /api/subscriptions/cancel
     return api<Plan>('/api/subscriptions/cancel', {
       method: 'POST',
@@ -346,13 +361,13 @@ export const accountApi = {
   },
 
   resumeSubscription(): Promise<Plan> {
-    if (USE_MOCK_ACCOUNT) return mock.resumeSubscription();
+    if (!BILLING_LIVE) return mock.resumeSubscription();
     // TODO(AC-001-backend): POST /api/subscriptions/resume
     return api<Plan>('/api/subscriptions/resume', { method: 'POST' });
   },
 
   changePlan(toTier: Exclude<PlanTier, 'free'>): Promise<Plan> {
-    if (USE_MOCK_ACCOUNT) return mock.changePlan(toTier);
+    if (!BILLING_LIVE) return mock.changePlan(toTier);
     // TODO(AC-001-backend): POST /api/subscriptions/change-plan
     return api<Plan>('/api/subscriptions/change-plan', {
       method: 'POST',
@@ -362,7 +377,7 @@ export const accountApi = {
 
   /** Kicks off the Ameria vPOS card-binding flow. Returns a redirect URL in real mode. */
   replacePaymentMethod(): Promise<{ redirectUrl: string | null }> {
-    if (USE_MOCK_ACCOUNT) return mock.replacePaymentMethod();
+    if (!BILLING_LIVE) return mock.replacePaymentMethod();
     // TODO(AC-001-backend): POST /api/payment-methods/replace
     return api<{ redirectUrl: string | null }>('/api/payment-methods/replace', {
       method: 'POST',
@@ -370,13 +385,13 @@ export const accountApi = {
   },
 
   removePaymentMethod(): Promise<void> {
-    if (USE_MOCK_ACCOUNT) return mock.removePaymentMethod();
+    if (!BILLING_LIVE) return mock.removePaymentMethod();
     // TODO(AC-001-backend): DELETE /api/payment-methods/current
     return api<void>('/api/payment-methods/current', { method: 'DELETE' });
   },
 
   cancelConsultation(orderId: string): Promise<Booking> {
-    if (USE_MOCK_ACCOUNT) return mock.cancelConsultation(orderId);
+    if (!BILLING_LIVE) return mock.cancelConsultation(orderId);
     // TODO(AC-001-backend): POST /api/consultation/cancel
     return api<Booking>('/api/consultation/cancel', {
       method: 'POST',
@@ -385,7 +400,7 @@ export const accountApi = {
   },
 
   updateProfile(name: string): Promise<AccountUser> {
-    if (USE_MOCK_ACCOUNT) return mock.updateProfile(name);
+    if (!BILLING_LIVE) return mock.updateProfile(name);
     // TODO(AC-001-backend): PATCH /api/user/profile
     return api<AccountUser>('/api/user/profile', {
       method: 'PATCH',
@@ -394,7 +409,7 @@ export const accountApi = {
   },
 
   updateNotifications(prefs: Partial<NotificationPrefs>): Promise<NotificationPrefs> {
-    if (USE_MOCK_ACCOUNT) return mock.updateNotifications(prefs);
+    if (!BILLING_LIVE) return mock.updateNotifications(prefs);
     // TODO(AC-001-backend): PATCH /api/user/notifications
     return api<NotificationPrefs>('/api/user/notifications', {
       method: 'PATCH',
@@ -403,7 +418,7 @@ export const accountApi = {
   },
 
   deleteAccount(): Promise<void> {
-    if (USE_MOCK_ACCOUNT) return mock.deleteAccount();
+    if (!BILLING_LIVE) return mock.deleteAccount();
     // TODO(AC-001-backend): DELETE /api/user/me
     return api<void>('/api/user/me', { method: 'DELETE' });
   },
