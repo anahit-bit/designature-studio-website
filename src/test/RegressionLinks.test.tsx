@@ -6,12 +6,15 @@ import Footer from '../components/Footer';
 import StudioPage from '../components/StudioPage';
 import { LanguageProvider } from '../LanguageContext';
 import { AuthProvider } from '../AuthContext';
+import { ProjectsProvider } from '../ProjectsContext';
 
 const renderWithProvider = (ui: React.ReactElement) => {
   return render(
     <MemoryRouter>
       <LanguageProvider>
-        <AuthProvider>{ui}</AuthProvider>
+        <AuthProvider>
+          <ProjectsProvider>{ui}</ProjectsProvider>
+        </AuthProvider>
       </LanguageProvider>
     </MemoryRouter>
   );
@@ -89,27 +92,21 @@ describe('Regression: links and email flows', () => {
     });
   });
 
-  it('studio contact form posts to /api/contact (EmailJS replaced)', async () => {
+  it('studio contact offers two booking doors (consultation + free conversation)', () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
     renderWithProvider(<StudioPage />);
 
-    fireEvent.change(screen.getByPlaceholderText(/Anahit Ghasabyan/i), {
-      target: { value: 'QA User' },
-    });
-    fireEvent.change(screen.getByPlaceholderText(/you@email\.com/i), {
-      target: { value: 'qa@example.com' },
-    });
-    fireEvent.change(screen.getByPlaceholderText(/Rooms, timeline/i), {
-      target: { value: 'Regression run message' },
-    });
+    // Paid door — the $99 consultation is present (routes to /consultation).
+    expect(screen.getByRole('button', { name: /Book a \$99 consultation/i })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: /Send message/i }));
-
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        '/api/contact',
-        expect.objectContaining({ method: 'POST' })
-      );
-    });
+    // Free door — opens the Calendly quick-conversation link.
+    fireEvent.click(screen.getByRole('button', { name: /Book a free conversation/i }));
+    expect(openSpy).toHaveBeenCalledWith(
+      'https://calendly.com/hello-designature/quick-conversation',
+      '_blank',
+      'noopener,noreferrer'
+    );
+    openSpy.mockRestore();
   });
 });
 

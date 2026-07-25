@@ -114,7 +114,7 @@ export const FAQ_SECTIONS: FaqSection[] = [
       },
       {
         q: 'What does the Design plan add over free?',
-        a: 'The Design plan ($19/mo) adds 30 AI Vision credits per month, 20 shopping lists per month with budget filtering, 3 Room Audits, 1 Design Brief, and a 10% discount on full design projects.',
+        a: 'The Design plan ($19/mo) adds 30 AI Vision credits per month, 20 shopping lists per month with budget filtering, 3 Room Audits, and 1 Design Brief.',
       },
     ],
   },
@@ -127,7 +127,7 @@ export const FAQ_SECTIONS: FaqSection[] = [
       },
       {
         q: 'How does the AI Studio connect to your design services?',
-        a: 'The AI Studio is a bridge. If you love your generated concept and want to make it real, you can book a free conversation with our studio directly from the app. Design plan subscribers also receive a 10% discount on full design projects.',
+        a: 'The AI Studio is a bridge. If you love your generated concept and want to make it real, you can book a free conversation with our studio directly from the app.',
       },
       {
         q: 'Is the first consultation really free?',
