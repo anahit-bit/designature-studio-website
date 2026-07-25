@@ -1,19 +1,43 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Instagram, Facebook, Mail, Send, CheckCircle2, AlertCircle } from 'lucide-react';
+import React, { useEffect, useMemo } from 'react';
+import { ArrowLeft, ArrowRight, Instagram, Facebook } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
+import { useProjects } from '../ProjectsContext';
 import Header from './Header';
 import Footer from './Footer';
 import ResponsiveImage from './ResponsiveImage';
 import { cld, cldSrcSet, DEFAULT_WIDTHS } from '../lib/cld';
 import { STUDIO_SCROLL_KEY } from './ConsultationCTA';
+import { trackCalendly } from '../lib/track';
 
 const STUDIO_HERO = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1771178204/memphis_1_bhkave.jpg';
 const FOUNDER_PHOTO = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775402047/20260124_090857_yj4blf.jpg';
 
+/** Free 15-min intro chat — same Calendly link the header/AI surfaces use. */
+const FREE_CONVO_URL = 'https://calendly.com/hello-designature/quick-conversation';
+
+/** Client-facing distillation of the studio's 10-stage workflow. */
+const PROCESS_STEPS = [
+  { n: '01', title: 'Brief',                body: 'We listen — how you live, what must stay, what the space needs to become. Everything starts here.' },
+  { n: '02', title: 'Concept',              body: 'Plans, palette and materials come together into one considered design concept you can feel.' },
+  { n: '03', title: 'Drawings & renders',   body: 'Technical drawings and photoreal 3D, so nothing is left to chance before a wall moves.' },
+  { n: '04', title: 'Sourcing & handover',  body: 'A costed shopping list, supervision, and a walkthrough — down to the last light switch.' },
+];
+
 const StudioPage: React.FC = () => {
   const { t, language, navigateTo } = useLanguage();
-  const formRef = useRef<HTMLFormElement>(null);
-  const [formStatus, setFormStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const { projects } = useProjects();
+
+  // Selected work — same behaviour as the home FeaturedWork: Fisher-Yates shuffle
+  // the full (Sanity-backed) list on each mount and take 4, so every page reload
+  // surfaces a different cross-section of the studio's work.
+  const featured = useMemo(() => {
+    const arr = [...projects];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr.slice(0, 4);
+  }, [projects]);
 
   // "Start a project" CTAs set STUDIO_SCROLL_KEY before navigating here, asking us to
   // land on the contact form instead of the hero. We must run AFTER LanguageContext's
@@ -35,33 +59,6 @@ const StudioPage: React.FC = () => {
     const timer = setTimeout(run, 60);
     return () => { cancelAnimationFrame(raf); clearTimeout(timer); };
   }, []);
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    const payload = {
-      name: String(fd.get('name') || '').trim(),
-      email: String(fd.get('email') || '').trim(),
-      projectType: String(fd.get('projectType') || ''),
-      budget: String(fd.get('budget') || ''),
-      message: String(fd.get('message') || '').trim(),
-    };
-    if (!payload.name || !payload.email || !payload.message) { setFormStatus('error'); return; }
-    setFormStatus('loading');
-    try {
-      const res = await fetch('/api/contact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error('bad status');
-      setFormStatus('success');
-      formRef.current?.reset();
-    } catch {
-      setFormStatus('error');
-      setTimeout(() => setFormStatus('idle'), 6000);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-white flex flex-col font-body text-black">
@@ -193,7 +190,7 @@ const StudioPage: React.FC = () => {
               <div className="lg:sticky lg:top-32 lg:self-start">
                 <p className="text-[11px] font-bold uppercase tracking-[0.5em] text-black/65 mb-4">{t('studio.aboutTitle')}</p>
                 <h3 className="font-display text-3xl md:text-4xl font-light leading-tight">
-                  {language === 'en' ? <>Crafting spaces<br />with <em>purpose</em></> : t('studio.aboutHeading')}
+                  {language === 'en' ? <>Engineered to feel<br /><em>effortless</em></> : t('studio.aboutHeading')}
                 </h3>
               </div>
 
@@ -214,21 +211,100 @@ const StudioPage: React.FC = () => {
         </section>
 
         {/* ══════════════════════════════════════════
-            SECTION 5 — CONTACT (redesigned per approved mockup;
-            white-dominant, brand canon: cobalt · terracotta · white)
+            SECTION 4 — PROCESS (how we work: 4 client-facing steps)
+            ══════════════════════════════════════════ */}
+        <section className="bg-white py-24 md:py-32">
+          <div className="max-w-[1600px] mx-auto px-8 md:px-16">
+            <div className="max-w-2xl mb-16 md:mb-20">
+              <p className="text-[11px] font-bold uppercase tracking-[0.5em] text-black/65 mb-4">How we work</p>
+              <h3 className="font-display text-3xl md:text-4xl lg:text-5xl font-light leading-[1.05]">
+                From first conversation<br />to <em>keys in the door.</em>
+              </h3>
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-12">
+              {PROCESS_STEPS.map((step) => (
+                <div key={step.n} className="border-t-2 border-[#0047AB] pt-6">
+                  <span className="font-display text-lg text-[#0047AB] font-semibold tracking-[0.1em]">{step.n}</span>
+                  <h4 className="text-[15px] font-bold uppercase tracking-[0.08em] mt-3 mb-3">{step.title}</h4>
+                  <p className="text-sm font-light leading-relaxed text-black/70">{step.body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════
+            SECTION 5 — SELECTED WORK (real portfolio projects → /portfolio)
+            ══════════════════════════════════════════ */}
+        <section className="bg-white border-t border-black/5 py-24 md:py-32">
+          <div className="max-w-[1600px] mx-auto px-8 md:px-16">
+            <div className="flex flex-wrap items-end justify-between gap-4 mb-12 md:mb-16">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.5em] text-black/65 mb-4">Selected work</p>
+                <h3 className="font-display text-3xl md:text-4xl lg:text-5xl font-light leading-[1.05]">
+                  A few rooms we're <em>proud of.</em>
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => { navigateTo('portfolio'); window.scrollTo({ top: 0 }); }}
+                className="group flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.24em] text-[#0047AB] border-b border-[#0047AB] pb-1 hover:text-[#003d99] transition-colors"
+              >
+                View portfolio
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {featured.map((project) => (
+                <button
+                  type="button"
+                  key={project.id}
+                  onClick={() => { navigateTo('project-detail', project.id); window.scrollTo({ top: 0 }); }}
+                  aria-label={language === 'en' ? project.titleEN : project.titleAM}
+                  className="group relative aspect-[4/5] bg-neutral-100 overflow-hidden text-left w-full appearance-none border-0 p-0 cursor-pointer"
+                >
+                  <ResponsiveImage
+                    src={project.imageUrl}
+                    alt={language === 'en' ? project.titleEN : project.titleAM}
+                    aspectRatio="4/5"
+                    crop="fill"
+                    sizes="(min-width: 1024px) 25vw, 50vw"
+                    widths={[300, 480, 640]}
+                    baseWidth={480}
+                    className="w-full h-full object-cover transition-transform duration-[1200ms] ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-70 group-hover:opacity-90 transition-opacity duration-500" aria-hidden="true" />
+                  <div className="absolute inset-x-0 bottom-0 p-5">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/70 mb-1">
+                      {language === 'en' ? project.categoryEN : project.categoryAM}
+                    </p>
+                    <p className="text-sm font-medium text-white leading-tight">
+                      {language === 'en' ? project.titleEN : project.titleAM}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════
+            SECTION 6 — CONTACT (two doors: paid consultation · free chat;
+            replaces the old project-submission form. Keeps #contact anchor so
+            site-wide "Start a project" CTAs still land here.)
             ══════════════════════════════════════════ */}
         <section id="contact" className="bg-white text-[#0A0A0A] scroll-mt-24 border-t border-[#DAD2C3]">
           <div className="max-w-[1180px] mx-auto px-8 md:px-16 py-20 md:py-28 grid lg:grid-cols-[0.9fr_1.1fr] gap-14 lg:gap-16 items-start">
 
-            {/* Left — invitation + contacts */}
+            {/* Left — invitation + direct contacts */}
             <div>
               <span className="text-[11px] font-bold uppercase tracking-[0.34em] text-[#6B6B6B]">Start a conversation</span>
               <h2 className="font-display text-4xl md:text-5xl font-medium leading-[1.02] tracking-[-0.01em] mt-3.5">
-                Tell us about<br /><em className="italic text-[#9E5E41]">your space.</em>
+                Let's talk about<br /><em className="italic text-[#9E5E41]">your space.</em>
               </h2>
               <div className="w-14 h-[2px] bg-[#9E5E41] my-6" aria-hidden="true" />
               <p className="text-[16px] text-[#404040] leading-relaxed max-w-[380px]">
-                Whether it's a first apartment or a full commercial fit-out — send us a few details and we'll come back within two business days. No commitment, no pressure.
+                Two easy ways to begin — pick whichever fits where you are. Prefer to write first? Reach us on email or WhatsApp anytime.
               </p>
 
               <div className="mt-10 flex flex-col gap-5">
@@ -252,68 +328,41 @@ const StudioPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Right — form */}
-            <div>
-              {formStatus === 'success' ? (
-                <div className="border border-[#DAD2C3] border-l-[3px] border-l-[#15803d] bg-[#FAFAFA] p-8 md:p-10">
-                  <div className="flex items-center gap-2 text-[#15803d] text-[13px] font-bold uppercase tracking-[0.1em]">
-                    <CheckCircle2 className="w-4 h-4" /> Message sent
-                  </div>
-                  <p className="text-[15px] text-[#404040] mt-2 leading-relaxed">
-                    Thank you — we've received your note and will reply within two business days at the email you gave us.
-                  </p>
-                </div>
-              ) : (
-                <form ref={formRef} onSubmit={handleSubmit} className="border border-[#DAD2C3] p-6 md:p-9">
-                  <div className="grid sm:grid-cols-2 gap-4 mb-5">
-                    <div>
-                      <label htmlFor="c-name" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#6B6B6B] mb-2">Your name</label>
-                      <input id="c-name" name="name" type="text" required placeholder="Anahit Ghasabyan" className="w-full text-[15px] text-[#0A0A0A] bg-white border border-[#DAD2C3] px-3.5 py-3 outline-none focus:border-[#0047AB] transition-colors" />
-                    </div>
-                    <div>
-                      <label htmlFor="c-email" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#6B6B6B] mb-2">Email</label>
-                      <input id="c-email" name="email" type="email" required placeholder="you@email.com" className="w-full text-[15px] text-[#0A0A0A] bg-white border border-[#DAD2C3] px-3.5 py-3 outline-none focus:border-[#0047AB] transition-colors" />
-                    </div>
-                  </div>
-                  <div className="grid sm:grid-cols-2 gap-4 mb-5">
-                    <div>
-                      <label htmlFor="c-type" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#6B6B6B] mb-2">Project type</label>
-                      <select id="c-type" name="projectType" defaultValue="Apartment" className="w-full text-[15px] text-[#0A0A0A] bg-white border border-[#DAD2C3] px-3.5 py-3 outline-none focus:border-[#0047AB] transition-colors">
-                        <option>Apartment</option>
-                        <option>House</option>
-                        <option>Commercial</option>
-                        <option>Not sure yet</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label htmlFor="c-budget" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#6B6B6B] mb-2">Rough budget (optional)</label>
-                      <select id="c-budget" name="budget" defaultValue="Prefer not to say" className="w-full text-[15px] text-[#0A0A0A] bg-white border border-[#DAD2C3] px-3.5 py-3 outline-none focus:border-[#0047AB] transition-colors">
-                        <option>Prefer not to say</option>
-                        <option>Under $10k</option>
-                        <option>$10k–30k</option>
-                        <option>$30k–75k</option>
-                        <option>$75k+</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="mb-5">
-                    <label htmlFor="c-message" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#6B6B6B] mb-2">Tell us about the space</label>
-                    <textarea id="c-message" name="message" required rows={5} placeholder="Rooms, timeline, what you're hoping to achieve…" className="w-full min-h-[120px] text-[15px] text-[#0A0A0A] bg-white border border-[#DAD2C3] px-3.5 py-3 outline-none focus:border-[#0047AB] transition-colors resize-y" />
-                  </div>
-                  <button type="submit" disabled={formStatus === 'loading'} className="w-full bg-[#0047AB] text-white text-[12px] font-bold uppercase tracking-[0.28em] py-4 hover:bg-[#003d99] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    {formStatus === 'loading' ? 'Sending…' : 'Send message →'}
-                  </button>
-                  {formStatus === 'error' && (
-                    <div className="flex items-center gap-2 text-[#9E5E41] mt-3.5">
-                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                      <span className="text-[12px] font-semibold">Something went wrong — please email hello@designature.studio directly.</span>
-                    </div>
-                  )}
-                  <p className="text-[12px] text-[#6B6B6B] mt-3.5 text-center">
-                    We reply within 2 business days. See our <a href="/privacy" className="text-[#0047AB] hover:text-[#003d99] transition-colors">Privacy Policy</a>.
-                  </p>
-                </form>
-              )}
+            {/* Right — two booking "doors" */}
+            <div className="flex flex-col gap-4">
+              {/* Door 1 — paid consultation (you know what you need) */}
+              <div className="border border-[#DAD2C3] p-7 md:p-8">
+                <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#0047AB]">Ready to start</span>
+                <h3 className="font-display text-2xl md:text-[28px] font-medium mt-2 mb-2.5">Book a consultation</h3>
+                <p className="text-[14px] text-[#404040] leading-relaxed mb-6 max-w-[440px]">
+                  You know what your space needs and want expert answers. 45 focused minutes on Google Meet — and it credits toward a full project later.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { navigateTo('consultation'); window.scrollTo({ top: 0 }); }}
+                  className="group inline-flex items-center gap-2 bg-[#0047AB] text-white text-[12px] font-bold uppercase tracking-[0.22em] px-6 py-3.5 hover:bg-[#003d99] transition-colors"
+                >
+                  Book a $99 consultation
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </div>
+
+              {/* Door 2 — free conversation (still deciding) */}
+              <div className="border border-[#DAD2C3] p-7 md:p-8">
+                <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#6B6B6B]">Still deciding</span>
+                <h3 className="font-display text-2xl md:text-[28px] font-medium mt-2 mb-2.5">Book a free conversation</h3>
+                <p className="text-[14px] text-[#404040] leading-relaxed mb-6 max-w-[440px]">
+                  Not sure we're the right studio for you yet? A relaxed 15-minute chat to talk it through — no commitment, no pressure.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => trackCalendly(FREE_CONVO_URL, 'studio_contact')}
+                  className="group inline-flex items-center gap-2 bg-transparent border border-[#0A0A0A]/25 text-[#0A0A0A] text-[12px] font-bold uppercase tracking-[0.22em] px-6 py-3.5 hover:border-[#0A0A0A]/60 transition-colors"
+                >
+                  Book a free conversation
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </div>
             </div>
 
           </div>

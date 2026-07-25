@@ -56,10 +56,10 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
   }, [isMobileMenuOpen]);
 
   const navLinks = [
-    { name: t('nav.studio'), href: '/studio', page: 'studio', action: () => navigateTo('studio') },
     { name: t('nav.portfolio'), href: '/portfolio', page: 'portfolio', action: () => navigateTo('portfolio') },
     { name: t('nav.services'), href: '/services', page: 'services', action: () => navigateTo('services') },
     { name: t('nav.journal'), href: '/journal', page: 'journal', action: () => navigateTo('journal') },
+    { name: t('nav.studio'), href: '/studio', page: 'studio', action: () => navigateTo('studio') },
     { name: t('nav.pricing'), href: '/pricing', page: 'pricing', action: () => navigateTo('pricing') },
     { name: t('nav.aiStudio'), href: '/ai-concepts', page: 'ai-concepts', action: () => { setSigninSource('header_nav'); navigateTo('ai-concepts'); window.scrollTo({ top: 0 }); }, isHighlight: true },
   ];
