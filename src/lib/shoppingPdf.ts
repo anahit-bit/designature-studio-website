@@ -129,76 +129,72 @@ export async function buildShoppingListPdf(
     );
   };
 
-  // ── Products — one category per page ──
-  // The first category shares page 1 with the header + hero; every subsequent
-  // category starts on its own fresh page.
-  let firstCategory = true;
+  // ── Products — one clean, continuous list ──
+  // Items flow down the page and only break to a new page when they'd run past the
+  // footer. (Previously every category forced its own page, which turned a 12-item
+  // list into dozens of near-empty pages.)
+  const PAGE_BOTTOM = 282; // stay clear of the footer at y = 290
+  const newPage = () => {
+    drawFooter();
+    doc.addPage();
+    y = margin;
+  };
+
   for (const group of results) {
     const products = normalizeProducts(group);
     if (products.length === 0) continue;
 
-    if (!firstCategory) {
-      drawFooter();
-      doc.addPage();
-      y = margin;
-    }
-    firstCategory = false;
-
-    // Category header
+    // Category header — kept with at least its first product row.
+    if (y + 16 > PAGE_BOTTOM) newPage();
+    const catLabel = String(group.item?.category || '').toUpperCase();
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.setTextColor(10, 10, 10);
-    doc.text(group.item.category.toUpperCase(), margin, y);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(150, 150, 150);
-    doc.text(
-      '— ' + group.item.description,
-      margin + doc.getTextWidth(group.item.category.toUpperCase()) + 3,
-      y
-    );
+    doc.text(catLabel, margin, y);
+    if (group.item?.description) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(150, 150, 150);
+      const catW = doc.getTextWidth(catLabel);
+      const descLine = doc.splitTextToSize('— ' + group.item.description, contentW - catW - 6)[0] || '';
+      doc.text(descLine, margin + catW + 3, y);
+    }
     y += 6;
 
     for (const product of products) {
-      // Safety break only if a single category is unusually long.
-      if (y > 270) {
-        drawFooter();
-        doc.addPage();
-        y = margin;
-      }
+      const hasLink = !!product.link && product.link !== '#';
+      // Full title, wrapped to at most two lines (was truncated to one before).
+      const titleLines = doc.splitTextToSize(product.title || '(untitled)', contentW - 32).slice(0, 2);
+      const rowH = titleLines.length * 4 + (hasLink ? 5 : 1) + 4;
+      if (y + rowH > PAGE_BOTTOM) newPage();
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8);
       doc.setTextColor(10, 10, 10);
-      const titleLines = doc.splitTextToSize(product.title, contentW - 50);
-      doc.text(titleLines[0], margin + 3, y);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
-      doc.setTextColor(120, 120, 120);
-      doc.text(product.source || '', pageW - margin - 35, y);
+      titleLines.forEach((ln: string, i: number) => doc.text(ln, margin + 3, y + i * 4));
       if (product.price) {
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(10, 10, 10);
         doc.text(product.price, pageW - margin, y, { align: 'right' });
       }
-      y += 4;
+      y += titleLines.length * 4;
 
-      if (product.link && product.link !== '#') {
+      if (hasLink) {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(7);
         doc.setTextColor(0, 71, 171);
         // Plain ASCII only — jsPDF's helvetica (WinAnsi) renders "→" as garbage.
-        const label = `View at ${product.source || 'retailer'}`;
-        doc.textWithLink(label, margin + 3, y, { url: product.link });
+        doc.textWithLink(`View at ${product.source || 'retailer'}`, margin + 3, y, { url: product.link! });
         y += 5;
+      } else {
+        y += 1;
       }
 
-      doc.setDrawColor(220, 220, 220);
+      doc.setDrawColor(230, 230, 230);
       doc.setLineWidth(0.2);
       doc.line(margin, y, margin + contentW, y);
-      y += 3;
+      y += 4;
     }
+
+    y += 3; // breathing room between categories
   }
 
   drawFooter(); // final page

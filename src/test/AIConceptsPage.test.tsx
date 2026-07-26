@@ -99,9 +99,17 @@ describe('AIConceptsPage - Style Quiz', () => {
   // Quiz length is 18 as of the current build
   const QUIZ_LENGTH = 18;
 
-  // Logged-in flow now opens on the locked Landing state (state 0). Click
+  // AI-021 EXPLORER: the page opens on Redesign My Room (AI Vision). Select the
+  // "Find My Style" rail card to open the Style Quiz first.
+  const openTool = async (nameRe: RegExp) => {
+    const card = await screen.findByRole('button', { name: nameRe }, { timeout: 4000 });
+    fireEvent.click(card);
+  };
+
+  // Logged-in flow opens the quiz on the locked Landing state (state 0). Click
   // "Start the quiz" to reach the swipe deck (state 1) before voting.
   const enterQuiz = async () => {
+    await openTool(/Find My Style/i);
     // Auth resolution + this heavy page can take a bit past the 1s default.
     const start = await screen.findByText(/Start the quiz/i, undefined, { timeout: 4000 });
     fireEvent.click(start);
@@ -121,18 +129,18 @@ describe('AIConceptsPage - Style Quiz', () => {
 
   it('renders the landing state then the quiz deck', async () => {
     renderWithProvider(<AIConceptsPage />);
-    expect((await screen.findAllByText(/Style Quiz/i))[0]).toBeInTheDocument();
+    expect((await screen.findAllByText(/Find My Style/i))[0]).toBeInTheDocument();
     await enterQuiz();
     expect(await screen.findByRole('button', { name: /Love it/i })).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /Skip/i })).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /Not my style/i })).toBeInTheDocument();
-  });
+  }, 30_000);
 
   it('shows correct quiz length (18 rooms)', async () => {
     renderWithProvider(<AIConceptsPage />);
     await enterQuiz();
     expect(await screen.findByText(new RegExp(`Room 1 of ${QUIZ_LENGTH}`, 'i'))).toBeInTheDocument();
-  });
+  }, 30_000);
 
   it('renders a quiz image from Cloudinary API when available', async () => {
     renderWithProvider(<AIConceptsPage />);
@@ -212,7 +220,8 @@ describe('AIConceptsPage - Style Quiz', () => {
     await voteMany(QUIZ_LENGTH);
     const applyButton = await screen.findByText(/Apply .* to AI Vision/i);
     fireEvent.click(applyButton);
-    expect((await screen.findAllByText(/AI Vision/i))[0]).toBeInTheDocument();
+    // Apply → goToLiveTool('vision'): the panel now shows the Redesign My Room tool.
+    expect((await screen.findAllByText(/Redesign My Room/i))[0]).toBeInTheDocument();
     expect(screen.queryByText(new RegExp(`Room 1 of ${QUIZ_LENGTH}`, 'i'))).not.toBeInTheDocument();
   }, 30_000);
 
@@ -222,7 +231,8 @@ describe('AIConceptsPage - Style Quiz', () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
 
       renderWithProvider(<AIConceptsPage />);
-      // Logged-in users land on the quiz Landing state ("Start the quiz").
+      // Open Style Quiz from the rail; logged-in users see its Landing state.
+      await openTool(/Find My Style/i);
       expect(await screen.findByText(/Start the quiz/i, undefined, { timeout: 4000 })).toBeInTheDocument();
 
       await act(async () => {

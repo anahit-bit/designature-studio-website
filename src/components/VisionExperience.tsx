@@ -208,21 +208,13 @@ export default function VisionExperience(p: VisionExperienceProps) {
   // Optional refinements (style + room) — open by default per lock §9 / B4.4.
   const [refinementsOpen, setRefinementsOpen] = useState(true);
 
-  // ── Generate click — fires generation, then smooth-scrolls to the hero
-  //    (where the processing animation is shown). Scroll is deferred via
-  //    setTimeout so React's re-render from setIsProcessing(true) doesn't
-  //    clobber the smooth animation — same pattern as AIConceptsPage:2457.
-  //    Used by BOTH the hero overlay button and the bottom-of-strip button.
+  // ── Generate click — fire generation IN PLACE (no scroll). In the AI-021
+  //    EXPLORER layout the hero/processing stays within the visible panel, so the
+  //    old scroll-to-hero just nudged the page and misled; the viewport now stays
+  //    put. (heroRef is still attached to the hero <section> below.)
   const heroRef = useRef<HTMLElement>(null);
   const handleGenerateClick = () => {
     p.handleGenerate(false, false);
-    setTimeout(() => {
-      if (heroRef.current) {
-        heroRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else if (typeof window !== 'undefined') {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-    }, 80);
   };
 
   // ── Hidden file inputs (one shared for room) ──

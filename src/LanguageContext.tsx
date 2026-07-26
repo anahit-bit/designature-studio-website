@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, useRef, ReactNode, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 export type Language = 'en' | 'am';
@@ -82,6 +82,12 @@ interface LanguageContextType {
   selectedProjectId: string | null;
   setSelectedProjectId: (id: string | null) => void;
   navigateTo: (page: Page, projectId?: string, filter?: PortfolioFilter) => void;
+  /** Register a warning shown (via confirm) before any in-app navigation that would
+   *  leave the current page; pass null to clear. Used so an in-flight AI Vision
+   *  generation isn't silently discarded when the user navigates away. */
+  setNavGuard: (message: string | null) => void;
+  /** True if navigation may proceed (no guard set, or the user confirmed the warning). */
+  confirmNav: () => boolean;
 }
 
 const translations = {
@@ -2244,8 +2250,21 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     return translations[language][key as keyof typeof translations['en']] || key;
   };
 
+  // In-flight-work guard. A ref (not state) so reads are always current and setting
+  // it never re-renders. When set, leaving the current page asks for confirmation.
+  const navGuardRef = useRef<string | null>(null);
+  const setNavGuard = (message: string | null) => { navGuardRef.current = message; };
+  const confirmNav = () => {
+    const message = navGuardRef.current;
+    if (!message) return true;
+    return window.confirm(message);
+  };
+
   const navigateTo = (page: Page, projectId?: string, filter?: PortfolioFilter) => {
-    navigate(pageToPath(page, projectId, filter));
+    const target = pageToPath(page, projectId, filter);
+    // Only guard real page changes — re-selecting the current page shouldn't prompt.
+    if (target !== location.pathname && !confirmNav()) return;
+    navigate(target);
   };
 
   // Backwards-compat shims: existing call sites do `setSelectedProjectId(id)` then
@@ -2271,6 +2290,8 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
       portfolioFilter,
       setPortfolioFilter,
       navigateTo,
+      setNavGuard,
+      confirmNav,
     }}>
       {children}
     </LanguageContext.Provider>
