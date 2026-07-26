@@ -717,6 +717,109 @@ export const PROJECTS_LIST: ProjectData[] = [
   },
 
   // ════════════════════════════════════════════════
+  // PROJECT — Family Fun Center (#1)
+  // ════════════════════════════════════════════════
+  {
+    id: '1',
+    titleEN:  'Family Fun Center',
+    titleAM:  'Family Fun Center',
+
+    categoryEN: 'Commercial',
+    categoryAM: 'Կոմերցիոն',
+
+    imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863424/Portfolio/1/1-cover.jpg',
+
+    descriptionEN: 'A Yerevan play café built for two paces at once — soft blue play rooms, cloud ceilings and jungle wallpapers for the children next door, and a deep-blue banquette lounge lit by brass and bubble glass for the parents beside them.',
+    descriptionAM: 'A Yerevan play café built for two paces at once — soft blue play rooms, cloud ceilings and jungle wallpapers for the children next door, and a deep-blue banquette lounge lit by brass and bubble glass for the parents beside them.',
+
+    area:       '200 m²',
+    date:       '2020',
+    locationEN: 'Yerevan, Armenia',
+    locationAM: 'Yerevan, Armenia',
+
+    gallery: [
+      // SLOT 1 — WIDE 16:9 — hero (beanbag cinema)
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863425/Portfolio/1/1-g0.jpg',
+      // SLOT 2 — TALL 4:5 — line-drawn wardrobe wall
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863426/Portfolio/1/1-g1.jpg',
+      // SLOT 3 — TALL 4:5 — arched doorway transition
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863427/Portfolio/1/1-g2.jpg',
+      // SLOT 4 — WIDE 16:9 — kids' dining as built
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863428/Portfolio/1/1-g3.jpg',
+      // SLOT 5 — MID 4:3 — parents' zone (render)
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863429/Portfolio/1/1-g4.jpg',
+      // SLOT 6 — MID 4:3 — parents' zone (as built)
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863429/Portfolio/1/1-g5.jpg',
+      // SLOT 7 — SQUARE 1:1 — circular mint shelves detail
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863430/Portfolio/1/1-g6.jpg',
+      // SLOT 8 — SQUARE 1:1 — cloud ceiling + bear tables
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863432/Portfolio/1/1-g7.jpg',
+      // SLOT 9 — SQUARE 1:1 — jungle mural arch with tubes
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863433/Portfolio/1/1-g8.jpg',
+      // SLOT 10 — TALL 4:5 — reception (render)
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863434/Portfolio/1/1-g9.jpg',
+      // SLOT 11 — TALL 4:5 — reception (as built)
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863435/Portfolio/1/1-g10.jpg',
+      // overflow — 2-col grid at bottom
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863436/Portfolio/1/1-g11.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863437/Portfolio/1/1-g12.jpg',
+    ],
+  },
+
+  // ════════════════════════════════════════════════
+  // PROJECT — Blue Haven (#19)
+  // ════════════════════════════════════════════════
+  {
+    id: '19',
+    titleEN:  'Blue Haven',
+    titleAM:  'Blue Haven',
+
+    categoryEN: 'Residential',
+    categoryAM: 'Բնակելի',
+
+    imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098120/Portfolio/19/19-cover.jpg',
+
+    descriptionEN: 'A Singapore home reimagined in Japandi calm — glossy marble traded for warm parquet, the service yard softened into a plant-filled reading nook, and every bathroom brought to rest with black-matte fixtures against its original tile.',
+    descriptionAM: 'A Singapore home reimagined in Japandi calm — glossy marble traded for warm parquet, the service yard softened into a plant-filled reading nook, and every bathroom brought to rest with black-matte fixtures against its original tile.',
+
+    area:       '80 m²',
+    date:       '2024',
+    locationEN: 'Singapore',
+    locationAM: 'Singapore',
+
+    gallery: [
+      // SLOT 1 — WIDE 16:9 — hero
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098121/Portfolio/19/19-g0.jpg',
+      // SLOT 2 — TALL 4:5 — portrait pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098122/Portfolio/19/19-g1.jpg',
+      // SLOT 3 — TALL 4:5 — portrait pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098123/Portfolio/19/19-g2.jpg',
+      // SLOT 4 — WIDE 16:9 — second wide
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098123/Portfolio/19/19-g3.jpg',
+      // SLOT 5 — MID 4:3 — landscape pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098124/Portfolio/19/19-g4.jpg',
+      // SLOT 6 — MID 4:3 — landscape pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098125/Portfolio/19/19-g5.jpg',
+      // SLOT 7 — SQUARE 1:1 — trio LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098126/Portfolio/19/19-g6.jpg',
+      // SLOT 8 — SQUARE 1:1 — trio CENTER
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098127/Portfolio/19/19-g7.jpg',
+      // SLOT 9 — SQUARE 1:1 — trio RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098128/Portfolio/19/19-g8.jpg',
+      // SLOT 10 — TALL 4:5 — final pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098129/Portfolio/19/19-g9.jpg',
+      // SLOT 11 — TALL 4:5 — final pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098130/Portfolio/19/19-g10.jpg',
+      // --- overflow: real as-built photos (last) ---
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098130/Portfolio/19/19-g11.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098131/Portfolio/19/19-g12.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098132/Portfolio/19/19-g13.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098133/Portfolio/19/19-g14.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098134/Portfolio/19/19-g15.jpg',
+    ],
+  },
+
+  // ════════════════════════════════════════════════
   // ADD YOUR NEXT PROJECT HERE
   // Copy the block below, paste it above this comment,
   // increment the id, and fill in your details.
