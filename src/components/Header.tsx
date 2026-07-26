@@ -12,7 +12,7 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
-  const { language, setLanguage, t, navigateTo, currentPage } = useLanguage();
+  const { language, setLanguage, t, navigateTo, currentPage, confirmNav } = useLanguage();
   const { user, isLoading: authLoading, signOut } = useAuth();
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const routerNavigate = useNavigate();
@@ -188,6 +188,7 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
     return (
       <button
         onClick={() => {
+          if (!confirmNav()) return;
           routerNavigate('/account');
           window.scrollTo({ top: 0 });
           if (inMobileMenu) setIsMobileMenuOpen(false);
@@ -229,6 +230,7 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
               if (location.pathname === '/') {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               } else {
+                if (!confirmNav()) return;
                 routerNavigate('/');
                 window.scrollTo({ top: 0, behavior: 'auto' });
               }
