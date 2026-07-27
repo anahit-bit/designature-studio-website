@@ -820,6 +820,59 @@ export const PROJECTS_LIST: ProjectData[] = [
   },
 
   // ════════════════════════════════════════════════
+  // PROJECT — Still Waters (#43)
+  // ════════════════════════════════════════════════
+  {
+    id: '43',
+    titleEN:  'Still Waters',
+    titleAM:  'Still Waters',
+
+    categoryEN: 'Residential',
+    categoryAM: 'Բնակելի',
+
+    imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104932/Portfolio/43/43-cover.jpg',
+
+    descriptionEN: 'Full-home interior design for a 94 m² apartment in Yerevan, Armenia — a warm, transitional scheme where white oak millwork, herringbone floors and classic cabinetry meet cream curved seating, marble and brushed brass, with a grisaille landscape mural anchoring the open living–dining–kitchen core.',
+    descriptionAM: 'Full-home interior design for a 94 m² apartment in Yerevan, Armenia — a warm, transitional scheme where white oak millwork, herringbone floors and classic cabinetry meet cream curved seating, marble and brushed brass, with a grisaille landscape mural anchoring the open living–dining–kitchen core.',
+
+    area:       '94 m²',
+    date:       '2026',
+    locationEN: 'Yerevan, Armenia',
+    locationAM: 'Yerevan, Armenia',
+
+    gallery: [
+      // SLOT 1 — WIDE 16:9 — hero
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104933/Portfolio/43/43-g0.jpg',
+      // SLOT 2 — TALL 4:5 — portrait pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104934/Portfolio/43/43-g1.jpg',
+      // SLOT 3 — TALL 4:5 — portrait pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104935/Portfolio/43/43-g2.jpg',
+      // SLOT 4 — WIDE 16:9 — second wide
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104935/Portfolio/43/43-g3.jpg',
+      // SLOT 5 — MID 4:3 — landscape pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104936/Portfolio/43/43-g4.jpg',
+      // SLOT 6 — MID 4:3 — landscape pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104937/Portfolio/43/43-g5.jpg',
+      // SLOT 7 — SQUARE 1:1 — trio LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104939/Portfolio/43/43-g6.jpg',
+      // SLOT 8 — SQUARE 1:1 — trio CENTER
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104940/Portfolio/43/43-g7.jpg',
+      // SLOT 9 — SQUARE 1:1 — trio RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104941/Portfolio/43/43-g8.jpg',
+      // SLOT 10 — TALL 4:5 — final pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104941/Portfolio/43/43-g9.jpg',
+      // SLOT 11 — TALL 4:5 — final pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104942/Portfolio/43/43-g10.jpg',
+      // --- overflow: pair (4:5) + trio (1:1) ---
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104943/Portfolio/43/43-g11.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104944/Portfolio/43/43-g12.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104945/Portfolio/43/43-g13.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104946/Portfolio/43/43-g14.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104947/Portfolio/43/43-g15.jpg',
+    ],
+  },
+
+  // ════════════════════════════════════════════════
   // ADD YOUR NEXT PROJECT HERE
   // Copy the block below, paste it above this comment,
   // increment the id, and fill in your details.
