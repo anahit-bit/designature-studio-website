@@ -30,7 +30,7 @@ const THUMB_AFTER_OPTS = { quality: 'best' as const, enhance: true, sharpen: 60 
 // Spec: WEBSITE-PLAN-ai-vision-VARIANT-D.html.
 
 export const VISION_STYLES_FULL = [
-  'Mid-Century', 'Japandi', 'Coastal', 'Modern', 'Bohemian', 'Rustic',
+  'Warm Contemporary', 'Mid-Century', 'Japandi', 'Coastal', 'Modern', 'Bohemian', 'Rustic',
   'Industrial', 'Art Deco', 'Minimalist', 'Maximalist', 'Dopamine', 'Biophilic',
 ] as const;
 

@@ -16,6 +16,7 @@ export type StylePreset =
   | "modern"
   | "rustic"
   | "transitional"
+  | "warm_contemporary"
   | "minimalist"
   | "maximalist"
   | "biophilic"
@@ -127,6 +128,16 @@ export const STYLE_BRIEFS: Record<StylePreset, string> = {
 7. OVERALL MOOD: balanced, timeless, comfortable. Neither overtly modern nor traditional — a refined middle ground that feels welcoming, polished, and quietly sophisticated.
 `.trim(),
 
+  warm_contemporary: `
+1. COLOR PALETTE: Warm White #F3EFE8, Soft Cream #EDE4D6, Oat Beige #D8CDBA, Warm Greige #BFB4A2, Pale Oak #C9A876, Brushed Brass #B08D57, Soft Charcoal #4A4744, with occasional muted blue-grey #8A94A0 cushion accents.
+2. MATERIALS & FINISHES: light rift-oak herringbone flooring, oak millwork with reeded/fluted glass fronts and integrated warm LED, honed white marble with soft grey veining, brushed brass and champagne-gold metal, ivory boucle and linen upholstery, sheer linen drapery, smooth matte plaster walls.
+3. FURNITURE CHARACTER: soft rounded contemporary — curved boucle armchairs and low plush sofas with gentle curves, slim brass-based marble tables, tailored yet cozy and inviting; nothing sharp, boxy, industrial, or cold.
+4. LIGHTING: a sculptural circular LED ring pendant in black-and-brass, a slim linear marble or alabaster pendant, recessed warm downlights in a clean tray ceiling, concealed cove strips. Warm, layered, glare-free.
+5. WALL & CEILING TREATMENT: smooth painted warm-white walls; a clean, freshly finished flat ceiling with a subtle recessed tray; no exposed concrete, beams, pipes, or wiring; restrained shadow-gap detailing.
+6. DECOR & STYLING: gold-framed botanical or abstract art in pairs, styled open shelving with ceramics and glassware, a marble bowl with fruit, soft throws and textured cushions, one architectural plant in a matte planter.
+7. OVERALL MOOD: warm, elevated, quietly luxurious — a soft contemporary calm that feels layered and inviting, not stark. Comfortable sophistication filled with natural light.
+`.trim(),
+
   minimalist: `
 1. COLOR PALETTE: Pure White #FFFFFF, Off-White #F5F3EE, Soft Warm Grey #E0DBD5, Light Concrete #C8C4BE, Warm Charcoal #4A4542, Black #1A1A1A, Pale Linen #EAE6E0.
 2. MATERIALS & FINISHES: seamless smooth matte plaster, honed concrete, Japanese white oak with minimal grain, raw-edge linen and undyed cotton, matte black stainless, tempered glass, monolithic stone slabs with no visible veining.
@@ -190,6 +201,7 @@ export const ROOM_TYPE_LABELS: Record<RoomType, string> = {
 
 export const STYLE_NAME_TO_PRESET: Record<string, StylePreset> = {
   "Japandi":      "japandi",
+  "Warm Contemporary": "warm_contemporary",
   "Modern":       "modern",
   "Mid-Century":  "mid_century",
   "Bohemian":     "bohemian",
