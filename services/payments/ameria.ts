@@ -84,6 +84,22 @@ export function resolveAmountAndCurrency(mode: AmeriaMode): { amount: number; cu
   return { amount: Number.isFinite(amount) && amount > 0 ? amount : 99, currency: CURRENCY_USD };
 }
 
+/**
+ * Resolve the amount + currency to charge for a SUBSCRIPTION whose real price is
+ * `priceUsd`. Same sandbox constraint as the consultation: the sandbox terminal
+ * only accepts 10 AMD (051), so testing never uses real USD amounts; production
+ * charges the actual USD price in 840. The subscription's real USD price is what
+ * we store on the row (grandfathering) — this is only what we hand the bank.
+ */
+export function resolveChargeAmount(
+  priceUsd: number,
+  mode: AmeriaMode = getAmeriaConfig().mode,
+): { amount: number; currency: string } {
+  if (mode === "sandbox") return resolveAmountAndCurrency("sandbox");
+  const amount = Number.isFinite(priceUsd) && priceUsd > 0 ? priceUsd : 0;
+  return { amount, currency: CURRENCY_USD };
+}
+
 /** Minimal, deliberately conservative email check for the booking form. */
 export function isValidEmail(email: unknown): email is string {
   return typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) && email.trim().length <= 254;
@@ -187,6 +203,14 @@ export async function initPayment(args: {
    * consultation flow). This is the entry point for the subscription rail.
    */
   cardHolderId?: string;
+  /** Override the charge amount. Defaults to the mode's amount (consultation).
+   *  Subscriptions pass their own price via resolveChargeAmount(). */
+  amount?: number;
+  /** Override the currency (defaults to the mode's currency). */
+  currency?: string;
+  /** Override the BackURL (defaults to AMERIA_CALLBACK_URL). Subscriptions pass
+   *  their own callback so the return flow is separate from the consultation. */
+  backUrl?: string;
 }): Promise<InitPaymentResult> {
   const cfg = getAmeriaConfig();
   if (!cfg.baseUrl || !cfg.clientId || !cfg.username || !cfg.password) {
@@ -197,11 +221,11 @@ export async function initPayment(args: {
     ClientID: cfg.clientId,
     Username: cfg.username,
     Password: cfg.password,
-    Amount: cfg.amount,
+    Amount: args.amount ?? cfg.amount,
     OrderID: args.orderId,
-    Currency: cfg.currency,
+    Currency: args.currency ?? cfg.currency,
     Description: args.description,
-    BackURL: cfg.callbackUrl,
+    BackURL: args.backUrl ?? cfg.callbackUrl,
     Opaque: args.opaque,
   };
   if (args.cardHolderId) body.CardHolderID = args.cardHolderId;

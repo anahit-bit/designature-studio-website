@@ -16,6 +16,8 @@ import RefundPage from './components/RefundPage';
 import ConsultationPage from './components/ConsultationPage';
 import BookingConfirmedPage from './components/BookingConfirmedPage';
 import BookingFailedPage from './components/BookingFailedPage';
+import SubscribeSuccessPage from './components/SubscribeSuccessPage';
+import SubscribeFailedPage from './components/SubscribeFailedPage';
 import DeliverablesPage from './components/DeliverablesPage';
 import AdminPage from './components/AdminPage';
 import AdminLoginPage from './components/AdminLoginPage';
@@ -132,6 +134,8 @@ const App: React.FC = () => (
             <Route path="/consultation" element={<ConsultationPage />} />
             <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
             <Route path="/booking/failed" element={<BookingFailedPage />} />
+            <Route path="/subscribe/success" element={<SubscribeSuccessPage />} />
+            <Route path="/subscribe/failed" element={<SubscribeFailedPage />} />
             <Route path="/deliverables" element={<DeliverablesRoute />} />
             <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route path="/admin/users" element={<AdminUsersPage />} />
