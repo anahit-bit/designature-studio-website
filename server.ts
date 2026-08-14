@@ -85,6 +85,9 @@ import { absUrl } from "./server/seo/config.js";
 import { legacyRedirects, trailingSlashRedirect } from "./server/redirects.js";
 // ─── Acquisition read-back (I-027): GA4 Data API + Search Console → /admin ─────
 import { getAcquisition } from "./server/analytics/acquisition.js";
+import { getInsights, clearInsightsCache } from "./server/analytics/insights.js";
+import { lookupPhrase } from "./server/analytics/searchConsole.js";
+import { isAcquisitionConfigured } from "./server/analytics/googleClients.js";
 // ─── Internal/owner accounts excluded from /admin analytics aggregates ────────
 import { isInternalAccount } from "./server/internalAccounts.js";
 // ─── Free-tier quota logic (pure, unit-tested in src/test/quotaEnforcement.test.ts) ─
@@ -231,6 +234,12 @@ interface DB {
    *  Consultations tab + HubSpot-sync status survive redeploys. Keyed/deduped by
    *  inviteeUri. Capped FIFO. */
   calendlyBookings?: Array<ConsultationBooking & { hubspot?: { synced: boolean; at?: string; error?: string } }>;
+  /** GEO watchlist — owner-editable phrases we track Google rank for (Insights tab).
+   *  Durable so edits survive redeploys. Seeded on first boot. */
+  geoPhrases?: string[];
+  /** Daily rank snapshots per watched phrase → the position trend over time.
+   *  One row per (date, phrase). Capped FIFO. */
+  geoSnapshots?: Array<{ date: string; phrase: string; position: number | null; impressions: number }>;
 }
 
 /** UTC YYYY-MM-DD for daily-budget bucketing. */
@@ -669,6 +678,47 @@ async function ensurePlatformsSeeded(): Promise<void> {
   writeDB(dbCache);
 }
 
+// ─── GEO watchlist + rank snapshots (durable, app_state) ────────────────────
+// Owner-editable phrases we track Google position for, plus a daily snapshot of
+// each phrase's position so the Insights tab can show movement over time.
+const DEFAULT_GEO_PHRASES = ["ai interior design", "online interior design", "ai room design"];
+const GEO_SNAPSHOTS_CAP = 5000;
+
+/** Seed the watchlist once (owner-editable thereafter). No-op if already present. */
+async function ensureGeoPhrasesSeeded(): Promise<void> {
+  if (!dbCache) return;
+  if (Array.isArray(dbCache.geoPhrases)) return; // already initialized (even if emptied by owner)
+  dbCache.geoPhrases = [...DEFAULT_GEO_PHRASES];
+  console.log(`✅ seeded ${dbCache.geoPhrases.length} GEO phrases into app_state (id='${STATE_ID}')`);
+  writeDB(dbCache);
+}
+
+/** Daily: record each watched phrase's current Google position + impressions.
+ *  One row per (date, phrase); today's row is replaced on re-run. Best-effort. */
+async function snapshotGeoPositions(): Promise<void> {
+  try {
+    if (!isAcquisitionConfigured()) return;
+    const db = readDB();
+    const phrases = Array.isArray(db.geoPhrases) ? db.geoPhrases : [];
+    if (!phrases.length) return;
+    const today = utcDateString();
+    let snaps = Array.isArray(db.geoSnapshots) ? db.geoSnapshots : [];
+    for (const p of phrases) {
+      const phrase = p.trim().toLowerCase();
+      if (!phrase) continue;
+      const r = await lookupPhrase(phrase, 28);
+      snaps = snaps.filter((s) => !(s.date === today && s.phrase === phrase));
+      snaps.push({ date: today, phrase, position: r.position, impressions: r.impressions });
+    }
+    while (snaps.length > GEO_SNAPSHOTS_CAP) snaps.shift();
+    db.geoSnapshots = snaps;
+    writeDB(db);
+    console.log(`[geo] snapshotted ${phrases.length} phrase position(s) for ${today}`);
+  } catch (e) {
+    console.error("[geo] snapshot failed:", (e as Error)?.message || e);
+  }
+}
+
 // ─── Calendly booking store (durable, app_state) ────────────────────────────
 // Deduped by inviteeUri. The webhook writes here on invitee.created/canceled; a
 // live admin refresh merges API reads in while preserving each row's HubSpot
@@ -892,6 +942,7 @@ async function startServer() {
   // Seed the durable platform inventory once (owner-editable thereafter). Must run
   // after hydration so it can check whether this app_state row already has edits.
   await ensurePlatformsSeeded();
+  await ensureGeoPhrasesSeeded();
 
   // Sweep stale pending consultation orders → cancelled, every 5 minutes (I-025).
   // Run once at boot to clear anything left stale across a restart, then on an
@@ -906,6 +957,12 @@ async function startServer() {
   setTimeout(() => void syncBookingsToHubspot(), 15_000).unref();
   const calendlySyncTimer = setInterval(() => void syncBookingsToHubspot(), 3 * 60 * 1000);
   calendlySyncTimer.unref();
+
+  // Snapshot GEO watchlist positions daily (Search Console lags ~2-3d, so daily
+  // is plenty) → the Insights tab shows position movement over time. Best-effort.
+  setTimeout(() => void snapshotGeoPositions(), 45_000).unref();
+  const geoSnapTimer = setInterval(() => void snapshotGeoPositions(), 24 * 60 * 60 * 1000);
+  geoSnapTimer.unref();
 
   // ════════════════════════════════════════════════════════════════════════
   // I-021b · Per-provider cost estimates (USD per call).
@@ -3556,6 +3613,65 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       console.error("[acquisition] fetch failed:", err instanceof Error ? err.message : err);
       res.status(500).json({ error: "acquisition unavailable" });
     }
+  });
+
+  // ── Insights tab: traffic pulse + blog readership + search/GEO ─────────────
+  //   GET /api/admin/insights       → aggregated GA4 + GSC + watchlist (6h cache)
+  //   GET /api/admin/geo-phrases    → { phrases }  (editable watchlist)
+  //   PUT /api/admin/geo-phrases    → replace the phrase list { phrases: string[] }
+  app.get("/api/admin/insights", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const db = readDB();
+    const phrases = Array.isArray(db.geoPhrases) ? db.geoPhrases : [];
+    try {
+      const data = await getInsights(phrases);
+      const snaps = Array.isArray(db.geoSnapshots) ? db.geoSnapshots : [];
+      // Enrich each watched phrase with its rank + position history (for the trend).
+      const watchlist = phrases.map((p) => {
+        const key = p.trim().toLowerCase();
+        const rank = data.watchlist.find((w) => w.phrase === key)
+          || { phrase: key, found: false, clicks: 0, impressions: 0, ctrPct: 0, position: null };
+        const history = snaps
+          .filter((s) => s.phrase === key)
+          .sort((a, b) => a.date.localeCompare(b.date))
+          .map((s) => ({ date: s.date, position: s.position }));
+        return { ...rank, display: p, history };
+      });
+      res.json({ ...data, watchlist });
+    } catch (err) {
+      console.error("[insights] fetch failed:", err instanceof Error ? err.message : err);
+      res.status(500).json({ error: "insights unavailable" });
+    }
+  });
+
+  app.get("/api/admin/geo-phrases", (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    res.json({ phrases: Array.isArray(dbCache?.geoPhrases) ? dbCache!.geoPhrases : [] });
+  });
+
+  app.put("/api/admin/geo-phrases", (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const raw = Array.isArray(req.body?.phrases) ? req.body.phrases : null;
+    if (!raw) {
+      res.status(400).json({ error: "expected { phrases: string[] }" });
+      return;
+    }
+    const seen = new Set<string>();
+    const clean: string[] = [];
+    for (const p of raw) {
+      const s = String(p ?? "").trim();
+      if (!s) continue;
+      const k = s.toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      clean.push(s);
+      if (clean.length >= 25) break;
+    }
+    const db = readDB();
+    db.geoPhrases = clean;
+    writeDB(db);
+    clearInsightsCache(); // list changed → next /insights rebuilds
+    res.json({ ok: true, phrases: clean });
   });
 
   // ── GET /api/admin/feedback — durable feedback inbox (newest first) ────────
