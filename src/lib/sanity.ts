@@ -293,6 +293,9 @@ const POST_QUERY = `*[_type == "post" && status == "published" && slug.current =
   shoppingImage,
   "shoppingItems": shoppingItems[]{name, retailer, price, url},
   "personalNotes": personalNotes[].quote,
+  ctaHeading,
+  ctaLabel,
+  ctaHref,
   "seo": {
     "metaTitle": seo.metaTitle,
     "metaDescription": seo.metaDescription,
@@ -331,6 +334,9 @@ interface SanityPost {
   author?: string
   publishedAt?: string
   aiDisclosure?: boolean
+  ctaHeading?: string
+  ctaLabel?: string
+  ctaHref?: string
   seo?: {
     metaTitle?: string | null
     metaDescription?: string | null
@@ -383,6 +389,9 @@ function toBlogPost(doc: SanityPost): BlogPost {
     author: doc.author ?? undefined,
     publishedAt: doc.publishedAt ?? undefined,
     aiDisclosure: doc.aiDisclosure ?? false,
+    ctaHeading: doc.ctaHeading ?? undefined,
+    ctaLabel: doc.ctaLabel ?? undefined,
+    ctaHref: doc.ctaHref ?? undefined,
     seo: doc.seo
       ? {
           metaTitle: doc.seo.metaTitle ?? undefined,

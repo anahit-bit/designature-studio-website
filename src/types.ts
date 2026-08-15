@@ -85,6 +85,11 @@ export interface BlogPost {
   author?: string;
   publishedAt?: string;
   aiDisclosure?: boolean;
+  // Per-post CTA overrides (end-of-article CTA band). Blank fields fall back to
+  // the AI-Vision defaults; the black "Book a consultation" secondary is fixed.
+  ctaHeading?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
   seo?: BlogSeo;
   // ── Structured layout modules (single-post view) ──
   beforeImage?: string;

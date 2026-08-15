@@ -146,10 +146,6 @@ const PricingSection: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
                 <div className="flex items-start gap-2"><CHECK_W /><span className="text-[13px] text-white/80 leading-relaxed"><strong className="text-white font-semibold">Room Audit</strong> — {t('pricing.3month')}</span></div>
                 <div className="flex items-start gap-2"><CHECK_W /><span className="text-[13px] text-white/80 leading-relaxed"><strong className="text-white font-semibold">Design Brief</strong> — {t('pricing.1month')}</span></div>
               </div>
-              <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/65 mb-3">{t('pricing.projectDiscount')}</div>
-              <div className="flex flex-col gap-2.5">
-                <div className="flex items-start gap-2"><CHECK_W /><span className="text-[13px] text-white/80 leading-relaxed">{t('pricing.10off')}</span></div>
-              </div>
             </div>
             <div className="pt-4 mt-auto border-t border-white/15">
               <NotifyButton dark plan="Design $19" />
@@ -177,10 +173,6 @@ const PricingSection: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
                 <div className="flex items-start gap-2"><CHECK /><span className="text-[13px] text-black/75 leading-relaxed"><strong className="text-black font-semibold">Room Audit</strong> — {t('pricing.300month')}</span></div>
                 <div className="flex items-start gap-2"><CHECK /><span className="text-[13px] text-black/75 leading-relaxed"><strong className="text-black font-semibold">All 6 AI tools</strong> {t('pricing.inclCultural')}</span></div>
                 <div className="flex items-start gap-2"><CHECK /><span className="text-[13px] text-black/75 leading-relaxed"><strong className="text-black font-semibold">{t('pricing.projectFolders')}</strong> — {t('pricing.saveConcepts')}</span></div>
-              </div>
-              <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-black/65 mb-3">{t('pricing.projectDiscount')}</div>
-              <div className="flex flex-col gap-2.5">
-                <div className="flex items-start gap-2"><CHECK /><span className="text-[13px] text-black/75 leading-relaxed">{t('pricing.20off')}</span></div>
               </div>
             </div>
             <div className="pt-4 mt-auto border-t border-black/8">

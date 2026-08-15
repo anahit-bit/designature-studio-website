@@ -131,6 +131,53 @@ const APP_STATE_TABLE = `
   );
 `;
 
+// AC-001/AC-002 — the user's saved Library. Every generated output a user chooses
+// to keep (AI Vision concept, Shopping list, Room Audit, Style Quiz result) becomes
+// one row. Images are uploaded to Cloudinary first, so `full_url`/`thumbnail_url`
+// are durable links; list-type outputs (shopping) carry their data in `metadata`.
+// Keyed by googleId (user_id) to match users.json; `user_email` is denormalized
+// for admin/debug visibility.
+const SAVED_ITEMS_TABLE = `
+  CREATE TABLE IF NOT EXISTS saved_items (
+    id            uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id       text        NOT NULL,                         -- googleId
+    user_email    text,
+    tool          text        NOT NULL,   -- 'ai_vision' | 'shopping' | 'room_audit' | 'style_quiz' | 'design_brief' | 'cultural'
+    title         text        NOT NULL,
+    thumbnail_url text,
+    full_url      text,                                         -- Cloudinary secure_url for image outputs
+    metadata      jsonb       NOT NULL DEFAULT '{}'::jsonb,     -- shopping items, style DNA, audit scores, etc.
+    created_at    timestamptz NOT NULL DEFAULT now()
+  );
+`;
+
+// Library reads are always "this user's items, newest first" (optionally filtered by tool).
+const SAVED_ITEMS_USER_INDEX = `
+  CREATE INDEX IF NOT EXISTS idx_saved_items_user_created
+    ON saved_items (user_id, created_at DESC);
+`;
+
+// Expiring shareable links: a random token minted on demand + an expiry. The public
+// /shared/:token viewer resolves items by token and rejects expired ones.
+const SAVED_ITEMS_SHARE_COLUMNS = `
+  ALTER TABLE saved_items ADD COLUMN IF NOT EXISTS share_token      text;
+  ALTER TABLE saved_items ADD COLUMN IF NOT EXISTS share_expires_at timestamptz;
+`;
+const SAVED_ITEMS_SHARE_INDEX = `
+  CREATE INDEX IF NOT EXISTS idx_saved_items_share_token ON saved_items (share_token);
+`;
+
+// Dedup: a content fingerprint so the same generated output can't be saved twice
+// by the same user (idempotent Save). Partial-unique on (user_id, content_hash).
+const SAVED_ITEMS_HASH_COLUMN = `
+  ALTER TABLE saved_items ADD COLUMN IF NOT EXISTS content_hash text;
+`;
+const SAVED_ITEMS_HASH_INDEX = `
+  CREATE UNIQUE INDEX IF NOT EXISTS uq_saved_items_user_hash
+    ON saved_items (user_id, content_hash)
+    WHERE content_hash IS NOT NULL;
+`;
+
 /**
  * Create the payments tables if they don't exist. Logs a "ready" line per table.
  * Throws if the DB is unreachable — the caller (server boot) decides whether to
@@ -167,4 +214,12 @@ export async function runMigrations(): Promise<void> {
 
   await pool.query(APP_STATE_TABLE);
   console.log("✅ app_state table ready");
+
+  await pool.query(SAVED_ITEMS_TABLE);
+  await pool.query(SAVED_ITEMS_USER_INDEX);
+  await pool.query(SAVED_ITEMS_SHARE_COLUMNS);
+  await pool.query(SAVED_ITEMS_SHARE_INDEX);
+  await pool.query(SAVED_ITEMS_HASH_COLUMN);
+  await pool.query(SAVED_ITEMS_HASH_INDEX);
+  console.log("✅ saved_items table ready");
 }

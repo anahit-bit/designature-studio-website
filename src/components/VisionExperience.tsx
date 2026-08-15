@@ -1,7 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Download, RefreshCw } from 'lucide-react';
+import { X, Download, RefreshCw, Pencil, Share2, Bookmark, Check } from 'lucide-react';
 import { cld, cldSrcSet } from '../lib/cld';
 import { useLanguage } from '../LanguageContext';
+import { getStoredToken } from '../sessionClient';
+import { accountApi } from '../lib/accountApi';
+import { fingerprint, isSaved, markSaved } from '../lib/savedMarks';
 import FeedbackBand from './FeedbackBand';
 import Marquee from './studio/Marquee';
 import { STYLES } from './AIVisionShowcase';
@@ -27,8 +30,8 @@ const THUMB_AFTER_OPTS = { quality: 'best' as const, enhance: true, sharpen: 60 
 // Spec: WEBSITE-PLAN-ai-vision-VARIANT-D.html.
 
 export const VISION_STYLES_FULL = [
-  'Mid-Century', 'Japandi', 'Coastal', 'Modern', 'Bohemian', 'Rustic',
-  'Industrial', 'Art Deco', 'Minimalist', 'Maximalist', 'Biophilic',
+  'Warm Contemporary', 'Mid-Century', 'Japandi', 'Coastal', 'Modern', 'Bohemian', 'Rustic',
+  'Industrial', 'Art Deco', 'Minimalist', 'Maximalist', 'Dopamine', 'Biophilic',
 ] as const;
 
 export const ROOM_TYPES_FULL = [
@@ -59,6 +62,8 @@ interface VisionExperienceProps {
   handleDrop: (e: React.DragEvent, type: 'inspiration' | 'room') => void;
   handleGenerate: (isVariation?: boolean, isSampleRun?: boolean) => void;
   handleReset: () => void;
+  /** AI Vision — return to the setup screen keeping room + inspirations + selections. */
+  handleEdit: () => void;
   handleDownload: (dataUrl: string, n?: number) => void;
   handleTrySampleRoom: () => void;
   removeInspirationImage: (i: number) => void;
@@ -97,6 +102,38 @@ const DNA_BANNER_DISMISSED_KEY = 'ai_vision_dna_banner_dismissed';
 
 export default function VisionExperience(p: VisionExperienceProps) {
   const { t } = useLanguage();
+
+  // ── AC-002 — "Save to My account": persist the shown concept to the user's
+  // Library (paid feature) so they can re-open/download/share it later. Free users
+  // get an upsell instead of a fake "Saved". `signedIn` guards the preview no-op.
+  const [savedMarks, setSavedMarks] = useState<Set<string>>(new Set());
+  const [savingConcept, setSavingConcept] = useState(false);
+  const signedIn = !!getStoredToken();
+  const canSaveLibrary = signedIn && p.isPaid; // saving to the Library is paid-only
+  // Mark persists in localStorage → the button stays "Saved" even after leaving
+  // and returning to this concept (the server also dedups, so no duplicate rows).
+  const conceptMark = p.selectedConceptUrl ? fingerprint(p.selectedConceptUrl) : '';
+  const conceptSaved = !!conceptMark && (savedMarks.has(conceptMark) || isSaved(conceptMark));
+  const handleSaveConcept = async () => {
+    if (!p.selectedConceptUrl || savingConcept || conceptSaved || !p.isPaid) return;
+    setSavingConcept(true);
+    try {
+      const style = p.selectedStyle ? p.translateStyle(p.selectedStyle) : 'Concept';
+      const room = p.selectedRoom || 'Room';
+      await accountApi.saveLibraryItem({
+        tool: 'ai_vision',
+        title: `${room} — ${style}`,
+        imageDataUrl: p.selectedConceptUrl,
+      });
+      markSaved(conceptMark);
+      setSavedMarks((prev) => new Set(prev).add(conceptMark));
+    } catch {
+      /* non-fatal — the concept is still downloadable */
+    } finally {
+      setSavingConcept(false);
+    }
+  };
+
   // ── State derivation ──
   // State 3 (results) is driven SOLELY by live `results` from the current round.
   // The archive (past concepts kept across a Reset) is supplemental — it only
@@ -171,21 +208,13 @@ export default function VisionExperience(p: VisionExperienceProps) {
   // Optional refinements (style + room) — open by default per lock §9 / B4.4.
   const [refinementsOpen, setRefinementsOpen] = useState(true);
 
-  // ── Generate click — fires generation, then smooth-scrolls to the hero
-  //    (where the processing animation is shown). Scroll is deferred via
-  //    setTimeout so React's re-render from setIsProcessing(true) doesn't
-  //    clobber the smooth animation — same pattern as AIConceptsPage:2457.
-  //    Used by BOTH the hero overlay button and the bottom-of-strip button.
+  // ── Generate click — fire generation IN PLACE (no scroll). In the AI-021
+  //    EXPLORER layout the hero/processing stays within the visible panel, so the
+  //    old scroll-to-hero just nudged the page and misled; the viewport now stays
+  //    put. (heroRef is still attached to the hero <section> below.)
   const heroRef = useRef<HTMLElement>(null);
   const handleGenerateClick = () => {
     p.handleGenerate(false, false);
-    setTimeout(() => {
-      if (heroRef.current) {
-        heroRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else if (typeof window !== 'undefined') {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-    }, 80);
   };
 
   // ── Hidden file inputs (one shared for room) ──
@@ -601,32 +630,77 @@ export default function VisionExperience(p: VisionExperienceProps) {
               Your {p.selectedRoom || 'room'}{p.selectedStyle ? `, ${p.translateStyle(p.selectedStyle)}` : ''}.
             </h3>
           </div>
-          <div className="flex gap-2 flex-wrap">
+          {/* Result actions — utility actions are icon-only (label via title +
+              aria-label); only the Shop this room conversion CTA keeps its words,
+              so the bar stays compact and doesn't run the full width. */}
+          <div className="flex gap-2 flex-wrap items-center">
             {p.generationsLeft > 0 && (
               <button
                 type="button"
                 onClick={() => p.handleGenerate(true, false)}
                 disabled={p.isProcessing}
-                className="px-5 py-3 bg-transparent text-white border border-white/40 hover:border-white text-[10px] font-bold uppercase tracking-[0.22em] inline-flex items-center gap-2 disabled:opacity-40"
+                className="w-11 h-11 flex items-center justify-center bg-transparent text-white border border-white/40 hover:border-white hover:bg-white/[0.06] transition-colors disabled:opacity-40"
+                aria-label="Variation"
+                title="Generate a variation"
               >
-                <RefreshCw className="w-3 h-3" /> Variation
-              </button>
-            )}
-            {p.selectedConceptUrl && (
-              <button
-                type="button"
-                onClick={() => p.selectedConceptUrl && p.handleDownload(p.selectedConceptUrl, p.selectedConceptIndex + 1)}
-                className="px-5 py-3 bg-transparent text-white border border-white/40 hover:border-white text-[10px] font-bold uppercase tracking-[0.22em] inline-flex items-center gap-2"
-              >
-                <Download className="w-3 h-3" /> Download
+                <RefreshCw className="w-[18px] h-[18px]" />
               </button>
             )}
             <button
               type="button"
-              onClick={handleShare}
-              className="px-5 py-3 bg-transparent text-white border border-white/40 hover:border-white text-[10px] font-bold uppercase tracking-[0.22em]"
+              onClick={p.handleEdit}
+              disabled={p.isProcessing}
+              className="w-11 h-11 flex items-center justify-center bg-transparent text-white border border-white/40 hover:border-white hover:bg-white/[0.06] transition-colors disabled:opacity-40"
+              aria-label="Edit"
+              title="Change the style or room — keeps your photo"
             >
-              Share
+              <Pencil className="w-[18px] h-[18px]" />
+            </button>
+            {p.selectedConceptUrl && (
+              <button
+                type="button"
+                onClick={() => p.selectedConceptUrl && p.handleDownload(p.selectedConceptUrl, p.selectedConceptIndex + 1)}
+                className="w-11 h-11 flex items-center justify-center bg-transparent text-white border border-white/40 hover:border-white hover:bg-white/[0.06] transition-colors"
+                aria-label="Download"
+                title="Download"
+              >
+                <Download className="w-[18px] h-[18px]" />
+              </button>
+            )}
+            {p.selectedConceptUrl && signedIn && (
+              canSaveLibrary ? (
+                <button
+                  type="button"
+                  onClick={handleSaveConcept}
+                  disabled={savingConcept || conceptSaved}
+                  className="px-5 py-3 bg-transparent text-white border border-white/40 hover:border-white text-[10px] font-bold uppercase tracking-[0.22em] inline-flex items-center gap-2 disabled:opacity-60"
+                  title="Save this concept to My account so you can re-open, download and share it later"
+                >
+                  {conceptSaved ? (
+                    <><Check className="w-3 h-3" /> Saved</>
+                  ) : (
+                    <><Bookmark className="w-3 h-3" /> {savingConcept ? 'Saving…' : 'Save'}</>
+                  )}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => p.navigateTo('pricing')}
+                  className="px-5 py-3 bg-transparent text-white/80 border border-white/25 hover:border-white/55 hover:text-white text-[10px] font-bold uppercase tracking-[0.22em] inline-flex items-center gap-2"
+                  title="Saving to your library is a paid feature — download to keep this one"
+                >
+                  <Bookmark className="w-3 h-3" /> Save · Design+
+                </button>
+              )
+            )}
+            <button
+              type="button"
+              onClick={handleShare}
+              className="w-11 h-11 flex items-center justify-center bg-transparent text-white border border-white/40 hover:border-white hover:bg-white/[0.06] transition-colors"
+              aria-label="Share"
+              title="Share"
+            >
+              <Share2 className="w-[18px] h-[18px]" />
             </button>
             {p.selectedConceptUrl && (
               <button
@@ -641,11 +715,11 @@ export default function VisionExperience(p: VisionExperienceProps) {
               type="button"
               onClick={p.handleReset}
               disabled={p.isProcessing}
-              className="px-3 py-3 bg-transparent text-white/70 border border-white/25 hover:border-white/55 hover:text-white text-[10px] font-bold uppercase tracking-[0.22em] inline-flex items-center gap-1 disabled:opacity-40"
+              className="w-11 h-11 flex items-center justify-center bg-transparent text-white/70 border border-white/25 hover:text-white hover:border-white/55 transition-colors disabled:opacity-40"
               aria-label="Reset"
               title="Start over"
             >
-              <X className="w-3 h-3" /> Reset
+              <X className="w-[18px] h-[18px]" />
             </button>
           </div>
         </div>

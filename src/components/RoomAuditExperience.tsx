@@ -216,7 +216,11 @@ const RoomAuditExperience: React.FC<Props> = (p) => {
     return [...goalLabels, ...extras.filter(Boolean) as string[]];
   };
 
-  // ── Run audit (ported from RoomAudit — quota behavior intact) ──
+  // ── Run audit ──
+  // Quota is fully server-authoritative: /api/room-audit/analyze decrements the
+  // free-tier generation BEFORE calling Gemini and refunds it itself if the call
+  // fails. The client never touches quota — no /use, no /restore. On failure we
+  // just surface the error; the server has already unwound any charge.
   const handleAudit = async () => {
     if (!roomImage || !canAudit || isProcessing) return;
     setIsProcessing(true);
@@ -224,23 +228,7 @@ const RoomAuditExperience: React.FC<Props> = (p) => {
     setError(null);
     setResult(null);
 
-    let quotaConsumed = false;
-    let remainingAfterUse: number | undefined;
     try {
-      if (!isPaid) {
-        const token = getStoredToken();
-        if (!token) throw new Error('Not authenticated');
-        const useRes = await fetch('/api/generation/use', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-session-token': token },
-          body: JSON.stringify({ count: 1 }),
-        });
-        const useData = await useRes.json().catch(() => ({}));
-        if (!useRes.ok) throw new Error(useData?.error || 'No generations left');
-        quotaConsumed = true;
-        remainingAfterUse = typeof useData?.generationsLeft === 'number' ? useData.generationsLeft : undefined;
-      }
-
       const token = getStoredToken();
       if (!token) throw new Error('Not authenticated');
 
@@ -268,22 +256,11 @@ const RoomAuditExperience: React.FC<Props> = (p) => {
       setResult(parsed);
       p.onAuditComplete?.();
 
-      // A-004/I-023 — GA4 engagement events (client-side, env-gated).
+      // A-004/I-023 — GA4 engagement events (client-side, env-gated). The server
+      // returns the post-decrement balance so we can flag a burned free quota.
       trackEvent('ai_audit_completed', { score: parsed.overallScore });
-      if (!isPaid && remainingAfterUse === 0) trackEvent('quota_burned', { tool: 'ai_audit' });
+      if (!isPaid && analyzeData?.generationsLeft === 0) trackEvent('quota_burned', { tool: 'ai_audit' });
     } catch (err: unknown) {
-      if (quotaConsumed && !isPaid) {
-        try {
-          const token = getStoredToken();
-          if (token) {
-            await fetch('/api/generation/restore', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'x-session-token': token },
-              body: JSON.stringify({ count: 1 }),
-            });
-          }
-        } catch { /* best-effort */ }
-      }
       console.error('Room Audit error:', err);
       setError(formatGeminiError(err, t('ai.audit.errorGeneric')));
     } finally {

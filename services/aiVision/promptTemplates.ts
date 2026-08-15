@@ -9,6 +9,37 @@ import type { RoomType } from "./stylePresets.js";
 import { ROOM_TYPE_LABELS } from "./stylePresets.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ROOM PROGRAM RULES (room-appropriate furniture enforcement)
+//
+// Style briefs describe furniture through examples ("curved sofas", "egg
+// chairs") that are almost always framed as a living room. When a client picks
+// a non-living-room type, those examples overpower the "DINING ROOM" label and
+// Gemini renders the wrong room. This per-room-type block is prepended to the
+// generation/staging prompt as an AUTHORITATIVE override: it fixes the room's
+// furniture program up front, so the style brief only supplies the *look*, not
+// the room's function.
+// ─────────────────────────────────────────────────────────────────────────────
+export const ROOM_PROGRAM_RULES: Record<RoomType, string> = {
+  living_room: `The room MUST be a fully realized LIVING ROOM. Include ONLY furniture appropriate to a living room — a sofa, one or two armchairs, a coffee table, side tables, floor or table lamps, a rug, wall art, plants, and appropriate styling. Do NOT include dining tables, beds, kitchen cabinetry, desks, or bathroom fixtures.`,
+
+  dining_room: `The room MUST be a fully realized DINING ROOM. The visual anchor is a dining table with 4–8 matching dining chairs, positioned as the centerpiece under a hanging pendant or chandelier. Add a sideboard or credenza against one wall, wall art, and appropriate styling. Do NOT include lounge or living-room seating groups, lounge armchairs arranged around a low central table, media consoles, or televisions, even if the target style is often shown in a living room. Any style furniture examples below should be REINTERPRETED as dining-room equivalents — a dining chair in that style, a dining table in that style, a sideboard in that style.`,
+
+  bedroom: `The room MUST be a fully realized BEDROOM. The visual anchor is a fully-made bed with nightstands on both sides and bedside lamps. Add a bench at the foot, dresser or wardrobe, a rug under the bed, art on the wall, and appropriate styling. Do NOT include living-room furniture (sofa as primary piece, TV area), dining tables, or kitchen cabinetry. A reading chair in the corner is fine if the room is large. BED PLACEMENT (critical): every existing window or balcony door must stay fully visible, unobstructed, and exactly where it is — never cover it with the headboard, and never remove, shrink, move, or replace a window to make room for the bed. If the only large wall in view holds a window or balcony door, place the bed against a side wall or offset to one side of the window so the glazing stays completely clear; do not build a new solid headboard wall over a window, and do not hang art over a window.`,
+
+  kitchen: `The room MUST be a fully realized KITCHEN. Include base and wall cabinetry, a countertop with backsplash, a range or cooktop, a sink with faucet, a range hood, appropriate appliances (fridge, oven), open shelving or a hutch, and a kitchen island with counter stools if the space allows. Do NOT include living-room furniture (sofa, armchair, coffee table), bedroom furniture, or dining tables (unless a small breakfast nook is clearly the intent).`,
+
+  bathroom: `The room MUST be a fully realized BATHROOM. Include a vanity with sink(s) and mirror, a toilet, a shower or bathtub (or both), towel bars/rings, sconces or vanity lighting, a rug, and appropriate styling. Do NOT include living-room furniture, bedroom furniture, or dining tables. Every fixture must be a real bathroom fixture.`,
+
+  home_office: `The room MUST be a fully realized HOME OFFICE. The visual anchor is a desk with a task chair. Add a task lamp, bookshelves or storage, monitor(s) or a laptop, wall art, and appropriate styling. Do NOT include living-room furniture as the primary piece, beds, or dining tables. A small accent chair for a reading corner is fine.`,
+
+  kids_room: `The room MUST be a fully realized KIDS' BEDROOM or PLAYROOM. Include a child-scale bed (or bunk beds), a small desk, storage bins or cubbies, a rug for floor play, playful wall art, and age-appropriate styling. Do NOT include adult living-room furniture, formal dining, or kitchen fixtures. BED PLACEMENT (critical): every existing window or balcony door must stay fully visible, unobstructed, and exactly where it is — never cover it with the headboard, and never remove, shrink, move, or replace a window to make room for the bed. If the only large wall in view holds a window or balcony door, place the bed against a side wall or offset to one side of the window so the glazing stays completely clear.`,
+
+  outdoor: `The room MUST be a fully realized OUTDOOR SPACE (patio, terrace, or balcony as appropriate to the original photo). Include outdoor-rated seating (sofa, chairs, or dining set as fits the space), an outdoor rug, planters with real outdoor plants, string lights or outdoor sconces, and appropriate styling. All materials must be weather-appropriate. Do NOT include indoor furniture that would not survive weather.`,
+
+  hallway: `The room MUST be a fully realized HALLWAY. Include a narrow console or hall table, wall art or a gallery arrangement, a runner rug, wall sconces or pendants, and appropriate styling. Do NOT include living-room furniture, beds, or dining tables. The space should read as a transit space.`,
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Step 1 — Style extraction prompt (verbatim from pipeline spec)
 // ─────────────────────────────────────────────────────────────────────────────
 export const STYLE_EXTRACTION_PROMPT = `You are an interior design analyst. The images attached to this message are reference images showing an interior design style that will be recreated in another room.
@@ -46,9 +77,8 @@ export function buildStagingPrompt(args: {
   roomType?: RoomType;
   variationSeed?: number;
 }): string {
-  const roomLabel = (
-    args.roomType ? ROOM_TYPE_LABELS[args.roomType] : "LIVING ROOM"
-  ).toLowerCase();
+  const roomTypeKey: RoomType = args.roomType ?? "living_room";
+  const roomLabel = ROOM_TYPE_LABELS[roomTypeKey].toLowerCase();
 
   const variationHint = args.variationSeed
     ? " Vary the furniture arrangement, lighting choices, and accent styling from previous versions, keeping the same architecture and target style."
@@ -57,6 +87,9 @@ export function buildStagingPrompt(args: {
   return `${args.styleBrief}
 
 Photorealistic interior photograph of a fully furnished, fully styled ${roomLabel} decorated in this exact style — professional real-estate photography, natural daylight, sharp focus, realistic materials and textures, high detail. The room is completely furnished and decorated: furniture, lighting, rugs, art, plants and styling appropriate to a ${roomLabel}.
+
+ROOM PROGRAM (this rule overrides any furniture examples in the style brief above):
+${ROOM_PROGRAM_RULES[roomTypeKey]}
 
 Preserve the room's existing architecture exactly: keep every wall flat and in its current position, keep the ceiling as one flat plane, keep the floor, and keep every window as a real glazed window with daylight and the outdoor view coming through it. Do NOT add or remove walls, doorways, openings, beams, columns, soffits or partitions, and do NOT widen the room.${variationHint}`;
 }
@@ -75,9 +108,8 @@ export function buildGenerationPrompt(args: {
    */
   spatialConstraints?: string;
 }): string {
-  const roomTypeLabel = args.roomType
-    ? ROOM_TYPE_LABELS[args.roomType]
-    : "LIVING ROOM"; // safe fallback when auto-detect is selected
+  const roomTypeKey: RoomType = args.roomType ?? "living_room"; // safe fallback when auto-detect is selected
+  const roomTypeLabel = ROOM_TYPE_LABELS[roomTypeKey];
 
   const variationHint = args.variationSeed
     ? `\n\nThis is variation #${args.variationSeed}. Use a different furniture arrangement, lighting fixture choice, and accent details than previous variations, while maintaining the same target style and the same architectural constraints.`
@@ -89,6 +121,9 @@ export function buildGenerationPrompt(args: {
       : "";
 
   return `Edit this room photograph to show how the same exact room would look after a complete interior renovation. This is a photorealistic "after" visualization for an interior design client. The room will be renovated into a ${roomTypeLabel} in the style described below.${spatialBlock}
+
+ROOM PROGRAM (this rule overrides any furniture examples in the style brief below):
+${ROOM_PROGRAM_RULES[roomTypeKey]}
 
 CRITICAL ARCHITECTURAL CONSTRAINTS — these must be preserved EXACTLY as they appear in the original photo. This is a re-styling of the existing room, not a new room:
 - Keep every window in its exact current position, size, shape, and proportion
