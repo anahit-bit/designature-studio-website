@@ -26,6 +26,7 @@ import AdminWaitlistPage from './components/AdminWaitlistPage';
 import AdminFeedbackPage from './components/AdminFeedbackPage';
 import AdminPlatformsPage from './components/AdminPlatformsPage';
 import JournalPage from './components/JournalPage';
+import RetailPage from './components/RetailPage';
 import JournalCategoryPage from './components/JournalCategoryPage';
 import JournalArticlePage from './components/JournalArticlePage';
 import Blog from './components/Blog';
@@ -105,6 +106,14 @@ const DeliverablesRoute: React.FC = () => (
   </div>
 );
 
+// Internal employee tool — deliberately NO public Header/Footer chrome.
+// Hosted on the studio domain purely for hosting compliance.
+const RetailRoute: React.FC = () => (
+  <div className="min-h-screen bg-[#F5F6F8] font-body">
+    <RetailPage />
+  </div>
+);
+
 const App: React.FC = () => (
   <BrowserRouter>
     <RouteTracker />
@@ -123,6 +132,7 @@ const App: React.FC = () => (
             <Route path="/ai-vision" element={<AIVisionRoute />} />
             <Route path="/pricing" element={<PricingRoute />} />
             <Route path="/faq" element={<FAQPage />} />
+            <Route path="/retail" element={<RetailRoute />} />
             <Route path="/journal" element={<JournalPage />} />
             <Route path="/journal/category/:slug" element={<JournalCategoryPage />} />
             <Route path="/journal/:slug" element={<JournalArticlePage />} />

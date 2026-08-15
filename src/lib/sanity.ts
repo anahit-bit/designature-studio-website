@@ -174,6 +174,83 @@ export function getCachedRetailers(): Retailer[] | null {
   return retailerCache
 }
 
+// ── Armenian Retailers (retail.designature.studio) ───────────────────────────
+// The collaboration/partner directory. Distinct from the Shopping `retailer`
+// type above — these are the studio's real Armenian supplier collaborations.
+// The website reads only status == "active" (verified operating) docs. The
+// bundled FALLBACK_ARMENIAN_RETAILERS is the offline fallback.
+import type { ArmenianRetailer } from '../data/armenianRetailers'
+import { FALLBACK_ARMENIAN_RETAILERS } from '../data/armenianRetailers'
+
+const ARMENIAN_RETAILERS_QUERY = `*[_type == "armenianRetailer" && status == "active"]
+  | order(featured desc, order asc, nameEN asc) {
+  "id": _id,
+  nameEN,
+  nameAM,
+  "slug": slug.current,
+  category,
+  tags,
+  budget,
+  collabClass,
+  description,
+  deal,
+  notes,
+  website,
+  instagram,
+  facebook,
+  contact,
+  phone,
+  email,
+  address,
+  "logo": logo.asset->url,
+  status,
+  verifiedAt,
+  featured,
+  order
+}`
+
+let armRetailerCache: ArmenianRetailer[] | null = null
+let armRetailerInflight: Promise<ArmenianRetailer[]> | null = null
+
+/**
+ * Fetches active Armenian retailers from Sanity. Falls back to the bundled
+ * seed if the query errors or returns nothing (e.g. before the import runs).
+ * Deduped + cached at module level, same pattern as fetchRetailers().
+ */
+export async function fetchArmenianRetailers(): Promise<ArmenianRetailer[]> {
+  if (armRetailerCache) return armRetailerCache
+  if (armRetailerInflight) return armRetailerInflight
+  armRetailerInflight = (async () => {
+    try {
+      const docs = await sanityClient.fetch<ArmenianRetailer[]>(ARMENIAN_RETAILERS_QUERY)
+      const list = (docs ?? []).map((d) => ({
+        ...d,
+        tags: d.tags ?? [],
+        order: typeof d.order === 'number' ? d.order : 100,
+      }))
+      // Offline fallback shows only verified-active shops, matching the GROQ filter.
+      const activeFallback = FALLBACK_ARMENIAN_RETAILERS.filter((r) => r.status === 'active')
+      const result = list.length ? list : activeFallback
+      armRetailerCache = result
+      return result
+    } catch {
+      const activeFallback = FALLBACK_ARMENIAN_RETAILERS.filter((r) => r.status === 'active')
+      armRetailerCache = activeFallback
+      return activeFallback
+    }
+  })()
+  try {
+    return await armRetailerInflight
+  } finally {
+    armRetailerInflight = null // allow retry if it failed
+  }
+}
+
+/** Cached synchronous peek — returns null until the first fetch resolves. */
+export function getCachedArmenianRetailers(): ArmenianRetailer[] | null {
+  return armRetailerCache
+}
+
 // ── Journal / Blog (Phase 2) ─────────────────────────────────────────────────
 // The Journal reads `post` + `category` documents from Sanity. GROQ returns only
 // `status == "published"` posts, newest first, with the referenced category
