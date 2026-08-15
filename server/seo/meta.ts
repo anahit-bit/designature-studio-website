@@ -74,8 +74,10 @@ export function normalizePath(pathname: string): string {
   return p || "/";
 }
 
-/** URL-path prefixes that must never be indexed (private / transactional). */
-const PRIVATE_PREFIXES = ["/admin", "/booking", "/deliverables"];
+/** URL-path prefixes that must never be indexed (private / transactional).
+ * `/retail` is the internal supplier directory — reachable by a shared link
+ * (no login), but kept out of search indexes. */
+const PRIVATE_PREFIXES = ["/admin", "/booking", "/deliverables", "/retail"];
 
 export function classifyRoute(pathname: string): RouteInfo {
   const p = normalizePath(pathname);
