@@ -5,8 +5,8 @@
       "name": "designature-studio",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "port": 3011,
-      "autoPort": true
+      "port": 3000,
+      "autoPort": false
     }
   ]
 }
