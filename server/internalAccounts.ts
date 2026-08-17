@@ -12,6 +12,10 @@
 /** Exact addresses treated as internal (case-insensitive). */
 export const INTERNAL_EXACT_EMAILS = new Set<string>([
   "anahit.ghasabyan@gmail.com",
+  "designature.studio.us@gmail.com",
+  "designature.studio.ai@gmail.com",
+  "designature.studio@mail.ru",
+  // anahit@ + hello@designature.studio are covered by the domain rule below.
 ]);
 
 /** Whole email domains treated as internal — every address @<domain>. */
