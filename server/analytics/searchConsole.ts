@@ -77,3 +77,106 @@ export async function fetchSearchConsole(rangeDays = 28): Promise<GscResult> {
     return { ok: false, error: err instanceof Error ? err.message.split("\n")[0].slice(0, 200) : "GSC query failed", ...EMPTY };
   }
 }
+
+// ─── Insights: expanded query/page tables + exact-phrase rank lookup ──────────
+
+export interface GscQueryRow { query: string; clicks: number; impressions: number; ctrPct: number; position: number; }
+export interface GscPageRow { page: string; clicks: number; impressions: number; position: number; }
+
+export interface GscInsightsResult {
+  ok: boolean;
+  error?: string;
+  queries: GscQueryRow[];
+  /** Top /journal pages by impressions — per-post search visibility (GEO working). */
+  journalPages: GscPageRow[];
+}
+
+/** Expanded query table (with position) + per-Journal-page performance. Never throws. */
+export async function fetchGscInsights(rangeDays = 28): Promise<GscInsightsResult> {
+  const sc = getSearchConsoleClient();
+  if (!sc) return { ok: false, error: "Service account not configured", queries: [], journalPages: [] };
+  const siteUrl = gscSiteUrl();
+  const base = { startDate: isoDaysAgo(rangeDays), endDate: isoDaysAgo(0) };
+
+  try {
+    const [queries, pages] = await Promise.all([
+      sc.searchanalytics.query({ siteUrl, requestBody: { ...base, dimensions: ["query"], rowLimit: 25 } }),
+      sc.searchanalytics.query({
+        siteUrl,
+        requestBody: {
+          ...base,
+          dimensions: ["page"],
+          rowLimit: 15,
+          dimensionFilterGroups: [{ filters: [{ dimension: "page", operator: "contains", expression: "/journal" }] }],
+        },
+      }),
+    ]);
+
+    return {
+      ok: true,
+      queries: (queries.data.rows || []).map((r) => ({
+        query: r.keys?.[0] || "",
+        clicks: Math.round(r.clicks ?? 0),
+        impressions: Math.round(r.impressions ?? 0),
+        ctrPct: Number(((r.ctr ?? 0) * 100).toFixed(1)),
+        position: Number((r.position ?? 0).toFixed(1)),
+      })),
+      journalPages: (pages.data.rows || []).map((r) => ({
+        page: r.keys?.[0] || "",
+        clicks: Math.round(r.clicks ?? 0),
+        impressions: Math.round(r.impressions ?? 0),
+        position: Number((r.position ?? 0).toFixed(1)),
+      })),
+    };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message.split("\n")[0].slice(0, 200) : "GSC insights failed", queries: [], journalPages: [] };
+  }
+}
+
+export interface PhraseRank {
+  phrase: string;
+  found: boolean;
+  clicks: number;
+  impressions: number;
+  ctrPct: number;
+  /** Google average position; null when the phrase has no impressions in range. */
+  position: number | null;
+}
+
+/**
+ * Exact-phrase rank lookup for the GEO watchlist. GSC query strings are
+ * lowercased, so we match on the lowercased phrase. `found:false` means the site
+ * had zero impressions for that exact query in range (not ranking yet).
+ */
+export async function lookupPhrase(phrase: string, rangeDays = 28): Promise<PhraseRank> {
+  const clean = phrase.trim().toLowerCase();
+  const empty: PhraseRank = { phrase: clean, found: false, clicks: 0, impressions: 0, ctrPct: 0, position: null };
+  const sc = getSearchConsoleClient();
+  if (!sc || !clean) return empty;
+  const siteUrl = gscSiteUrl();
+  const base = { startDate: isoDaysAgo(rangeDays), endDate: isoDaysAgo(0) };
+
+  try {
+    const res = await sc.searchanalytics.query({
+      siteUrl,
+      requestBody: {
+        ...base,
+        dimensions: ["query"],
+        rowLimit: 1,
+        dimensionFilterGroups: [{ filters: [{ dimension: "query", operator: "equals", expression: clean }] }],
+      },
+    });
+    const row = res.data.rows?.[0];
+    if (!row) return empty;
+    return {
+      phrase: clean,
+      found: true,
+      clicks: Math.round(row.clicks ?? 0),
+      impressions: Math.round(row.impressions ?? 0),
+      ctrPct: Number(((row.ctr ?? 0) * 100).toFixed(1)),
+      position: Number((row.position ?? 0).toFixed(1)),
+    };
+  } catch {
+    return empty;
+  }
+}
