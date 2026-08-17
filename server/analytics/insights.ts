@@ -11,6 +11,7 @@
 import { fetchGa4, fetchGa4Pulse, fetchBlogReadership, type Ga4Result, type Ga4PulseResult, type BlogReadershipResult } from "./ga4.js";
 import { fetchSearchConsole, fetchGscInsights, lookupPhrase, type GscResult, type GscInsightsResult, type PhraseRank } from "./searchConsole.js";
 import { isAcquisitionConfigured } from "./googleClients.js";
+import { getKeywordVolumes, type PhraseVolume } from "./keywordVolume.js";
 
 export interface InsightsData {
   configured: boolean;
@@ -23,6 +24,10 @@ export interface InsightsData {
   gscHeadline: GscResult | null;
   gsc: GscInsightsResult | null;
   watchlist: PhraseRank[];
+  /** Per-phrase search volume (lowercased keys) from configured free sources. */
+  volumes: Record<string, PhraseVolume>;
+  /** Which volume sources are live, e.g. ["google","bing"]. Empty → none connected. */
+  volumeSources: string[];
 }
 
 const RANGE = 28;
@@ -38,7 +43,7 @@ export function clearInsightsCache(): void {
 }
 
 function emptyData(configured: boolean): InsightsData {
-  return { configured, updatedAt: new Date().toISOString(), rangeDays: RANGE, pulse: null, channels: null, blog: null, gscHeadline: null, gsc: null, watchlist: [] };
+  return { configured, updatedAt: new Date().toISOString(), rangeDays: RANGE, pulse: null, channels: null, blog: null, gscHeadline: null, gsc: null, watchlist: [], volumes: {}, volumeSources: [] };
 }
 
 async function build(phrases: string[]): Promise<InsightsData> {
@@ -52,9 +57,12 @@ async function build(phrases: string[]): Promise<InsightsData> {
     fetchSearchConsole(RANGE),
     fetchGscInsights(RANGE),
   ]);
-  const watchlist = await Promise.all(cleaned.map((p) => lookupPhrase(p, RANGE)));
+  const [watchlist, vol] = await Promise.all([
+    Promise.all(cleaned.map((p) => lookupPhrase(p, RANGE))),
+    getKeywordVolumes(cleaned),
+  ]);
 
-  return { configured: true, updatedAt: new Date().toISOString(), rangeDays: RANGE, pulse, channels, blog, gscHeadline, gsc, watchlist };
+  return { configured: true, updatedAt: new Date().toISOString(), rangeDays: RANGE, pulse, channels, blog, gscHeadline, gsc, watchlist, volumes: vol.byPhrase, volumeSources: vol.sources };
 }
 
 /** Cached insights for the given watchlist phrases. `force` bypasses the cache. */

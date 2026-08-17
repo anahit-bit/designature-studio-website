@@ -44,12 +44,14 @@ interface WatchRow {
   phrase: string; display: string; found: boolean;
   clicks: number; impressions: number; ctrPct: number; position: number | null;
   history: Array<{ date: string; position: number | null }>;
+  volume?: { google: number | null; bing: number | null };
 }
 interface InsightsPayload {
   configured: boolean; updatedAt: string; rangeDays: number;
   pulse: Pulse | null; channels: Channels | null; blog: Blog | null;
   gscHeadline: GscHeadline | null; gsc: GscInsights | null;
   watchlist: WatchRow[];
+  volumeSources: string[];
 }
 
 // ── formatters ────────────────────────────────────────────────────────────
@@ -287,29 +289,44 @@ const AdminInsightsPage: React.FC = () => {
             ) : data.watchlist.length === 0 ? (
               <p className="text-sm text-neutral-500 italic bg-white border border-[#DAD2C3] px-4 py-6 text-center">No phrases tracked. Click “Edit phrases” to add some.</p>
             ) : (
-              <div className="overflow-x-auto border border-[#DAD2C3] bg-white">
-                <table className="w-full min-w-[640px]">
-                  <thead><tr><TH>Phrase</TH><TH right>Google position</TH><TH right>Impr. (28d)</TH><TH right>Clicks</TH><TH>Trend</TH></tr></thead>
-                  <tbody>
-                    {data.watchlist.map((w) => {
-                      const hist = w.history.filter((h) => h.position !== null).map((h) => h.position as number);
-                      return (
-                        <tr key={w.phrase} className="border-b border-[#DAD2C3] last:border-b-0">
-                          <td className="px-3 py-2.5 text-[13px] text-black font-semibold">{w.display}</td>
-                          <td className="px-3 py-2.5 text-right"><PosBadge pos={w.position} found={w.found} /></td>
-                          <td className="px-3 py-2.5 text-[12px] text-right tabular-nums text-neutral-700">{w.found ? num(w.impressions) : '—'}</td>
-                          <td className="px-3 py-2.5 text-[12px] text-right tabular-nums text-neutral-700">{w.found ? num(w.clicks) : '—'}</td>
-                          <td className="px-3 py-2.5">
-                            {hist.length > 1
-                              ? <span className="text-[11px] text-neutral-500">{hist.length} snapshots</span>
-                              : <span className="text-[11px] text-neutral-400 italic">building…</span>}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                {data.volumeSources.length === 0 && (
+                  <div className="mb-2 px-3 py-2 bg-[#F4EFE7] border border-[#DAD2C3] text-[11px] text-neutral-600">
+                    Search-volume column is empty — connect <strong>Bing Webmaster</strong> (<code className="font-mono">BING_WEBMASTER_API_KEY</code>) or <strong>Google Keyword Planner</strong> to populate it.
+                  </div>
+                )}
+                <div className="overflow-x-auto border border-[#DAD2C3] bg-white">
+                  <table className="w-full min-w-[720px]">
+                    <thead><tr><TH>Phrase</TH><TH right>Volume / mo</TH><TH right>Google position</TH><TH right>Impr. (28d)</TH><TH right>Clicks</TH><TH>Trend</TH></tr></thead>
+                    <tbody>
+                      {data.watchlist.map((w) => {
+                        const hist = w.history.filter((h) => h.position !== null).map((h) => h.position as number);
+                        const v = w.volume;
+                        return (
+                          <tr key={w.phrase} className="border-b border-[#DAD2C3] last:border-b-0">
+                            <td className="px-3 py-2.5 text-[13px] text-black font-semibold">{w.display}</td>
+                            <td className="px-3 py-2.5 text-right">
+                              {v && v.google != null ? (
+                                <span className="text-[12px] tabular-nums text-black">{num(v.google)}{v.bing != null && <span className="text-[10px] text-neutral-400"> · {num(v.bing)} Bing</span>}</span>
+                              ) : v && v.bing != null ? (
+                                <span className="text-[12px] tabular-nums text-black">{num(v.bing)}<span className="text-[10px] text-neutral-400"> Bing</span></span>
+                              ) : <span className="text-[12px] text-neutral-400">—</span>}
+                            </td>
+                            <td className="px-3 py-2.5 text-right"><PosBadge pos={w.position} found={w.found} /></td>
+                            <td className="px-3 py-2.5 text-[12px] text-right tabular-nums text-neutral-700">{w.found ? num(w.impressions) : '—'}</td>
+                            <td className="px-3 py-2.5 text-[12px] text-right tabular-nums text-neutral-700">{w.found ? num(w.clicks) : '—'}</td>
+                            <td className="px-3 py-2.5">
+                              {hist.length > 1
+                                ? <span className="text-[11px] text-neutral-500">{hist.length} snapshots</span>
+                                : <span className="text-[11px] text-neutral-400 italic">building…</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
 
             {/* Honest limitations */}

@@ -3635,7 +3635,8 @@ Output ONLY valid JSON with no markdown fences, no explanation:
           .filter((s) => s.phrase === key)
           .sort((a, b) => a.date.localeCompare(b.date))
           .map((s) => ({ date: s.date, position: s.position }));
-        return { ...rank, display: p, history };
+        const volume = data.volumes?.[key] ?? { google: null, bing: null };
+        return { ...rank, display: p, history, volume };
       });
       res.json({ ...data, watchlist });
     } catch (err) {
