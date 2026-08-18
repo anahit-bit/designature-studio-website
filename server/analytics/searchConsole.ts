@@ -80,7 +80,7 @@ export async function fetchSearchConsole(rangeDays = 28): Promise<GscResult> {
 
 // ─── Insights: expanded query/page tables + exact-phrase rank lookup ──────────
 
-export interface GscQueryRow { query: string; clicks: number; impressions: number; ctrPct: number; position: number; }
+export interface GscQueryRow { query: string; page: string; clicks: number; impressions: number; ctrPct: number; position: number; }
 export interface GscPageRow { page: string; clicks: number; impressions: number; position: number; }
 
 export interface GscInsightsResult {
@@ -94,11 +94,15 @@ export interface GscInsightsResult {
 }
 
 /**
- * Brand-query detector. Brand searches (designature + its common typos, studioture,
- * "stature design") are people who already know the studio — no discovery insight —
- * so we hide them from the Search & GEO table. Extend the pattern if new typos appear.
+ * Brand-query detector. Brand searches (designature + its many typos: designature,
+ * designatire, designatude, designurne, plus studioture, "stature design") are people
+ * who already know the studio — no discovery insight — so we hide them.
+ *
+ * `\bdesign[au]` catches "designa…" and "designu…" (all the observed typos) WITHOUT
+ * catching the legitimate discovery words design / designer / designers / designs
+ * (those are design+space / design+e / design+s). Add new typo stems if they appear.
  */
-const BRAND_QUERY_RE = /designat|studioture|stature\s*design/i;
+const BRAND_QUERY_RE = /\bdesign[au]|studioture|stature\s*design/i;
 export function isBrandQuery(q: string | undefined): boolean {
   return BRAND_QUERY_RE.test((q || "").trim());
 }
@@ -112,8 +116,10 @@ export async function fetchGscInsights(rangeDays = 28): Promise<GscInsightsResul
 
   try {
     const [queries, pages] = await Promise.all([
-      // Fetch extra rows so brand-filtering still leaves a full table of discovery queries.
-      sc.searchanalytics.query({ siteUrl, requestBody: { ...base, dimensions: ["query"], rowLimit: 60 } }),
+      // query + page dimensions → each row is "for search X, YOUR page Y ranked at
+      // position Z with N impressions / C clicks" — the tangible query→page mapping.
+      // Fetch extra rows so brand-filtering still leaves a full discovery table.
+      sc.searchanalytics.query({ siteUrl, requestBody: { ...base, dimensions: ["query", "page"], rowLimit: 100 } }),
       sc.searchanalytics.query({
         siteUrl,
         requestBody: {
@@ -127,13 +133,17 @@ export async function fetchGscInsights(rangeDays = 28): Promise<GscInsightsResul
 
     const allQueries = (queries.data.rows || []).map((r) => ({
       query: r.keys?.[0] || "",
+      page: r.keys?.[1] || "",
       clicks: Math.round(r.clicks ?? 0),
       impressions: Math.round(r.impressions ?? 0),
       ctrPct: Number(((r.ctr ?? 0) * 100).toFixed(1)),
       position: Number((r.position ?? 0).toFixed(1)),
     }));
-    const discovery = allQueries.filter((q) => !isBrandQuery(q.query));
-    const brandHidden = allQueries.length - discovery.length;
+    const discovery = allQueries
+      .filter((q) => !isBrandQuery(q.query))
+      .sort((a, b) => b.impressions - a.impressions || a.position - b.position);
+    // Count DISTINCT brand queries hidden (not query+page rows) for an honest note.
+    const brandHidden = new Set(allQueries.filter((q) => isBrandQuery(q.query)).map((q) => q.query)).size;
 
     return {
       ok: true,
