@@ -681,6 +681,31 @@ async function ensurePlatformsSeeded(): Promise<void> {
 // ─── GEO watchlist + rank snapshots (durable, app_state) ────────────────────
 // Owner-editable phrases we track Google position for, plus a daily snapshot of
 // each phrase's position so the Insights tab can show movement over time.
+// ── Serper credit balance (prepaid, depletes on use — NOT monthly) ──────────
+// GET /account returns {balance, rateLimit} and does NOT cost a credit. Cached 5m
+// so the polled admin dashboard doesn't hammer it.
+let _serperBalanceCache: { at: number; data: { balance: number; rateLimit: number } | null } | null = null;
+const SERPER_BALANCE_TTL_MS = 5 * 60 * 1000;
+async function fetchSerperBalance(): Promise<{ balance: number; rateLimit: number } | null> {
+  const key = (process.env.SERPER_API_KEY || "").trim();
+  if (!key) return null;
+  const now = Date.now();
+  if (_serperBalanceCache && now - _serperBalanceCache.at < SERPER_BALANCE_TTL_MS) return _serperBalanceCache.data;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
+    const res = await fetch("https://google.serper.dev/account", { headers: { "X-API-KEY": key }, signal: controller.signal });
+    clearTimeout(timer);
+    const j = res.ok ? await res.json() : null;
+    const data = j ? { balance: Number(j.balance ?? 0), rateLimit: Number(j.rateLimit ?? 0) } : null;
+    _serperBalanceCache = { at: now, data };
+    return data;
+  } catch {
+    _serperBalanceCache = { at: now, data: null };
+    return null;
+  }
+}
+
 const DEFAULT_GEO_PHRASES = ["ai interior design", "online interior design", "ai room design"];
 const GEO_SNAPSHOTS_CAP = 5000;
 
@@ -3946,6 +3971,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       : budgetExceeded
         ? { disabled: true, code: "daily_budget_exceeded" as const, dailyBudget: SERPER_DAILY_BUDGET, todayCount: usage.count, resetAt: nextUtcMidnightIso() }
         : { disabled: false, dailyBudget: SERPER_DAILY_BUDGET, todayCount: usage.count };
+    const serperBalance = await fetchSerperBalance(); // prepaid credits remaining (cached 5m)
 
     // ── Funnels (last 7d) ────────────────────────────────────────────────
     // Quiz also accepts the older `quiz_start` action name for back-compat.
@@ -4121,6 +4147,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         free: userList.filter((u) => !isPaidUser(u)).length,
       },
       shoppingStatus,
+      serperBalance,
       funnels,
       activation,
       newsletter,
