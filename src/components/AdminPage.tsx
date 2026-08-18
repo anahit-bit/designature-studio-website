@@ -590,7 +590,6 @@ const AdminPage: React.FC = () => {
   const navigate = useNavigate();
   const [data, setData] = useState<UsageResponse | null>(null);
   const [counts, setCounts] = useState<Counts | null>(null);
-  const [acquisition, setAcquisition] = useState<AcquisitionData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
 
@@ -618,12 +617,6 @@ const AdminPage: React.FC = () => {
     fetch('/api/admin/counts', { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (!cancelled && d) setCounts(d); })
-      .catch(() => {});
-
-    // Acquisition (I-027) — server-cached ~6h, so fetch once on mount (not polled).
-    fetch('/api/admin/acquisition', { credentials: 'include' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (!cancelled && d) setAcquisition(d); })
       .catch(() => {});
 
     const id = window.setInterval(load, POLL_MS);
@@ -704,10 +697,6 @@ const AdminPage: React.FC = () => {
 
           <CollapsibleSection title="Cost & API health" sub="Per-provider usage vs free-tier ceiling · est." storageKey="cost" defaultOpen={false}>
             <CostBody data={data.cost} />
-          </CollapsibleSection>
-
-          <CollapsibleSection title="Acquisition" sub="Where do visitors come from?" storageKey="acquisition" defaultOpen={false}>
-            <AcquisitionBody data={acquisition} />
           </CollapsibleSection>
 
           <CollapsibleSection title="Shopping incident view" sub="Last 100 Serper calls · forensic trail" storageKey="incident" defaultOpen={false}>
