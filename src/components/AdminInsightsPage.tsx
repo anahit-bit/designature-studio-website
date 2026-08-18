@@ -38,6 +38,7 @@ interface GscHeadline { ok: boolean; clicks: number; impressions: number; ctrPct
 interface GscInsights {
   ok: boolean; error?: string;
   queries: Array<{ query: string; clicks: number; impressions: number; ctrPct: number; position: number }>;
+  brandHidden: number;
   journalPages: Array<{ page: string; clicks: number; impressions: number; position: number }>;
 }
 interface WatchRow {
@@ -265,6 +266,11 @@ const AdminInsightsPage: React.FC = () => {
               </div>
             ) : (
               <p className="text-sm text-neutral-500 italic bg-white border border-[#DAD2C3] px-4 py-6 text-center">{gsc?.error || 'No search queries in range yet.'}</p>
+            )}
+            {gsc?.ok && gsc.brandHidden > 0 && (
+              <p className="mt-2 text-[11px] text-neutral-400">
+                Discovery queries only — {gsc.brandHidden} brand quer{gsc.brandHidden === 1 ? 'y' : 'ies'} (your own name + typos) hidden as they show no growth signal.
+              </p>
             )}
 
             {/* 4 · GEO WATCHLIST */}

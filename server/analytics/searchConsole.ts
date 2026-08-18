@@ -87,20 +87,33 @@ export interface GscInsightsResult {
   ok: boolean;
   error?: string;
   queries: GscQueryRow[];
+  /** How many brand queries were filtered out of `queries` (shown as a note). */
+  brandHidden: number;
   /** Top /journal pages by impressions — per-post search visibility (GEO working). */
   journalPages: GscPageRow[];
 }
 
-/** Expanded query table (with position) + per-Journal-page performance. Never throws. */
+/**
+ * Brand-query detector. Brand searches (designature + its common typos, studioture,
+ * "stature design") are people who already know the studio — no discovery insight —
+ * so we hide them from the Search & GEO table. Extend the pattern if new typos appear.
+ */
+const BRAND_QUERY_RE = /designat|studioture|stature\s*design/i;
+export function isBrandQuery(q: string | undefined): boolean {
+  return BRAND_QUERY_RE.test((q || "").trim());
+}
+
+/** Expanded query table (with position, brand queries hidden) + per-Journal-page perf. Never throws. */
 export async function fetchGscInsights(rangeDays = 28): Promise<GscInsightsResult> {
   const sc = getSearchConsoleClient();
-  if (!sc) return { ok: false, error: "Service account not configured", queries: [], journalPages: [] };
+  if (!sc) return { ok: false, error: "Service account not configured", queries: [], brandHidden: 0, journalPages: [] };
   const siteUrl = gscSiteUrl();
   const base = { startDate: isoDaysAgo(rangeDays), endDate: isoDaysAgo(0) };
 
   try {
     const [queries, pages] = await Promise.all([
-      sc.searchanalytics.query({ siteUrl, requestBody: { ...base, dimensions: ["query"], rowLimit: 25 } }),
+      // Fetch extra rows so brand-filtering still leaves a full table of discovery queries.
+      sc.searchanalytics.query({ siteUrl, requestBody: { ...base, dimensions: ["query"], rowLimit: 60 } }),
       sc.searchanalytics.query({
         siteUrl,
         requestBody: {
@@ -112,15 +125,20 @@ export async function fetchGscInsights(rangeDays = 28): Promise<GscInsightsResul
       }),
     ]);
 
+    const allQueries = (queries.data.rows || []).map((r) => ({
+      query: r.keys?.[0] || "",
+      clicks: Math.round(r.clicks ?? 0),
+      impressions: Math.round(r.impressions ?? 0),
+      ctrPct: Number(((r.ctr ?? 0) * 100).toFixed(1)),
+      position: Number((r.position ?? 0).toFixed(1)),
+    }));
+    const discovery = allQueries.filter((q) => !isBrandQuery(q.query));
+    const brandHidden = allQueries.length - discovery.length;
+
     return {
       ok: true,
-      queries: (queries.data.rows || []).map((r) => ({
-        query: r.keys?.[0] || "",
-        clicks: Math.round(r.clicks ?? 0),
-        impressions: Math.round(r.impressions ?? 0),
-        ctrPct: Number(((r.ctr ?? 0) * 100).toFixed(1)),
-        position: Number((r.position ?? 0).toFixed(1)),
-      })),
+      brandHidden,
+      queries: discovery.slice(0, 25),
       journalPages: (pages.data.rows || []).map((r) => ({
         page: r.keys?.[0] || "",
         clicks: Math.round(r.clicks ?? 0),
@@ -129,7 +147,7 @@ export async function fetchGscInsights(rangeDays = 28): Promise<GscInsightsResul
       })),
     };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message.split("\n")[0].slice(0, 200) : "GSC insights failed", queries: [], journalPages: [] };
+    return { ok: false, error: err instanceof Error ? err.message.split("\n")[0].slice(0, 200) : "GSC insights failed", queries: [], brandHidden: 0, journalPages: [] };
   }
 }
 
