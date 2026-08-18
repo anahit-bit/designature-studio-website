@@ -37,7 +37,7 @@ interface Blog {
 interface GscHeadline { ok: boolean; clicks: number; impressions: number; ctrPct: number; position: number; }
 interface GscInsights {
   ok: boolean; error?: string;
-  queries: Array<{ query: string; clicks: number; impressions: number; ctrPct: number; position: number }>;
+  queries: Array<{ query: string; page: string; clicks: number; impressions: number; ctrPct: number; position: number }>;
   brandHidden: number;
   journalPages: Array<{ page: string; clicks: number; impressions: number; position: number }>;
 }
@@ -251,11 +251,12 @@ const AdminInsightsPage: React.FC = () => {
             {gsc?.ok && gsc.queries.length > 0 ? (
               <div className="overflow-x-auto border border-[#DAD2C3] bg-white">
                 <table className="w-full min-w-[640px]">
-                  <thead><tr><TH>Search query (Google)</TH><TH right>Position</TH><TH right>Impr.</TH><TH right>Clicks</TH></tr></thead>
+                  <thead><tr><TH>Search query (Google)</TH><TH>Your page shown</TH><TH right>Position</TH><TH right>Impr.</TH><TH right>Clicks</TH></tr></thead>
                   <tbody>
-                    {gsc.queries.map((q) => (
-                      <tr key={q.query} className="border-b border-[#DAD2C3] last:border-b-0">
-                        <td className="px-3 py-2.5 text-[12px] text-neutral-800 truncate max-w-[360px]" title={q.query}>{q.query}</td>
+                    {gsc.queries.map((q, i) => (
+                      <tr key={`${q.query}-${q.page}-${i}`} className="border-b border-[#DAD2C3] last:border-b-0">
+                        <td className="px-3 py-2.5 text-[12px] text-neutral-800 truncate max-w-[280px]" title={q.query}>{q.query}</td>
+                        <td className="px-3 py-2.5 text-[12px] text-[#0047AB] truncate max-w-[260px]" title={q.page}>{stripJournal(q.page)}</td>
                         <td className="px-3 py-2.5 text-[12px] text-right tabular-nums text-neutral-700">{q.position}</td>
                         <td className="px-3 py-2.5 text-[12px] text-right tabular-nums text-neutral-700">{num(q.impressions)}</td>
                         <td className="px-3 py-2.5 text-[12px] text-right tabular-nums text-neutral-700">{num(q.clicks)}</td>
