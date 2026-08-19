@@ -873,6 +873,59 @@ export const PROJECTS_LIST: ProjectData[] = [
   },
 
   // ════════════════════════════════════════════════
+  // PROJECT — Featherlight (#38)
+  // ════════════════════════════════════════════════
+  {
+    id: '38',
+    titleEN:  'Featherlight',
+    titleAM:  'Featherlight',
+
+    categoryEN: 'Residential',
+    categoryAM: 'Բնակելի',
+
+    imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135202/Portfolio/38/38-cover.jpg',
+
+    descriptionEN: 'Full-home interior design for a family apartment near Komitas Park in Yerevan, Armenia — a luminous, transitional home where an all-white living–dining core (crane murals, feather-glass chandeliers, herringbone floors and curved cream seating) opens onto jewel-box private rooms: a mauve-and-gold master bedroom, a magenta-and-gold entry hall, teal and travertine bathrooms, and a pastel sage-and-lavender kids’ room.',
+    descriptionAM: 'Full-home interior design for a family apartment near Komitas Park in Yerevan, Armenia — a luminous, transitional home where an all-white living–dining core (crane murals, feather-glass chandeliers, herringbone floors and curved cream seating) opens onto jewel-box private rooms: a mauve-and-gold master bedroom, a magenta-and-gold entry hall, teal and travertine bathrooms, and a pastel sage-and-lavender kids’ room.',
+
+    area:       '100 m²',
+    date:       '2025',
+    locationEN: 'Yerevan, Armenia',
+    locationAM: 'Yerevan, Armenia',
+
+    gallery: [
+      // SLOT 1 — WIDE 16:9 — hero (Living)
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135203/Portfolio/38/38-g0.jpg',
+      // SLOT 2 — TALL 4:5 — Bathroom 1
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135205/Portfolio/38/38-g1.jpg',
+      // SLOT 3 — TALL 4:5 — Bathroom 1
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135207/Portfolio/38/38-g2.jpg',
+      // SLOT 4 — WIDE 16:9 — Master
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135209/Portfolio/38/38-g3.jpg',
+      // SLOT 5 — MID 4:3 — Hallway
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135210/Portfolio/38/38-g4.jpg',
+      // SLOT 6 — MID 4:3 — Hallway
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135211/Portfolio/38/38-g5.jpg',
+      // SLOT 7 — SQUARE 1:1 — Kitchen
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135212/Portfolio/38/38-g6.jpg',
+      // SLOT 8 — SQUARE 1:1 — Kitchen
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135214/Portfolio/38/38-g7.jpg',
+      // SLOT 9 — SQUARE 1:1 — Kitchen
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135215/Portfolio/38/38-g8.jpg',
+      // SLOT 10 — TALL 4:5 — Bathroom 2
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135217/Portfolio/38/38-g9.jpg',
+      // SLOT 11 — TALL 4:5 — Bathroom 2
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135218/Portfolio/38/38-g10.jpg',
+      // --- overflow: Master pair + Kids trio ---
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135219/Portfolio/38/38-g11.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135221/Portfolio/38/38-g12.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135222/Portfolio/38/38-g13.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135224/Portfolio/38/38-g14.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135225/Portfolio/38/38-g15.jpg',
+    ],
+  },
+
+  // ════════════════════════════════════════════════
   // ADD YOUR NEXT PROJECT HERE
   // Copy the block below, paste it above this comment,
   // increment the id, and fill in your details.
