@@ -885,8 +885,8 @@ export const PROJECTS_LIST: ProjectData[] = [
 
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135202/Portfolio/38/38-cover.jpg',
 
-    descriptionEN: 'Full-home interior design for a family apartment near Komitas Park in Yerevan, Armenia — a luminous, transitional home where an all-white living–dining core (crane murals, feather-glass chandeliers, herringbone floors and curved cream seating) opens onto jewel-box private rooms: a mauve-and-gold master bedroom, a magenta-and-gold entry hall, teal and travertine bathrooms, and a pastel sage-and-lavender kids’ room.',
-    descriptionAM: 'Full-home interior design for a family apartment near Komitas Park in Yerevan, Armenia — a luminous, transitional home where an all-white living–dining core (crane murals, feather-glass chandeliers, herringbone floors and curved cream seating) opens onto jewel-box private rooms: a mauve-and-gold master bedroom, a magenta-and-gold entry hall, teal and travertine bathrooms, and a pastel sage-and-lavender kids’ room.',
+    descriptionEN: 'A 100 m² family apartment near Komitas Park in Yerevan, Armenia, designed by Designature Studio — a luminous, transitional interior where an all-white living–dining core (crane murals, feather-glass chandeliers, herringbone floors and curved cream seating) opens onto jewel-box private rooms: a mauve-and-gold master bedroom, a magenta-and-gold entry hall, teal and travertine bathrooms, and a pastel sage-and-lavender children’s room.',
+    descriptionAM: 'A 100 m² family apartment near Komitas Park in Yerevan, Armenia, designed by Designature Studio — a luminous, transitional interior where an all-white living–dining core (crane murals, feather-glass chandeliers, herringbone floors and curved cream seating) opens onto jewel-box private rooms: a mauve-and-gold master bedroom, a magenta-and-gold entry hall, teal and travertine bathrooms, and a pastel sage-and-lavender children’s room.',
 
     area:       '100 m²',
     date:       '2025',
@@ -913,7 +913,7 @@ export const PROJECTS_LIST: ProjectData[] = [
       // SLOT 9 — SQUARE 1:1 — Kitchen
       'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135215/Portfolio/38/38-g8.jpg',
       // SLOT 10 — TALL 4:5 — Bathroom 2
-      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135217/Portfolio/38/38-g9.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787137283/Portfolio/38/38-g9.jpg',
       // SLOT 11 — TALL 4:5 — Bathroom 2
       'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135218/Portfolio/38/38-g10.jpg',
       // --- overflow: Master pair + Kids trio ---
