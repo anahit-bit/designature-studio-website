@@ -7,6 +7,8 @@
  *   /portfolio/:id   → BreadcrumbList (Home › Portfolio › Project)
  *   /faq             → FAQPage (generated from src/data/faqs.ts — same source the
  *                      rendered page uses, so schema always matches the content)
+ *   /deliverables    → FAQPage + BreadcrumbList (FAQ from src/data/deliverablesFaq.ts,
+ *                      same source the rendered accordion uses)
  *
  * Builders return plain objects; render.ts serializes them safely.
  */
@@ -14,6 +16,7 @@ import type { ProjectData } from "../../src/constants";
 import type { BlogPost, Category } from "../../src/types";
 import { BUSINESS, SITE_URL, absUrl, CORE_SERVICES } from "./config.js";
 import { FAQ_SECTIONS } from "../../src/data/faqs.js";
+import { DELIVERABLES_FAQ } from "../../src/data/deliverablesFaq.js";
 import type { RouteInfo, JournalData } from "./meta.js";
 
 type JsonLd = Record<string, unknown>;
@@ -116,6 +119,23 @@ function faqPageNode(): JsonLd {
     "@type": "FAQPage",
     "@id": `${absUrl("/faq")}#faqpage`,
     mainEntity,
+  };
+}
+
+/**
+ * S-014 — FAQPage for /deliverables, built from the same 8 Q&As the page
+ * renders (src/data/deliverablesFaq.ts). Answers are emitted as plain text;
+ * the in-copy links exist only in the rendered accordion.
+ */
+function deliverablesFaqNode(): JsonLd {
+  return {
+    "@type": "FAQPage",
+    "@id": `${absUrl("/deliverables")}#faqpage`,
+    mainEntity: DELIVERABLES_FAQ.map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: { "@type": "Answer", text: item.a },
+    })),
   };
 }
 
@@ -231,6 +251,15 @@ export function buildJsonLd(
     }
     case "faq":
       nodes.push(faqPageNode());
+      break;
+    case "deliverables":
+      nodes.push(
+        deliverablesFaqNode(),
+        breadcrumbNode([
+          { name: "Home", url: SITE_URL + "/" },
+          { name: "Deliverables", url: absUrl("/deliverables") },
+        ])
+      );
       break;
     case "journalIndex":
       nodes.push(

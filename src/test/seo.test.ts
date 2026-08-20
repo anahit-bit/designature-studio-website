@@ -134,7 +134,7 @@ describe('route classification + metadata', () => {
     expect(classifyRoute('/admin').key).toBe('private');
     expect(classifyRoute('/admin/orders').key).toBe('private');
     expect(classifyRoute('/booking/confirmed').key).toBe('private');
-    expect(classifyRoute('/deliverables').key).toBe('private');
+    expect(classifyRoute('/deliverables').key).toBe('deliverables');
     expect(classifyRoute('/something-else').key).toBe('unknown');
   });
 
@@ -146,7 +146,7 @@ describe('route classification + metadata', () => {
 
   it('gives every public route a unique, non-empty title + description', () => {
     const keys = [
-      '/', '/portfolio', '/services', '/studio', '/ai-concepts',
+      '/', '/portfolio', '/services', '/studio', '/deliverables', '/ai-concepts',
       '/ai-vision', '/pricing', '/faq', '/consultation', '/terms',
       '/privacy', '/refund',
     ];
@@ -231,6 +231,23 @@ describe('JSON-LD', () => {
     expect((nodes[0].mainEntity as any[]).length).toBe(expectedCount);
     expect((nodes[0].mainEntity as any[])[0].name).toBe(FAQ_SECTIONS[0].items[0].q);
   });
+
+  it('emits a /deliverables FAQPage whose questions match the deliverables FAQ source', async () => {
+    const { DELIVERABLES_FAQ } = await import('../data/deliverablesFaq');
+    const nodes = buildJsonLd(classifyRoute('/deliverables'));
+    const faq = nodes.find((n) => n['@type'] === 'FAQPage')!;
+    expect(faq).toBeDefined();
+    const entities = faq.mainEntity as any[];
+    expect(entities.length).toBe(8);
+    expect(entities.length).toBe(DELIVERABLES_FAQ.length);
+    expect(entities.map((e) => e.name)).toEqual(DELIVERABLES_FAQ.map((f) => f.q));
+    for (const e of entities) {
+      expect(e['@type']).toBe('Question');
+      expect(e.acceptedAnswer['@type']).toBe('Answer');
+      expect(e.acceptedAnswer.text.length).toBeGreaterThan(40);
+    }
+    expect(nodes.some((n) => n['@type'] === 'BreadcrumbList')).toBe(true);
+  });
 });
 
 describe('sitemap', () => {
@@ -248,6 +265,8 @@ describe('sitemap', () => {
       expect(xml).toContain(`<loc>https://www.designature.studio${r.path === '/' ? '/' : r.path}</loc>`);
     }
     expect(xml).toContain('<loc>https://www.designature.studio/portfolio/0022</loc>');
+    // S-014 — the deliverables page must be crawlable.
+    expect(xml).toContain('<loc>https://www.designature.studio/deliverables</loc>');
   });
 });
 

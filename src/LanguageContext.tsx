@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useRef, ReactNode, useEffec
 import { useLocation, useNavigate } from 'react-router-dom';
 
 export type Language = 'en' | 'am';
-export type Page = 'home' | 'portfolio' | 'project-detail' | 'services' | 'studio' | 'ai-concepts' | 'ai-vision' | 'pricing' | 'faq' | 'journal' | 'journal-detail' | 'journal-category' | 'terms' | 'privacy' | 'refund' | 'consultation' | 'booking-confirmed' | 'booking-failed';
+export type Page = 'home' | 'portfolio' | 'project-detail' | 'services' | 'studio' | 'deliverables' | 'ai-concepts' | 'ai-vision' | 'pricing' | 'faq' | 'journal' | 'journal-detail' | 'journal-category' | 'terms' | 'privacy' | 'refund' | 'consultation' | 'booking-confirmed' | 'booking-failed';
 export type PortfolioFilter = 'All' | 'Residential' | 'Commercial';
 
 // URL ⇄ page-state mapping. URL is the source of truth; localStorage persistence
@@ -15,6 +15,7 @@ function pathToPageState(pathname: string): { page: Page; projectId: string | nu
   if (projectMatch) return { page: 'project-detail', projectId: decodeURIComponent(projectMatch[1]) };
   if (pathname === '/services') return { page: 'services', projectId: null };
   if (pathname === '/studio') return { page: 'studio', projectId: null };
+  if (pathname === '/deliverables') return { page: 'deliverables', projectId: null };
   if (pathname === '/ai-concepts') return { page: 'ai-concepts', projectId: null };
   if (pathname === '/ai-vision') return { page: 'ai-vision', projectId: null };
   if (pathname === '/pricing') return { page: 'pricing', projectId: null };
@@ -43,6 +44,8 @@ function pageToPath(page: Page, projectId?: string | null, filter?: PortfolioFil
       return '/services';
     case 'studio':
       return '/studio';
+    case 'deliverables':
+      return '/deliverables';
     case 'ai-concepts':
       return '/ai-concepts';
     case 'ai-vision':
@@ -102,6 +105,7 @@ const translations = {
     'nav.pricing': 'Pricing',
     'nav.contact': 'Contact',
     'nav.blog': 'Blog',
+    'nav.deliverables': 'Deliverables',
     'nav.journal': 'Journal',
     'nav.bookConsultation': 'Book a Consultation',
     'nav.freeConsultation': 'Free Consultation',
@@ -1162,6 +1166,7 @@ const translations = {
     'nav.pricing': 'Գներ',
     'nav.contact': 'Կապ',
     'nav.blog': 'Բլոգ',
+    'nav.deliverables': 'Deliverables',
     'nav.journal': 'Ամսագիր',
     'nav.bookConsultation': 'Ամրագրել Խորհրդատվություն',
     'nav.freeConsultation': 'Անվճար Խորհրդատվություն',

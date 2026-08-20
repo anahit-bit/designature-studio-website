@@ -33,7 +33,7 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
   // On white-background pages without hero images, we need black text from the start.
   // S-013: Home now opens on a cream text band (not a dark image hero), so dark
   // text is needed there too.
-  const isDarkTextNeeded = isScrolled || currentPage === 'home' || currentPage === 'portfolio' || currentPage === 'project-detail' || currentPage === 'services' || currentPage === 'studio' || currentPage === 'pricing' || currentPage === 'faq' || currentPage === 'journal' || currentPage === 'journal-detail' || currentPage === 'journal-category' || currentPage === 'terms' || currentPage === 'privacy' || currentPage === 'refund' || currentPage === 'consultation' || currentPage === 'booking-confirmed' || currentPage === 'booking-failed';
+  const isDarkTextNeeded = isScrolled || currentPage === 'home' || currentPage === 'portfolio' || currentPage === 'project-detail' || currentPage === 'services' || currentPage === 'studio' || currentPage === 'deliverables' || currentPage === 'pricing' || currentPage === 'faq' || currentPage === 'journal' || currentPage === 'journal-detail' || currentPage === 'journal-category' || currentPage === 'terms' || currentPage === 'privacy' || currentPage === 'refund' || currentPage === 'consultation' || currentPage === 'booking-confirmed' || currentPage === 'booking-failed';
   const isAIConceptsPage = currentPage === 'ai-concepts';
   const useLightNav = isAIConceptsPage && !isScrolled;
   // Pages with a dark photo hero (e.g. the Journal) pass onDark so the header
@@ -58,6 +58,7 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
   const navLinks = [
     { name: t('nav.portfolio'), href: '/portfolio', page: 'portfolio', action: () => navigateTo('portfolio') },
     { name: t('nav.services'), href: '/services', page: 'services', action: () => navigateTo('services') },
+    { name: t('nav.deliverables'), href: '/deliverables', page: 'deliverables', action: () => navigateTo('deliverables') },
     { name: t('nav.journal'), href: '/journal', page: 'journal', action: () => navigateTo('journal') },
     { name: t('nav.studio'), href: '/studio', page: 'studio', action: () => navigateTo('studio') },
     { name: t('nav.pricing'), href: '/pricing', page: 'pricing', action: () => navigateTo('pricing') },

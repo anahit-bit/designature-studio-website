@@ -59,6 +59,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <!-- Brand fonts (BRAND.md, locked 2026-05-24): Libre Caslon Display + Manrope.
+         Site-wide migration off Cormorant/Montserrat is tracked as B-006; until then
+         these load alongside the legacy pair and are used by new surfaces (S-014
+         /deliverables) via font-brand-display / font-brand-body. -->
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         theme: {
@@ -66,6 +71,9 @@
             fontFamily: {
               display: ['"Cormorant Garamond"', 'serif'],
               body: ['Montserrat', 'sans-serif'],
+              // Locked brand pair — see BRAND.md § Typography (B-006 migration).
+              'brand-display': ['"Libre Caslon Display"', 'Georgia', 'serif'],
+              'brand-body': ['Manrope', '"Segoe UI"', 'system-ui', 'sans-serif'],
             },
             letterSpacing: { architectural: '-0.04em' },
             keyframes: {
