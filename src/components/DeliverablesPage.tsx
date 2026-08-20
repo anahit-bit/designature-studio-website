@@ -99,17 +99,24 @@ const SAMPLES = Object.fromEntries(
 ) as Record<SampleKey, { href: string; filename: string; size: string }>;
 
 /**
- * Phase cover thumbnails — a render of page 1 of each sample PDF (the studio's
- * branded title page), uploaded by scripts/upload-deliverable-covers.mjs.
- * Delivered through the shared cld() helper for f_auto/q_auto + srcset.
+ * Phase cover thumbnails, uploaded by scripts/upload-deliverable-covers.mjs and
+ * delivered through the shared cld() helper (f_auto/q_auto + srcset).
+ *
+ * Sources are owner-picked and each is pre-cropped to 4:5 at 1200x1500, so they
+ * fill the cover frame exactly — no letterboxing, no distortion:
+ *   phase 1-2  → Phase 1 - Phase 2.pdf p21   (concept + moodboard collage)
+ *   aiConcept  → Phase 3 AI Concept.pdf p6   (the kitchen render on that page)
+ *   renders    → Renders/Final/10 (2).jpg    (bedroom render, project 0022)
+ *   technical  → All-in-One p14              (the floorplan itself, no title block)
+ *
  * Drop a key to fall back to the mockup's typographic placeholder.
  */
 const CLD_IMG = 'https://res.cloudinary.com/dys2k5muv/image/upload';
 const COVERS = {
-  phase12: `${CLD_IMG}/v1787242983/deliverables-cover-phase-1-2.jpg`,
-  aiConcept: `${CLD_IMG}/v1787242984/deliverables-cover-phase-3-ai-concept.jpg`,
-  renders: `${CLD_IMG}/v1787242985/deliverables-cover-phase-3-renders.jpg`,
-  technical: `${CLD_IMG}/v1787242986/deliverables-cover-phase-4-technical.jpg`,
+  phase12: `${CLD_IMG}/v1787244919/deliverables-cover-phase-1-2.jpg`,
+  aiConcept: `${CLD_IMG}/v1787244920/deliverables-cover-phase-3-ai-concept.jpg`,
+  renders: `${CLD_IMG}/v1787244922/deliverables-cover-phase-3-renders.jpg`,
+  technical: `${CLD_IMG}/v1787244923/deliverables-cover-phase-4-technical.jpg`,
 } as const;
 
 const GLANCE = [
@@ -251,13 +258,13 @@ const DeliverablesPage: React.FC = () => {
     document.getElementById('downloads')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   return (
-    <main className="bg-white text-[#0A0A0A] font-brand-body text-[14px] leading-[1.55]">
+    <main className="bg-white text-[#0A0A0A] font-body text-[14px] leading-[1.55]">
       {/* ══════════ HERO ══════════ */}
       <section className="bg-white pt-[150px] md:pt-[220px] pb-16 lg:pb-24">
         <div className="max-w-[1240px] mx-auto px-7 text-center">
           <div className="w-11 h-px bg-[#9E5E41] mx-auto mb-8" />
           <span className={EYEBROW}>What you actually receive</span>
-          <h1 className="font-brand-display font-normal text-[#0A0A0A] leading-[1.05] tracking-[-0.01em] text-[48px] md:text-[72px] lg:text-[92px] max-w-[16ch] mx-auto mb-7">
+          <h1 className="font-display font-normal text-[#0A0A0A] leading-[1.05] tracking-[-0.01em] text-[48px] md:text-[72px] lg:text-[92px] max-w-[16ch] mx-auto mb-7">
             A design package built to build from.
           </h1>
           <p className="text-[17px] md:text-[19px] leading-[1.6] text-[#404040] max-w-[64ch] mx-auto mb-10">
@@ -282,7 +289,7 @@ const DeliverablesPage: React.FC = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[#DAD2C3] border border-[#DAD2C3]">
             {GLANCE.map((cell) => (
               <div key={cell.label} className="bg-[#FAFAFA] px-5 py-7 text-center">
-                <div className="font-brand-display font-normal text-[40px] md:text-[48px] leading-none text-[#0A0A0A] mb-2.5">
+                <div className="font-display font-normal text-[40px] md:text-[48px] leading-none text-[#0A0A0A] mb-2.5">
                   {cell.num}
                 </div>
                 <div className="text-[11px] md:text-[12px] font-bold uppercase tracking-[0.2em] text-[#6B6B6B]">
@@ -300,7 +307,7 @@ const DeliverablesPage: React.FC = () => {
           <div className="text-center mb-12 lg:mb-16">
             <WarmRule />
             <span className={EYEBROW}>The four phases</span>
-            <h2 className="font-brand-display font-normal text-[#0A0A0A] leading-[1.05] tracking-[-0.01em] text-[36px] md:text-[46px] lg:text-[56px] max-w-[22ch] mx-auto mb-5">
+            <h2 className="font-display font-normal text-[#0A0A0A] leading-[1.05] tracking-[-0.01em] text-[36px] md:text-[46px] lg:text-[56px] max-w-[22ch] mx-auto mb-5">
               Discovery to build, in one continuous flow.
             </h2>
             <p className="text-[16px] leading-[1.6] text-[#404040] max-w-[60ch] mx-auto">
@@ -314,7 +321,7 @@ const DeliverablesPage: React.FC = () => {
                 <div className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#9E5E41] mb-3">
                   {card.num}
                 </div>
-                <h3 className="font-brand-display font-normal text-[22px] leading-tight text-[#0A0A0A] mb-3">
+                <h3 className="font-display font-normal text-[22px] leading-tight text-[#0A0A0A] mb-3">
                   {card.title}
                 </h3>
                 <p className="text-[13px] leading-[1.6] text-[#404040]">{card.body}</p>
@@ -353,6 +360,8 @@ const DeliverablesPage: React.FC = () => {
         cover={{
           tag: 'Phase 1 – Phase 2',
           imageUrl: COVERS.phase12,
+          alt:
+            'Interior design concept board from a Designature Studio project — living-room and kitchen moodboard with deep-red joinery, a glazed red-framed partition, dining setting and material studies.',
           big: 'The Brief',
           sub: '+ Concept Direction',
           filename: `Phase 1 – Phase 2.pdf · ${SAMPLES.phase12.size}`,
@@ -383,6 +392,8 @@ const DeliverablesPage: React.FC = () => {
         cover={{
           tag: 'Phase 3 · AI Concept',
           imageUrl: COVERS.aiConcept,
+          alt:
+            'AI concept preview of a dusty-rose and cream kitchen by Designature Studio — handleless cabinetry, stone worktop and backsplash, black track lighting and a fluted-glass display column.',
           big: 'AI Concept',
           sub: 'Locked to your palette',
           filename: `Phase 3 AI Concept.pdf · ${SAMPLES.aiConcept.size}`,
@@ -414,6 +425,8 @@ const DeliverablesPage: React.FC = () => {
         cover={{
           tag: 'Phase 3 · Renders',
           imageUrl: COVERS.renders,
+          alt:
+            'Photoreal 3D render of a master bedroom by Designature Studio, Yerevan — curved upholstered headboard, woven paper pendant, red glass-block wall and a checkerboard rug.',
           big: '3D Renders',
           sub: 'Photoreal · every room',
           filename: `Phase 3 Renders.pdf · ${SAMPLES.renders.size}`,
@@ -450,6 +463,8 @@ const DeliverablesPage: React.FC = () => {
         cover={{
           tag: 'Phase 4 · Technical',
           imageUrl: COVERS.technical,
+          alt:
+            'Detail of a dimensioned electrical floor plan from a Designature Studio technical drawing set — socket and switch positions with mounting heights, wall hatching and door swings.',
           big: 'Technical',
           sub: '40+ sheets · dimensioned',
           filename: `Phase 4 Technical Documents.pdf · ${SAMPLES.technical.size}`,
@@ -466,7 +481,7 @@ const DeliverablesPage: React.FC = () => {
               <span className="block text-[11px] font-bold uppercase tracking-[0.28em] text-white/70 mb-4">
                 One PDF · everything
               </span>
-              <h2 className="font-brand-display font-normal text-white leading-[1.05] tracking-[-0.01em] text-[38px] md:text-[50px] lg:text-[60px] max-w-[14ch] mb-6">
+              <h2 className="font-display font-normal text-white leading-[1.05] tracking-[-0.01em] text-[38px] md:text-[50px] lg:text-[60px] max-w-[14ch] mb-6">
                 The All-in-One reference.
               </h2>
               <p className="text-[16px] leading-[1.7] text-white/[0.82] max-w-[50ch] mb-4">
@@ -481,7 +496,7 @@ const DeliverablesPage: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 my-8 py-6 border-t border-b border-white/15">
                 {MASTER_STATS.map((s) => (
                   <div key={s.label}>
-                    <div className="font-brand-display font-normal text-[44px] leading-none text-white">
+                    <div className="font-display font-normal text-[44px] leading-none text-white">
                       {s.num}
                     </div>
                     <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/70 mt-1.5">
@@ -505,7 +520,7 @@ const DeliverablesPage: React.FC = () => {
               <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-white/70">
                 Interior Design Project
               </div>
-              <div className="font-brand-display font-normal text-[40px] md:text-[48px] leading-[1.05] text-white">
+              <div className="font-display font-normal text-[40px] md:text-[48px] leading-[1.05] text-white">
                 All-in-One
                 <br />
                 Sample Project
@@ -524,7 +539,7 @@ const DeliverablesPage: React.FC = () => {
           <div className="text-center mb-12 lg:mb-14">
             <WarmRule />
             <span className={EYEBROW}>Why not just AI</span>
-            <h2 className="font-brand-display font-normal text-[#0A0A0A] leading-[1.05] tracking-[-0.01em] text-[34px] md:text-[44px] lg:text-[52px] max-w-[22ch] mx-auto mb-4">
+            <h2 className="font-display font-normal text-[#0A0A0A] leading-[1.05] tracking-[-0.01em] text-[34px] md:text-[44px] lg:text-[52px] max-w-[22ch] mx-auto mb-4">
               What AI ships. What a studio ships.
             </h2>
             <p className="text-[16px] leading-[1.6] text-[#404040] max-w-[60ch] mx-auto">
@@ -537,7 +552,7 @@ const DeliverablesPage: React.FC = () => {
           <ComparisonTable />
 
           <div className="text-center mt-11">
-            <p className="font-brand-display text-[22px] leading-[1.4] text-[#0A0A0A] max-w-[38ch] mx-auto mb-6">
+            <p className="font-display text-[22px] leading-[1.4] text-[#0A0A0A] max-w-[38ch] mx-auto mb-6">
               Start free. Upgrade when you're ready to build.
             </p>
             <div className="inline-flex gap-3 flex-wrap justify-center">
@@ -558,7 +573,7 @@ const DeliverablesPage: React.FC = () => {
           <div className="text-center mb-12 lg:mb-14">
             <WarmRule />
             <span className={EYEBROW}>Real project · real files</span>
-            <h2 className="font-brand-display font-normal text-[#0A0A0A] leading-[1.05] tracking-[-0.01em] text-[34px] md:text-[42px] lg:text-[48px] max-w-[20ch] mx-auto mb-4">
+            <h2 className="font-display font-normal text-[#0A0A0A] leading-[1.05] tracking-[-0.01em] text-[34px] md:text-[42px] lg:text-[48px] max-w-[20ch] mx-auto mb-4">
               Download the sample deliverables.
             </h2>
             <p className="text-[16px] leading-[1.6] text-[#404040] max-w-[60ch] mx-auto">
@@ -589,7 +604,7 @@ const DeliverablesPage: React.FC = () => {
           <div className="text-center mb-12 lg:mb-14">
             <WarmRule />
             <span className={EYEBROW}>Questions we hear a lot</span>
-            <h2 className="font-brand-display font-normal text-[#0A0A0A] leading-[1.05] tracking-[-0.01em] text-[34px] md:text-[42px] lg:text-[48px] max-w-[20ch] mx-auto mb-4">
+            <h2 className="font-display font-normal text-[#0A0A0A] leading-[1.05] tracking-[-0.01em] text-[34px] md:text-[42px] lg:text-[48px] max-w-[20ch] mx-auto mb-4">
               Deliverables · questions.
             </h2>
           </div>
@@ -601,11 +616,11 @@ const DeliverablesPage: React.FC = () => {
                 open={i === 0}
                 className="group border-b border-[#DAD2C3] py-5"
               >
-                <summary className="flex justify-between items-baseline gap-5 cursor-pointer list-none [&::-webkit-details-marker]:hidden font-brand-display text-[20px] md:text-[22px] leading-[1.3] text-[#0A0A0A]">
+                <summary className="flex justify-between items-baseline gap-5 cursor-pointer list-none [&::-webkit-details-marker]:hidden font-display text-[20px] md:text-[22px] leading-[1.3] text-[#0A0A0A]">
                   {item.q}
                   <span
                     aria-hidden
-                    className="font-brand-body font-normal text-[24px] leading-none text-[#9E5E41] shrink-0"
+                    className="font-body font-normal text-[24px] leading-none text-[#9E5E41] shrink-0"
                   >
                     <span className="group-open:hidden">+</span>
                     <span className="hidden group-open:inline">−</span>
@@ -628,7 +643,7 @@ const DeliverablesPage: React.FC = () => {
               <span className="block text-[11px] font-bold uppercase tracking-[0.28em] text-white/75 mb-3.5">
                 Ready to see yours
               </span>
-              <h2 className="font-brand-display font-normal text-white leading-[1.05] tracking-[-0.01em] text-[30px] md:text-[36px] lg:text-[42px] max-w-[20ch] mb-3">
+              <h2 className="font-display font-normal text-white leading-[1.05] tracking-[-0.01em] text-[30px] md:text-[36px] lg:text-[42px] max-w-[20ch] mb-3">
                 Start with a free 15-minute conversation.
               </h2>
               <p className="text-[15px] leading-[1.6] text-white/90 max-w-[52ch]">

@@ -41,7 +41,7 @@ const DownloadCard: React.FC<DownloadCardProps> = ({
           <span className="block text-[10px] font-bold uppercase tracking-[0.24em] text-white/85 mb-2">
             {tag}
           </span>
-          <h4 className="font-brand-display font-normal text-white text-[28px] md:text-[32px] leading-none">
+          <h4 className="font-display font-normal text-white text-[28px] md:text-[32px] leading-none">
             {title}
           </h4>
         </div>
@@ -64,7 +64,7 @@ const DownloadCard: React.FC<DownloadCardProps> = ({
   return (
     <div className="bg-white border border-[#DAD2C3] p-6 flex flex-col gap-3.5">
       <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#9E5E41]">{tag}</span>
-      <h4 className="font-brand-display font-normal text-[#0A0A0A] text-[20px] leading-tight">{title}</h4>
+      <h4 className="font-display font-normal text-[#0A0A0A] text-[20px] leading-tight">{title}</h4>
       <p className="flex-1 text-[13px] leading-[1.55] text-[#404040]">{body}</p>
       <span className="text-[11px] uppercase tracking-[0.14em] text-[#6B6B6B]">{meta}</span>
       <a

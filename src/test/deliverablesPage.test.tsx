@@ -159,8 +159,11 @@ describe('S-014 /deliverables page', () => {
         /res\.cloudinary\.com\/dys2k5muv\/image\/upload\/.*deliverables-cover-[a-z0-9-]+\.jpg$/
       );
       expect(img!.getAttribute('srcset')).toBeTruthy();
-      expect(img!.className).toContain('object-contain');
-      expect(img!.getAttribute('alt')).toMatch(/^Cover page of the .+ sample PDF$/);
+      // Pre-cropped to 4:5, so they fill the frame rather than letterbox.
+      expect(img!.className).toContain('object-cover');
+      // Alt text is fact-dense per the GEO copy rule, not a generic label.
+      expect(img!.getAttribute('alt')!.length).toBeGreaterThan(60);
+      expect(img!.getAttribute('alt')).toMatch(/Designature Studio/);
     }
   });
 

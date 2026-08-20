@@ -19,6 +19,8 @@ export interface PhaseCover {
   sub: string;
   /** Bottom line — "<file>.pdf · N MB". */
   filename: string;
+  /** Alt text describing what the cover actually shows. */
+  alt: string;
   /**
    * Cloudinary thumbnail of the PDF's first page. When absent the typographic
    * placeholder from the mockup renders instead.
@@ -76,7 +78,7 @@ const PhaseSection: React.FC<PhaseSectionProps> = ({
           <span className="block text-[11px] font-bold uppercase tracking-[0.28em] text-[#9E5E41] mb-4">
             {eyebrow}
           </span>
-          <h2 className="font-brand-display font-normal text-[#0A0A0A] leading-[1.05] tracking-[-0.01em] text-[34px] md:text-[42px] lg:text-[48px] max-w-[16ch] mb-6">
+          <h2 className="font-display font-normal text-[#0A0A0A] leading-[1.05] tracking-[-0.01em] text-[34px] md:text-[42px] lg:text-[48px] max-w-[16ch] mb-6">
             {heading}
           </h2>
           {paragraphs.map((p) => (
@@ -126,22 +128,21 @@ const PhaseSection: React.FC<PhaseSectionProps> = ({
         <div className={reverse ? 'lg:order-1' : 'lg:order-2'}>
           <div className="relative aspect-[4/5] w-full max-w-[400px] mx-auto lg:max-w-none bg-[#FAFAFA] border border-[#DAD2C3] overflow-hidden flex items-center justify-center">
             {cover.imageUrl ? (
-              /* The sample PDFs are landscape A3/A4, so the page is centred as a
-                 document sitting on the card rather than cropped to fill the 4:5
-                 frame — cropping would cut the title block off both sides. */
+              /* Covers are pre-cropped to 4:5 (1200x1500) to match this frame, so
+                 they fill it edge to edge with nothing cropped away at runtime. */
               <img
                 src={cld(cover.imageUrl, 640)}
                 srcSet={cldSrcSet(cover.imageUrl, CARD_WIDTHS)}
                 sizes="(min-width: 1024px) 32vw, (min-width: 640px) 60vw, 88vw"
-                alt={`Cover page of the ${cover.tag} sample PDF`}
+                alt={cover.alt}
                 loading="lazy"
-                width={1600}
-                height={1132}
-                className="w-[calc(100%-2.5rem)] h-auto object-contain border border-[#DAD2C3] shadow-[0_2px_16px_rgba(0,0,0,0.10)] bg-white"
+                width={1200}
+                height={1500}
+                className="absolute inset-0 w-full h-full object-cover"
               />
             ) : (
               <div className="p-10 text-center">
-                <div className="font-brand-display font-normal text-[44px] leading-none text-[#0A0A0A] mb-3.5">
+                <div className="font-display font-normal text-[44px] leading-none text-[#0A0A0A] mb-3.5">
                   {cover.big}
                 </div>
                 <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-[#6B6B6B]">
@@ -154,7 +155,7 @@ const PhaseSection: React.FC<PhaseSectionProps> = ({
             </span>
             <div
               className={`absolute bottom-4 left-4 right-4 text-[11px] font-bold uppercase tracking-[0.14em] text-[#6B6B6B] ${
-cover.imageUrl ? 'bg-[#FAFAFA]/90 px-2 py-1' : ''
+cover.imageUrl ? 'bg-white/85 px-2 py-1 text-[#0A0A0A]' : ''
               }`}
             >
               {cover.filename}

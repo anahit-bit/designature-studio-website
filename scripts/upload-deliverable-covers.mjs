@@ -1,8 +1,12 @@
 // S-014 — uploader for the four /deliverables phase cover thumbnails.
 //
-// Each cover is a render of page 1 of the matching sample PDF (the studio's
-// branded title page). Rendered by scratchpad/build_covers.py, uploaded here as
-// `image` resource type so Cloudinary can resize/format them per breakpoint.
+// Sources (owner-picked), all pre-cropped to 4:5 at 1200x1500 by
+// scratchpad/build_covers_final.py so they fill the cover frame exactly:
+//   phase 1-2         Phase 1 - Phase 2.pdf        p21  concept + moodboard collage
+//   phase 3 ai        Phase 3 AI Concept.pdf       p6   the kitchen render
+//   phase 3 renders   Renders/Final/10 (2).jpg     bedroom render
+//   phase 4 technical AllinOne Sample Project.pdf  p14  floorplan only (no title block)
+// Uploaded as `image` resource type so Cloudinary resizes/formats per breakpoint.
 //
 // Re-running overwrites in place and invalidates the CDN copy.
 //
@@ -26,14 +30,14 @@ cloudinary.config({
 });
 
 const SRC = process.env.COVERS_DIR
-  || 'C:/Users/User/AppData/Local/Temp/claude/E--Business-Claude-Website--claude-worktrees-confident-maxwell-841ac0/892cf53a-7409-4d96-ac5c-13ea099ac7e8/scratchpad/covers';
+  || 'C:/Users/User/AppData/Local/Temp/claude/E--Business-Claude-Website--claude-worktrees-confident-maxwell-841ac0/892cf53a-7409-4d96-ac5c-13ea099ac7e8/scratchpad/covers_final';
 const FOLDER = 'Deliverables Samples';
 
 const FILES = [
-  ['phase-1-2-p1.jpg', 'deliverables-cover-phase-1-2'],
-  ['phase-3-ai-concept-p1.jpg', 'deliverables-cover-phase-3-ai-concept'],
-  ['phase-3-renders-p1.jpg', 'deliverables-cover-phase-3-renders'],
-  ['phase-4-technical-p1.jpg', 'deliverables-cover-phase-4-technical'],
+  ['deliverables-cover-phase-1-2.jpg', 'deliverables-cover-phase-1-2'],
+  ['deliverables-cover-phase-3-ai-concept.jpg', 'deliverables-cover-phase-3-ai-concept'],
+  ['deliverables-cover-phase-3-renders.jpg', 'deliverables-cover-phase-3-renders'],
+  ['deliverables-cover-phase-4-technical.jpg', 'deliverables-cover-phase-4-technical'],
 ];
 
 const out = {};
