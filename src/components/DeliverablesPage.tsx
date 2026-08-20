@@ -98,6 +98,20 @@ const SAMPLES = Object.fromEntries(
   ])
 ) as Record<SampleKey, { href: string; filename: string; size: string }>;
 
+/**
+ * Phase cover thumbnails — a render of page 1 of each sample PDF (the studio's
+ * branded title page), uploaded by scripts/upload-deliverable-covers.mjs.
+ * Delivered through the shared cld() helper for f_auto/q_auto + srcset.
+ * Drop a key to fall back to the mockup's typographic placeholder.
+ */
+const CLD_IMG = 'https://res.cloudinary.com/dys2k5muv/image/upload';
+const COVERS = {
+  phase12: `${CLD_IMG}/v1787242983/deliverables-cover-phase-1-2.jpg`,
+  aiConcept: `${CLD_IMG}/v1787242984/deliverables-cover-phase-3-ai-concept.jpg`,
+  renders: `${CLD_IMG}/v1787242985/deliverables-cover-phase-3-renders.jpg`,
+  technical: `${CLD_IMG}/v1787242986/deliverables-cover-phase-4-technical.jpg`,
+} as const;
+
 const GLANCE = [
   { num: '4', label: 'Phases' },
   { num: '40+', label: 'Sheets per project' },
@@ -338,6 +352,7 @@ const DeliverablesPage: React.FC = () => {
         downloadFilename={SAMPLES.phase12.filename}
         cover={{
           tag: 'Phase 1 – Phase 2',
+          imageUrl: COVERS.phase12,
           big: 'The Brief',
           sub: '+ Concept Direction',
           filename: `Phase 1 – Phase 2.pdf · ${SAMPLES.phase12.size}`,
@@ -367,6 +382,7 @@ const DeliverablesPage: React.FC = () => {
         extraCta={{ label: 'Try AI Vision free →', onClick: goAiConcepts }}
         cover={{
           tag: 'Phase 3 · AI Concept',
+          imageUrl: COVERS.aiConcept,
           big: 'AI Concept',
           sub: 'Locked to your palette',
           filename: `Phase 3 AI Concept.pdf · ${SAMPLES.aiConcept.size}`,
@@ -397,6 +413,7 @@ const DeliverablesPage: React.FC = () => {
         downloadFilename={SAMPLES.renders.filename}
         cover={{
           tag: 'Phase 3 · Renders',
+          imageUrl: COVERS.renders,
           big: '3D Renders',
           sub: 'Photoreal · every room',
           filename: `Phase 3 Renders.pdf · ${SAMPLES.renders.size}`,
@@ -432,6 +449,7 @@ const DeliverablesPage: React.FC = () => {
         downloadFilename={SAMPLES.technical.filename}
         cover={{
           tag: 'Phase 4 · Technical',
+          imageUrl: COVERS.technical,
           big: 'Technical',
           sub: '40+ sheets · dimensioned',
           filename: `Phase 4 Technical Documents.pdf · ${SAMPLES.technical.size}`,

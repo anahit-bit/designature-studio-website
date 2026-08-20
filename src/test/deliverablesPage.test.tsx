@@ -98,25 +98,17 @@ describe('S-014 /deliverables page', () => {
     expect(screen.getByRole('button', { name: 'Start yours' })).toBeInTheDocument();
   });
 
-  it('puts a Deliverables nav link in the header, active on this page', () => {
-    renderPage();
-    const links = screen.getAllByRole('link', { name: 'Deliverables' });
-    expect(links.length).toBeGreaterThan(0);
-    const desktop = links[0];
-    expect(desktop).toHaveAttribute('href', '/deliverables');
-    // Active nav items render in solid black (inactive ones are black/70).
-    expect(desktop.className).toContain('text-black');
-    expect(desktop.className).not.toContain('text-black/70');
-  });
-
-  it('orders the nav with Deliverables between Services and Journal', () => {
+  // Owner decision: /deliverables is NOT a top-level nav destination. It is a
+  // landing page reached from the home page's "See what you'll receive →" CTA,
+  // so the header must not grow a Deliverables tab.
+  it('does NOT add a Deliverables tab to the header nav', () => {
     renderPage();
     const nav = screen.getAllByRole('navigation')[0];
-    const names = within(nav)
-      .getAllByRole('link')
-      .map((a) => a.getAttribute('href'));
-    expect(names.indexOf('/deliverables')).toBe(names.indexOf('/services') + 1);
-    expect(names.indexOf('/journal')).toBe(names.indexOf('/deliverables') + 1);
+    const hrefs = within(nav).getAllByRole('link').map((a) => a.getAttribute('href'));
+    expect(hrefs).not.toContain('/deliverables');
+    expect(within(nav).queryByRole('link', { name: 'Deliverables' })).not.toBeInTheDocument();
+    // and the nav it replaced is untouched
+    expect(hrefs.indexOf('/journal')).toBe(hrefs.indexOf('/services') + 1);
   });
 
   it('renders the at-a-glance strip', () => {
@@ -152,6 +144,24 @@ describe('S-014 /deliverables page', () => {
     expect(phase4.getByText('Dimensioned floor plans')).toBeInTheDocument();
     expect(phase4.getByText('Heating floor layout')).toBeInTheDocument();
     expect(phase4.getAllByRole('listitem')).toHaveLength(13);
+  });
+
+  it('renders a real cover thumbnail for each phase', () => {
+    renderPage();
+    const covers = screen
+      .getAllByTestId('phase-section')
+      .map((s) => s.querySelector('img'));
+    expect(covers.every(Boolean)).toBe(true);
+    expect(covers).toHaveLength(4);
+    for (const img of covers) {
+      // Cloudinary-delivered, and contained (not cropped) — the pages are landscape.
+      expect(img!.getAttribute('src')).toMatch(
+        /res\.cloudinary\.com\/dys2k5muv\/image\/upload\/.*deliverables-cover-[a-z0-9-]+\.jpg$/
+      );
+      expect(img!.getAttribute('srcset')).toBeTruthy();
+      expect(img!.className).toContain('object-contain');
+      expect(img!.getAttribute('alt')).toMatch(/^Cover page of the .+ sample PDF$/);
+    }
   });
 
   // ── Comparison table — source of truth, see feedback_deliverables_ai_vs_studio_sync.md

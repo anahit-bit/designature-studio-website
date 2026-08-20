@@ -58,7 +58,6 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
   const navLinks = [
     { name: t('nav.portfolio'), href: '/portfolio', page: 'portfolio', action: () => navigateTo('portfolio') },
     { name: t('nav.services'), href: '/services', page: 'services', action: () => navigateTo('services') },
-    { name: t('nav.deliverables'), href: '/deliverables', page: 'deliverables', action: () => navigateTo('deliverables') },
     { name: t('nav.journal'), href: '/journal', page: 'journal', action: () => navigateTo('journal') },
     { name: t('nav.studio'), href: '/studio', page: 'studio', action: () => navigateTo('studio') },
     { name: t('nav.pricing'), href: '/pricing', page: 'pricing', action: () => navigateTo('pricing') },

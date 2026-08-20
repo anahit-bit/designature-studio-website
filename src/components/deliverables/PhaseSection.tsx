@@ -1,4 +1,5 @@
 import React from 'react';
+import { cld, cldSrcSet, CARD_WIDTHS } from '../../lib/cld';
 
 /**
  * S-014 — one "phase detail" band on /deliverables.
@@ -19,8 +20,8 @@ export interface PhaseCover {
   /** Bottom line — "<file>.pdf · N MB". */
   filename: string;
   /**
-   * Optional Cloudinary thumbnail of the PDF's first page. When absent the
-   * typographic placeholder from the mockup renders instead.
+   * Cloudinary thumbnail of the PDF's first page. When absent the typographic
+   * placeholder from the mockup renders instead.
    */
   imageUrl?: string;
 }
@@ -125,11 +126,18 @@ const PhaseSection: React.FC<PhaseSectionProps> = ({
         <div className={reverse ? 'lg:order-1' : 'lg:order-2'}>
           <div className="relative aspect-[4/5] w-full max-w-[400px] mx-auto lg:max-w-none bg-[#FAFAFA] border border-[#DAD2C3] overflow-hidden flex items-center justify-center">
             {cover.imageUrl ? (
+              /* The sample PDFs are landscape A3/A4, so the page is centred as a
+                 document sitting on the card rather than cropped to fill the 4:5
+                 frame — cropping would cut the title block off both sides. */
               <img
-                src={cover.imageUrl}
-                alt={`${cover.big} — sample cover page`}
+                src={cld(cover.imageUrl, 640)}
+                srcSet={cldSrcSet(cover.imageUrl, CARD_WIDTHS)}
+                sizes="(min-width: 1024px) 32vw, (min-width: 640px) 60vw, 88vw"
+                alt={`Cover page of the ${cover.tag} sample PDF`}
                 loading="lazy"
-                className="absolute inset-0 w-full h-full object-cover"
+                width={1600}
+                height={1132}
+                className="w-[calc(100%-2.5rem)] h-auto object-contain border border-[#DAD2C3] shadow-[0_2px_16px_rgba(0,0,0,0.10)] bg-white"
               />
             ) : (
               <div className="p-10 text-center">
@@ -146,7 +154,7 @@ const PhaseSection: React.FC<PhaseSectionProps> = ({
             </span>
             <div
               className={`absolute bottom-4 left-4 right-4 text-[11px] font-bold uppercase tracking-[0.14em] text-[#6B6B6B] ${
-                cover.imageUrl ? 'bg-white/85 px-2 py-1' : ''
+cover.imageUrl ? 'bg-[#FAFAFA]/90 px-2 py-1' : ''
               }`}
             >
               {cover.filename}
