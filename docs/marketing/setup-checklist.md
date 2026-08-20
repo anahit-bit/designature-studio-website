@@ -14,7 +14,12 @@ Owner-action items (these need your own logins, so I can't submit them for you �
 6. **Skip for commission:** **Article** (no program) and **IKEA** (no global program).
 7. **US LLC — only later,** and only if you start *buying and reselling* furniture for clients to use the 15–20% trade discounts (West Elm/PB, C&B/CB2, Wayfair Pro, Blu Dot). Wyoming/Delaware LLC + EIN + state resale permit + US forwarding address. Get US tax advice first. If your model stays affiliate-on-client-self-purchase, you don't need it.
 
-### ⚠ Queued code change — do this the day affiliate links go live (not before)
+### ✅ DONE (Aug 2026) — affiliate live: Skimlinks script added + disclosure applied
+Skimlinks tracking script installed in `index.html`; both "No affiliate fees" bullets replaced with
+"Independent picks — we may earn a small commission" and an explicit disclosure line added under the
+Shopping-List cards in `AIConceptsPage.tsx`. Original queued note kept below for reference.
+
+### (historical) Queued code change — was: do the day affiliate links go live
 In `src/components/AIConceptsPage.tsx`, the Shopping-List "What you'll get" list currently claims:
 > `'No affiliate fees or sponsored results'`  *(appears twice: ~line 1811 and ~line 2456)*
 
