@@ -137,3 +137,32 @@ wedge but shaky output quality and no paid-media moat. The parts worth copying a
 strategy, programmatic SEO, and milestone PR** — all of which sit on top of a crawlability foundation
 we already have. Our differentiators (human design, curation, bilingual regional trust) answer exactly
 where they're weakest.*
+
+---
+
+## Intel update — Aug 2026 (direct from founder, unprompted)
+
+In a LinkedIn chat, co-founder Matúš Koleják disclosed MeltFlex's full tech stack and pitched
+Designature to join their affiliate program.
+
+**Tech stack (verbatim: "GPT, nano banana, also Veo for video + Seedance"):**
+- **GPT** (OpenAI) — chat / analysis
+- **"Nano Banana" = Google Gemini 2.5 Flash Image** — the room redesigns
+- **Veo** (Google) + **Seedance** (ByteDance) — the AI video walkthroughs
+
+**Key takeaway — MeltFlex has NO proprietary model and NO model moat.** They orchestrate off-the-shelf
+models anyone can call. Their real edge is the *product layer* (furniture-matching data, shoppable
+list) + *GEO/marketing/distribution*, not the AI.
+
+**What this means for Designature:**
+1. **Roadmap de-risked / validated.** We already run the *same image model* (Gemini 2.5 Flash Image /
+   "Nano Banana") in AI Vision, so we're on par on core render quality. The gap was never the model —
+   it's product + distribution, which our plan already targets.
+2. **Video is a cheap add.** Their one feature we lack (AI walkthrough video) is just Veo/Seedance
+   off-the-shelf (available via fal/Replicate). Optional roadmap item, not R&D.
+3. **Their affiliate offer:** 30% recurring on referred subscriptions + a discount code for our
+   audience (meltflexai.com/affiliates). Decision: take it opportunistically at most (a footnote link
+   for DIY users in the honest comparison article); do NOT build strategy on promoting a competitor.
+   Better play: a **mutual referral** — we send tool-first DIY users to them, they send human-design /
+   full-project seekers (which their tool can't serve) to us. We give away leads that would never pay
+   us and receive the ones that will.
