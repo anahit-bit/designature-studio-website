@@ -67,9 +67,9 @@ ws = wb.active
 ws.title = "Competitors Q3 2026"
 
 cols = ["Name","URL","HQ / Region","Group","Category","Closeness (1-5)","Status",
-        "What it is","Pricing (2026)","Covers","Does NOT cover / gaps"]
+        "What it is","Pricing (2026)","Covers","Does NOT cover / gaps","Tech / models (where known)"]
 headers = ["Competitor","Website","HQ / Region","Group","Sub-category","Closeness\n(1-5)","Status",
-           "What it is","Pricing (2026)","Covers","Does NOT cover / Gaps"]
+           "What it is","Pricing (2026)","Covers","Does NOT cover / Gaps","Tech / models\n(where known)"]
 
 NAVY=PatternFill("solid",fgColor="0A1F44"); WHITE=Font(color="FFFFFF",bold=True,size=11,name="Calibri")
 thin=Side(style="thin",color="D9D9D9"); border=Border(left=thin,right=thin,top=thin,bottom=thin)
@@ -97,7 +97,7 @@ for r in rows:
         href=url if url.startswith("http") else "https://"+url.split(";")[0].strip()
         lc=ws.cell(i,2); lc.hyperlink=href; lc.font=Font(size=10,color="0563C1",underline="single",name="Calibri")
 
-widths=[22,26,18,26,26,10,20,40,40,44,44]
+widths=[22,26,18,26,26,10,20,40,40,44,44,40]
 for idx,w in enumerate(widths,1):
     ws.column_dimensions[get_column_letter(idx)].width=w
 ws.freeze_panes="A2"
@@ -120,6 +120,8 @@ notes=[
  ["","Pure AI redesign tool / Mobile app / AI virtual staging"],
  ["","Retailer / shop-the-look commerce (free but catalog-locked)"],
  ["","Retailer free design service / Pro design software / Regional / emerging"],
+ ["",""],
+ ["Tech / models column","AI models each tool runs on, filled only where publicly disclosed or founder-confirmed (most are '—' — a research field to fill over quarters). Key insight: MeltFlex uses off-the-shelf GPT + Gemini 2.5 Flash Image + Veo/Seedance = no model moat."],
  ["",""],
  ["Refresh cadence","Quarterly. Re-run the same 6-segment scan; compare vs prior quarter's CSV in git history."],
  ["Source of truth CSV","docs/competitor-intel/competitors-2026-Q3.csv"],
