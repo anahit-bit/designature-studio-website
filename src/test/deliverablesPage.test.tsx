@@ -25,7 +25,7 @@ const URLS = {
   phase12: cld('Designature-Phase-1-2-Brief-and-Concept', 'v1787292947', 'deliverables-phase-1-2'),
   aiConcept: cld('Designature-Phase-3-AI-Concept', 'v1787227891', 'deliverables-phase-3-ai-concept'),
   renders: cld('Designature-Phase-3-Renders', 'v1787227892', 'deliverables-phase-3-renders'),
-  technical: cld('Designature-Phase-4-Technical-Documents', 'v1787227893', 'deliverables-phase-4-technical'),
+  technical: cld('Designature-Phase-4-Technical-Documents', 'v1787297994', 'deliverables-phase-4-technical'),
   allInOne: cld('Designature-All-in-One-Sample-Project', 'v1787227894', 'deliverables-all-in-one'),
 };
 

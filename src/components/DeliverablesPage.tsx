@@ -80,7 +80,9 @@ const SAMPLE_DEFS = {
   },
   technical: {
     publicId: 'deliverables-phase-4-technical',
-    version: 'v1787227893',
+    // Re-uploaded 2026-08-21: cover project name "Byuregh Project" replaced with
+    // "Sample Project" (see scratchpad/redact_phase4.py).
+    version: 'v1787297994',
     filename: 'Designature-Phase-4-Technical-Documents',
     size: '7 MB',
   },
