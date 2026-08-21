@@ -105,18 +105,18 @@ const SAMPLES = Object.fromEntries(
  * Sources are owner-picked and each is pre-cropped to 4:5 at 1200x1500, so they
  * fill the cover frame exactly — no letterboxing, no distortion:
  *   phase 1-2  → Phase 1 - Phase 2.pdf p21   (concept + moodboard collage)
- *   aiConcept  → Phase 3 AI Concept.pdf p6   (the kitchen render on that page)
+ *   aiConcept  → owner-supplied 'phase 3.png' (living-room render)
  *   renders    → Renders/Final/10 (2).jpg    (bedroom render, project 0022)
- *   technical  → All-in-One p14              (the floorplan itself, no title block)
+ *   technical  → owner-supplied 'phase 4.jpg' (full lighting/electrical plan)
  *
  * Drop a key to fall back to the mockup's typographic placeholder.
  */
 const CLD_IMG = 'https://res.cloudinary.com/dys2k5muv/image/upload';
 const COVERS = {
   phase12: `${CLD_IMG}/v1787244919/deliverables-cover-phase-1-2.jpg`,
-  aiConcept: `${CLD_IMG}/v1787244920/deliverables-cover-phase-3-ai-concept.jpg`,
+  aiConcept: `${CLD_IMG}/v1787291900/deliverables-cover-phase-3-ai-concept.jpg`,
   renders: `${CLD_IMG}/v1787244922/deliverables-cover-phase-3-renders.jpg`,
-  technical: `${CLD_IMG}/v1787244923/deliverables-cover-phase-4-technical.jpg`,
+  technical: `${CLD_IMG}/v1787291901/deliverables-cover-phase-4-technical.jpg`,
 } as const;
 
 const GLANCE = [
@@ -393,7 +393,7 @@ const DeliverablesPage: React.FC = () => {
           tag: 'Phase 3 · AI Concept',
           imageUrl: COVERS.aiConcept,
           alt:
-            'AI concept preview of a dusty-rose and cream kitchen by Designature Studio — handleless cabinetry, stone worktop and backsplash, black track lighting and a fluted-glass display column.',
+            'AI concept preview of a living room by Designature Studio — fluted-oak media wall with integrated shelving, a ring chandelier, cream modular sofa and round timber coffee table.',
           big: 'AI Concept',
           sub: 'Locked to your palette',
           filename: `Phase 3 AI Concept.pdf · ${SAMPLES.aiConcept.size}`,
@@ -464,7 +464,7 @@ const DeliverablesPage: React.FC = () => {
           tag: 'Phase 4 · Technical',
           imageUrl: COVERS.technical,
           alt:
-            'Detail of a dimensioned electrical floor plan from a Designature Studio technical drawing set — socket and switch positions with mounting heights, wall hatching and door swings.',
+            'Lighting and electrical floor plan from a Designature Studio technical drawing set — ceiling fixture positions, socket and switch layouts with mounting heights, across the full apartment.',
           big: 'Technical',
           sub: '40+ sheets · dimensioned',
           filename: `Phase 4 Technical Documents.pdf · ${SAMPLES.technical.size}`,
