@@ -156,7 +156,7 @@ describe('S-014 /deliverables page', () => {
     for (const img of covers) {
       // Cloudinary-delivered, and contained (not cropped) — the pages are landscape.
       expect(img!.getAttribute('src')).toMatch(
-        /res\.cloudinary\.com\/dys2k5muv\/image\/upload\/.*deliverables-cover-[a-z0-9-]+\.jpg$/
+        /res\.cloudinary\.com\/dys2k5muv\/image\/upload\/.*deliverables\/covers\/phase-[a-z0-9-]+\.jpg$/
       );
       expect(img!.getAttribute('srcset')).toBeTruthy();
       // Pre-cropped to 4:5, so they fill the frame rather than letterbox.
