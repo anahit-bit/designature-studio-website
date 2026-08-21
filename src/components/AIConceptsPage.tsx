@@ -1808,7 +1808,7 @@ const AIConceptsPage: React.FC = () => {
                     '4 key furniture pieces identified',
                     '12 real products with live pricing',
                     'Direct links to trusted retailers',
-                    'No affiliate fees or sponsored results',
+                    'Independent picks — we may earn a small commission',
                   ].map((item) => (
                     <li key={item} className="flex items-center gap-3">
                       <span className="w-4 h-4 flex-shrink-0 flex items-center justify-center bg-[#22c55e] text-white text-[9px] font-bold rounded-full">✓</span>
@@ -1816,6 +1816,7 @@ const AIConceptsPage: React.FC = () => {
                     </li>
                   ))}
                 </ul>
+                <p className="text-[11px] text-black/45 leading-snug mt-3">Some retailer links may earn us a commission at no extra cost to you. It never changes what we recommend.</p>
               </div>
 
               {/* Sample product grid */}
@@ -2453,7 +2454,7 @@ const AIConceptsPage: React.FC = () => {
                               '4 key furniture pieces identified',
                               '12 real products with live pricing',
                               'Direct links to trusted retailers',
-                              'No affiliate fees or sponsored results',
+                              'Independent picks — we may earn a small commission',
                             ].map((item) => (
                               <li key={item} className="flex items-center gap-3">
                                 <span className="w-4 h-4 flex-shrink-0 flex items-center justify-center bg-[#22c55e] text-white text-[9px] font-bold rounded-full">✓</span>
@@ -2461,6 +2462,7 @@ const AIConceptsPage: React.FC = () => {
                               </li>
                             ))}
                           </ul>
+                          <p className="text-[11px] text-black/45 leading-snug mt-3">Some retailer links may earn us a commission at no extra cost to you. It never changes what we recommend.</p>
                         </div>
 
                         {/* Sample product grid */}

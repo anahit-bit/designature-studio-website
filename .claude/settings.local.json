@@ -90,7 +90,9 @@
       "Bash(git -C \"E:\\\\Business\\\\Claude\\\\Website\\\\.claude\\\\worktrees\\\\agitated-nash-2b66d3\" add src/App.tsx src/components/AdminPage.tsx src/components/AdminUsersPage.tsx src/components/admin/AdminTopBar.tsx)",
       "Bash(node -e \"const d=JSON.parse\\(require\\('fs'\\).readFileSync\\('/tmp/usage.json','utf8'\\)\\); console.log\\({ keys: Object.keys\\(d\\), counters: Object.keys\\(d.counters || {}\\), funnels: d.funnels?.map\\(f => \\({name: f.name, started: f.started, completed: f.completed, pct: f.pct, status: f.status}\\)\\), activation: d.activation, retention: d.retention, newsletter: { count: d.newsletter?.count, recentN: d.newsletter?.recent?.length, error: d.newsletter?.error }, cost: { mtd: d.cost?.mtdSpendEst, perUser: d.cost?.costPerActiveUserEst, providers: d.cost?.byProvider?.map\\(p => \\({p: p.provider, n: p.windowCount, lim: p.windowLimit, pct: p.pct, status: p.status, mtd: p.mtdCost}\\)\\) } }\\)\")",
       "Bash(git -C \"E:\\\\Business\\\\Claude\\\\Website\\\\.claude\\\\worktrees\\\\agitated-nash-2b66d3\" add src/components/AdminPage.tsx)",
-      "Bash(git -C \"E:\\\\Business\\\\Claude\\\\Website\\\\.claude\\\\worktrees\\\\agitated-nash-2b66d3\" add server.ts server/config/platforms.json)"
+      "Bash(git -C \"E:\\\\Business\\\\Claude\\\\Website\\\\.claude\\\\worktrees\\\\agitated-nash-2b66d3\" add server.ts server/config/platforms.json)",
+      "mcp__Claude_Code_Remote__create_trigger",
+      "mcp__Claude_Code_Remote__update_trigger"
     ]
   }
 }
