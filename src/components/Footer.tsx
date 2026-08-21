@@ -105,6 +105,7 @@ const Footer: React.FC = () => {
     studio: [
       { name: t('nav.portfolio'), action: () => navigateTo('portfolio') },
       { name: t('nav.services'), action: () => navigateTo('services') },
+      { name: t('nav.deliverables'), action: () => navigateTo('deliverables') },
       { name: t('nav.journal'), action: () => navigateTo('journal') },
       { name: t('footer.about'), action: () => navigateTo('studio') },
     ],

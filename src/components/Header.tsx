@@ -33,7 +33,7 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
   // On white-background pages without hero images, we need black text from the start.
   // S-013: Home now opens on a cream text band (not a dark image hero), so dark
   // text is needed there too.
-  const isDarkTextNeeded = isScrolled || currentPage === 'home' || currentPage === 'portfolio' || currentPage === 'project-detail' || currentPage === 'services' || currentPage === 'studio' || currentPage === 'pricing' || currentPage === 'faq' || currentPage === 'journal' || currentPage === 'journal-detail' || currentPage === 'journal-category' || currentPage === 'terms' || currentPage === 'privacy' || currentPage === 'refund' || currentPage === 'consultation' || currentPage === 'booking-confirmed' || currentPage === 'booking-failed';
+  const isDarkTextNeeded = isScrolled || currentPage === 'home' || currentPage === 'portfolio' || currentPage === 'project-detail' || currentPage === 'services' || currentPage === 'studio' || currentPage === 'deliverables' || currentPage === 'pricing' || currentPage === 'faq' || currentPage === 'journal' || currentPage === 'journal-detail' || currentPage === 'journal-category' || currentPage === 'terms' || currentPage === 'privacy' || currentPage === 'refund' || currentPage === 'consultation' || currentPage === 'booking-confirmed' || currentPage === 'booking-failed';
   const isAIConceptsPage = currentPage === 'ai-concepts';
   const useLightNav = isAIConceptsPage && !isScrolled;
   // Pages with a dark photo hero (e.g. the Journal) pass onDark so the header
