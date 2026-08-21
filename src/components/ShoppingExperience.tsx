@@ -106,8 +106,10 @@ const ShoppingExperience: React.FC<Props> = (p) => {
   const [favourites, setFavourites] = useState<Set<number>>(new Set());
 
   // ── AC-002 — "Save list" persists the matched list to the user's Library so
-  // it can be re-opened / re-downloaded later. Items live in metadata (no image
-  // upload); sourceImg gives the list a thumbnail when available.
+  // it can be re-opened / re-downloaded later. Items live in metadata; the source
+  // image is passed as `imageDataUrl` so the server uploads it to the `user-library`
+  // Cloudinary folder and derives a real thumbnail — same path as AI Vision. (Passing
+  // it as `thumbnailUrl` instead used to store the raw base64 data-URL in Postgres.)
   const [listSaved, setListSaved] = useState(false);
   const [savingList, setSavingList] = useState(false);
   const listMark = p.shoppingResults.length ? fingerprint(JSON.stringify(p.shoppingResults)) : '';
@@ -121,7 +123,7 @@ const ShoppingExperience: React.FC<Props> = (p) => {
       await accountApi.saveLibraryItem({
         tool: 'shopping',
         title: `Shopping list — ${count} item${count === 1 ? '' : 's'}`,
-        thumbnailUrl: sourceImg ?? undefined,
+        imageDataUrl: sourceImg ?? undefined,
         metadata: { items: p.shoppingResults, country: p.shoppingCountry },
       });
       if (listMark) markSaved(listMark);
