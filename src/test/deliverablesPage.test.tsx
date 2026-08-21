@@ -22,7 +22,7 @@ const CDN = 'https://res.cloudinary.com/dys2k5muv/raw/upload';
 const cld = (name: string, version: string, id: string) =>
   `${CDN}/fl_attachment:${name}/${version}/${id}.pdf`;
 const URLS = {
-  phase12: cld('Designature-Phase-1-2-Brief-and-Concept', 'v1787226156', 'deliverables-phase-1-2'),
+  phase12: cld('Designature-Phase-1-2-Brief-and-Concept', 'v1787292947', 'deliverables-phase-1-2'),
   aiConcept: cld('Designature-Phase-3-AI-Concept', 'v1787227891', 'deliverables-phase-3-ai-concept'),
   renders: cld('Designature-Phase-3-Renders', 'v1787227892', 'deliverables-phase-3-renders'),
   technical: cld('Designature-Phase-4-Technical-Documents', 'v1787227893', 'deliverables-phase-4-technical'),
@@ -236,7 +236,7 @@ describe('S-014 /deliverables page', () => {
   it('labels every download with its real file size', () => {
     renderPage();
     // Sizes are the actual uploaded bytes — a wrong label misleads the visitor.
-    for (const label of ['PDF · 9 MB', 'PDF · 1.5 MB', 'PDF · 4 MB', 'PDF · 7 MB', 'PDF · 10 MB']) {
+    for (const label of ['PDF · 7 MB', 'PDF · 1.5 MB', 'PDF · 4 MB', 'PDF · 10 MB']) {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     }
     expect(screen.queryByText('PDF · 13 MB')).not.toBeInTheDocument();

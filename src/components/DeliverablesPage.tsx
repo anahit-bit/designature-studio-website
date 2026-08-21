@@ -59,9 +59,12 @@ const sampleHref = (s: Sample): string =>
 const SAMPLE_DEFS = {
   phase12: {
     publicId: 'deliverables-phase-1-2',
-    version: 'v1787226156',
+    // Re-uploaded 2026-08-21 after redacting client-identifying data from the
+    // title blocks (see scratchpad/redact_phase12.py). Smaller than the original
+    // because the redaction pass re-encoded the page tiles.
+    version: 'v1787292947',
     filename: 'Designature-Phase-1-2-Brief-and-Concept',
-    size: '9 MB',
+    size: '7 MB',
   },
   aiConcept: {
     publicId: 'deliverables-phase-3-ai-concept',
