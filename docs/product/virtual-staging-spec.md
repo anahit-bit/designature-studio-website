@@ -12,6 +12,35 @@ auto-matched) shoppable list, and honest billing** (their Trustpilot is 2.4 on b
 
 **This is largely a productization job, not a new build** — see "What already exists."
 
+## UX architecture decision (CONFIRMED) — same engine, two doorways
+
+The staging engine and the "Redesign my room" engine are **the same tech**. The difference between them
+is **audience and intent**, not capability — so we segment by *doorway*, not by adding options to the
+consumer flow. Guiding principle: **keep the homeowner path dead simple; give realtors their own entrance.**
+
+```
+Homeowner  →  "Redesign your room" card (AI Vision)   ← UNCHANGED. No new toggles/steps.
+                 └─ restyles a furnished room as today
+                 └─ also handles an empty room automatically (engine just adds furniture) — no new UI
+
+Realtor /   →  /virtual-staging landing page  →  "Virtual Staging" tool
+seller/host       └─ same engine under the hood, but framed + tuned for listings:
+                     staging presets · "Virtually staged" label + MLS disclosure ·
+                     (V2) batch upload + agent pricing · optional human-review upsell
+```
+
+**Why two doorways, not one unified tool with a mode switch:**
+- **Simplicity for homeowners.** They don't know the term "virtual staging" and shouldn't have to choose
+  "redesign vs stage." Their card is untouched — zero added cognitive load.
+- **Different customer, different framing.** Realtors want listing-speak, agent pricing, batch, and the
+  compliance label — none of which belongs in the consumer flow.
+- **SEO.** "Virtual staging" is a large *separate* search term realtors use and homeowners don't; a
+  dedicated `/virtual-staging` page wins that traffic (a non-brand lane REimagine leaves open).
+- Analogy: one editor, separate "Instagram post" vs "Presentation" starting points — the doorway matches intent.
+
+**Net effect on the existing Redesign card: none.** We add a new realtor entrance; we do not complicate
+the homeowner experience.
+
 ## What already exists in our codebase (important)
 
 - **A virtual-staging engine is already written:** `services/aiVision/virtualStaging.ts`
@@ -31,8 +60,11 @@ auto-matched) shoppable list, and honest billing** (their Trustpilot is 2.4 on b
 ## Scope
 
 ### V1 (productize what exists)
-1. **Vacant → Furnished staging mode.** A "Virtual Staging" entry in the AI Studio that routes to the
-   fal staging engine (turn the parked engine on for this mode). Style presets tuned for staging
+0. **Leave the "Redesign my room" card untouched** (per the UX decision above). All V1 work is a *new,
+   separate* realtor doorway; the homeowner flow gets no new steps or toggles.
+1. **Vacant → Furnished staging mode.** A separate "Virtual Staging" entry (its own doorway, reached via
+   the `/virtual-staging` page) that routes to the fal staging engine (turn the parked engine on for this
+   mode via a `mode:"staging"` param — no change to the redesign path). Style presets tuned for staging
    (broad-appeal: Modern, Scandinavian, Transitional, Coastal, Farmhouse).
 2. **"True-Room Lock"** — surface the existing structure-preservation as a named, on-by-default toggle
    with a one-line trust explainer ("we never move your walls, windows, or doors").
