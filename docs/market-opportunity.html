@@ -1,0 +1,205 @@
+<title>Designature — Market & Opportunity</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{
+  --paper:#F3F1EB; --surface:#FBFAF6; --surface2:#EEEBE3; --ink:#1C1A16; --ink2:#4B473F;
+  --muted:#78736A; --line:#DED9CE; --line2:#CBC5B7; --accent:#0A3A82; --accent-soft:#0a3a8214;
+  --grow:#3f7d54; --warn:#A8422A;
+  --serif:"Cormorant Garamond","Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --sans:"Montserrat",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#141310; --surface:#1D1B16; --surface2:#242118; --ink:#EDE9DF; --ink2:#C4BEB1;
+  --muted:#928C7F; --line:#302C24; --line2:#3C382E; --accent:#8BB0EE; --accent-soft:#8bb0ee1f;
+  --grow:#6bbd8a; --warn:#C25A3E;
+}}
+:root[data-theme="dark"]{
+  --paper:#141310; --surface:#1D1B16; --surface2:#242118; --ink:#EDE9DF; --ink2:#C4BEB1;
+  --muted:#928C7F; --line:#302C24; --line2:#3C382E; --accent:#8BB0EE; --accent-soft:#8bb0ee1f;
+  --grow:#6bbd8a; --warn:#C25A3E;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1060px;margin:0 auto;padding:0 20px}
+h1,h2,h3{margin:0;font-weight:600}
+.eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.tnum{font-variant-numeric:tabular-nums}
+header{border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--surface),var(--paper));padding:34px 0 28px}
+h1.title{font-family:var(--serif);font-size:clamp(30px,5vw,50px);line-height:1.02;letter-spacing:-.02em;margin-top:8px}
+h1.title em{font-style:italic;color:var(--accent)}
+.sub{max-width:62ch;color:var(--ink2);margin-top:10px}
+section{padding:30px 0;border-bottom:1px solid var(--line)}
+h2.sh{font-family:var(--serif);font-size:27px;letter-spacing:-.01em;margin-bottom:4px}
+.lead{color:var(--ink2);max-width:70ch;margin-bottom:16px}
+
+/* big-number market cards */
+.mkts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.mk{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:16px}
+.mk .lab{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.mk .big{font-family:var(--serif);font-size:34px;line-height:1;margin:8px 0 2px}
+.mk .cagr{font-size:12.5px;color:var(--grow);font-weight:600}
+.mk .fc{font-size:12px;color:var(--ink2);margin-top:6px}
+.mk .src{font-size:10.5px;color:var(--muted);margin-top:8px}
+
+/* growth chart */
+.chart{display:flex;align-items:flex-end;gap:26px;height:230px;padding:18px 10px 0;border-bottom:2px solid var(--line2);margin-top:8px}
+.bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+.bar .col{width:70%;max-width:90px;background:linear-gradient(180deg,var(--accent),color-mix(in srgb,var(--accent) 60%,var(--surface)));border-radius:4px 4px 0 0;position:relative}
+.bar .val{font-family:var(--serif);font-size:22px;margin-bottom:6px}
+.bar .yr{font-size:12px;color:var(--muted);margin-top:8px;font-weight:600}
+.bar .rng{font-size:10.5px;color:var(--muted)}
+.chartnote{font-size:11.5px;color:var(--muted);margin-top:10px}
+
+/* tam sam som */
+.funnel{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.band{border:1px solid var(--line);border-radius:4px;padding:14px 16px;background:var(--surface)}
+.band.tam{border-left:4px solid var(--accent)}
+.band.sam{border-left:4px solid var(--grow);margin:0 6%}
+.band.som{border-left:4px solid var(--warn);margin:0 14%}
+.band h3{font-size:14px;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.band h3 .amt{font-family:var(--serif);font-size:22px;color:var(--ink)}
+.band p{margin:6px 0 0;font-size:12.5px;color:var(--ink2)}
+.band .k{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+/* comps table */
+.tbl{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+.tbl th{text-align:left;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line2)}
+.tbl td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink2)}
+.tbl td b{color:var(--ink)}
+.pill{font-size:10px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:100px;white-space:nowrap}
+.pill.up{background:color-mix(in srgb,var(--grow) 20%,var(--surface));color:var(--grow)}
+.pill.dead{background:color-mix(in srgb,var(--warn) 20%,var(--surface));color:var(--warn)}
+.pill.lean{background:var(--accent-soft);color:var(--accent)}
+.scroll{overflow-x:auto}
+
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:6px}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:16px}
+.box h3{font-family:var(--serif);font-size:19px;margin-bottom:8px}
+.box ul{margin:0;padding-left:17px;font-size:13px;color:var(--ink2);display:flex;flex-direction:column;gap:7px}
+.box.warn{border-color:color-mix(in srgb,var(--warn) 35%,var(--line))}
+.box.warn h3{color:var(--warn)}
+.thesis{background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));border-radius:4px;padding:18px 20px;margin-top:6px}
+.thesis p{margin:0 0 10px;color:var(--ink2)}.thesis p:last-child{margin:0}.thesis b{color:var(--ink)}
+.foot{font-size:11px;color:var(--muted);line-height:1.6}
+.themetoggle{position:fixed;top:14px;right:14px;z-index:50;border:1px solid var(--line2);background:var(--surface);color:var(--ink2);font-family:var(--sans);font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:7px 11px;border-radius:100px;cursor:pointer}
+@media (max-width:800px){.mkts,.cols2{grid-template-columns:1fr}.band.sam,.band.som{margin:0}.chart{gap:14px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<button class="themetoggle" id="tt" type="button">◐ Theme</button>
+
+<header><div class="wrap">
+  <div class="eyebrow">Designature Studio · Market & Opportunity · Aug 2026</div>
+  <h1 class="title">A big, growing market — <em>with a narrow way to win.</em></h1>
+  <p class="sub">The honest investor read: the markets under us are large and expanding, AI is the disruption
+  layer growing 20–27% a year, and the money is made on <strong>commerce + distribution</strong>, not
+  "AI renders" alone. Numbers below are real and sourced, with credibility flagged.</p>
+</div></header>
+
+<section><div class="wrap">
+  <h2 class="sh">The markets we sit in</h2>
+  <p class="lead">We're at the intersection of designing homes and selling what goes in them. Keep these as
+  <em>separate</em> layers (don't add them up — investors will flag double-counting).</p>
+  <div class="mkts">
+    <div class="mk"><div class="lab">Interior design (global)</div><div class="big tnum">$138B</div>
+      <div class="cagr">4.3% CAGR</div><div class="fc">→ $176B by 2030</div><div class="src">Grand View Research · solid</div></div>
+    <div class="mk"><div class="lab">Home décor + furniture (the commerce we attach to)</div><div class="big tnum">$960B</div>
+      <div class="cagr">9.4% CAGR</div><div class="fc">décor → $1.6T by 2030; furniture ~$700B more</div><div class="src">Grand View Research · solid</div></div>
+    <div class="mk"><div class="lab">AI interior design (our disruption layer)</div><div class="big tnum">~$2B</div>
+      <div class="cagr">21–27% CAGR</div><div class="fc">range $1.5–3.3B today → ~$11–15B by 2034/35</div><div class="src">GVR / Polaris / SNS · cite as range</div></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2 class="sh">Where it's going — the AI slice</h2>
+  <p class="lead">The core interior-design market grows slowly (~4%). The <em>AI</em> slice is the fast part —
+  roughly a <strong>6–7× increase over the next decade</strong>. This is the wave to be on.</p>
+  <div class="chart">
+    <div class="bar"><div class="val tnum">~$2B</div><div class="col" style="height:14%"></div><div class="yr">2025</div><div class="rng">$1.5–3.3B</div></div>
+    <div class="bar"><div class="val tnum">~$4.5B</div><div class="col" style="height:32%"></div><div class="yr">2030</div><div class="rng">$4–5B</div></div>
+    <div class="bar"><div class="val tnum">~$13B</div><div class="col" style="height:92%"></div><div class="yr">2034–35</div><div class="rng">$11–15B</div></div>
+  </div>
+  <p class="chartnote">AI-in-interior-design market, midpoints of published ranges (Grand View, Polaris, SNS Insider, Research&Markets). Backdrop: the broader generative-AI market runs ~37–44% CAGR toward ~$1 trillion by mid-2030s (MarketsandMarkets, GVR, Precedence).</p>
+</div></section>
+
+<section><div class="wrap">
+  <h2 class="sh">Our slice — TAM · SAM · SOM</h2>
+  <p class="lead">The whole market, the part we can serve, and the part we can realistically win.</p>
+  <div class="funnel">
+    <div class="band tam"><h3><span><span class="k">TAM · everything</span><br>Home design + home commerce</span><span class="amt tnum">$1T+</span></h3>
+      <p>All money spent designing homes ($138B) and furnishing them ($960B décor + ~$700B furniture). We don't sell "the whole market" — it's the ceiling.</p></div>
+    <div class="band sam"><h3><span><span class="k">SAM · what we can serve</span><br>Online + AI design + virtual staging + the furniture we influence</span><span class="amt tnum">~$15B+</span></h3>
+      <p>AI interior design (~$11–15B by mid-2030s) <b>plus</b> the realtor/host staging audience — <b>~1.4M US Realtors</b> (NAR) and <b>9M+ Airbnb listings</b> — <b>plus</b> affiliate commission on the furniture our shopping lists move.</p></div>
+    <div class="band som"><h3><span><span class="k">SOM · what we can win (near-term)</span><br>Hybrid + shoppable + regional wedge</span><span class="amt tnum">$1–10M ARR</span></h3>
+      <p>Illustrative, execution-dependent: paid AI tiers + $99 consults + virtual-staging for agents + affiliate commission + the un-owned <b>Armenia/CIS trilingual</b> lane. A realistic path to a few $M ARR that makes us an attractive acquisition — not a promise.</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2 class="sh">Investors already fund this space</h2>
+  <p class="lead">Real money in, real exits out — but the wins cluster at the <em>top</em> (platform/IPO) and the <em>bottom</em> (lean, profitable AI tools). The middle is where it gets dangerous (see the red row).</p>
+  <div class="scroll"><table class="tbl">
+    <thead><tr><th>Company</th><th>Raised / status</th><th>Signal</th><th></th></tr></thead>
+    <tbody>
+      <tr><td><b>Manycore (Coohom/Kujiale)</b></td><td>IPO on Hong Kong exchange, Apr 2026</td><td><b>+144–172% day one</b>; tens-of-billions HKD cap. Proof the category can reach public scale.</td><td><span class="pill up">Public</span></td></tr>
+      <tr><td><b>Havenly</b></td><td>~$58M equity; acquisitive</td><td>Rolled up Interior Define, The Citizenry, The Expert — the <b>commerce roll-up</b> playbook.</td><td><span class="pill up">Active</span></td></tr>
+      <tr><td><b>Yardzen</b></td><td>~$12M → <b>acquired</b> by CRH/Oldcastle (Nov 2024)</td><td>Clean <b>strategic exit</b> to a building-products giant — the realistic exit path.</td><td><span class="pill up">Exit</span></td></tr>
+      <tr><td><b>Collov AI</b></td><td>$23M Series A (Apr 2026)</td><td>Fresh, sizeable VC into AI interior design — capital is available.</td><td><span class="pill up">Active</span></td></tr>
+      <tr><td><b>Styldod / REimagine</b></td><td>$1M seed — <b>MLS Venture Fund</b></td><td>Investors reward <b>distribution</b> (wedged into the real-estate MLS system).</td><td><span class="pill up">Active</span></td></tr>
+      <tr><td><b>Modsy</b></td><td>&gt;$72M raised → <b>shut down 2022</b></td><td>The warning: human-heavy e-design at VC scale + funding pullback + a collapsed acquisition = dead.</td><td><span class="pill dead">Failed</span></td></tr>
+      <tr><td><b>MeltFlex / Interior AI / RoomGPT</b></td><td>$0 VC (bootstrapped)</td><td>213k users / ~$0.5M ARR at &gt;99% margin / 1.6M users — <b>lean & profitable works</b> (but low barriers = need a moat).</td><td><span class="pill lean">Lean</span></td></tr>
+    </tbody>
+  </table></div>
+</div></section>
+
+<section><div class="wrap">
+  <h2 class="sh">Where this business is going (and why it's fundable)</h2>
+  <div class="thesis">
+    <p><b>The 5-year view (to 2030):</b> the AI-design market roughly doubles to ~$4–5B, the category consolidates
+    (more Havenly-style roll-ups and strategic acquisitions), and the winning model is clear — <b>commerce attach
+    (shoppable) + B2B/real-estate distribution + a human-quality layer pure-AI tools can't match.</b> Designature can
+    be the regional leader (Armenia/CIS, trilingual) and a global niche player in hybrid+shoppable, on a realistic
+    path to a few $M ARR and acquisition interest.</p>
+    <p><b>The 10-year view (to 2035):</b> "design your room with AI and buy it" is mainstream, the AI slice is ~$11–15B,
+    and generative AI is everywhere (~$1T). Value accrues to whoever owns <b>proprietary data, distribution, or trust</b>
+    — not to another render tool. Exit is most likely a <b>strategic acquisition</b> by a retailer, building-products, or
+    proptech player (like Yardzen→CRH), with IPO possible only at platform scale (like Manycore).</p>
+    <p><b>Why we're the fundable version, not the Modsy version:</b> AI does the cost-heavy work (cheap renders), humans
+    appear only as a <b>premium, margin-accretive</b> layer, and we monetize the <b>furniture sale</b> (affiliate) plus
+    <b>virtual staging</b> — so unit economics don't depend on burning VC to pay designers. That's the exact mistake that
+    killed the $72M cautionary tale.</p>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2 class="sh">How to talk to investors (straight)</h2>
+  <div class="cols2">
+    <div class="box"><h3>Cite with confidence</h3><ul>
+      <li>Interior design <b>$138B, 4.3%→$176B</b> (Grand View)</li>
+      <li>Home décor <b>$960B→$1.6T, 9.4%</b> + furniture ~$700B (Grand View) — the commerce TAM</li>
+      <li>AI interior design <b>as a range: ~$1.5–3.3B → ~$11–15B by 2035, 21–27% CAGR</b>, and name the firms</li>
+      <li>Audience: <b>~1.4M US Realtors</b> (NAR), <b>9M+ Airbnb listings</b></li>
+      <li>Staging ROI: NAR — 49% of agents saw <b>less time on market</b>, 29% saw higher offers</li>
+      <li>Comps: Manycore IPO, Collov $23M, Yardzen exit, Styldod's MLS-backed seed</li>
+    </ul></div>
+    <div class="box warn"><h3>Avoid / handle with care</h3><ul>
+      <li>Don't quote a single precise "AI interior design market = $X" — it's thinly sourced; use the range</li>
+      <li>Don't present a precise <b>virtual-staging</b> TAM (one shaky source) — use the audience + ROI instead</li>
+      <li>Don't imply the core services market is booming — US interior design is <b>flat/declining</b> (IBISWorld)</li>
+      <li>Drop vendor stats ("73% faster / 97% cheaper") and SEO-grade figures — sharp investors will catch them</li>
+      <li>Pre-empt the <b>Modsy</b> question: show your unit economics are AI-led, not designer-cost-led</li>
+    </ul></div>
+  </div>
+</div></section>
+
+<footer><div class="wrap" style="padding:24px 0 40px">
+  <p class="foot"><b>Sources:</b> Grand View Research, IBISWorld, Fortune Business Insights, Mordor Intelligence, Polaris Market Research, SNS Insider, MarketsandMarkets, Precedence Research; NAR; Airbnb Q4-2025 shareholder letter; TechCrunch, Inman, Fortune, SCMP, Axios, Business of Home, PitchBook/Crunchbase (where accessible). Market-size figures are third-party estimates that vary by definition; ranges reflect that. SOM is illustrative and execution-dependent, not a forecast. Prepared as internal fundraising context — verify figures before external use.</p>
+</div></footer>
+
+<script>
+const root=document.documentElement;
+document.getElementById('tt').onclick=()=>{const c=root.getAttribute('data-theme');
+  const s=matchMedia('(prefers-color-scheme:dark)').matches;const n=c||(s?'dark':'light');
+  root.setAttribute('data-theme',n==='dark'?'light':'dark');};
+</script>
