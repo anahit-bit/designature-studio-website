@@ -20,7 +20,7 @@
   --grow:#6bbd8a; --warn:#C25A3E;
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .wrap{max-width:1060px;margin:0 auto;padding:0 20px}
 h1,h2,h3{margin:0;font-weight:600}
 .eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);font-weight:600}
@@ -83,10 +83,27 @@ h2.sh{font-family:var(--serif);font-size:27px;letter-spacing:-.01em;margin-botto
 .thesis p{margin:0 0 10px;color:var(--ink2)}.thesis p:last-child{margin:0}.thesis b{color:var(--ink)}
 .foot{font-size:11px;color:var(--muted);line-height:1.6}
 .themetoggle{position:fixed;top:14px;right:14px;z-index:50;border:1px solid var(--line2);background:var(--surface);color:var(--ink2);font-family:var(--sans);font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:7px 11px;border-radius:100px;cursor:pointer}
+.printbtn{position:fixed;top:14px;right:104px;z-index:50;border:1px solid var(--accent);background:var(--accent);color:#fff;font-family:var(--sans);font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:7px 12px;border-radius:100px;cursor:pointer;font-weight:700}
+.printbtn:hover{filter:brightness(1.08)}
 @media (max-width:800px){.mkts,.cols2{grid-template-columns:1fr}.band.sam,.band.som{margin:0}.chart{gap:14px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media print{
+  :root, :root[data-theme="dark"], :root:not([data-theme="light"]){
+    --paper:#fff; --surface:#fff; --surface2:#f5f3ee; --ink:#191712; --ink2:#3a362f; --muted:#6b665c;
+    --line:#e2ddd3; --line2:#cdc7ba; --accent:#0A3A82; --accent-soft:#0a3a820f; --grow:#2f7d54; --warn:#A8422A;
+  }
+  .themetoggle,.printbtn{display:none!important}
+  body{background:#fff}
+  header{padding-top:6px}
+  section{padding:16px 0}
+  .mk,.band,.box,.thesis,.tbl tr,.bar,.mkts,.cols2,.funnel{break-inside:avoid;page-break-inside:avoid}
+  h2.sh{page-break-after:avoid}
+  a{color:var(--accent)!important;text-decoration:none}
+  @page{margin:14mm}
+}
 </style>
 
+<button class="printbtn" id="pb" type="button" title="Print or save as PDF">⤓ Save PDF</button>
 <button class="themetoggle" id="tt" type="button">◐ Theme</button>
 
 <header><div class="wrap">
@@ -213,6 +230,7 @@ h2.sh{font-family:var(--serif);font-size:27px;letter-spacing:-.01em;margin-botto
 </div></footer>
 
 <script>
+document.getElementById('pb').onclick=()=>window.print();
 const root=document.documentElement;
 document.getElementById('tt').onclick=()=>{const c=root.getAttribute('data-theme');
   const s=matchMedia('(prefers-color-scheme:dark)').matches;const n=c||(s?'dark':'light');
