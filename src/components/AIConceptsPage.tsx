@@ -143,6 +143,13 @@ const AIConceptsPage: React.FC = () => {
     'Rendering your concept…',
   ];
   const [results, setResults] = useState<string[]>([]);
+
+  /** Virtual Staging mode — entered via /virtual-staging → /ai-concepts?mode=staging.
+   *  When on, the AI Vision generate call routes to the fal virtual-staging engine
+   *  (empty room → furnished) and a "Virtually staged" MLS disclosure banner is shown.
+   *  Default (no param) = the normal consumer "Redesign my room" flow, untouched. */
+  const stagingMode = typeof window !== 'undefined'
+    && new URLSearchParams(window.location.search).get('mode') === 'staging';
   const [error, setError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   /** Index into `allSessionConcepts` (current results first, then pre-reset archive). */
@@ -804,6 +811,7 @@ const AIConceptsPage: React.FC = () => {
           roomType: selectedRoom || undefined,
           variationSeed: isVariation ? variationSeedRef.current : undefined,
           isSampleRun: isSampleRun || undefined,
+          mode: stagingMode ? 'staging' : undefined,
         }),
       });
 
@@ -1123,6 +1131,12 @@ const AIConceptsPage: React.FC = () => {
       <div id="ai-concepts-tools" className="pt-24 scroll-mt-24 lg:flex lg:items-start">
         <ExplorerRail selectedId={selectedId} onSelect={handleSelectTool} usedIds={usedTools} />
         <div className="flex-1 min-w-0 flex flex-col bg-white lg:min-h-[calc(100vh-6rem)]">
+          {stagingMode && (
+            <div className="bg-[#0A3A82] text-white px-5 py-3 text-[13px] leading-snug flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="font-bold uppercase tracking-[0.12em] text-[11px] bg-white/15 px-2 py-0.5 rounded-full">Virtual Staging</span>
+              <span>Upload an empty room — AI furnishes it to help sell the listing. Results are AI-generated: label them <strong>"Virtually staged"</strong> and note it in your listing remarks (most MLSs require this).</span>
+            </div>
+          )}
           <ExplorerPanelHeader
             tool={selectedTool}
             user={user}

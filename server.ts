@@ -2789,7 +2789,9 @@ Output ONLY valid JSON, no markdown fences, no commentary:
       roomType,
       variationSeed,
       isSampleRun = false,
+      mode, // "staging" → virtual-staging engine (realtor doorway); default = redesign (Gemini)
     } = req.body ?? {};
+    const stagingMode = mode === "staging";
 
     // ── Validate inputs ────────────────────────────────────────────────────────
     if (!roomPhoto || typeof roomPhoto !== "string") {
@@ -2908,7 +2910,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
         variationSeed: typeof variationSeed === "number" ? variationSeed : undefined,
         spatialConstraints,
         sourceStructure: structure,
-      });
+      }, { engine: stagingMode ? "staging" : undefined });
       // I-010 — concept image generation. Attribute cost to the engine actually used.
       bumpApiCount(engine === "staging" ? "fal" : "gemini");
       console.log(`[AI Vision] concept generated via ${engine}`);
@@ -2918,6 +2920,8 @@ Output ONLY valid JSON, no markdown fences, no commentary:
         success: true,
         conceptUrl: conceptDataUrl,
         generationsLeft: user.generationsLeft,
+        engine, // "staging" | "gemini" — lets the client badge virtually-staged results
+        staged: stagingMode, // the client requested virtual staging (for the "Virtually staged" label)
       });
 
     } catch (err: any) {

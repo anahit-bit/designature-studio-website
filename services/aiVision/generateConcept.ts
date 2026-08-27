@@ -17,13 +17,16 @@ export interface GenerateConceptResult {
 }
 
 export async function generateConcept(
-  input: ImageGenerationInput
+  input: ImageGenerationInput,
+  opts?: { engine?: ConceptEngine }
 ): Promise<GenerateConceptResult> {
-  // AI-029 parked (2026-07-14): the improved Gemini engine is the DEFAULT.
-  // The fal virtual-staging engine is kept on this branch but opt-in only —
-  // set AI_VISION_ENGINE=staging to try it. Unset (default) = improved Gemini.
+  // AI-029 parked (2026-07-14): the improved Gemini engine is the DEFAULT for the
+  // consumer "Redesign my room" flow. The fal virtual-staging engine is opt-in:
+  //  • per request — pass opts.engine="staging" (used by the /virtual-staging mode), or
+  //  • globally    — set AI_VISION_ENGINE=staging.
+  // Either way it falls back to Gemini on failure or when fal isn't configured.
   const forcedEngine = (process.env.AI_VISION_ENGINE || "").trim().toLowerCase();
-  const stagingRequested = forcedEngine === "staging";
+  const stagingRequested = opts?.engine === "staging" || forcedEngine === "staging";
 
   if (stagingRequested && isStagingAvailable()) {
     try {

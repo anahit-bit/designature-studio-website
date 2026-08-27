@@ -41,6 +41,7 @@ export type RouteKey =
   | "deliverables"
   | "aiConcepts"
   | "aiVision"
+  | "virtualStaging"
   | "pricing"
   | "faq"
   | "journalIndex"
@@ -111,6 +112,8 @@ export function classifyRoute(pathname: string): RouteInfo {
       return { key: "aiConcepts" };
     case "/ai-vision":
       return { key: "aiVision" };
+    case "/virtual-staging":
+      return { key: "virtualStaging" };
     case "/pricing":
       return { key: "pricing" };
     case "/faq":
@@ -210,6 +213,16 @@ const STATIC_META: Record<
     ogTitle: "AI Vision — See Your Room Transformed",
     ogDescription:
       "Upload a room photo and get a photorealistic AI redesign in your chosen interior style.",
+    ogImage: DEFAULT_OG_IMAGE,
+  },
+  virtualStaging: {
+    path: "/virtual-staging",
+    title: "AI Virtual Staging for Real Estate — Stage Listings in Seconds" + SUFFIX,
+    description:
+      "AI virtual staging for real-estate agents, sellers, and short-let hosts. Upload a photo of an empty room and furnish it in seconds — a fraction of the cost of physical staging, with every image clearly marked “Virtually staged” for MLS compliance. First staging free.",
+    ogTitle: "AI Virtual Staging for Real Estate",
+    ogDescription:
+      "Upload an empty room and let AI furnish it in seconds — MLS-compliant, a fraction of physical-staging cost. First staging free.",
     ogImage: DEFAULT_OG_IMAGE,
   },
   pricing: {

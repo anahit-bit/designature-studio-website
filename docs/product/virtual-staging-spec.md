@@ -59,7 +59,14 @@ the homeowner experience.
 
 ## Scope
 
-### V1 (productize what exists)
+### V1 (productize what exists) — ✅ SHIPPED (Aug 2026)
+**What shipped:** backend `mode:"staging"` param on `/api/ai-vision/generate` → routes to the fal staging
+engine (per-request `opts.engine`); `AIConceptsPage` reads `?mode=staging`, sends it, and shows a
+"Virtually staged" MLS-disclosure banner; new English `/virtual-staging` realtor landing page + route +
+SEO (STATIC_META, classifyRoute, sitemap). Redesign card untouched. Typecheck + build green.
+**Deferred to V1.1:** burned-in per-image "Virtually staged" watermark (server compositing); gating
+"shop this room" as a premium action; prerender body copy for `/virtual-staging`.
+
 0. **Leave the "Redesign my room" card untouched** (per the UX decision above). All V1 work is a *new,
    separate* realtor doorway; the homeowner flow gets no new steps or toggles.
 1. **Vacant → Furnished staging mode.** A separate "Virtual Staging" entry (its own doorway, reached via

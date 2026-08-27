@@ -8,6 +8,7 @@ import ServicesPage from './components/ServicesPage';
 import StudioPage from './components/StudioPage';
 import AIVisionPage from './components/AIVisionPage';
 import AIConceptsPage from './components/AIConceptsPage';
+import VirtualStagingPage from './components/VirtualStagingPage';
 import PricingPage from './components/PricingPage';
 import FAQPage from './components/FAQPage';
 import TermsPage from './components/TermsPage';
@@ -173,6 +174,7 @@ const App: React.FC = () => (
             <Route path="/studio" element={<StudioPage />} />
             <Route path="/ai-concepts" element={<AIConceptsRoute />} />
             <Route path="/ai-vision" element={<AIVisionRoute />} />
+            <Route path="/virtual-staging" element={<VirtualStagingPage />} />
             <Route path="/pricing" element={<PricingRoute />} />
             <Route path="/faq" element={<FAQPage />} />
             <Route path="/retail" element={<RetailRoute />} />
