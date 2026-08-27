@@ -36,6 +36,7 @@ import { runMigrations } from "./db/migrate.js";
 import { getPool } from "./db/pgPool.js";
 import { loadState, saveState } from "./db/state.js";
 import { sendEmail } from "./lib/email.js";
+import { computeNextRenewal, type PlatformCadence } from "./services/platforms/renewal.js";
 // ─── Payments Rail B (I-025): Ameriabank vPOS $99 consultation ────────────────
 import {
   getAmeriaConfig,
@@ -234,6 +235,9 @@ interface DB {
    *  Consultations tab + HubSpot-sync status survive redeploys. Keyed/deduped by
    *  inviteeUri. Capped FIFO. */
   calendlyBookings?: Array<ConsultationBooking & { hubspot?: { synced: boolean; at?: string; error?: string } }>;
+  /** UTC YYYY-MM-DD of the last renewal-digest email send. Guards the digest to at
+   *  most once per UTC day (I-012, 2026-08-27). */
+  platformsDigestLastSent?: string;
   /** GEO watchlist — owner-editable phrases we track Google rank for (Insights tab).
    *  Durable so edits survive redeploys. Seeded on first boot. */
   geoPhrases?: string[];
@@ -619,6 +623,9 @@ interface Platform {
   annual_cost?: string | null;
   free_tier_quota: string | null;
   renewal_date: string | null;
+  /** Billing cadence (I-012, 2026-08-27). Drives the auto-advancing next_renewal.
+   *  null/undefined ⇒ static (pay-as-you-go / prepaid / one-off). */
+  cadence?: PlatformCadence | null;
   powers: string;
   criticality: number;
 }
@@ -641,6 +648,22 @@ function getPlatforms(): Platform[] {
   return dbCache?.platforms && dbCache.platforms.length > 0 ? dbCache.platforms : PLATFORMS;
 }
 
+/** A platform enriched with its rolled-forward next renewal (see renewal.ts). */
+type PlatformWithDerived = Platform & { next_renewal: string | null };
+
+/**
+ * The live inventory with each row's `next_renewal` derived from its anchor +
+ * cadence. The DURABLE STORE keeps the raw anchor + cadence untouched — only the
+ * response is enriched, so the anchor never drifts. Used by the GET response and
+ * /api/admin/usage.
+ */
+function getPlatformsWithDerived(): PlatformWithDerived[] {
+  return getPlatforms().map((p) => ({
+    ...p,
+    next_renewal: computeNextRenewal(p.renewal_date, p.cadence ?? null),
+  }));
+}
+
 /**
  * Normalize/validate one client-submitted platform row. Returns a clean Platform
  * or null when the row is unusable (missing name). Keeps the durable store tidy
@@ -654,6 +677,10 @@ function normalizePlatform(raw: any): Platform | null {
     const s = String(v ?? "").trim();
     return s === "" ? null : s;
   };
+  // Coerce cadence to a known value, else null ("None" / unset ⇒ static).
+  const cad = String(raw.cadence ?? "").trim().toLowerCase();
+  const cadence: PlatformCadence | null =
+    cad === "monthly" || cad === "annual" || cad === "once" ? cad : null;
   return {
     name,
     owner_email: String(raw.owner_email ?? "").trim(),
@@ -661,6 +688,7 @@ function normalizePlatform(raw: any): Platform | null {
     annual_cost: orNull(raw.annual_cost),
     free_tier_quota: orNull(raw.free_tier_quota),
     renewal_date: orNull(raw.renewal_date),
+    cadence,
     powers: String(raw.powers ?? "").trim(),
     criticality: Math.max(1, Math.min(5, Math.round(Number(raw.criticality)) || 1)),
   };
@@ -676,6 +704,34 @@ async function ensurePlatformsSeeded(): Promise<void> {
   dbCache.platforms = PLATFORMS.map((p) => ({ ...p }));
   console.log(`✅ seeded ${dbCache.platforms.length} platforms into app_state (id='${STATE_ID}')`);
   writeDB(dbCache);
+}
+
+/**
+ * One-time cadence backfill (I-012, 2026-08-27). Older durable rows predate the
+ * `cadence` field, so their renewal dates never auto-advanced. Infer a cadence by
+ * name for the known recurring subscriptions; leave everything else untouched
+ * (undefined ⇒ static). Only rows with NO cadence set are considered, so this is a
+ * no-op once set — an owner's explicit "None" (null) is never re-inferred.
+ */
+async function ensurePlatformCadence(): Promise<void> {
+  if (!dbCache || !Array.isArray(dbCache.platforms)) return;
+  let changed = 0;
+  for (const p of dbCache.platforms) {
+    if (p.cadence !== undefined) continue; // already set (value or explicit null)
+    const name = String(p.name ?? "").toLowerCase();
+    let inferred: PlatformCadence | undefined;
+    if (/claude|anthropic/.test(name)) inferred = "monthly";
+    else if (/chatgpt|openai/.test(name)) inferred = "monthly";
+    else if (/hosting\.com/.test(name)) inferred = "annual";
+    if (inferred) {
+      p.cadence = inferred;
+      changed++;
+    }
+  }
+  if (changed > 0) {
+    console.log(`✅ backfilled cadence on ${changed} platform row(s) (id='${STATE_ID}')`);
+    writeDB(dbCache);
+  }
 }
 
 // ─── GEO watchlist + rank snapshots (durable, app_state) ────────────────────
@@ -801,6 +857,70 @@ async function syncBookingsToHubspot(): Promise<void> {
     if (changed) writeDB(db);
   } catch (e) {
     console.error("[calendly-sync]", (e as Error)?.message || e);
+  }
+}
+
+/**
+ * Once-a-day renewal digest (I-012, 2026-08-27). Emails the owner a short list of
+ * recurring platforms whose derived renewal is just-passed / imminent, so she can
+ * confirm each actually charged. Runs at most once per UTC day (tracked in
+ * dbCache.platformsDigestLastSent). No-op unless email is configured. Best-effort —
+ * wrapped like syncBookingsToHubspot so a hiccup never crashes the interval.
+ */
+async function sendRenewalDigestIfDue(): Promise<void> {
+  try {
+    if (!process.env.RESEND_API_KEY) return; // email not configured — nothing to send through
+    if (!dbCache) return;
+    const today = utcDateString();
+    if (dbCache.platformsDigestLastSent === today) return; // already ran today
+
+    // Days-until for a derived (UTC-midnight) YYYY-MM-DD date; ceil, UTC.
+    const daysUntilUtc = (dateStr: string | null): number | null => {
+      if (!dateStr) return null;
+      const ms = Date.parse(dateStr);
+      if (!Number.isFinite(ms)) return null;
+      const now = new Date();
+      const todayMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+      return Math.ceil((ms - todayMs) / (24 * 60 * 60 * 1000));
+    };
+
+    // Recurring platforms only (skip static / pay-as-you-go) whose derived renewal
+    // is in [-1, 3] days: just passed yesterday through due in 3 days.
+    const due = getPlatformsWithDerived()
+      .filter((p) => p.cadence === "monthly" || p.cadence === "annual")
+      .map((p) => ({ p, days: daysUntilUtc(p.next_renewal) }))
+      .filter((x) => x.days !== null && x.days >= -1 && x.days <= 3);
+
+    if (due.length === 0) {
+      // Still mark today so we compute exactly once per day.
+      dbCache.platformsDigestLastSent = today;
+      writeDB(dbCache);
+      return;
+    }
+
+    const esc = (s: string): string =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const rows = due
+      .map(({ p, days }) => {
+        const when = days === 0 ? "today" : days! < 0 ? `${-days!}d ago` : `in ${days}d`;
+        return `<li style="margin:0 0 8px"><strong>${esc(p.name)}</strong> — ${esc(p.monthly_cost || "—")} · renews ${p.next_renewal} (${when})<br><span style="color:#666">renewed? if not, update it in /admin/platforms</span></li>`;
+      })
+      .join("");
+    const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111">
+      <p>These recurring platforms renew around now — confirm each actually charged:</p>
+      <ul style="padding-left:18px">${rows}</ul>
+      <p style="color:#666">Auto-sent once a day from the Platforms tab. Manage the inventory at /admin/platforms.</p>
+    </div>`;
+
+    await sendEmail({
+      to: "anahit@designature.studio",
+      subject: `Renewal check — ${due.length} due`,
+      html,
+    });
+    dbCache.platformsDigestLastSent = today;
+    writeDB(dbCache);
+  } catch (e) {
+    console.error("[renewal-digest]", (e as Error)?.message || e);
   }
 }
 
@@ -969,6 +1089,9 @@ async function startServer() {
   await ensurePlatformsSeeded();
   await ensureGeoPhrasesSeeded();
 
+  // One-time cadence backfill for older durable rows (idempotent, no-op once set).
+  await ensurePlatformCadence();
+
   // Sweep stale pending consultation orders → cancelled, every 5 minutes (I-025).
   // Run once at boot to clear anything left stale across a restart, then on an
   // interval. unref() so the timer never keeps the process alive on its own.
@@ -982,6 +1105,13 @@ async function startServer() {
   setTimeout(() => void syncBookingsToHubspot(), 15_000).unref();
   const calendlySyncTimer = setInterval(() => void syncBookingsToHubspot(), 3 * 60 * 1000);
   calendlySyncTimer.unref();
+
+  // Once-a-day renewal digest (I-012). Best-effort; self-guards to one send/UTC-day.
+  // Run once at boot, then every 6h so the day is caught even across restarts. The
+  // timer is unref'd so it never keeps the process alive on its own.
+  void sendRenewalDigestIfDue();
+  const renewalDigestTimer = setInterval(() => void sendRenewalDigestIfDue(), 6 * 60 * 60 * 1000);
+  renewalDigestTimer.unref();
 
   // Snapshot GEO watchlist positions daily (Search Console lags ~2-3d, so daily
   // is plenty) → the Insights tab shows position movement over time. Best-effort.
@@ -3799,7 +3929,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       disabled: SHOPPING_DISABLED,
     };
 
-    res.json({ items: getPlatforms(), usage });
+    res.json({ items: getPlatformsWithDerived(), usage });
   });
 
   app.put("/api/admin/platforms", (req, res) => {
@@ -4137,7 +4267,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     res.json({
       counters,
       activity: allActivityRaw.slice(-50).reverse(), // forensic feed — unfiltered (newest first)
-      platforms: getPlatforms(),
+      platforms: getPlatformsWithDerived(),
       serperLog: (db.serperLog || []).slice(-100).reverse(), // newest first
       users: {
         total: userList.length,
