@@ -23,7 +23,13 @@ interface Platform {
   monthly_cost: string;
   annual_cost?: string | null;
   free_tier_quota: string | null;
+  /** ANCHOR renewal date (the edit form binds here). */
   renewal_date: string | null;
+  /** Billing cadence — drives the auto-advancing next renewal. null ⇒ static. */
+  cadence?: 'monthly' | 'annual' | 'once' | null;
+  /** Server-derived next renewal (anchor rolled forward). Read-only; used for
+   *  display / daysUntil / sorting. Falls back to renewal_date when absent. */
+  next_renewal?: string | null;
   powers: string;
   criticality: number;
 }
@@ -95,6 +101,11 @@ function daysUntil(dateStr: string | null): number | null {
   const t = Date.parse(dateStr);
   if (!Number.isFinite(t)) return null;
   return Math.ceil((t - Date.now()) / (24 * 60 * 60 * 1000));
+}
+
+/** The date to DISPLAY / sort on: server-derived next renewal, else the raw anchor. */
+function renewOf(p: Platform): string | null {
+  return p.next_renewal ?? p.renewal_date;
 }
 
 const BLANK: Platform = {
@@ -171,7 +182,8 @@ const GroupTable: React.FC<{ items: Platform[]; usage: UsageMap }> = ({ items, u
       </thead>
       <tbody>
         {items.map((p, i) => {
-          const d = daysUntil(p.renewal_date);
+          const renews = renewOf(p);
+          const d = daysUntil(renews);
           const soon = d !== null && d < 60;
           const key = providerKeyFor(p.name);
           const u = key ? usage[key] : undefined;
@@ -186,9 +198,9 @@ const GroupTable: React.FC<{ items: Platform[]; usage: UsageMap }> = ({ items, u
               <td className="px-4 py-3 text-[12px] text-neutral-700 text-right tabular-nums whitespace-nowrap">{p.annual_cost || '—'}</td>
               <td className="px-4 py-3 text-[12px] text-neutral-600">{p.free_tier_quota || '—'}</td>
               <td className="px-4 py-3 text-[12px] whitespace-nowrap">
-                {p.renewal_date ? (
+                {renews ? (
                   <span className={soon ? 'text-amber-700 font-semibold' : 'text-neutral-700'}>
-                    {p.renewal_date}
+                    {renews}
                     {d !== null && <span className="text-neutral-400"> · {d}d</span>}
                   </span>
                 ) : (
@@ -233,6 +245,17 @@ const EditRow: React.FC<{
     </td>
     <td className="px-2 py-2 min-w-[140px]">
       <input className={cellInput} type="date" value={p.renewal_date ?? ''} onChange={(e) => onChange({ renewal_date: e.target.value })} />
+      <select
+        className={`${cellInput} mt-1.5`}
+        value={p.cadence ?? ''}
+        onChange={(e) => onChange({ cadence: (e.target.value || null) as Platform['cadence'] })}
+        title="How this renewal recurs — drives the auto-advancing date"
+      >
+        <option value="monthly">Monthly</option>
+        <option value="annual">Annual</option>
+        <option value="once">One-time</option>
+        <option value="">None</option>
+      </select>
     </td>
     <td className="px-2 py-2 min-w-[200px]">
       <input className={cellInput} value={p.owner_email} placeholder="billed to (email)" onChange={(e) => onChange({ owner_email: e.target.value })} />
@@ -290,8 +313,8 @@ const AdminPlatformsPage: React.FC = () => {
   const nextRenewals = useMemo(
     () =>
       view
-        .filter((p) => daysUntil(p.renewal_date) !== null)
-        .sort((a, b) => (daysUntil(a.renewal_date)! - daysUntil(b.renewal_date)!)),
+        .filter((p) => daysUntil(renewOf(p)) !== null)
+        .sort((a, b) => (daysUntil(renewOf(a))! - daysUntil(renewOf(b))!)),
     [view],
   );
 
@@ -324,6 +347,7 @@ const AdminPlatformsPage: React.FC = () => {
         annual_cost: p.annual_cost && String(p.annual_cost).trim() ? String(p.annual_cost).trim() : null,
         free_tier_quota: p.free_tier_quota && String(p.free_tier_quota).trim() ? String(p.free_tier_quota).trim() : null,
         renewal_date: p.renewal_date && String(p.renewal_date).trim() ? String(p.renewal_date).trim() : null,
+        cadence: p.cadence ?? null,
       }))
       .filter((p) => p.name);
     setSaving(true);
@@ -398,7 +422,7 @@ const AdminPlatformsPage: React.FC = () => {
             <SummaryTile label="Free services" value={free.length} sub="$0 tier" />
             <SummaryTile
               label="Next renewal"
-              value={nextRenewals.length ? `${daysUntil(nextRenewals[0].renewal_date)}d` : '—'}
+              value={nextRenewals.length ? `${daysUntil(renewOf(nextRenewals[0]))}d` : '—'}
               sub={nextRenewals.length ? nextRenewals[0].name : 'no fixed renewals'}
             />
           </div>
@@ -419,13 +443,13 @@ const AdminPlatformsPage: React.FC = () => {
             <h2 className="text-[10px] tracking-[0.28em] uppercase text-neutral-500 font-bold mb-3">Next renewals</h2>
             <div className="flex flex-wrap gap-2.5">
               {nextRenewals.map((p) => {
-                const d = daysUntil(p.renewal_date)!;
+                const d = daysUntil(renewOf(p))!;
                 const soon = d < 60;
                 return (
                   <div key={p.name} className={`border px-3.5 py-2 bg-white ${soon ? 'border-amber-300' : 'border-[#DAD2C3]'}`}>
                     <div className="text-[12px] font-semibold text-black">{p.name}</div>
                     <div className={`text-[11px] ${soon ? 'text-amber-700 font-semibold' : 'text-neutral-500'}`}>
-                      in {d} days · {p.renewal_date}
+                      in {d} days · {renewOf(p)}
                     </div>
                     <div className="text-[10px] text-neutral-400 font-mono mt-0.5">{p.owner_email}</div>
                   </div>
