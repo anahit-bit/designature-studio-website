@@ -26,6 +26,7 @@ export const STATIC_SITEMAP_ROUTES: SitemapEntry[] = [
   { path: "/services", changefreq: "monthly", priority: 0.9 },
   { path: "/studio", changefreq: "monthly", priority: 0.7 },
   { path: "/deliverables", changefreq: "weekly", priority: 0.8 },
+  { path: "/listing-photos", changefreq: "monthly", priority: 0.8 },
   { path: "/ai-concepts", changefreq: "weekly", priority: 0.9 },
   { path: "/ai-vision", changefreq: "weekly", priority: 0.8 },
   { path: "/pricing", changefreq: "monthly", priority: 0.8 },

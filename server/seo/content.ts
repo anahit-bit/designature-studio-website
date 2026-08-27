@@ -53,3 +53,12 @@ export const JOURNAL_COPY: PrerenderCopy = {
   intro:
     "Ideas, how-tos, and behind-the-scenes from the studio — on interior design, AI-assisted tools, and making a home that feels like you.",
 };
+
+/** Mirrors the /listing-photos hero (src/components/ListingPhotosPage.tsx).
+ *  English-only, like the page itself — the audience is the US. */
+export const LISTING_PHOTOS_COPY: PrerenderCopy = {
+  eyebrow: "For US hosts, agents & owners",
+  headline: "Your listing isn't the problem. The photos are.",
+  intro:
+    "Before you drop the nightly rate again, look at the first three images. Upload one photo of the room and Designature shows you the same space restyled — then hands you the shopping list of real products, at real prices, that get it there. Free to start, no card.",
+};

@@ -9,6 +9,8 @@
  *                      rendered page uses, so schema always matches the content)
  *   /deliverables    → FAQPage + BreadcrumbList (FAQ from src/data/deliverablesFaq.ts,
  *                      same source the rendered accordion uses)
+ *   /listing-photos  → Service + FAQPage + BreadcrumbList (FAQ from
+ *                      src/data/listingPhotosFaq.ts, same source the page renders)
  *
  * Builders return plain objects; render.ts serializes them safely.
  */
@@ -17,6 +19,7 @@ import type { BlogPost, Category } from "../../src/types";
 import { BUSINESS, SITE_URL, absUrl, CORE_SERVICES } from "./config.js";
 import { FAQ_SECTIONS } from "../../src/data/faqs.js";
 import { DELIVERABLES_FAQ } from "../../src/data/deliverablesFaq.js";
+import { LISTING_PHOTOS_FAQ } from "../../src/data/listingPhotosFaq.js";
 import type { RouteInfo, JournalData } from "./meta.js";
 
 type JsonLd = Record<string, unknown>;
@@ -139,6 +142,71 @@ function deliverablesFaqNode(): JsonLd {
   };
 }
 
+/**
+ * M-001 — FAQPage for /listing-photos, from src/data/listingPhotosFaq.ts (the
+ * same 7 Q&As the page's accordion renders).
+ */
+function listingPhotosFaqNode(): JsonLd {
+  return {
+    "@type": "FAQPage",
+    "@id": `${absUrl("/listing-photos")}#faqpage`,
+    mainEntity: LISTING_PHOTOS_FAQ.map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: { "@type": "Answer", text: item.a },
+    })),
+  };
+}
+
+/**
+ * M-001 — Service node for /listing-photos.
+ *
+ * `areaServed: US` is the point: this page (and the paid-search campaign behind
+ * it) targets the United States, while the studio's LocalBusiness node is
+ * Yerevan. Both are true — the AI tools are online, the on-site design/build
+ * service is not — and saying so explicitly keeps the two from contradicting
+ * each other for a crawler.
+ *
+ * Only shipped, priced offerings are listed. The free tier's price is a real
+ * 0.00 offer; the consultation is the real $99. Nothing speculative.
+ */
+function listingPhotosServiceNode(): JsonLd {
+  const url = absUrl("/listing-photos");
+  return {
+    "@type": "Service",
+    "@id": `${url}#service`,
+    name: "AI room restyling and shopping lists for rental and sale listings",
+    serviceType: "Interior design visualization",
+    description:
+      "Upload one photo of a room and receive a photorealistic AI restyle of that same space, plus a shopping list of real, currently listed products with prices and retailer links — for short-term rental hosts, real-estate agents, and owners preparing a property.",
+    url,
+    provider: { "@id": ORG_ID },
+    areaServed: { "@type": "Country", name: "United States" },
+    audience: {
+      "@type": "Audience",
+      audienceType: "Short-term rental hosts, real estate agents, property owners",
+    },
+    offers: [
+      {
+        "@type": "Offer",
+        name: "Explore — free tier",
+        description: "Three AI Vision concepts and three shopping lists. No credit card.",
+        price: "0",
+        priceCurrency: "USD",
+        url: absUrl("/pricing"),
+      },
+      {
+        "@type": "Offer",
+        name: "Designer consultation",
+        description: "A one-to-one video consultation with a Designature Studio designer.",
+        price: "99",
+        priceCurrency: "USD",
+        url: absUrl("/consultation"),
+      },
+    ],
+  };
+}
+
 // ── Journal (Phase 2) ────────────────────────────────────────────────────────
 
 /** FAQPage built from a post's authored `seo.faq[]` (only when present). */
@@ -258,6 +326,16 @@ export function buildJsonLd(
         breadcrumbNode([
           { name: "Home", url: SITE_URL + "/" },
           { name: "Deliverables", url: absUrl("/deliverables") },
+        ])
+      );
+      break;
+    case "listingPhotos":
+      nodes.push(
+        listingPhotosServiceNode(),
+        listingPhotosFaqNode(),
+        breadcrumbNode([
+          { name: "Home", url: SITE_URL + "/" },
+          { name: "Listing Photos", url: absUrl("/listing-photos") },
         ])
       );
       break;

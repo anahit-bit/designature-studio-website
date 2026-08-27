@@ -37,6 +37,12 @@
  *   purchase              — Paid consultation confirmed (GA4 standard e-commerce event).
  *                           params: { transaction_id, value, currency, items }
  *   consultation_failed   — /booking/failed reached after a declined/aborted payment.
+ *   listing_photos_cta    — A CTA on the /listing-photos paid-search landing page was
+ *                           clicked. params: { cta } — hero_primary | how_primary |
+ *                           audience_hosts | audience_agents | designer_consultation |
+ *                           designer_services | free_chat | closing_primary |
+ *                           closing_pricing. Imported into Google Ads as a secondary
+ *                           conversion (docs/marketing/google-ads/README.md).
  */
 
 declare global {

@@ -17,6 +17,7 @@ import ConsultationPage from './components/ConsultationPage';
 import BookingConfirmedPage from './components/BookingConfirmedPage';
 import BookingFailedPage from './components/BookingFailedPage';
 import DeliverablesPage from './components/DeliverablesPage';
+import ListingPhotosPage from './components/ListingPhotosPage';
 import AdminPage from './components/AdminPage';
 import AdminLoginPage from './components/AdminLoginPage';
 import AdminUsersPage from './components/AdminUsersPage';
@@ -112,6 +113,17 @@ const DeliverablesRoute: React.FC = () => (
   </div>
 );
 
+// M-001 — /listing-photos. The US paid-search landing page for short-term-rental
+// hosts and real-estate agents (campaign spec: docs/marketing/google-ads/).
+// Indexed and sitemapped, so it also works as an organic page between flights.
+const ListingPhotosRoute: React.FC = () => (
+  <div className="min-h-screen bg-white font-body">
+    <Header />
+    <ListingPhotosPage />
+    <Footer />
+  </div>
+);
+
 // Internal employee tool — deliberately NO public Header/Footer chrome.
 // Hosted on the studio domain purely for hosting compliance.
 const RetailRoute: React.FC = () => (
@@ -186,6 +198,7 @@ const App: React.FC = () => (
             <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
             <Route path="/booking/failed" element={<BookingFailedPage />} />
             <Route path="/deliverables" element={<DeliverablesRoute />} />
+            <Route path="/listing-photos" element={<ListingPhotosRoute />} />
             <Route path="/account" element={<AccountRoute />} />
             <Route path="/shared/:id" element={<SharedItemPage />} />
             <Route path="/admin/login" element={<AdminLoginPage />} />

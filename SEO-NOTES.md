@@ -26,8 +26,8 @@ calls `renderRoute()` instead of a raw `sendFile`.
 ## Routes covered
 
 **Indexed (in sitemap + JSON-LD as applicable):**
-`/`, `/portfolio`, `/portfolio/:id`, `/services`, `/studio`, `/ai-concepts`,
-`/ai-vision`, `/pricing`, `/faq`, `/journal`, `/journal/:slug`,
+`/`, `/portfolio`, `/portfolio/:id`, `/services`, `/studio`, `/listing-photos`,
+`/ai-concepts`, `/ai-vision`, `/pricing`, `/faq`, `/journal`, `/journal/:slug`,
 `/journal/category/:slug`, `/consultation`, `/terms`, `/privacy`, `/refund`.
 
 **`noindex` (excluded from sitemap):** `/admin*`, `/booking/*`, `/deliverables`
@@ -40,6 +40,13 @@ calls `renderRoute()` instead of a raw `sendFile`.
 - `/portfolio` → `BreadcrumbList`.
 - `/portfolio/:id` → `BreadcrumbList` (Home › Portfolio › Project).
 - `/faq` → `FAQPage`, generated from `src/data/faqs.ts` (matches the page 1:1).
+- `/listing-photos` → `Service` (with `areaServed: United States`) + `FAQPage`
+  (from `src/data/listingPhotosFaq.ts`) + `BreadcrumbList`. The `Service` node's
+  `areaServed` is deliberate: the AI tools serve the US while the site's
+  `LocalBusiness` node stays Yerevan, and stating both keeps them from reading
+  as a contradiction. Prerendered copy + all seven full answers land in `#root`
+  (the visible accordion keeps six collapsed). This is the landing page for the
+  US paid-search campaign — see `docs/marketing/google-ads/README.md`.
 - `/journal` → `Blog` + `BreadcrumbList`.
 - `/journal/:slug` → `BlogPosting` (headline, author, datePublished/dateModified,
   image, articleSection, keywords) + `BreadcrumbList` (Home › Journal › [Category] ›

@@ -1,0 +1,6 @@
+Campaign,Campaign Type,Campaign Status,Budget,Bid Strategy Type,Networks,Languages,Location,Ad Group,Ad Group Status,Max CPC
+US | Search | Listing Photos,Search,Enabled,25.00,Maximize clicks,Google search,English,United States,,,
+US | Search | Listing Photos,Search,Enabled,25.00,Maximize clicks,Google search,English,United States,Hosts | Not Getting Booked,Enabled,2.00
+US | Search | Listing Photos,Search,Enabled,25.00,Maximize clicks,Google search,English,United States,Hosts | Furnish & Style,Enabled,2.00
+US | Search | Listing Photos,Search,Enabled,25.00,Maximize clicks,Google search,English,United States,Agents | Pre-Listing Prep,Enabled,2.50
+US | Search | Listing Photos,Search,Enabled,25.00,Maximize clicks,Google search,English,United States,Virtual Staging Intercept,Paused,2.50

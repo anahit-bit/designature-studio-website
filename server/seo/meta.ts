@@ -39,6 +39,7 @@ export type RouteKey =
   | "services"
   | "studio"
   | "deliverables"
+  | "listingPhotos"
   | "aiConcepts"
   | "aiVision"
   | "pricing"
@@ -107,6 +108,8 @@ export function classifyRoute(pathname: string): RouteInfo {
       return { key: "studio" };
     case "/deliverables":
       return { key: "deliverables" };
+    case "/listing-photos":
+      return { key: "listingPhotos" };
     case "/ai-concepts":
       return { key: "aiConcepts" };
     case "/ai-vision":
@@ -190,6 +193,17 @@ const STATIC_META: Record<
     ogTitle: "Interior Design Deliverables — What a Studio Project Ships",
     ogDescription:
       "Brief, concept, AI previews, photoreal 3D renders, and a 40+ sheet technical drawing set — with real sample PDFs to download.",
+    ogImage: DEFAULT_OG_IMAGE,
+  },
+  listingPhotos: {
+    path: "/listing-photos",
+    title:
+      "Listing Photos That Book — AI Room Restyling for Rentals & Listings" + SUFFIX,
+    description:
+      "Your rental or listing is getting views but no bookings? It is usually the photos. Upload one room photo, see it restyled photorealistically, and get a shopping list of real products at real prices. Free to start, no card.",
+    ogTitle: "Your listing isn't the problem. The photos are.",
+    ogDescription:
+      "Upload one photo of the room, see it restyled, and get the shopping list of real products that gets it there — for short-term rental hosts, agents, and owners.",
     ogImage: DEFAULT_OG_IMAGE,
   },
   aiConcepts: {

@@ -135,6 +135,7 @@ describe('route classification + metadata', () => {
     expect(classifyRoute('/admin/orders').key).toBe('private');
     expect(classifyRoute('/booking/confirmed').key).toBe('private');
     expect(classifyRoute('/deliverables').key).toBe('deliverables');
+    expect(classifyRoute('/listing-photos').key).toBe('listingPhotos');
     expect(classifyRoute('/something-else').key).toBe('unknown');
   });
 
@@ -146,8 +147,8 @@ describe('route classification + metadata', () => {
 
   it('gives every public route a unique, non-empty title + description', () => {
     const keys = [
-      '/', '/portfolio', '/services', '/studio', '/deliverables', '/ai-concepts',
-      '/ai-vision', '/pricing', '/faq', '/consultation', '/terms',
+      '/', '/portfolio', '/services', '/studio', '/deliverables', '/listing-photos',
+      '/ai-concepts', '/ai-vision', '/pricing', '/faq', '/consultation', '/terms',
       '/privacy', '/refund',
     ];
     const titles = new Set<string>();
@@ -267,6 +268,8 @@ describe('sitemap', () => {
     expect(xml).toContain('<loc>https://www.designature.studio/portfolio/0022</loc>');
     // S-014 — the deliverables page must be crawlable.
     expect(xml).toContain('<loc>https://www.designature.studio/deliverables</loc>');
+    // M-001 — the paid-search landing page is indexed, not a throwaway.
+    expect(xml).toContain('<loc>https://www.designature.studio/listing-photos</loc>');
   });
 });
 

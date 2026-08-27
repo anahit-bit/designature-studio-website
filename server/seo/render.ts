@@ -4,7 +4,8 @@
  * Reads dist/index.html ONCE at startup (cached string), then for each request:
  *   1. strips the build's placeholder <title>/description/OG/Twitter/canonical,
  *   2. injects the route-resolved head tags + JSON-LD before </head>,
- *   3. injects a minimal text prerender inside #root for /, /services, /faq.
+ *   3. injects a minimal text prerender inside #root for /, /services, /faq,
+ *      /listing-photos, and the journal routes.
  *
  * The SAME enriched HTML goes to bots and humans (no cloaking). React mounts with
  * createRoot().render() (not hydrate), so it cleanly replaces the prerender
@@ -31,9 +32,11 @@ import {
   SERVICES_COPY,
   FAQ_COPY,
   JOURNAL_COPY,
+  LISTING_PHOTOS_COPY,
   type PrerenderCopy,
 } from "./content.js";
 import { FAQ_SECTIONS } from "../../src/data/faqs.js";
+import { LISTING_PHOTOS_FAQ } from "../../src/data/listingPhotosFaq.js";
 
 // ── Template loading (read once, cache) ────────────────────────────────────
 let templateCache: string | null = null;
@@ -105,6 +108,18 @@ function prerenderFaq(): string {
     )
   ).join("");
   return `<h2>Frequently Asked Questions</h2>${items}`;
+}
+
+/**
+ * M-001 — /listing-photos Q&As for JS-less crawlers, from the same source the
+ * page's accordion and the FAQPage schema use. The accordion collapses all but
+ * one answer in the DOM, so without this a crawler would see one answer.
+ */
+function prerenderListingPhotosFaq(): string {
+  const items = LISTING_PHOTOS_FAQ.map(
+    (item) => `<div><h3>${escapeHtml(item.q)}</h3><p>${escapeHtml(item.a)}</p></div>`
+  ).join("");
+  return `<h2>Questions we get from hosts and agents</h2>${items}`;
 }
 
 /**
@@ -192,6 +207,9 @@ function buildPrerender(info: RouteInfo, journal?: JournalData): string {
       break;
     case "faq":
       body = prerenderCopyBlock(FAQ_COPY) + prerenderFaq();
+      break;
+    case "listingPhotos":
+      body = prerenderCopyBlock(LISTING_PHOTOS_COPY) + prerenderListingPhotosFaq();
       break;
     case "journalIndex":
       body = prerenderCopyBlock(JOURNAL_COPY);
