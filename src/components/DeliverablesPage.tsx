@@ -118,10 +118,10 @@ const SAMPLES = Object.fromEntries(
  */
 const CLD_IMG = 'https://res.cloudinary.com/dys2k5muv/image/upload';
 const COVERS = {
-  phase12: `${CLD_IMG}/v1787244919/deliverables-cover-phase-1-2.jpg`,
-  aiConcept: `${CLD_IMG}/v1787291900/deliverables-cover-phase-3-ai-concept.jpg`,
-  renders: `${CLD_IMG}/v1787244922/deliverables-cover-phase-3-renders.jpg`,
-  technical: `${CLD_IMG}/v1787291901/deliverables-cover-phase-4-technical.jpg`,
+  phase12: `${CLD_IMG}/v1787244919/deliverables/covers/phase-1-2.jpg`,
+  aiConcept: `${CLD_IMG}/v1787291900/deliverables/covers/phase-3-ai-concept.jpg`,
+  renders: `${CLD_IMG}/v1787244922/deliverables/covers/phase-3-renders.jpg`,
+  technical: `${CLD_IMG}/v1787291901/deliverables/covers/phase-4-technical.jpg`,
 } as const;
 
 const GLANCE = [

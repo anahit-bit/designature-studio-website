@@ -31,13 +31,18 @@ cloudinary.config({
 
 const SRC = process.env.COVERS_DIR
   || 'C:/Users/User/AppData/Local/Temp/claude/E--Business-Claude-Website--claude-worktrees-confident-maxwell-841ac0/892cf53a-7409-4d96-ac5c-13ea099ac7e8/scratchpad/covers_final';
-const FOLDER = 'Deliverables Samples';
+
+// Compliant with the Cloudinary folder-hygiene rule (see memory
+// feedback_cloudinary_folder_hygiene.md): lowercase kebab, category first.
+// Public IDs drop the redundant `deliverables-cover-` prefix — the folder
+// already implies it.
+const FOLDER = 'deliverables/covers';
 
 const FILES = [
-  ['deliverables-cover-phase-1-2.jpg', 'deliverables-cover-phase-1-2'],
-  ['deliverables-cover-phase-3-ai-concept.jpg', 'deliverables-cover-phase-3-ai-concept'],
-  ['deliverables-cover-phase-3-renders.jpg', 'deliverables-cover-phase-3-renders'],
-  ['deliverables-cover-phase-4-technical.jpg', 'deliverables-cover-phase-4-technical'],
+  ['deliverables-cover-phase-1-2.jpg',          'phase-1-2'],
+  ['deliverables-cover-phase-3-ai-concept.jpg', 'phase-3-ai-concept'],
+  ['deliverables-cover-phase-3-renders.jpg',    'phase-3-renders'],
+  ['deliverables-cover-phase-4-technical.jpg',  'phase-4-technical'],
 ];
 
 const out = {};
@@ -46,7 +51,7 @@ for (const [file, public_id] of FILES) {
   try {
     const r = await cloudinary.uploader.upload(abs, {
       public_id,
-      asset_folder: FOLDER,
+      folder: FOLDER,
       resource_type: 'image',
       overwrite: true,
       invalidate: true,
