@@ -1643,8 +1643,8 @@ async function startServer() {
           picture: user.picture,
           generationsLeft: user.generationsLeft,
           shoppingListsLeft: user.shoppingListsLeft,
-          isPaid: ownerLogin ? true : false,
-          auditsLeft: ownerLogin ? 999 : 0,
+          isPaid: ownerLogin || plan !== "free",
+          auditsLeft: ownerLogin ? 999 : plan !== "free" ? user.generationsLeft : 0,
           plan,
         },
       });
@@ -1731,6 +1731,7 @@ async function startServer() {
       shoppingListsLeft: user.shoppingListsLeft,
       isPaid: isPaidUser,
       auditsLeft: isPaidUser ? 999 : 0,
+      plan: user.plan ?? "free",
     });
   });
 
@@ -5080,6 +5081,18 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       console.error("[subscription-callback] activate write failed (payment captured):", err);
     }
 
+    // Grant the plan's quota + mark the user paid (server-authoritative — the ONLY
+    // upward move for a paid user; never a client call, so the free-tier lockdown
+    // principle holds). Concepts + room audits share generationsLeft; shopping uses
+    // shoppingListsLeft. Refills each period happen at renewal (S3).
+    let planQuota: { generations: number; shopping: number } | null = null;
+    try {
+      const pd = (await fetchPricingPlans()).find((p) => p.key === sub.tier);
+      if (pd) planQuota = { generations: pd.quotas.generations, shopping: pd.quotas.shopping };
+    } catch (err) {
+      console.error("[subscription-callback] pricing fetch failed (plan still activated):", err);
+    }
+
     // Restore the plan cache on the user record (source of truth stays the DB).
     let userEmail = "";
     try {
@@ -5088,6 +5101,11 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       if (u) {
         userEmail = u.email;
         u.plan = sub.tier;
+        u.isPaid = true;
+        if (planQuota) {
+          u.generationsLeft = planQuota.generations;
+          u.shoppingListsLeft = planQuota.shopping;
+        }
         u.lastUsed = new Date().toISOString();
         db.users[sub.user_id] = u;
         writeDB(db);
