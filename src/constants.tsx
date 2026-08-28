@@ -717,6 +717,215 @@ export const PROJECTS_LIST: ProjectData[] = [
   },
 
   // ════════════════════════════════════════════════
+  // PROJECT — Family Fun Center (#1)
+  // ════════════════════════════════════════════════
+  {
+    id: '1',
+    titleEN:  'Family Fun Center',
+    titleAM:  'Family Fun Center',
+
+    categoryEN: 'Commercial',
+    categoryAM: 'Կոմերցիոն',
+
+    imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863424/Portfolio/1/1-cover.jpg',
+
+    descriptionEN: 'A Yerevan play café built for two paces at once — soft blue play rooms, cloud ceilings and jungle wallpapers for the children next door, and a deep-blue banquette lounge lit by brass and bubble glass for the parents beside them.',
+    descriptionAM: 'A Yerevan play café built for two paces at once — soft blue play rooms, cloud ceilings and jungle wallpapers for the children next door, and a deep-blue banquette lounge lit by brass and bubble glass for the parents beside them.',
+
+    area:       '200 m²',
+    date:       '2020',
+    locationEN: 'Yerevan, Armenia',
+    locationAM: 'Yerevan, Armenia',
+
+    gallery: [
+      // SLOT 1 — WIDE 16:9 — hero (beanbag cinema)
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863425/Portfolio/1/1-g0.jpg',
+      // SLOT 2 — TALL 4:5 — line-drawn wardrobe wall
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863426/Portfolio/1/1-g1.jpg',
+      // SLOT 3 — TALL 4:5 — arched doorway transition
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863427/Portfolio/1/1-g2.jpg',
+      // SLOT 4 — WIDE 16:9 — kids' dining as built
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863428/Portfolio/1/1-g3.jpg',
+      // SLOT 5 — MID 4:3 — parents' zone (render)
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863429/Portfolio/1/1-g4.jpg',
+      // SLOT 6 — MID 4:3 — parents' zone (as built)
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863429/Portfolio/1/1-g5.jpg',
+      // SLOT 7 — SQUARE 1:1 — circular mint shelves detail
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863430/Portfolio/1/1-g6.jpg',
+      // SLOT 8 — SQUARE 1:1 — cloud ceiling + bear tables
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863432/Portfolio/1/1-g7.jpg',
+      // SLOT 9 — SQUARE 1:1 — jungle mural arch with tubes
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863433/Portfolio/1/1-g8.jpg',
+      // SLOT 10 — TALL 4:5 — reception (render)
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863434/Portfolio/1/1-g9.jpg',
+      // SLOT 11 — TALL 4:5 — reception (as built)
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863435/Portfolio/1/1-g10.jpg',
+      // overflow — 2-col grid at bottom
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863436/Portfolio/1/1-g11.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863437/Portfolio/1/1-g12.jpg',
+    ],
+  },
+
+  // ════════════════════════════════════════════════
+  // PROJECT — Blue Haven (#19)
+  // ════════════════════════════════════════════════
+  {
+    id: '19',
+    titleEN:  'Blue Haven',
+    titleAM:  'Blue Haven',
+
+    categoryEN: 'Residential',
+    categoryAM: 'Բնակելի',
+
+    imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098120/Portfolio/19/19-cover.jpg',
+
+    descriptionEN: 'A Singapore home reimagined in Japandi calm — glossy marble traded for warm parquet, the service yard softened into a plant-filled reading nook, and every bathroom brought to rest with black-matte fixtures against its original tile.',
+    descriptionAM: 'A Singapore home reimagined in Japandi calm — glossy marble traded for warm parquet, the service yard softened into a plant-filled reading nook, and every bathroom brought to rest with black-matte fixtures against its original tile.',
+
+    area:       '80 m²',
+    date:       '2024',
+    locationEN: 'Singapore',
+    locationAM: 'Singapore',
+
+    gallery: [
+      // SLOT 1 — WIDE 16:9 — hero
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098121/Portfolio/19/19-g0.jpg',
+      // SLOT 2 — TALL 4:5 — portrait pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098122/Portfolio/19/19-g1.jpg',
+      // SLOT 3 — TALL 4:5 — portrait pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098123/Portfolio/19/19-g2.jpg',
+      // SLOT 4 — WIDE 16:9 — second wide
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098123/Portfolio/19/19-g3.jpg',
+      // SLOT 5 — MID 4:3 — landscape pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098124/Portfolio/19/19-g4.jpg',
+      // SLOT 6 — MID 4:3 — landscape pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098125/Portfolio/19/19-g5.jpg',
+      // SLOT 7 — SQUARE 1:1 — trio LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098126/Portfolio/19/19-g6.jpg',
+      // SLOT 8 — SQUARE 1:1 — trio CENTER
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098127/Portfolio/19/19-g7.jpg',
+      // SLOT 9 — SQUARE 1:1 — trio RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098128/Portfolio/19/19-g8.jpg',
+      // SLOT 10 — TALL 4:5 — final pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098129/Portfolio/19/19-g9.jpg',
+      // SLOT 11 — TALL 4:5 — final pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098130/Portfolio/19/19-g10.jpg',
+      // --- overflow: real as-built photos (last) ---
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098130/Portfolio/19/19-g11.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098131/Portfolio/19/19-g12.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098132/Portfolio/19/19-g13.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098133/Portfolio/19/19-g14.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098134/Portfolio/19/19-g15.jpg',
+    ],
+  },
+
+  // ════════════════════════════════════════════════
+  // PROJECT — Still Waters (#43)
+  // ════════════════════════════════════════════════
+  {
+    id: '43',
+    titleEN:  'Still Waters',
+    titleAM:  'Still Waters',
+
+    categoryEN: 'Residential',
+    categoryAM: 'Բնակելի',
+
+    imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104932/Portfolio/43/43-cover.jpg',
+
+    descriptionEN: 'Full-home interior design for a 94 m² apartment in Yerevan, Armenia — a warm, transitional scheme where white oak millwork, herringbone floors and classic cabinetry meet cream curved seating, marble and brushed brass, with a grisaille landscape mural anchoring the open living–dining–kitchen core.',
+    descriptionAM: 'Full-home interior design for a 94 m² apartment in Yerevan, Armenia — a warm, transitional scheme where white oak millwork, herringbone floors and classic cabinetry meet cream curved seating, marble and brushed brass, with a grisaille landscape mural anchoring the open living–dining–kitchen core.',
+
+    area:       '94 m²',
+    date:       '2026',
+    locationEN: 'Yerevan, Armenia',
+    locationAM: 'Yerevan, Armenia',
+
+    gallery: [
+      // SLOT 1 — WIDE 16:9 — hero
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104933/Portfolio/43/43-g0.jpg',
+      // SLOT 2 — TALL 4:5 — portrait pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104934/Portfolio/43/43-g1.jpg',
+      // SLOT 3 — TALL 4:5 — portrait pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104935/Portfolio/43/43-g2.jpg',
+      // SLOT 4 — WIDE 16:9 — second wide
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104935/Portfolio/43/43-g3.jpg',
+      // SLOT 5 — MID 4:3 — landscape pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104936/Portfolio/43/43-g4.jpg',
+      // SLOT 6 — MID 4:3 — landscape pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104937/Portfolio/43/43-g5.jpg',
+      // SLOT 7 — SQUARE 1:1 — trio LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104939/Portfolio/43/43-g6.jpg',
+      // SLOT 8 — SQUARE 1:1 — trio CENTER
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104940/Portfolio/43/43-g7.jpg',
+      // SLOT 9 — SQUARE 1:1 — trio RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104941/Portfolio/43/43-g8.jpg',
+      // SLOT 10 — TALL 4:5 — final pair LEFT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104941/Portfolio/43/43-g9.jpg',
+      // SLOT 11 — TALL 4:5 — final pair RIGHT
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104942/Portfolio/43/43-g10.jpg',
+      // --- overflow: pair (4:5) + trio (1:1) ---
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104943/Portfolio/43/43-g11.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104944/Portfolio/43/43-g12.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104945/Portfolio/43/43-g13.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104946/Portfolio/43/43-g14.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104947/Portfolio/43/43-g15.jpg',
+    ],
+  },
+
+  // ════════════════════════════════════════════════
+  // PROJECT — Featherlight (#38)
+  // ════════════════════════════════════════════════
+  {
+    id: '38',
+    titleEN:  'Featherlight',
+    titleAM:  'Featherlight',
+
+    categoryEN: 'Residential',
+    categoryAM: 'Բնակելի',
+
+    imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135202/Portfolio/38/38-cover.jpg',
+
+    descriptionEN: 'A 100 m² family apartment near Komitas Park in Yerevan, Armenia, designed by Designature Studio — a luminous, transitional interior where an all-white living–dining core (crane murals, feather-glass chandeliers, herringbone floors and curved cream seating) opens onto jewel-box private rooms: a mauve-and-gold master bedroom, a magenta-and-gold entry hall, teal and travertine bathrooms, and a pastel sage-and-lavender children’s room.',
+    descriptionAM: 'A 100 m² family apartment near Komitas Park in Yerevan, Armenia, designed by Designature Studio — a luminous, transitional interior where an all-white living–dining core (crane murals, feather-glass chandeliers, herringbone floors and curved cream seating) opens onto jewel-box private rooms: a mauve-and-gold master bedroom, a magenta-and-gold entry hall, teal and travertine bathrooms, and a pastel sage-and-lavender children’s room.',
+
+    area:       '100 m²',
+    date:       '2025',
+    locationEN: 'Yerevan, Armenia',
+    locationAM: 'Yerevan, Armenia',
+
+    gallery: [
+      // SLOT 1 — WIDE 16:9 — hero (Living)
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135203/Portfolio/38/38-g0.jpg',
+      // SLOT 2 — TALL 4:5 — Bathroom 1
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135205/Portfolio/38/38-g1.jpg',
+      // SLOT 3 — TALL 4:5 — Bathroom 1
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135207/Portfolio/38/38-g2.jpg',
+      // SLOT 4 — WIDE 16:9 — Master
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135209/Portfolio/38/38-g3.jpg',
+      // SLOT 5 — MID 4:3 — Hallway
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135210/Portfolio/38/38-g4.jpg',
+      // SLOT 6 — MID 4:3 — Hallway
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135211/Portfolio/38/38-g5.jpg',
+      // SLOT 7 — SQUARE 1:1 — Kitchen
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135212/Portfolio/38/38-g6.jpg',
+      // SLOT 8 — SQUARE 1:1 — Kitchen
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135214/Portfolio/38/38-g7.jpg',
+      // SLOT 9 — SQUARE 1:1 — Kitchen
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135215/Portfolio/38/38-g8.jpg',
+      // SLOT 10 — TALL 4:5 — Bathroom 2
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787137283/Portfolio/38/38-g9.jpg',
+      // SLOT 11 — TALL 4:5 — Bathroom 2
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135218/Portfolio/38/38-g10.jpg',
+      // --- overflow: Master pair + Kids trio ---
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135219/Portfolio/38/38-g11.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135221/Portfolio/38/38-g12.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135222/Portfolio/38/38-g13.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135224/Portfolio/38/38-g14.jpg',
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135225/Portfolio/38/38-g15.jpg',
+    ],
+  },
+
+  // ════════════════════════════════════════════════
   // ADD YOUR NEXT PROJECT HERE
   // Copy the block below, paste it above this comment,
   // increment the id, and fill in your details.

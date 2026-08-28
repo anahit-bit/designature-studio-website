@@ -1,0 +1,361 @@
+<title>Designature Studio — AI Interior Design Competitor Map (Q3 2026)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{
+  --paper:#F3F1EB; --surface:#FBFAF6; --surface-2:#EFECE4;
+  --ink:#1C1A16; --ink-2:#4B473F; --muted:#78736A; --line:#DED9CE; --line-2:#CBC5B7;
+  --accent:#0A3A82; --accent-soft:#0a3a8214;
+  --h5:#A8422A; --h4:#C57A4A; --h3:#C6A24A; --h2:#7F9A82; --h1:#A7A499; --h0:#3C3833;
+  --h5-ink:#fff; --h4-ink:#fff; --h3-ink:#3a2f10; --h2-ink:#17301c; --h1-ink:#2b291f; --h0-ink:#eee;
+  --shadow:0 1px 2px rgba(28,26,22,.05), 0 8px 24px -12px rgba(28,26,22,.18);
+  --radius:3px;
+  --serif:"Cormorant Garamond","Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --sans:"Montserrat",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#141310; --surface:#1D1B16; --surface-2:#242118;
+  --ink:#EDE9DF; --ink-2:#C4BEB1; --muted:#928C7F; --line:#302C24; --line-2:#3C382E;
+  --accent:#8BB0EE; --accent-soft:#8bb0ee1f;
+  --h5:#C25A3E; --h4:#D08A57; --h3:#CDAA57; --h2:#89A78C; --h1:#9a978c; --h0:#57524a;
+  --h5-ink:#160c08; --h4-ink:#1a0f06; --h3-ink:#1c1607; --h2-ink:#0e1c11; --h1-ink:#16150f; --h0-ink:#d9d5cc;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.6);
+}}
+:root[data-theme="dark"]{
+  --paper:#141310; --surface:#1D1B16; --surface-2:#242118;
+  --ink:#EDE9DF; --ink-2:#C4BEB1; --muted:#928C7F; --line:#302C24; --line-2:#3C382E;
+  --accent:#8BB0EE; --accent-soft:#8bb0ee1f;
+  --h5:#C25A3E; --h4:#D08A57; --h3:#CDAA57; --h2:#89A78C; --h1:#9a978c; --h0:#57524a;
+  --h5-ink:#160c08; --h4-ink:#1a0f06; --h3-ink:#1c1607; --h2-ink:#0e1c11; --h1-ink:#16150f; --h0-ink:#d9d5cc;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+  font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+.wrap{max-width:1180px;margin:0 auto;padding:0 22px}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+h1,h2,h3{margin:0;font-weight:600}
+.eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.tnum{font-variant-numeric:tabular-nums}
+
+/* masthead */
+header.top{border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--surface),var(--paper))}
+.mast{padding:38px 0 30px;display:flex;flex-direction:column;gap:16px}
+.mast-row{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}
+h1.title{font-family:var(--serif);font-weight:600;font-size:clamp(30px,5vw,52px);line-height:1.02;
+  letter-spacing:-.02em;text-wrap:balance;max-width:16ch}
+.title em{font-style:italic;color:var(--accent)}
+.lede{max-width:56ch;color:var(--ink-2);font-size:15.5px}
+.themetoggle{border:1px solid var(--line-2);background:var(--surface);color:var(--ink-2);
+  font-family:var(--sans);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  padding:8px 12px;border-radius:100px;cursor:pointer;white-space:nowrap}
+.themetoggle:hover{border-color:var(--accent);color:var(--accent)}
+
+/* stat band */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-top:4px}
+.stat{background:var(--surface);padding:16px 18px}
+.stat .n{font-family:var(--serif);font-size:38px;line-height:1;font-weight:600;letter-spacing:-.01em}
+.stat .l{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:7px}
+.stat.hot .n{color:var(--h5)}
+
+/* benchmark + thesis */
+.band{display:grid;grid-template-columns:1.05fr 1fr;gap:20px;margin:26px 0 6px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px}
+.card.you{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.card h3{font-family:var(--serif);font-size:23px;font-weight:600;letter-spacing:-.01em;margin-bottom:4px}
+.card .k{font-size:12.5px;color:var(--muted);margin-bottom:14px}
+.tiers{display:flex;gap:8px;flex-wrap:wrap}
+.tier{border:1px solid var(--line-2);border-radius:2px;padding:8px 11px;min-width:70px}
+.tier .p{font-family:var(--serif);font-size:20px;font-weight:600}
+.tier .t{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:2px}
+.card.thesis{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 30%,var(--line))}
+.card.thesis p{margin:0 0 10px;font-size:14px;color:var(--ink-2)}
+.card.thesis p:last-child{margin-bottom:0}
+.card.thesis strong{color:var(--ink)}
+.card.thesis .lab{font-family:var(--serif);font-size:23px;color:var(--ink);margin-bottom:8px}
+
+/* controls */
+.controls{position:sticky;top:0;z-index:20;background:var(--paper);
+  border-bottom:1px solid var(--line);padding:14px 0;margin-top:22px}
+.controls .wrap{display:flex;flex-direction:column;gap:12px}
+.searchrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#q{flex:1;min-width:200px;font-family:var(--sans);font-size:14px;color:var(--ink);
+  background:var(--surface);border:1px solid var(--line-2);border-radius:100px;padding:11px 16px}
+#q:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+select{font-family:var(--sans);font-size:13px;color:var(--ink);background:var(--surface);
+  border:1px solid var(--line-2);border-radius:100px;padding:10px 14px;cursor:pointer}
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{font-size:12px;letter-spacing:.02em;border:1px solid var(--line-2);background:var(--surface);
+  color:var(--ink-2);padding:6px 12px;border-radius:100px;cursor:pointer;white-space:nowrap;
+  display:inline-flex;gap:7px;align-items:center;transition:background .12s,border-color .12s}
+.chip:hover{border-color:var(--accent)}
+.chip .c{font-variant-numeric:tabular-nums;color:var(--muted);font-size:11px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.chip[aria-pressed="true"] .c{color:var(--surface);opacity:.7}
+.countline{font-size:12.5px;color:var(--muted)}
+.countline b{color:var(--ink);font-variant-numeric:tabular-nums}
+
+/* list */
+main{padding:20px 0 40px}
+.grouphead{display:flex;align-items:baseline;gap:12px;margin:26px 0 12px;padding-bottom:8px;
+  border-bottom:1px solid var(--line-2)}
+.grouphead h2{font-family:var(--serif);font-size:26px;font-weight:600;letter-spacing:-.01em}
+.grouphead .gc{font-size:12px;color:var(--muted);letter-spacing:.04em}
+.grouphead .gd{margin-left:auto;font-size:12px;color:var(--muted);max-width:44ch;text-align:right}
+
+.row{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--hc,var(--line-2));
+  border-radius:var(--radius);margin-bottom:8px;overflow:hidden}
+.row.dead{opacity:.72}
+.rhead{display:grid;grid-template-columns:26px 1.7fr 1.5fr 1fr auto;gap:14px;align-items:center;
+  padding:13px 16px;cursor:pointer;width:100%;text-align:left;background:none;border:0;font:inherit;color:inherit}
+.rhead:hover{background:var(--surface-2)}
+.rhead:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.heat{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;
+  font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;background:var(--hc);color:var(--hci)}
+.rname{font-weight:600;font-size:14.5px}
+.rname .hq{display:block;font-weight:500;font-size:11.5px;color:var(--muted);letter-spacing:.01em;margin-top:1px}
+.rwhat{font-size:13px;color:var(--ink-2)}
+.rprice{font-size:12.5px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.rstatus{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.chev{width:16px;height:16px;color:var(--muted);transition:transform .2s;flex-shrink:0}
+.row[open] .chev{transform:rotate(90deg)}
+.rbody{display:none;padding:2px 16px 18px 16px;border-top:1px solid var(--line)}
+.row[open] .rbody{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.rbody .box .bh{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.rbody .box p{margin:0;font-size:13px;color:var(--ink-2);line-height:1.5}
+.rbody .full{grid-column:1/-1;display:flex;gap:16px;flex-wrap:wrap;align-items:center;
+  padding-top:12px;border-top:1px dashed var(--line-2);font-size:12px;color:var(--muted)}
+.rbody .full a{font-weight:600}
+.gaps .bh{color:var(--h5)}
+.empty{text-align:center;color:var(--muted);padding:50px 0;font-size:14px}
+
+footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0 40px;margin-top:20px}
+footer .cols{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:24px}
+footer h4{font-family:var(--serif);font-size:18px;font-weight:600;margin:0 0 8px}
+footer p,footer li{font-size:12.5px;color:var(--ink-2);line-height:1.6}
+footer ul{margin:0;padding-left:16px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px}
+.legend span{display:inline-flex;gap:6px;align-items:center;font-size:11.5px;color:var(--muted)}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.fine{font-size:11px;color:var(--muted);margin-top:22px;padding-top:14px;border-top:1px solid var(--line)}
+
+@media (max-width:860px){
+  .band{grid-template-columns:1fr}
+  .rhead{grid-template-columns:24px 1fr auto}
+  .rhead .rwhat,.rhead .rprice{display:none}
+  .row[open] .rbody{grid-template-columns:1fr}
+  footer .cols{grid-template-columns:1fr}
+  .grouphead .gd{display:none}
+}
+@media (max-width:520px){ .stats{grid-template-columns:repeat(2,1fr)} }
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header class="top"><div class="wrap mast">
+  <div class="mast-row">
+    <div>
+      <div class="eyebrow">Designature Studio · Competitive Intelligence · Q3 2026</div>
+      <h1 class="title">The AI interior&nbsp;design field, <em>mapped.</em></h1>
+    </div>
+    <button class="themetoggle" id="themeBtn" type="button" aria-label="Toggle color theme">◐ Theme</button>
+  </div>
+  <p class="lede">Every player circling what you do — from one-click AI redesign toys to human-designer
+    services and retailer shopping tools. Sorted by how directly they compete with the Designature model:
+    <strong>free AI concepts → a shoppable list → a human designer.</strong> Data as of August 2026.</p>
+  <div class="stats">
+    <div class="stat"><div class="n tnum">96</div><div class="l">Competitors tracked</div></div>
+    <div class="stat hot"><div class="n tnum">14</div><div class="l">Direct threats (score 4–5)</div></div>
+    <div class="stat"><div class="n tnum">6</div><div class="l">Head-to-head on shoppable AI</div></div>
+    <div class="stat"><div class="n tnum">5</div><div class="l">Cautionary shutdowns</div></div>
+  </div>
+</div></header>
+
+<div class="wrap">
+  <div class="band">
+    <div class="card you">
+      <h3>You — Designature Studio</h3>
+      <div class="k">Yerevan + worldwide remote · AI Vision · Style Quiz · Shopping List · human design</div>
+      <div class="tiers">
+        <div class="tier"><div class="p">$0</div><div class="t">Explore</div></div>
+        <div class="tier"><div class="p">$19</div><div class="t">Design</div></div>
+        <div class="tier"><div class="p">$49</div><div class="t">Studio</div></div>
+        <div class="tier"><div class="p">$99</div><div class="t">Consult</div></div>
+      </div>
+    </div>
+    <div class="card thesis">
+      <div class="lab">Where the white space is</div>
+      <p><strong>Shoppable + human, at AI prices.</strong> Rivals that nail shoppable&nbsp;+&nbsp;human
+        (Spacejoy, Havenly, Decorilla) start at $199–$999. Rivals that nail shoppable&nbsp;+&nbsp;cheap
+        (REimagine, MeltFlex, MyRoomDesigner) are AI-only. Your $0/$19/$49 + $99 consult sits in an
+        under-occupied middle.</p>
+      <p><strong>Bilingual CIS + remote.</strong> No verified competitor owns Armenian/Russian/English,
+        productized, remote-worldwide, AI + human. The Style Quiz is nearly unique as an onboarding moat.</p>
+    </div>
+  </div>
+</div>
+
+<div class="controls"><div class="wrap">
+  <div class="searchrow">
+    <input id="q" type="search" placeholder="Search 96 competitors — name, pricing, feature, country…" aria-label="Search competitors">
+    <select id="sort" aria-label="Sort order">
+      <option value="close">Sort: Closest threat first</option>
+      <option value="name">Sort: A–Z</option>
+      <option value="price">Sort: by group</option>
+    </select>
+  </div>
+  <div class="chips" id="chips"></div>
+  <div class="countline">Showing <b id="shown">96</b> of <b>96</b> · <span id="dirshown">14</span> direct threats in view</div>
+</div></div>
+
+<main><div class="wrap" id="list"></div></main>
+
+<footer><div class="wrap">
+  <div class="cols">
+    <div>
+      <h4>How to read this</h4>
+      <p>Closeness scores how directly each competitor overlaps the full Designature model
+      (AI concept + shoppable list + human designer), not how big or good they are. A powerful
+      pro CAD tool can score low; a tiny shoppable-AI app scores high.</p>
+      <div class="legend">
+        <span><i style="background:var(--h5)"></i>5 direct</span>
+        <span><i style="background:var(--h4)"></i>4 strong</span>
+        <span><i style="background:var(--h3)"></i>3 partial</span>
+        <span><i style="background:var(--h2)"></i>2 adjacent</span>
+        <span><i style="background:var(--h1)"></i>1 distant</span>
+        <span><i style="background:var(--h0)"></i>0 defunct</span>
+      </div>
+    </div>
+    <div>
+      <h4>The five to watch</h4>
+      <ul>
+        <li><strong>REimagine Home</strong> — AI concept → one-click buy, $14–$99</li>
+        <li><strong>MeltFlex AI</strong> — real priced furniture in the render</li>
+        <li><strong>MyRoomDesigner.ai</strong> — closest feature clone (no human)</li>
+        <li><strong>Havenly</strong> — the hybrid consolidator, $199+</li>
+        <li><strong>Decorilla</strong> — your exact model, now in Europe</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Refresh cadence</h4>
+      <p>Re-run every quarter across the same six market segments. The dataset lives in git
+      (<code>docs/competitor-intel/</code>) so each quarter diffs against the last — new entrants,
+      price moves, and shutdowns show up as changes.</p>
+    </div>
+  </div>
+  <p class="fine">Prices and features are accurate-as-of mid-2026 snapshots; standalone AI-tool
+  pricing shifts frequently (credit-model changes, weekly-sub funnels). Verify before quoting in
+  sales or marketing. Full detail + machine-readable CSV/XLSX alongside this file.</p>
+</div></footer>
+
+<script>
+const DATA=[{"name": "MeltFlex AI", "url": "meltflexai.com", "hq": "Slovakia/US", "close": 5, "status": "Active", "what": "AI redesign where the render links to real priced furniture (213k+ users)", "price": "Free entry; Standard ~€29/mo, Pro ~€59/mo; higher adds projects/API", "covers": "Photo to ~20-sec photoreal render, REAL priced furniture from IKEA/Amazon/Wayfair/Pottery Barn/Ashley placed in design to shopping list, API, developer sales galleries", "gaps": "No human designer; no AR; automated matching; EUR/EU-centric", "group": "AI redesign + shoppable (the wedge)"}, {"name": "MyRoomDesigner.ai", "url": "myroomdesigner.ai", "hq": "Undisclosed", "close": 5, "status": "Active", "what": "Layout-preserving redesign + boards + auto shopping list (closest feature clone)", "price": "Personal ~$15/mo (50 gen, 10 boards), Business ~$39 (200/100), Premium ~$75 (400/200); monthly higher", "covers": "Redesign preserving layout, color/furniture swaps, product matching, AUTO shopping/purchase list, mood boards, upscaling", "gaps": "No human, no floor plans, no quiz; pricier tiers", "group": "AI redesign + shoppable (the wedge)"}, {"name": "REimagine Home", "url": "reimaginehome.ai", "hq": "US/India (Styldod)", "close": 5, "status": "Active", "what": "AI staging/redesign WITH genuine shoppable mode; 1.5M+ users", "price": "Free (5 designs); Essential $14, Pro $49, Advanced $74, Agency $99/mo (credits); shoppable ~2x credits", "covers": "AI staging/redesign, object removal, REAL products from IKEA/West Elm/Target/Wayfair, budget+postcode filter, one-click add-all-to-cart, conversational refine", "gaps": "No human designer (AI + chat only); automated matching not curated; real-estate skew; no quiz; no local AM market", "group": "AI redesign + shoppable (the wedge)"}, {"name": "Decorilla", "url": "decorilla.com", "hq": "New York, US (Spain 2025)", "close": 5, "status": "Active", "what": "Premium human-led online design", "price": " two competing designer concepts", "covers": " AI+VR assist; launched Spain Sept 2025 (Europe push)", "gaps": "From ~$299; full-room ~$539–$1,499/room; hourly $119–$500", "group": "Hybrid AI + Human e-design"}, {"name": "Havenly", "url": "havenly.com", "hq": "Denver, US", "close": 5, "status": "Active", "what": "Category leader: free AI + style quiz front end + paid human designer packages + owned furniture brands + 13 stores", "price": "Online ~$199/room; In-Person $699 first room +$199/add'l; frequent 50% promos (~$99); free AI/quiz", "covers": "Human designer 1:1, concepts+revisions, single-checkout shopping list, floor plans, AI tool, trade discounts (owns Interior Define/The Citizenry/The Expert), physical stores", "gaps": "No true $19/$49 micro-tiers; steers to house brands; renders weaker than old Modsy", "group": "Hybrid AI + Human e-design"}, {"name": "Decoratly", "url": "decoratly.com", "hq": "Undisclosed", "close": 4, "status": "Active", "what": "Consumer redesign w/ one-time unlocks + shopping integration", "price": "Free trial (2 designs); $3.99 unlock-this-room (25 designs, 7 days); $9.99/30-days unlimited; no auto-renew", "covers": "70+ styles, Makeover+Enhance, AI chat, shopping integration to match real furniture, 4K", "gaps": "No floor plans, no human, no quiz; shopping = match not curated PDF", "group": "AI redesign + shoppable (the wedge)"}, {"name": "HomeDesigns.ai", "url": "homedesigns.ai", "hq": "US", "close": 4, "status": "Active", "what": "Interior/exterior/garden redesign + shoppable Furniture Finder", "price": "Individual $17/mo ($9 annual, 100 designs), Pro $29 unlimited + commercial", "covers": "40+ styles, int/ext/garden, virtual staging, HD, Furniture Finder returns REAL purchasable products by region/style/price", "gaps": "No human designer, no add-all-to-cart depth, no AR, no quiz", "group": "AI redesign + shoppable (the wedge)"}, {"name": "Paintit.ai", "url": "paintit.ai", "hq": "Undisclosed", "close": 4, "status": "Active", "what": "Consumer redesign + AI chat w/ real-furniture suggestions", "price": "Free 3 renders; Weekly $5.99 (300cr/20 HD); Monthly $20.99 (1,500cr, 4K, commercial)", "covers": "Many styles, unlimited AI chat, real furniture suggestions, mix styles, HD/4K", "gaps": "No floor plans, no human, no quiz; furniture = suggestions not curated PDF", "group": "AI redesign + shoppable (the wedge)"}, {"name": "Spacejoy", "url": "spacejoy.com", "hq": "US (India R&D)", "close": 4, "status": "Active", "what": "1:1 US designer packages built around photorealistic shoppable 3D renders", "price": "~$499–$999/room (Delight/Bliss/Euphoria); entry ~$299", "covers": "Human designer, photorealistic 3D each package, multi-brand curated shopping list (concept-to-cart), 7–10 day turnaround", "gaps": "No free AI tier; no instant AI; no AR; pricier per room", "group": "Hybrid AI + Human e-design"}, {"name": "DecorMatters", "url": "decormatters.com", "hq": "Bay Area, US (MWM)", "close": 4, "status": "Active", "what": "Gamified mobile-first AI+AR app w/ big social community (10M+ users)", "price": "Free + IAP; Premium ~$9.99/wk or /mo + coins", "covers": "AI room gen, AR place-in-room, styles, shoppable 30+ brands, design challenges, community feed", "gaps": "No human; no quiz; gamified/grindy UX; hobbyist quality; app-only", "group": "Mobile app"}, {"name": "Spoak", "url": "spoak.com", "hq": "US", "close": 4, "status": "Active", "what": "'Houzz for a younger generation' — consumer design tools + education + community", "price": "Memberships from $14.99/mo; enterprise via sales", "covers": "Room mockups, mood boards, to-scale plans/elevations, trade discounts, courses, community, client tools", "gaps": "No generative AI photo redesign; no in-house human designers; shopping via trade not instant checkout", "group": "Pro / design software"}, {"name": "Remodel AI", "url": "remodelai.io", "hq": "US (indie)", "close": 4, "status": "Active", "what": "Photo-to-AI remodel (interior/exterior/staging/flooring/paint/landscape)", "price": "Free (3 full-quality, no card, no watermark, all styles/tools); Pro $29, Premium $49, Ultra $79/mo", "covers": "30+ styles, 8 tools, object removal, furniture swap, flooring/paint preview, staging, exteriors", "gaps": "No shoppable list, no floor plans, no human, no quiz, no AR", "group": "Pure AI redesign tool"}, {"name": "IKEA Kreativ / IKEA Place", "url": "ikea.com", "hq": "Sweden/NL (Ingka)", "close": 4, "status": "Active", "what": "Free AI room-scan + AR that erases furniture and fills w/ IKEA products", "price": "Free (drives IKEA sales)", "covers": "LiDAR/photo room scan to 3D replica, erase existing furniture, place/swap live IKEA items, add-to-cart, AR, save/share w/ IKEA designer", "gaps": "IKEA catalog only (retailer-locked); no multi-retailer list; no independent advice; no paid human service", "group": "Retailer / shop-the-look commerce"}, {"name": "Wayfair Decorify", "url": "wayfairnext.com/decorify", "hq": "Boston, US (Wayfair)", "close": 4, "status": "Active", "what": "Free generative-AI room styler w/ shoppable Wayfair products", "price": "Free (sells Wayfair goods)", "covers": "Photo-to-AI restyle into styles, shoppable photorealistic output, buy from Wayfair, true-scale View-in-Room, Vision Pro AR", "gaps": "Wayfair catalog only; no human; no quiz; no subscription/service tier", "group": "Retailer / shop-the-look commerce"}, {"name": "AI HomeDesign", "url": "aihomedesign.com", "hq": "EU/US", "close": 3, "status": "Active", "what": "Real-estate staging + AI design w/ done-for-you human option", "price": "PAYG $0.24/photo; Pro $35 ($19 yearly, 30), Pro Plus $59 ($29 yearly, 80), Enterprise $99 ($49 yearly, 200); HUMAN staging $13.99/photo", "covers": "Staging, item removal, enhance, day-to-dusk, AI design (8 styles), optional human touch-up", "gaps": "No shoppable links, no floor plans, no quiz; realtor skew; few styles", "group": "AI virtual staging"}, {"name": "Michael Helwig Interiors", "url": "michaelhelwiginteriors.com", "hq": "Buffalo, US", "close": 3, "status": "Active", "what": "Representative boutique solo e-designer; flat-fee virtual room plans (long tail of indies)", "price": "Flat fees ~$100s per service", "covers": "Human 1:1, floor plans, sourcing, install coaching", "gaps": "No AI self-serve; no 3D; solo capacity; small-space niche", "group": "Hybrid AI + Human e-design"}, {"name": "Nousdecor", "url": "nousdecor.com", "hq": "San Mateo, US", "close": 3, "status": "Likely defunct/dormant", "what": "Early flat-fee online interior design platform", "price": "No reliable 2026 pricing", "covers": "(historically) human designer, flat-fee, mood-board tool", "gaps": "No signs of active operation; likely dormant", "group": "Hybrid AI + Human e-design"}, {"name": "The Expert", "url": "theexpert.com", "hq": "US", "close": 3, "status": "Acquired (Havenly Feb 2026)", "what": "Marketplace of A-list/celebrity designers for paid 1:1 video consults + designer showroom", "price": "Consultations $200–$3,600 by designer/length", "covers": "Live expert video consult, curated designers, furniture showroom, AI sourcing chatbot being added, trade tools", "gaps": "Very expensive/aspirational; consult-only, not managed packages; no free tier", "group": "Hybrid AI + Human e-design"}, {"name": "Houzz (consumer app)", "url": "houzz.com", "hq": "Palo Alto, US", "close": 3, "status": "Active", "what": "Home-design inspiration marketplace + pro directory + AR shopping", "price": "Free (monetizes sales + Pro subs)", "covers": "Massive idea library, View-in-My-Room 3D AR for 1M+ products, hire pros, community", "gaps": "Limited generative AI; human = referral not in-app consult; no single AI shoppable list", "group": "Mobile app"}, {"name": "DesignFiles", "url": "designfiles.co", "hq": "US", "close": 3, "status": "Active", "what": "All-in-one e-design business suite for interior designers", "price": "Free trial; Starter ~$35/mo, Pro/Team ~$49–55/mo; +$30/seat", "covers": "Mood/design boards, 2D/3D visuals, floor plans, sourcing, client portal/approvals, invoicing, some AI render", "gaps": "B2B for designers not homeowners; no consumer photo redesign; sourcing not consumer checkout; no in-house team", "group": "Pro / design software"}, {"name": "HomeByMe", "url": "home.by.me", "hq": "France (Dassault)", "close": 3, "status": "Active", "what": "Free 3D home design + branded catalog + optional human decoration/turnkey", "price": "3 editions $0–$65; 3D turnkey add-on from $14.99; pro room decoration from $69/room", "covers": "Floor plans, 3D, renders, 30k+ branded shoppable catalog, AI features, OPTIONAL human decoration/turnkey services", "gaps": "DIY-first; no photo-to-AI redesign; human styling is peripheral add-on; brand catalog not open checkout", "group": "Pro / design software"}, {"name": "Homestyler", "url": "homestyler.com", "hq": "China (Easyhome)", "close": 3, "status": "Active", "what": "Free-first 3D design + AI planner + AR (ex-Autodesk)", "price": "Free (unlimited 1K renders); ~$1.99–$9.99/mo; credit packs", "covers": "3D, floor plans, AI auto-planner + Home Copilot (NVIDIA Edify), AR, 300k+ models", "gaps": "DIY tool; no human designers; no curated shoppable checkout; no quiz", "group": "Pro / design software"}, {"name": "Planner 5D", "url": "planner5d.com", "hq": "Vilnius, Lithuania", "close": 3, "status": "Active", "what": "Consumer 2D/3D home design w/ AI Design Generator (120M+ users)", "price": "Free (watermark); Premium $19.99/mo ($59.99/yr); Pro $49.99/mo ($399/yr)", "covers": "Floor plans, 3D, AI gen, 10k+ catalog, 4K/360, floor-plan photo convert, multi-language incl Russian", "gaps": "You do the design; no human designer; no shoppable checkout to retailers; no consult", "group": "Pro / design software"}, {"name": "Collov AI", "url": "collov.ai", "hq": "US/global", "close": 3, "status": "Active", "what": "AI design + virtual staging built from real brand aesthetics", "price": "Standard $16–19/mo (60cr), Advanced $49 (150), Premium $79 (263), Enterprise $127 (526)", "covers": "Redesign, staging, furniture eraser, text-to-design, material overlay, 360, designs from 200+ real brands, ~10-15s", "gaps": "Renders NOT shoppable (no buy links); no human; no quiz; credit caps; B2B/staging lean", "group": "Pure AI redesign tool"}, {"name": "DecorAI", "url": "decorai.io", "hq": "US (indie)", "close": 3, "status": "Active", "what": "AI interior/exterior redesign w/ strong editing", "price": "$24/mo unlimited; 1-day free trial (3 designs, no watermark)", "covers": "55 styles, keep-layout, Magic Edit/Erase/Inpaint/Surface Editor, HD, commercial", "gaps": "No human, no true shoppable list, no quiz, no AR", "group": "Pure AI redesign tool"}, {"name": "DreamHouse AI", "url": "dreamhouseai.com", "hq": "US", "close": 3, "status": "Active", "what": "Interior + exterior redesign / virtual staging", "price": "Free trial (10); from $24–$39/mo; ~$0.05/design", "covers": "35+ styles, int+ext/facade/landscaping, staging, project folders", "gaps": "No shoppable links, no floor plans, no human, no quiz", "group": "Pure AI redesign tool"}, {"name": "GenRoom", "url": "genroom.io", "hq": "Undisclosed", "close": 3, "status": "Active", "what": "Consumer '~30-sec transform' redesign w/ generous free tier", "price": "Free ~4-6cr no card; from ~$9.90/mo; $9.99/12cr (~$0.30/viz)", "covers": "Interior + facade + yard, many styles, ~30s renders", "gaps": "No shoppable, no floor plans, no human, no quiz", "group": "Pure AI redesign tool"}, {"name": "Interior AI", "url": "interiorai.com", "hq": "Netherlands/global (P. Levels)", "close": 3, "status": "Active", "what": "Redesign + virtual staging skewed to realtors/prosumers", "price": "No free renders; Pro ~$99/mo; Ultra ~$399/mo", "covers": "40+ styles, virtual staging, sketch-to-render, structure detection, commercial license", "gaps": "No shopping list, no floor plans, no human, no quiz; expensive", "group": "Pure AI redesign tool"}, {"name": "ReRoom AI", "url": "reroom.ai", "hq": "Asia (SG/China)", "close": 3, "status": "Active", "what": "Fast photorealistic room redesign w/ pro pipeline", "price": "Free limited; credit Pro monthly/yearly (~$0.13/gen)", "covers": "20+ styles, bathrooms/outdoor, video gen, SketchUp plugin, seconds-fast", "gaps": "No shoppable, no floor plans, no human, no quiz; opaque pricing", "group": "Pure AI redesign tool"}, {"name": "Remodeled AI", "url": "remodeled.ai", "hq": "Undisclosed", "close": 3, "status": "Active", "what": "Budget consumer redesign-from-photo (cheapest tier)", "price": "Basic $7, Plus $22, Pro $57/mo; annual ~5mo free", "covers": "Photo redesign, multiple styles/tools, room types", "gaps": "No shoppable, no floor plans, no human, no quiz; thin feature set", "group": "Pure AI redesign tool"}, {"name": "RoomGPT", "url": "roomgpt.io", "hq": "US (indie)", "close": 3, "status": "Active", "what": "One of the original viral photo-in/redesign-out tools (2M+ users)", "price": "Free ~1 design; packs $9/30, $19/100, $29/200; iOS $4.99/wk or $14.99/mo", "covers": "~35 styles, common room types, fast photorealistic redesign, before/after", "gaps": "No shopping list, no floor plans, no human, no quiz, minimal editing", "group": "Pure AI redesign tool"}, {"name": "Spacely AI", "url": "spacely.ai", "hq": "Bangkok/Singapore/Vietnam", "close": 3, "status": "Active", "what": "Prosumer/pro AI rendering suite (12+ tools)", "price": "Free 40 trial credits; ~$12.75/mo (200cr annual) to ~$102/mo (1,800cr); credits since Sep 2025", "covers": "Realistic render, auto-furnish, style transfer, SketchUp plugin, <60s renders, commercial license", "gaps": "No shoppable links, no floor plans, no human, no quiz; credit model", "group": "Pure AI redesign tool"}, {"name": "HomeLane", "url": "homelane.com", "hq": "Bengaluru, India", "close": 3, "status": "Active", "what": "End-to-end interior design + modular execution (acquired Design Cafe)", "price": "~₹3L–₹20L per project", "covers": "Human design, own products shoppable, execution, local market", "gaps": "No remote worldwide; no AI self-serve tiers; no Armenian market", "group": "Regional / emerging"}, {"name": "Livspace", "url": "livspace.com", "hq": "India + Singapore", "close": 3, "status": "Active", "what": "Full-stack interior design + execution (hybrid human + design tech)", "price": "1BHK from ₹3.62L; 2BHK ₹4.52L; 3BHK ₹5.57L (large project fees)", "covers": "Human design, own-catalog shoppable, execution, local IN/SEA market", "gaps": "No worldwide remote-only; no low-cost AI self-serve; no Armenian market; capital-heavy", "group": "Regional / emerging"}, {"name": "Planoplan", "url": "planoplan.com", "hq": "Russia / CIS", "close": 3, "status": "Active", "what": "Online 3D room planner for designers and consumers", "price": "Free-forever; paid from ~$10/mo", "covers": "3D, floor plans, Russian language / CIS market (overlaps Armenia's Russian-speakers)", "gaps": "No AI photo redesign headline; no human; no shoppable; no consult", "group": "Regional / emerging"}, {"name": "Rooms Studio / local AM-GE studios", "url": "roomsstudio.net; local Yerevan", "hq": "Yerevan, Armenia; Tbilisi, Georgia", "close": 3, "status": "Active", "what": "Traditional bespoke interior/architecture studios (Rooms Studio Tbilisi is internationally recognized)", "price": "Bespoke project fees", "covers": "Human design, local Armenian/Georgian market & language", "gaps": "No AI photo redesign; no productized remote tiers; no style quiz; no shoppable lists; no worldwide self-serve", "group": "Regional / emerging"}, {"name": "BoxBrownie", "url": "boxbrownie.com", "hq": "Australia", "close": 2, "status": "Active", "what": "Human-edited photo editing + virtual staging outsourcing", "price": "~$24–$32/image staging (usually $30); removal/enhance/day-to-dusk add-ons; full listing $150–$290", "covers": "Human-edited staging, furniture removal, floor plans, enhancement", "gaps": "No shoppable matching; no retailer catalog; no AR; no AI-instant; sells to agents", "group": "AI virtual staging"}, {"name": "Stuccco", "url": "stuccco.com", "hq": "US", "close": 2, "status": "Active", "what": "Designer-led virtual staging marketplace", "price": "PAYG $35/photo; Essential $28 ($399 prepay); Plus $24.50 ($799 prepay)", "covers": "Human designer staging, renovation edits, day-to-dusk", "gaps": "No shoppable products; no retailer catalog; no AR; light on floor plans", "group": "AI virtual staging"}, {"name": "Styldod", "url": "styldod.com", "hq": "US/India", "close": 2, "status": "Active", "what": "Human-oversight virtual staging + renovation (parent of REimagineHome)", "price": "$16–$23/image; commercial $24; occupied-to-vacant $15; virtual reno $5; object removal $8; floor plans $9", "covers": "Human-QA staging, renovation, object removal, floor plans", "gaps": "No shoppable products (that lives in REimagineHome); no AR; agent-focused", "group": "AI virtual staging"}, {"name": "roOomy", "url": "rooomy.com", "hq": "US", "close": 2, "status": "Active", "what": "Human-designed photo + Matterport 3D virtual staging (pioneered shoppable 3D)", "price": "Per-order photo & Matterport staging (quoted)", "covers": "Photo staging, Matterport 3D-tour staging, human design", "gaps": "No currently-marketed shoppable buy-list/AR self-serve; realtor/enterprise focus", "group": "AI virtual staging"}, {"name": "Yardzen", "url": "yardzen.com", "hq": "US", "close": 2, "status": "Active", "what": "Online outdoor/landscape design w/ contractor-match build arm", "price": "~$295–$3,495; revisions $295 each", "covers": "Human designer, 2D CAD, planting/material lists, photorealistic + night renders, contractor matching", "gaps": "Outdoor only; no free AI; pricey; revisions extra", "group": "Hybrid AI + Human e-design"}, {"name": "Room Planner: AI Home Design", "url": "apps.apple.com", "hq": "US/various (Room Planner Ltd)", "close": 2, "status": "Active", "what": "3D room-layout + AI design app w/ 450k+ product catalog (crowded name)", "price": "Weekly $5.99–$6.99; monthly $12.99–$14.99; annual $69.99–$74.99; some lifetime $19.99", "covers": "3D room layout, ready-made designs, big furniture catalogs, HD renders, some AR/export", "gaps": "No human; predatory weekly-sub funnel; name-confusion clones; model placement not direct shop links; variable quality", "group": "Mobile app"}, {"name": "Roomify AI", "url": "roomify.live", "hq": "Indie", "close": 2, "status": "Active", "what": "Photo-to-AI interior/exterior/garden redesign app", "price": "From ~£4.99/mo (~$6); free entry", "covers": "Photo redesign, interior/exterior/garden, many styles, instant renders", "gaps": "No human; no shoppable list; no quiz; no AR; thin; clone listings", "group": "Mobile app"}, {"name": "SofaBrain", "url": "sofabrain.com", "hq": "US", "close": 2, "status": "Active", "what": "AI interior design + virtual home-staging renderer", "price": "Free trial; roughly $12–$39/mo entry, monthly/annual", "covers": "Photo redesign, virtual staging, styles, room types", "gaps": "No human; no curated shoppable list; no quiz; staging-first; inconsistent pricing", "group": "Mobile app"}, {"name": "Cedreo", "url": "cedreo.com", "hq": "France/US", "close": 2, "status": "Active", "what": "Fast cloud 3D home design for builders/remodelers", "price": "Free tier; Personal $139 one-time; Pro ~$129/mo (€69); Enterprise ~$159/mo", "covers": "Floor plans, 3D, photorealistic renders, catalog, client presentations", "gaps": "Builder/remodeler pros; limited AI; no consumer redesign/shopping/human", "group": "Pro / design software"}, {"name": "Coohom", "url": "coohom.com", "hq": "Hangzhou, China (Manycore)", "close": 2, "status": "Active", "what": "Mature 2D-3D design + cloud render w/ AI redesign (HKEX-listed 2026)", "price": "Free (5-10 renders/mo); Standard ~$29 (50 HD); Pro ~$59-79 unlimited", "covers": "3D render, floor plans, AI redesign/style transfer, huge library, walkthrough video", "gaps": "Credit model; pro positioning; no human service; no consumer cart", "group": "Pro / design software"}, {"name": "Foyr Neo", "url": "foyr.com/neo", "hq": "India/US", "close": 2, "status": "Active", "what": "Cloud AI-assisted design + fast photorealistic rendering for pros", "price": "Free trial; Basic $29–49/mo, Standard $55–129, Premium $99–199; enterprise", "covers": "3D render, floor plans, AI staging/reno viz, large library, photorealism", "gaps": "Pro-oriented; no 1-click photo redesign; no human service; no consumer shopping; learning curve", "group": "Pro / design software"}, {"name": "Live Home 3D", "url": "livehome3d.com", "hq": "Ukraine/US (BeLight)", "close": 2, "status": "Active", "what": "Desktop/mobile consumer home & interior design app", "price": "Free basic; Standard ~$4.99/mo, Pro ~$9.99/mo; lifetime ~$29.99–$49.99", "covers": "Floor plans, 3D, rendering, furniture library, VR export", "gaps": "Manual DIY; essentially no generative AI; no human; no shopping service", "group": "Pro / design software"}, {"name": "Maket.ai", "url": "maket.ai", "hq": "Montreal, Canada", "close": 2, "status": "Active", "what": "Conversational generative AI floor-plan generator w/ zoning checks", "price": "Free (~10-50cr); Pro ~$20-29/mo (~300cr); Studio ~$79/mo", "covers": "AI-generated editable floor plans via text, zoning/setback intelligence, some style gen", "gaps": "Floor-plan/layout focus not styled rooms; no photo redesign; no shopping; no human", "group": "Pro / design software"}, {"name": "Morpholio Board", "url": "morpholioapps.com", "hq": "US", "close": 2, "status": "Active", "what": "Premium iOS/Mac mood-board app w/ AI sourcing (Ava)", "price": "Essentials $4.99, Premium $7.99, Pro $11.99/mo (or $29.99/yr)", "covers": "Mood boards, AI sourcing lists (Ava), AR, spec sheets, PDF/PSD export", "gaps": "iOS/Mac only; no 3D/floor plans; no render; no human; no direct checkout", "group": "Pro / design software"}, {"name": "Mydoma Studio", "url": "mydoma.com", "hq": "Canada", "close": 2, "status": "Active", "what": "Project mgmt + client portal for designers w/ 3D Vizualer", "price": "~$58/mo annual + ~$300 onboarding; Vizualer add-on ~$30/mo; free single-user", "covers": "Client onboarding, sourcing, proposals/invoicing, client portal, fast 3D (add-on)", "gaps": "Designer B2B; no consumer photo redesign; no DTC shopping; no in-house designers", "group": "Pro / design software"}, {"name": "Programa", "url": "programa.design", "hq": "Australia", "close": 2, "status": "Active", "what": "'Notion-meets-Asana' studio ops + design platform for firms", "price": "~$59/user/mo (first 3 seats); 10+ contact sales", "covers": "Mood boards, sourcing/schedules, POs, project mgmt, presentations", "gaps": "Back-office studio tool; no AI room gen; no rendering focus; no consumer service", "group": "Pro / design software"}, {"name": "RoomSketcher", "url": "roomsketcher.com", "hq": "Norway", "close": 2, "status": "Active", "what": "Easy branded 2D/3D floor plans + order-a-plan service", "price": "Free (watermark); Pro $144/yr (5cr/mo); Team $420/yr", "covers": "2D/3D floor plans, 3D photos, 360, order-a-plan service", "gaps": "Floor-plan-centric; minimal AI; no photo restyle; no ecommerce; no full styling", "group": "Pro / design software"}, {"name": "AI Room Planner", "url": "airoomplanner.com", "hq": "Undisclosed", "close": 2, "status": "Active (beta)", "what": "Free no-login interior idea generator", "price": "Free unlimited in beta", "covers": "Endless style idea generation from a photo, many styles", "gaps": "No shopping, no real floor plans (misleading name), no human/quiz/account; low control", "group": "Pure AI redesign tool"}, {"name": "ArchitectGPT", "url": "architectgpt.io", "hq": "US", "close": 2, "status": "Active", "what": "AI interior + exterior/architectural rendering", "price": "Basic $25, Standard $45, Pro $90/mo; Enterprise", "covers": "80+ themes, 40+ room/outdoor types, text/sketch-to-image, magic editor, 360, 4K upscale", "gaps": "No shoppable links, no floor plans, no human, no quiz; no real free tier", "group": "Pure AI redesign tool"}, {"name": "Mnml.ai", "url": "mnml.ai", "hq": "US", "close": 2, "status": "Active", "what": "Architecture-trained AI rendering for architects/pros", "price": "Free trial; Basic $19/mo (credits, ~10/design); rollover 2mo", "covers": "40+ styles, 12+ tools, 8K upscale, style transfer, integrations", "gaps": "No shopping, no floor plans, no human, no quiz; pro/arch", "group": "Pure AI redesign tool"}, {"name": "MyArchitectAI", "url": "myarchitectai.com", "hq": "US", "close": 2, "status": "Active", "what": "AI rendering turning CAD/sketches into 4K renders", "price": "Free (10/mo); Pro $29 unlimited (commercial, 4K); Enterprise", "covers": "CAD/sketch/line-to-render, 4K, SketchUp/Revit/Rhino/Archicad compatibility", "gaps": "No shoppable, no floor plan gen, no human, no quiz; CAD workflow", "group": "Pure AI redesign tool"}, {"name": "RoomsGPT", "url": "roomsgpt.io", "hq": "Undisclosed", "close": 2, "status": "Active", "what": "Free/low-cost RoomGPT-lineage redesign tool", "price": "Free online; from ~$6/mo; packs $9/30, $19/100, $29/200", "covers": "Photo redesign, multiple styles, simple upload", "gaps": "No shopping, no floor plans, no human, no quiz; clone-tier", "group": "Pure AI redesign tool"}, {"name": "Bonito Designs", "url": "bonito.in", "hq": "Bengaluru, India", "close": 2, "status": "Active", "what": "Personalized full-home interior design + execution", "price": "From ~₹7 lakh per project", "covers": "Human design, execution, local shoppable", "gaps": "No remote worldwide; no AI photo tools headline; no low-cost tiers", "group": "Regional / emerging"}, {"name": "DeHome.ai", "url": "dehome.ai", "hq": "Hong Kong (ZingFront)", "close": 2, "status": "Active", "what": "AI interior/exterior/landscape visualization", "price": "Free option; credits from $9.99 (~4cr/interior image)", "covers": "AI redesign, 40+ styles, exteriors", "gaps": "No human; no shoppable; no floor plans; no quiz; no consult", "group": "Regional / emerging"}, {"name": "Dubai/MENA AI-design cluster", "url": "aidesigns.ae; designmart.ae", "hq": "UAE (Dubai)", "close": 2, "status": "Active", "what": "Local interior firms layering AI onto bespoke residential/commercial (582+ UAE startups)", "price": "Project/bespoke (AED), premium", "covers": "Human design + AI, local Gulf market", "gaps": "No productized remote self-serve; no low-cost tiers; no Armenian/CIS market", "group": "Regional / emerging"}, {"name": "Gepetto AI", "url": "gepettoapp.com", "hq": "Bordeaux, France", "close": 2, "status": "Active", "what": "Photo-to-redesign / virtual staging AI for EU real-estate agencies", "price": "Subscription/credit tiers (EUR)", "covers": "AI redesign, wall repaint, object removal, 30+ styles, EU market/language", "gaps": "No human; no shoppable buy-list; no floor plans; no quiz; staging tool", "group": "Regional / emerging"}, {"name": "Amazon View in Your Room", "url": "amazon.com", "hq": "Seattle, US (Amazon)", "close": 2, "status": "Active", "what": "AR to place Amazon furniture/decor at true scale in your room", "price": "Free (drives Amazon sales)", "covers": "AR place-in-room, multi-item coordination, save layouts, buy across listings", "gaps": "No generative AI redesign; no styles/guidance; no human; Amazon catalog only", "group": "Retailer / shop-the-look commerce"}, {"name": "Pinterest Shop the Look", "url": "pinterest.com", "hq": "San Francisco, US", "close": 2, "status": "Active", "what": "Visual-discovery platform; Shop-this-Look + Lens make decor shoppable", "price": "Free (ads/shopping)", "covers": "Inspiration at scale, visual search, shoppable pins/looks, trend forecasting", "gaps": "No photo redesign; no AR-in-space; no human; no quiz; inspiration + shopping not design gen", "group": "Retailer / shop-the-look commerce"}, {"name": "Roomvo (Leap Tools)", "url": "roomvo.com", "hq": "Toronto, Canada", "close": 2, "status": "Active", "what": "B2B shop-the-look visualizer for flooring/tile/rugs on retailer sites (6-7k brands)", "price": "Enterprise/B2B SaaS to manufacturers/dealers (not public)", "covers": "Photo-upload visualization, AR, sample-lead tracking, on-site conversion", "gaps": "No full-room furnishing; no AI concept gen; no human; flooring/surfaces only", "group": "Retailer / shop-the-look commerce"}, {"name": "Bassett HGTV Home Design Studio", "url": "bassettfurniture.com", "hq": "US", "close": 2, "status": "Active", "what": "Free Bassett designer consult (virtual + in-home)", "price": "Free consult", "covers": "Bassett designer 1:1, room planning", "gaps": "Bassett product-bound; no AI; some studios closing", "group": "Retailer free design service"}, {"name": "CB2 Design Services", "url": "cb2.com", "hq": "US", "close": 2, "status": "Active", "what": "Free human design consultants", "price": "Free", "covers": "Consultants (virtual/in-store), free 3D renders, mood boards, floor plans, CB2 lists", "gaps": "CB2 product only; no AI self-serve", "group": "Retailer free design service"}, {"name": "Crate & Barrel Design Desk", "url": "crateandbarrel.com", "hq": "US", "close": 2, "status": "Active", "what": "Free human stylists w/ 3D renders", "price": "Free (promo windows)", "covers": "Human stylists, 3D renders, floor plan, C&B shopping list, any room", "gaps": "C&B catalog-bound; no AI self-serve", "group": "Retailer free design service"}, {"name": "Ethan Allen Free Design", "url": "ethanallen.com", "hq": "US", "close": 2, "status": "Active", "what": "Complimentary professional designers at 300+ centers", "price": "Free", "covers": "Designers (in-home/in-center/video/chat), whole-home", "gaps": "Ethan Allen product-centric; no AI; higher-end", "group": "Retailer free design service"}, {"name": "Pottery Barn Design Crew", "url": "potterybarn.com", "hq": "US", "close": 2, "status": "Active", "what": "Free human experts + self-serve Room Planner tool", "price": "Free", "covers": "Human experts, mood boards, floor plans, product recs, DIY Room Planner (drag-drop shoppable)", "gaps": "PB/Williams-Sonoma catalog; Room Planner is config not generative AI", "group": "Retailer free design service"}, {"name": "Room & Board Design Services", "url": "roomandboard.com", "hq": "US", "close": 2, "status": "Active", "what": "Free non-commissioned human design experts", "price": "Free", "covers": "Human experts (in-store/virtual/phone), floor plans, 3D renders, product recs", "gaps": "R&B product only; no AI; no free self-serve tool", "group": "Retailer free design service"}, {"name": "West Elm Design Crew", "url": "westelm.com", "hq": "US", "close": 2, "status": "Active", "what": "Free human design help monetized via furniture sales", "price": "Free", "covers": "Human expert (virtual/in-store/in-home 60mi), mood boards, room plans, product recs, estimates", "gaps": "West Elm catalog only; no AI self-serve; no independent list", "group": "Retailer free design service"}, {"name": "ApplyDesign", "url": "applydesign.io", "hq": "Undisclosed", "close": 1, "status": "Active", "what": "Budget DIY + auto AI staging", "price": "Coins $7–$10 each; 2D auto-stage ~1.5 coins (~$10.50); 360 ~2.5 coins; first image free", "covers": "Auto-staging, DIY drag-drop, item removal, 360 panoramas", "gaps": "No shoppable products; no retailer catalog; no human", "group": "AI virtual staging"}, {"name": "PhotoUp", "url": "photoup.net", "hq": "US/Philippines", "close": 1, "status": "Active", "what": "Real-estate photo editing + AI and Pro (human) staging + VAs", "price": "AI staging 5 credits/image; Pro (human) 20 credits/image; subs $39–$399/mo", "covers": "AI + human staging, furniture removal, revisions", "gaps": "No shoppable products; no retailer catalog; no AR; agent workflow", "group": "AI virtual staging"}, {"name": "Virtual Staging AI", "url": "virtualstagingai.app", "hq": "US (Zillow Group)", "close": 1, "status": "Active (acq. Zillow Oct 2024)", "what": "Pure AI virtual staging for vacant listings", "price": "Yearly: Basic $16/mo (6 photos), Standard $19 (20), Professional $39 (60), Enterprise $79 (150)", "covers": "AI staging, furniture removal, no watermark", "gaps": "No shoppable matching, no retailer catalog, no AR, no human, no floor plans", "group": "AI virtual staging"}, {"name": "Interior Define", "url": "havenly.com", "hq": "US", "close": 1, "status": "Acquired (Havenly)", "what": "Custom-furniture DTC brand (now a product line)", "price": "Product pricing", "covers": "Custom sofas/sectionals", "gaps": "Not an e-design competitor; furniture brand in Havenly ecosystem", "group": "Adjacent"}, {"name": "Swatchbox", "url": "swatchbox.com", "hq": "US", "close": 1, "status": "Active", "what": "Free architect/designer physical building-material sample delivery + AI grading", "price": "Free to pros (B2B)", "covers": "Physical material sample delivery, AI sample grading", "gaps": "B2B pro sampling not room design; no redesign/shopping-for-consumers", "group": "Adjacent"}, {"name": "Freepik AI Suite", "url": "freepik.com", "hq": "Málaga, Spain", "close": 1, "status": "Active", "what": "Generative AI creative suite w/ interior visualization from prompts", "price": "Freemium; Premium tiers", "covers": "AI render generation (Imagen/Nano Banana/Seedream), Spaces collaboration, multi-language", "gaps": "No room-accurate photo redesign; no human; no shoppable; no floor plans; no quiz", "group": "Horizontal generative AI"}, {"name": "Krea AI", "url": "krea.ai", "hq": "US/global", "close": 1, "status": "Active", "what": "General generative image platform used for photoreal interior renders", "price": "From ~$9/mo", "covers": "AI render generation, global", "gaps": "No room-accurate redesign; no human; no shoppable; no floor plans; no quiz", "group": "Horizontal generative AI"}, {"name": "Leonardo.ai", "url": "leonardo.ai", "hq": "Sydney, Australia (Canva)", "close": 1, "status": "Active", "what": "General generative image platform used for interior renders/moodboards", "price": "Free / $12 / $30 / $60 per mo", "covers": "AI render generation, global", "gaps": "No room-accurate redesign; no human; no shoppable; no floor plans; no quiz", "group": "Horizontal generative AI"}, {"name": "Home Design 3D", "url": "apps.apple.com", "hq": "France (Anuman)", "close": 1, "status": "Active", "what": "Paid DIY 2D/3D home & interior modeling app", "price": "Largely one-time paid (varies); Steam ~80% off sales; freemium mobile", "covers": "Floor plans, 3D building/furnishing, furniture library, render/walkthrough", "gaps": "No AI redesign; no human; no shop links; no quiz; manual modeling; dated", "group": "Mobile app"}, {"name": "MagicPlan", "url": "magicplan.app", "hq": "Montreal, Canada (Sensopia)", "close": 1, "status": "Active", "what": "AR floor-plan/measurement app for contractors/remodelers", "price": "Free (2 projects); Basic ~$9.99/user/mo; PRO tiers; ~$30-40/project overage", "covers": "AR room scanning, floor plans, measurements, docs/estimates/reports, exports", "gaps": "Not a decorating tool; no AI redesign/styles/shopping; contractor field tool", "group": "Mobile app"}, {"name": "2020 Design Flex", "url": "2020spaces.com", "hq": "US/UK (Cyncly)", "close": 1, "status": "Active", "what": "Cloud kitchen & bath design w/ live manufacturer catalogs + quoting", "price": "~$1,895–$2,995 per seat/year", "covers": "3D room design, floor plans, live manufacturer catalogs + pricing/quoting, collaboration", "gaps": "Kitchen/bath niche; dealer/pro only; no whole-home AI; no consumer service", "group": "Pro / design software"}, {"name": "Archilogic", "url": "archilogic.com", "hq": "Switzerland", "close": 1, "status": "Active", "what": "Developer platform turning floor plans into queryable 3D data", "price": "Free Starter; Plus $24.90/floorplan/mo; Pro $59; Enterprise", "covers": "3D floor-plan data, embeddable viewer, public API, AI-queryable metadata", "gaps": "Infra/API for developers; no consumer UI; no styling/redesign/shopping", "group": "Pro / design software"}, {"name": "Chief Architect", "url": "chiefarchitect.com", "hq": "US", "close": 1, "status": "Active", "what": "Professional residential architecture/remodeling CAD+BIM (+ Home Designer)", "price": "$229/mo or $1,995/yr; Home Designer Pro ~$199/yr perpetual", "covers": "Auto floor plans, full 3D, construction docs, catalogs, ray-trace", "gaps": "Steep learning curve; pro pricing; minimal AI; no redesign/shopping/human", "group": "Pro / design software"}, {"name": "Finch 3D", "url": "finch3d.com", "hq": "Malmö, Sweden", "close": 1, "status": "Active", "what": "Generative early-stage architecture (massing to floor plans/BIM)", "price": "Free; Basic €49/mo; Enterprise €1,000/mo", "covers": "Generative floor-plan optimization, BIM output, real-time metrics", "gaps": "Architect early-design niche; no interiors styling; no consumer render/shopping", "group": "Pro / design software"}, {"name": "Fohlio", "url": "fohlio.com", "hq": "US", "close": 1, "status": "Active", "what": "AI-assisted FF&E specification & procurement for large projects", "price": "From ~$120/mo; largely custom", "covers": "FF&E specs, product library, budgeting, procurement, AI spec extraction", "gaps": "Enterprise procurement niche; no rendering/redesign/consumer; no styling service", "group": "Pro / design software"}, {"name": "Houzz Pro (formerly Ivy)", "url": "houzz.com/pro", "hq": "Palo Alto, US", "close": 1, "status": "Active", "what": "SaaS for interior-design professionals (CRM/proposals/3D/portal)", "price": "~$249/mo (1 seat) +$60/seat; ads from $499/mo; 12-mo min", "covers": "Project mgmt, 3D floor plans, sourcing, client portal, AI creeping in", "gaps": "B2B — not a consumer purchase; no consumer AI self-serve", "group": "Pro / design software"}, {"name": "Modelo", "url": "modelo.io", "hq": "US/China", "close": 1, "status": "Active", "what": "Cloud 3D/VR presentation & collaboration for CAD models", "price": "Tiered individual-to-business; enterprise custom", "covers": "Browser 3D walkthroughs, VR, markup, Revit/3ds Max/Vectorworks plugins", "gaps": "Visualization only; bring your own model; no authoring/AI/service/shopping", "group": "Pro / design software"}, {"name": "SketchUp + AI Render", "url": "sketchup.com", "hq": "US (Trimble)", "close": 1, "status": "Active", "what": "Industry-standard 3D modeler w/ AI Render (viewport+prompt to image)", "price": "Go $129/yr, Pro $349, Studio $819; AI credits per plan; add-on $11.99/mo", "covers": "Full 3D modeling, AI image from model, VR, plugins", "gaps": "Steep learning curve; model everything yourself; no photo redesign; no shopping/human", "group": "Pro / design software"}, {"name": "TestFit", "url": "testfit.io", "hq": "Dallas, US", "close": 1, "status": "Active", "what": "AI real-estate feasibility / site planning (multifamily)", "price": "~$100/mo base; ~$400/mo Urban Planner", "covers": "Generative site/building feasibility, unit mix, parking, metrics", "gaps": "Developer feasibility not interiors; no room render; no consumer anything", "group": "Pro / design software"}, {"name": "Decorist", "url": "decorist.com", "hq": "San Francisco, US", "close": 0, "status": "DEFUNCT (Sep 2022)", "what": "Affordable flat-fee online design (owned by Bed Bath & Beyond)", "price": "(historic) ~$299–$1,299/room", "covers": "Human designer packages, shopping list", "gaps": "DEAD — collapsed with parent Bed Bath & Beyond", "group": "Defunct / precedent"}, {"name": "Homepolish", "url": "(dead)", "hq": "New York, US", "close": 0, "status": "DEFUNCT (2019)", "what": "Designer-matching service (~$100M valuation)", "price": "(historic) hourly/project", "covers": "Designer matching", "gaps": "DEAD — never built operational infrastructure", "group": "Defunct / precedent"}, {"name": "Hutch", "url": "hutch.com", "hq": "US (Zillow-backed)", "close": 0, "status": "Inactive/pivoted", "what": "Pioneered upload-photo to styled filters to shoppable products in-app", "price": "(historic) in-app product sales", "covers": "Photo restyle filters, shoppable in-app", "gaps": "Interior app wound down; team pivoted (gaming); precedent that standalone shoppable-room app is hard", "group": "Defunct / precedent"}, {"name": "Laurel & Wolf", "url": "(dead)", "hq": "Los Angeles, US", "close": 0, "status": "DEFUNCT (~2019)", "what": "Original flat-fee online design marketplace", "price": "(historic) flat-fee/room", "covers": "Designer marketplace, flat-fee packages", "gaps": "DEAD — marketing overspend + quality problems", "group": "Defunct / precedent"}, {"name": "Modsy", "url": "modsy.com", "hq": "San Francisco, US", "close": 0, "status": "DEFUNCT (Jul 2022)", "what": "Original AI/3D-render + human designer", "price": " shoppable — the archetype of Designature's model", "covers": "(historic) ~$69–$159/room", "gaps": "3D renders, human designer, shoppable list", "group": "Defunct / precedent"}];
+const GORDER=["Hybrid AI + Human e-design", "AI redesign + shoppable (the wedge)", "Pure AI redesign tool", "Mobile app", "Retailer / shop-the-look commerce", "Retailer free design service", "AI virtual staging", "Pro / design software", "Regional / emerging", "Horizontal generative AI", "Adjacent", "Defunct / precedent"];
+const GDESC={
+ "Hybrid AI + Human e-design":"Your model: AI + a real designer. The closest and most dangerous.",
+ "AI redesign + shoppable (the wedge)":"They also turn a concept into a buy-list — head-to-head on your edge.",
+ "Pure AI redesign tool":"Photo in, restyle out. Commoditizing fast on price.",
+ "Mobile app":"App-store-first, weekly-sub funnels, retailer AR.",
+ "Retailer / shop-the-look commerce":"Free but catalog-locked to one store's SKUs.",
+ "Retailer free design service":"Free human help, monetized through furniture sales.",
+ "AI virtual staging":"Real-estate listing tools; converging toward shoppability.",
+ "Pro / design software":"Tools designers build with — mostly not consumer services.",
+ "Regional / emerging":"Non-US and newer players, incl. your geographic neighborhood.",
+ "Horizontal generative AI":"General image AIs used as a DIY substitute.",
+ "Adjacent":"Nearby categories, not direct competitors.",
+ "Defunct / precedent":"Dead or pivoted — the graveyard is the warning.",
+};
+const HC={5:'--h5',4:'--h4',3:'--h3',2:'--h2',1:'--h1',0:'--h0'};
+const HCI={5:'--h5-ink',4:'--h4-ink',3:'--h3-ink',2:'--h2-ink',1:'--h1-ink',0:'--h0-ink'};
+const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const active=new Set();
+let sortMode='close';
+
+const chipsEl=document.getElementById('chips');
+const counts={}; DATA.forEach(d=>counts[d.group]=(counts[d.group]||0)+1);
+GORDER.filter(g=>counts[g]).forEach(g=>{
+  const b=document.createElement('button');
+  b.className='chip';b.setAttribute('aria-pressed','false');b.dataset.g=g;
+  b.innerHTML=esc(g)+' <span class="c">'+counts[g]+'</span>';
+  b.onclick=()=>{active.has(g)?active.delete(g):active.add(g);
+    b.setAttribute('aria-pressed',active.has(g));render();};
+  chipsEl.appendChild(b);
+});
+
+document.getElementById('q').addEventListener('input',render);
+document.getElementById('sort').addEventListener('change',e=>{sortMode=e.target.value;render();});
+
+function url(u){if(!u||u==='(dead)')return null;let f=u.split(';')[0].trim();
+  return f.startsWith('http')?f:'https://'+f;}
+
+function render(){
+  const q=document.getElementById('q').value.trim().toLowerCase();
+  let rows=DATA.filter(d=>{
+    if(active.size&&!active.has(d.group))return false;
+    if(q){const h=(d.name+' '+d.hq+' '+d.what+' '+d.price+' '+d.covers+' '+d.gaps+' '+d.group).toLowerCase();
+      if(!h.includes(q))return false;}
+    return true;});
+  const list=document.getElementById('list');list.innerHTML='';
+  document.getElementById('shown').textContent=rows.length;
+  document.getElementById('dirshown').textContent=rows.filter(r=>r.close>=4).length;
+  if(!rows.length){list.innerHTML='<p class="empty">No competitors match. Try a broader search or clear filters.</p>';return;}
+
+  if(sortMode==='name')rows.sort((a,b)=>a.name.localeCompare(b.name));
+  else if(sortMode==='close')rows.sort((a,b)=>b.close-a.close||a.name.localeCompare(b.name));
+
+  const grouped=(sortMode!=='name');
+  if(!grouped){rows.forEach(r=>list.appendChild(rowEl(r)));return;}
+  const by={};rows.forEach(r=>(by[r.group]=by[r.group]||[]).push(r));
+  const order=(sortMode==='close')?rankGroups(by):GORDER;
+  order.filter(g=>by[g]).forEach(g=>{
+    const gs=by[g].sort((a,b)=>b.close-a.close||a.name.localeCompare(b.name));
+    const gh=document.createElement('div');gh.className='grouphead';
+    gh.innerHTML='<h2>'+esc(g)+'</h2><span class="gc tnum">'+gs.length+'</span>'+
+      '<span class="gd">'+esc(GDESC[g]||'')+'</span>';
+    list.appendChild(gh);
+    gs.forEach(r=>list.appendChild(rowEl(r)));
+  });
+}
+function rankGroups(by){return Object.keys(by).sort((a,b)=>{
+  const m=g=>Math.max(...by[g].map(r=>r.close));
+  return m(b)-m(a)||GORDER.indexOf(a)-GORDER.indexOf(b);});}
+
+function rowEl(d){
+  const row=document.createElement('div');row.className='row'+(d.close===0?' dead':'');
+  row.style.setProperty('--hc','var('+HC[d.close]+')');
+  row.style.setProperty('--hci','var('+HCI[d.close]+')');
+  const u=url(d.url);
+  const head=document.createElement('button');head.className='rhead';head.type='button';
+  head.setAttribute('aria-expanded','false');
+  head.innerHTML=
+    '<span class="heat" title="Closeness '+d.close+'/5">'+d.close+'</span>'+
+    '<span class="rname">'+esc(d.name)+'<span class="hq">'+esc(d.hq)+'</span></span>'+
+    '<span class="rwhat">'+esc(d.what)+'</span>'+
+    '<span class="rprice">'+esc(d.price)+'</span>'+
+    '<span style="display:flex;gap:10px;align-items:center;justify-content:flex-end">'+
+      '<span class="rstatus">'+esc(d.status)+'</span>'+
+      '<svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 4l4 4-4 4"/></svg>'+
+    '</span>';
+  const body=document.createElement('div');body.className='rbody';
+  body.innerHTML=
+    '<div class="box"><div class="bh">Covers</div><p>'+esc(d.covers)+'</p></div>'+
+    '<div class="box gaps"><div class="bh">Gaps / doesn\'t cover</div><p>'+esc(d.gaps)+'</p></div>'+
+    '<div class="full"><span>'+esc(d.group)+'</span><span>·</span><span>'+esc(d.what)+'</span>'+
+      (u?'<span>·</span><a href="'+u+'" target="_blank" rel="noopener">Visit '+esc(d.url.split(';')[0])+' ↗</a>':'')+'</div>';
+  head.onclick=()=>{const o=row.hasAttribute('open');
+    if(o){row.removeAttribute('open');head.setAttribute('aria-expanded','false');}
+    else{row.setAttribute('open','');head.setAttribute('aria-expanded','true');}};
+  row.appendChild(head);row.appendChild(body);return row;
+}
+
+// theme toggle (cycles light/dark, overriding system)
+const root=document.documentElement;
+document.getElementById('themeBtn').onclick=()=>{
+  const cur=root.getAttribute('data-theme');
+  const sysDark=matchMedia('(prefers-color-scheme:dark)').matches;
+  const now=cur||(sysDark?'dark':'light');
+  root.setAttribute('data-theme',now==='dark'?'light':'dark');
+};
+render();
+</script>

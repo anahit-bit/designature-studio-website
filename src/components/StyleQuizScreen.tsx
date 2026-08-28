@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../LanguageContext';
 import { useAuth } from '../AuthContext';
+import { accountApi } from '../lib/accountApi';
+import { fingerprint, isSaved, markSaved } from '../lib/savedMarks';
 import { QUIZ_IMAGE_WEIGHTS, TIER_POINTS } from '../data/quizImageWeights';
 import { cld, cldSrcSet } from '../lib/cld';
 import { trackQuizStart, trackQuizComplete } from '../lib/track';
@@ -208,6 +210,7 @@ const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignI
   const [quizRooms, setQuizRooms] = useState<QuizRooms>(QUIZ_ROOMS_FALLBACK);
 
   const quizResultSavedRef = useRef(false);
+  const [styleSaved, setStyleSaved] = useState(false);
   const quizToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const readingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resultSectionRef = useRef<HTMLDivElement>(null);
@@ -465,6 +468,7 @@ const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignI
   const handleQuizReset = useCallback(() => {
     if (readingTimerRef.current) clearTimeout(readingTimerRef.current);
     quizResultSavedRef.current = false;
+    setStyleSaved(false);
     setQuizStep(0);
     setQuizVotes({});
     setQuizDone(false);
@@ -535,9 +539,27 @@ const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignI
     }
   };
 
-  const handleSaveStyle = () => {
+  // Persists across navigation/reload (server also dedups) → save DNA only once.
+  const dnaMark = quizResult.length ? fingerprint(JSON.stringify(quizResult)) : '';
+  const styleAlreadySaved = styleSaved || (!!dnaMark && isSaved(dnaMark));
+  const handleSaveStyle = async () => {
     if (!isPaid) { setQuizSaveModalOpen(true); return; }
-    showQuizToast(t('ai.quiz.savedToast'));
+    if (styleAlreadySaved) return; // already saved this DNA — save only once
+    const top = quizResult[0]?.style || 'Your style';
+    setStyleSaved(true); // optimistic — prevents double-clicks / duplicate rows
+    try {
+      await accountApi.saveLibraryItem({
+        tool: 'style_quiz',
+        title: `Style DNA — ${top}`,
+        thumbnailUrl: QUIZ_ROOMS_FALLBACK[top]?.[0]?.url,
+        metadata: { result: quizResult },
+      });
+      if (dnaMark) markSaved(dnaMark);
+      showQuizToast(t('ai.quiz.savedToast'));
+    } catch {
+      setStyleSaved(false); // let them retry on failure
+      showQuizToast('Could not save — please try again.');
+    }
   };
 
   const showSampleResult = () => {
@@ -783,9 +805,9 @@ const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignI
               {/* SAVE — greyed + lockchip for free (D6); never a sign-in veil */}
               <div className="paid">
                 <span className="lockchip">🔒 {t('ai.quiz.lockStudio')}</span>
-                <button type="button" onClick={handleSaveStyle}
-                  className="w-full border border-black/15 text-black/70 text-[11px] font-bold uppercase tracking-[0.14em] py-3.5 hover:border-black/45 hover:text-black transition">
-                  ♥ {t('ai.quiz.saveStyle')}
+                <button type="button" onClick={handleSaveStyle} disabled={styleAlreadySaved && isPaid}
+                  className="w-full border border-black/15 text-black/70 text-[11px] font-bold uppercase tracking-[0.14em] py-3.5 hover:border-black/45 hover:text-black transition disabled:opacity-50 disabled:cursor-default disabled:hover:border-black/15 disabled:hover:text-black/70">
+                  {styleAlreadySaved && isPaid ? '✓ Saved' : `♥ ${t('ai.quiz.saveStyle')}`}
                 </button>
               </div>
             </div>

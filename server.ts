@@ -36,6 +36,7 @@ import { runMigrations } from "./db/migrate.js";
 import { getPool } from "./db/pgPool.js";
 import { loadState, saveState } from "./db/state.js";
 import { sendEmail } from "./lib/email.js";
+import { computeNextRenewal, type PlatformCadence } from "./services/platforms/renewal.js";
 // ─── Payments Rail B (I-025): Ameriabank vPOS $99 consultation ────────────────
 import {
   getAmeriaConfig,
@@ -68,6 +69,19 @@ import {
   insertEvent as calendarInsertEvent,
   deleteEvent as calendarDeleteEvent,
 } from "./services/calendar/googleCalendar.js";
+// ─── Calendly booking tracking + HubSpot sync (admin Consultations tab) ────────
+import {
+  type ConsultationBooking,
+  isBookingsConfigured,
+  fetchBookings,
+  normalizeBooking,
+  getBookingsConfig,
+} from "./services/consultation/calendlyBookings.js";
+import {
+  verifyCalendlySignature,
+  parseWebhookPayload,
+} from "./services/consultation/calendlyWebhook.js";
+import { upsertContactBooking, isHubspotConfigured } from "./services/crm/hubspot.js";
 // ─── GEO / SEO (Phase 1): robots, sitemap, per-route meta + JSON-LD injection ──
 import { buildRobotsTxt } from "./server/config/bots.js";
 import { buildSitemap } from "./server/seo/sitemap.js";
@@ -77,8 +91,21 @@ import { absUrl } from "./server/seo/config.js";
 import { legacyRedirects, trailingSlashRedirect } from "./server/redirects.js";
 // ─── Acquisition read-back (I-027): GA4 Data API + Search Console → /admin ─────
 import { getAcquisition } from "./server/analytics/acquisition.js";
+import { getInsights, clearInsightsCache } from "./server/analytics/insights.js";
+import { lookupPhrase } from "./server/analytics/searchConsole.js";
+import { isAcquisitionConfigured } from "./server/analytics/googleClients.js";
 // ─── Internal/owner accounts excluded from /admin analytics aggregates ────────
 import { isInternalAccount } from "./server/internalAccounts.js";
+// ─── Free-tier quota logic (pure, unit-tested in src/test/quotaEnforcement.test.ts) ─
+import {
+  FREE_TIER_MAX_CONCEPTS,
+  FREE_TIER_MAX_SHOPPING_LISTS,
+  UNLIMITED_QUOTA,
+  UNLIMITED_ACCOUNT_EMAILS,
+  isUnlimitedAccountEmail,
+  normalizeUserForFreeTier,
+  refundGenerations,
+} from "./server/quota.js";
 
 const FALLBACK_ENV_PATH = 'E:/Secrets/Website/.env';
 dotenv.config({
@@ -89,9 +116,6 @@ dotenv.config({
     : undefined,
 });
 
-/** Free tier caps (UI + API). Paid tier can be added later with an `isPaid` flag. */
-const FREE_TIER_MAX_CONCEPTS = 3;
-const FREE_TIER_MAX_SHOPPING_LISTS = 3;
 /** Free tier: identify enumerates ALL items, but Serper only searches the top N;
  *  the rest come back as a `teaser` (names only) to drive the upgrade hook. Paid = all. */
 const FREE_TIER_MAX_ITEMS = 4;
@@ -105,18 +129,11 @@ const MAX_LIST_ITEMS = (() => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 12;
 })();
 
-/** Accounts that get unlimited quotas — never clamped or decremented. */
-const UNLIMITED_ACCOUNT_EMAILS = [
-  "anahit@designature.studio",
-  "anahit.ghasabyan@gmail.com",
-];
-
 /** @deprecated kept for call-sites that haven't been updated yet */
 const CONCEPT_TEST_ACCOUNT_EMAIL = UNLIMITED_ACCOUNT_EMAILS[0];
 
-function isConceptTestAccountEmail(email: string): boolean {
-  return UNLIMITED_ACCOUNT_EMAILS.includes(email.trim().toLowerCase());
-}
+/** Alias for {@link isUnlimitedAccountEmail} — kept for the many existing call-sites. */
+const isConceptTestAccountEmail = isUnlimitedAccountEmail;
 
 /**
  * I-011 — admin allowlist for /api/admin/* endpoints.
@@ -167,34 +184,10 @@ interface User {
   backfilled?: boolean;
 }
 
-function normalizeUserForFreeTier(user: User): { user: User; changed: boolean } {
-  let changed = false;
-  const u = { ...user };
-  const isUnlimited = isConceptTestAccountEmail(u.email);
-
-  if (isUnlimited) {
-    // Unlimited accounts (owner/demo) — force 999, never clamp
-    if (u.generationsLeft !== 999) { u.generationsLeft = 999; changed = true; }
-    if (u.shoppingListsLeft !== 999) { u.shoppingListsLeft = 999; changed = true; }
-  } else {
-    // Everyone else — enforce free-tier caps regardless of isPaid flag.
-    // (No paid tier exists yet; isPaid on the user record is only used for
-    //  audit access in the API response, not for quota bypass.)
-    if (u.generationsLeft > FREE_TIER_MAX_CONCEPTS) {
-      u.generationsLeft = FREE_TIER_MAX_CONCEPTS;
-      changed = true;
-    }
-    if (typeof u.shoppingListsLeft !== "number" || Number.isNaN(u.shoppingListsLeft)) {
-      u.shoppingListsLeft = FREE_TIER_MAX_SHOPPING_LISTS;
-      changed = true;
-    }
-    if (u.shoppingListsLeft > FREE_TIER_MAX_SHOPPING_LISTS) {
-      u.shoppingListsLeft = FREE_TIER_MAX_SHOPPING_LISTS;
-      changed = true;
-    }
-  }
-  return { user: u, changed };
-}
+// normalizeUserForFreeTier lives in ./server/quota.ts (imported above) so the
+// free-tier lifetime-cap logic is unit-tested. See that file for the rules:
+// missing/corrupt counters default to 0, existing counters only clamp DOWN, and
+// nothing here ever refills toward the cap.
 
 // ── Subscriptions (Rail A — Ameriabank card bindings) ─────────────────────────
 // The `subscriptions` table is the source of truth for a user's plan; `user.plan`
@@ -281,6 +274,20 @@ interface DB {
    *  2026-07-19). Seeded from server/config/platforms.json on first boot, then
    *  lives here in app_state so owner edits survive Railway redeploys. */
   platforms?: Platform[];
+  /** Calendly bookings (free "Quick Conversation" + paid "Paid Consultation"),
+   *  captured by the webhook and/or a live API refresh. Durable so the admin
+   *  Consultations tab + HubSpot-sync status survive redeploys. Keyed/deduped by
+   *  inviteeUri. Capped FIFO. */
+  calendlyBookings?: Array<ConsultationBooking & { hubspot?: { synced: boolean; at?: string; error?: string } }>;
+  /** UTC YYYY-MM-DD of the last renewal-digest email send. Guards the digest to at
+   *  most once per UTC day (I-012, 2026-08-27). */
+  platformsDigestLastSent?: string;
+  /** GEO watchlist — owner-editable phrases we track Google rank for (Insights tab).
+   *  Durable so edits survive redeploys. Seeded on first boot. */
+  geoPhrases?: string[];
+  /** Daily rank snapshots per watched phrase → the position trend over time.
+   *  One row per (date, phrase). Capped FIFO. */
+  geoSnapshots?: Array<{ date: string; phrase: string; position: number | null; impressions: number }>;
 }
 
 /** UTC YYYY-MM-DD for daily-budget bucketing. */
@@ -660,6 +667,9 @@ interface Platform {
   annual_cost?: string | null;
   free_tier_quota: string | null;
   renewal_date: string | null;
+  /** Billing cadence (I-012, 2026-08-27). Drives the auto-advancing next_renewal.
+   *  null/undefined ⇒ static (pay-as-you-go / prepaid / one-off). */
+  cadence?: PlatformCadence | null;
   powers: string;
   criticality: number;
 }
@@ -682,6 +692,22 @@ function getPlatforms(): Platform[] {
   return dbCache?.platforms && dbCache.platforms.length > 0 ? dbCache.platforms : PLATFORMS;
 }
 
+/** A platform enriched with its rolled-forward next renewal (see renewal.ts). */
+type PlatformWithDerived = Platform & { next_renewal: string | null };
+
+/**
+ * The live inventory with each row's `next_renewal` derived from its anchor +
+ * cadence. The DURABLE STORE keeps the raw anchor + cadence untouched — only the
+ * response is enriched, so the anchor never drifts. Used by the GET response and
+ * /api/admin/usage.
+ */
+function getPlatformsWithDerived(): PlatformWithDerived[] {
+  return getPlatforms().map((p) => ({
+    ...p,
+    next_renewal: computeNextRenewal(p.renewal_date, p.cadence ?? null),
+  }));
+}
+
 /**
  * Normalize/validate one client-submitted platform row. Returns a clean Platform
  * or null when the row is unusable (missing name). Keeps the durable store tidy
@@ -695,6 +721,10 @@ function normalizePlatform(raw: any): Platform | null {
     const s = String(v ?? "").trim();
     return s === "" ? null : s;
   };
+  // Coerce cadence to a known value, else null ("None" / unset ⇒ static).
+  const cad = String(raw.cadence ?? "").trim().toLowerCase();
+  const cadence: PlatformCadence | null =
+    cad === "monthly" || cad === "annual" || cad === "once" ? cad : null;
   return {
     name,
     owner_email: String(raw.owner_email ?? "").trim(),
@@ -702,6 +732,7 @@ function normalizePlatform(raw: any): Platform | null {
     annual_cost: orNull(raw.annual_cost),
     free_tier_quota: orNull(raw.free_tier_quota),
     renewal_date: orNull(raw.renewal_date),
+    cadence,
     powers: String(raw.powers ?? "").trim(),
     criticality: Math.max(1, Math.min(5, Math.round(Number(raw.criticality)) || 1)),
   };
@@ -717,6 +748,224 @@ async function ensurePlatformsSeeded(): Promise<void> {
   dbCache.platforms = PLATFORMS.map((p) => ({ ...p }));
   console.log(`✅ seeded ${dbCache.platforms.length} platforms into app_state (id='${STATE_ID}')`);
   writeDB(dbCache);
+}
+
+/**
+ * One-time cadence backfill (I-012, 2026-08-27). Older durable rows predate the
+ * `cadence` field, so their renewal dates never auto-advanced. Infer a cadence by
+ * name for the known recurring subscriptions; leave everything else untouched
+ * (undefined ⇒ static). Only rows with NO cadence set are considered, so this is a
+ * no-op once set — an owner's explicit "None" (null) is never re-inferred.
+ */
+async function ensurePlatformCadence(): Promise<void> {
+  if (!dbCache || !Array.isArray(dbCache.platforms)) return;
+  let changed = 0;
+  for (const p of dbCache.platforms) {
+    if (p.cadence !== undefined) continue; // already set (value or explicit null)
+    const name = String(p.name ?? "").toLowerCase();
+    let inferred: PlatformCadence | undefined;
+    if (/claude|anthropic/.test(name)) inferred = "monthly";
+    else if (/chatgpt|openai/.test(name)) inferred = "monthly";
+    else if (/hosting\.com/.test(name)) inferred = "annual";
+    if (inferred) {
+      p.cadence = inferred;
+      changed++;
+    }
+  }
+  if (changed > 0) {
+    console.log(`✅ backfilled cadence on ${changed} platform row(s) (id='${STATE_ID}')`);
+    writeDB(dbCache);
+  }
+}
+
+// ─── GEO watchlist + rank snapshots (durable, app_state) ────────────────────
+// Owner-editable phrases we track Google position for, plus a daily snapshot of
+// each phrase's position so the Insights tab can show movement over time.
+// ── Serper credit balance (prepaid, depletes on use — NOT monthly) ──────────
+// GET /account returns {balance, rateLimit} and does NOT cost a credit. Cached 5m
+// so the polled admin dashboard doesn't hammer it.
+let _serperBalanceCache: { at: number; data: { balance: number; rateLimit: number } | null } | null = null;
+const SERPER_BALANCE_TTL_MS = 5 * 60 * 1000;
+async function fetchSerperBalance(): Promise<{ balance: number; rateLimit: number } | null> {
+  const key = (process.env.SERPER_API_KEY || "").trim();
+  if (!key) return null;
+  const now = Date.now();
+  if (_serperBalanceCache && now - _serperBalanceCache.at < SERPER_BALANCE_TTL_MS) return _serperBalanceCache.data;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
+    const res = await fetch("https://google.serper.dev/account", { headers: { "X-API-KEY": key }, signal: controller.signal });
+    clearTimeout(timer);
+    const j = res.ok ? await res.json() : null;
+    const data = j ? { balance: Number(j.balance ?? 0), rateLimit: Number(j.rateLimit ?? 0) } : null;
+    _serperBalanceCache = { at: now, data };
+    return data;
+  } catch {
+    _serperBalanceCache = { at: now, data: null };
+    return null;
+  }
+}
+
+const DEFAULT_GEO_PHRASES = ["ai interior design", "online interior design", "ai room design"];
+const GEO_SNAPSHOTS_CAP = 5000;
+
+/** Seed the watchlist once (owner-editable thereafter). No-op if already present. */
+async function ensureGeoPhrasesSeeded(): Promise<void> {
+  if (!dbCache) return;
+  if (Array.isArray(dbCache.geoPhrases)) return; // already initialized (even if emptied by owner)
+  dbCache.geoPhrases = [...DEFAULT_GEO_PHRASES];
+  console.log(`✅ seeded ${dbCache.geoPhrases.length} GEO phrases into app_state (id='${STATE_ID}')`);
+  writeDB(dbCache);
+}
+
+/** Daily: record each watched phrase's current Google position + impressions.
+ *  One row per (date, phrase); today's row is replaced on re-run. Best-effort. */
+async function snapshotGeoPositions(): Promise<void> {
+  try {
+    if (!isAcquisitionConfigured()) return;
+    const db = readDB();
+    const phrases = Array.isArray(db.geoPhrases) ? db.geoPhrases : [];
+    if (!phrases.length) return;
+    const today = utcDateString();
+    let snaps = Array.isArray(db.geoSnapshots) ? db.geoSnapshots : [];
+    for (const p of phrases) {
+      const phrase = p.trim().toLowerCase();
+      if (!phrase) continue;
+      const r = await lookupPhrase(phrase, 28);
+      snaps = snaps.filter((s) => !(s.date === today && s.phrase === phrase));
+      snaps.push({ date: today, phrase, position: r.position, impressions: r.impressions });
+    }
+    while (snaps.length > GEO_SNAPSHOTS_CAP) snaps.shift();
+    db.geoSnapshots = snaps;
+    writeDB(db);
+    console.log(`[geo] snapshotted ${phrases.length} phrase position(s) for ${today}`);
+  } catch (e) {
+    console.error("[geo] snapshot failed:", (e as Error)?.message || e);
+  }
+}
+
+// ─── Calendly booking store (durable, app_state) ────────────────────────────
+// Deduped by inviteeUri. The webhook writes here on invitee.created/canceled; a
+// live admin refresh merges API reads in while preserving each row's HubSpot
+// sync status. Capped FIFO so the blob can't grow unbounded.
+const CALENDLY_BOOKINGS_CAP = 2000;
+type StoredBooking = ConsultationBooking & { hubspot?: { synced: boolean; at?: string; error?: string } };
+
+/** Insert or update a booking by inviteeUri. `patch` shallow-merges (e.g. status,
+ *  hubspot). Preserves an existing row's hubspot status unless the patch sets it.
+ *  Caller is responsible for writeDB(). */
+function upsertBookingRecord(db: DB, booking: StoredBooking): StoredBooking {
+  const list: StoredBooking[] = Array.isArray(db.calendlyBookings) ? db.calendlyBookings : [];
+  const idx = list.findIndex((b) => b.inviteeUri === booking.inviteeUri);
+  let row: StoredBooking;
+  if (idx >= 0) {
+    row = { ...list[idx], ...booking, hubspot: booking.hubspot ?? list[idx].hubspot };
+    list[idx] = row;
+  } else {
+    row = booking;
+    list.push(row);
+  }
+  while (list.length > CALENDLY_BOOKINGS_CAP) list.shift();
+  db.calendlyBookings = list;
+  return row;
+}
+
+/**
+ * Poll both Calendly accounts → sync new bookers into HubSpot. This is the
+ * free-plan alternative to Calendly webhooks (which require a paid plan): a
+ * periodic reconcile. Idempotent — a booking already marked hubspot.synced in the
+ * durable store is skipped, so contacts are created/updated exactly once. No-op
+ * unless BOTH Calendly and HubSpot are configured.
+ */
+async function syncBookingsToHubspot(): Promise<void> {
+  try {
+    if (!isBookingsConfigured() || !isHubspotConfigured()) return;
+    const live = await fetchBookings();
+    if (!live.bookings.length) return;
+    const db = readDB();
+    let changed = false;
+    for (const b of live.bookings) {
+      const existing = (db.calendlyBookings || []).find((x) => x.inviteeUri === b.inviteeUri);
+      let hubspot = existing?.hubspot;
+      // Sync active bookings that haven't been synced yet (cancellations aren't pushed).
+      if (b.status === "active" && !hubspot?.synced) {
+        const r = await upsertContactBooking({ email: b.email, name: b.name, kind: b.kind });
+        if (r.configured) {
+          hubspot = { synced: r.ok, at: new Date().toISOString(), error: r.ok ? undefined : r.error };
+          if (!r.ok) console.error("[calendly-sync] HubSpot upsert failed:", r.error);
+        }
+      }
+      upsertBookingRecord(db, { ...b, hubspot });
+      changed = true;
+    }
+    if (changed) writeDB(db);
+  } catch (e) {
+    console.error("[calendly-sync]", (e as Error)?.message || e);
+  }
+}
+
+/**
+ * Once-a-day renewal digest (I-012, 2026-08-27). Emails the owner a short list of
+ * recurring platforms whose derived renewal is just-passed / imminent, so she can
+ * confirm each actually charged. Runs at most once per UTC day (tracked in
+ * dbCache.platformsDigestLastSent). No-op unless email is configured. Best-effort —
+ * wrapped like syncBookingsToHubspot so a hiccup never crashes the interval.
+ */
+async function sendRenewalDigestIfDue(): Promise<void> {
+  try {
+    if (!process.env.RESEND_API_KEY) return; // email not configured — nothing to send through
+    if (!dbCache) return;
+    const today = utcDateString();
+    if (dbCache.platformsDigestLastSent === today) return; // already ran today
+
+    // Days-until for a derived (UTC-midnight) YYYY-MM-DD date; ceil, UTC.
+    const daysUntilUtc = (dateStr: string | null): number | null => {
+      if (!dateStr) return null;
+      const ms = Date.parse(dateStr);
+      if (!Number.isFinite(ms)) return null;
+      const now = new Date();
+      const todayMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+      return Math.ceil((ms - todayMs) / (24 * 60 * 60 * 1000));
+    };
+
+    // Recurring platforms only (skip static / pay-as-you-go) whose derived renewal
+    // is in [-1, 3] days: just passed yesterday through due in 3 days.
+    const due = getPlatformsWithDerived()
+      .filter((p) => p.cadence === "monthly" || p.cadence === "annual")
+      .map((p) => ({ p, days: daysUntilUtc(p.next_renewal) }))
+      .filter((x) => x.days !== null && x.days >= -1 && x.days <= 3);
+
+    if (due.length === 0) {
+      // Still mark today so we compute exactly once per day.
+      dbCache.platformsDigestLastSent = today;
+      writeDB(dbCache);
+      return;
+    }
+
+    const esc = (s: string): string =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const rows = due
+      .map(({ p, days }) => {
+        const when = days === 0 ? "today" : days! < 0 ? `${-days!}d ago` : `in ${days}d`;
+        return `<li style="margin:0 0 8px"><strong>${esc(p.name)}</strong> — ${esc(p.monthly_cost || "—")} · renews ${p.next_renewal} (${when})<br><span style="color:#666">renewed? if not, update it in /admin/platforms</span></li>`;
+      })
+      .join("");
+    const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111">
+      <p>These recurring platforms renew around now — confirm each actually charged:</p>
+      <ul style="padding-left:18px">${rows}</ul>
+      <p style="color:#666">Auto-sent once a day from the Platforms tab. Manage the inventory at /admin/platforms.</p>
+    </div>`;
+
+    await sendEmail({
+      to: "anahit@designature.studio",
+      subject: `Renewal check — ${due.length} due`,
+      html,
+    });
+    dbCache.platformsDigestLastSent = today;
+    writeDB(dbCache);
+  } catch (e) {
+    console.error("[renewal-digest]", (e as Error)?.message || e);
+  }
 }
 
 // ─── Session store (in-memory, keyed by session token) ─────────────────────
@@ -841,8 +1090,17 @@ async function startServer() {
   // makes the edge proxy miss the app → 502. Keep the app on 3000 to match.
   const PORT = 3000;
 
-  // Raised to 100 MB to accommodate base64-encoded room + reference images in one request
-  app.use(express.json({ limit: "100mb" }));
+  // Raised to 100 MB to accommodate base64-encoded room + reference images in one request.
+  // `verify` stashes the raw bytes so webhook routes can HMAC-check the exact body
+  // (Calendly signs the raw payload; re-serializing the parsed JSON would not match).
+  app.use(
+    express.json({
+      limit: "100mb",
+      verify: (req, _res, buf) => {
+        (req as any).rawBody = buf;
+      },
+    }),
+  );
 
   // ── Cloudinary Configuration ──
   cloudinary.config({
@@ -873,6 +1131,10 @@ async function startServer() {
   // Seed the durable platform inventory once (owner-editable thereafter). Must run
   // after hydration so it can check whether this app_state row already has edits.
   await ensurePlatformsSeeded();
+  await ensureGeoPhrasesSeeded();
+
+  // One-time cadence backfill for older durable rows (idempotent, no-op once set).
+  await ensurePlatformCadence();
 
   // Sweep stale pending consultation orders → cancelled, every 5 minutes (I-025).
   // Run once at boot to clear anything left stale across a restart, then on an
@@ -880,6 +1142,26 @@ async function startServer() {
   void expireStalePendingOrders();
   const expireTimer = setInterval(() => void expireStalePendingOrders(), 5 * 60 * 1000);
   expireTimer.unref();
+
+  // Poll Calendly → HubSpot every 3 min (free Calendly plan can't use webhooks).
+  // Best-effort, idempotent. Runs shortly after boot, then on an interval; the
+  // timer is unref'd so it never keeps the process alive on its own.
+  setTimeout(() => void syncBookingsToHubspot(), 15_000).unref();
+  const calendlySyncTimer = setInterval(() => void syncBookingsToHubspot(), 3 * 60 * 1000);
+  calendlySyncTimer.unref();
+
+  // Once-a-day renewal digest (I-012). Best-effort; self-guards to one send/UTC-day.
+  // Run once at boot, then every 6h so the day is caught even across restarts. The
+  // timer is unref'd so it never keeps the process alive on its own.
+  void sendRenewalDigestIfDue();
+  const renewalDigestTimer = setInterval(() => void sendRenewalDigestIfDue(), 6 * 60 * 60 * 1000);
+  renewalDigestTimer.unref();
+
+  // Snapshot GEO watchlist positions daily (Search Console lags ~2-3d, so daily
+  // is plenty) → the Insights tab shows position movement over time. Best-effort.
+  setTimeout(() => void snapshotGeoPositions(), 45_000).unref();
+  const geoSnapTimer = setInterval(() => void snapshotGeoPositions(), 24 * 60 * 60 * 1000);
+  geoSnapTimer.unref();
 
   // ════════════════════════════════════════════════════════════════════════
   // I-021b · Per-provider cost estimates (USD per call).
@@ -1461,51 +1743,16 @@ async function startServer() {
     res.json({ ok: true });
   });
 
-  // ── POST /api/generation/use — consume one generation ──
-  app.post("/api/generation/use", (req, res) => {
-    const googleId = requireAuth(req, res);
-    if (!googleId) return;
-
-    const { count = 1 } = req.body;
-
-    const db = readDB();
-    const user = db.users[googleId];
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    if (user.generationsLeft < count) {
-      return res.status(403).json({ error: "No generations left", generationsLeft: user.generationsLeft });
-    }
-
-    if (user.generationsLeft < 999) user.generationsLeft -= count;
-    user.lastUsed = new Date().toISOString();
-    db.users[googleId] = user;
-    writeDB(db);
-
-    res.json({ generationsLeft: user.generationsLeft });
-  });
-
-  // ── POST /api/generation/restore — restore generations on failure ──
-  app.post("/api/generation/restore", (req, res) => {
-    const googleId = requireAuth(req, res);
-    if (!googleId) return;
-
-    const { count = 1 } = req.body;
-
-    const db = readDB();
-    const user = db.users[googleId];
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    const cap = isConceptTestAccountEmail(user.email) ? 999 : FREE_TIER_MAX_CONCEPTS;
-    user.generationsLeft = Math.min(cap, user.generationsLeft + count);
-    db.users[googleId] = user;
-    writeDB(db);
-
-    res.json({ generationsLeft: user.generationsLeft });
-  });
+  // ── Quota consumption is server-authoritative ────────────────────────────────
+  // There are intentionally NO client-callable /api/generation/use or
+  // /api/generation/restore endpoints. Free tier is a HARD LIFETIME cap and the
+  // client must never be able to move a quota counter in either direction.
+  //
+  // Each generation endpoint owns its own quota lifecycle: it decrements BEFORE
+  // calling the AI provider and, if the provider fails, credits back EXACTLY what
+  // it decremented (bounded by the pre-decrement balance) in the SAME request —
+  // see /api/ai-vision/generate and /api/room-audit/analyze, and the shared
+  // refundGenerations() helper in ./server/quota.ts.
 
   // ── Testimonials cache ──────────────────────────────────────────────────────
   let testimonialsCache: { data: any; expires: number } | null = null;
@@ -1801,6 +2048,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
           shoppingListsLeft: shopUser.shoppingListsLeft,
         });
       }
+      recordActivity(shopUser.email, "shopping_search"); // usage metering (AC-001 dashboard)
 
       const { items, country, budgetLevel, roomCap, scopeIds } = req.body;
       const gl = country || 'us';
@@ -2736,7 +2984,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
         });
     }
 
-    // ── Quota check + decrement ────────────────────────────────────────────────
+    // ── Quota check + decrement (server-authoritative) ─────────────────────────
     const db = readDB();
     const user = db.users[googleId];
     if (!user) return res.status(404).json({ error: "User not found." });
@@ -2746,11 +2994,17 @@ Output ONLY valid JSON, no markdown fences, no commentary:
         .status(403)
         .json({ error: "No generations left.", generationsLeft: 0 });
     }
-    if (!isSampleRun && user.generationsLeft < 999) {
+    // Remember the balance BEFORE the decrement so a failed generation can be
+    // refunded to EXACTLY this value — never above it. `quotaDecremented` gates
+    // the refund so sample/unlimited runs (which never decrement) never gain credit.
+    const genBeforeDecrement = user.generationsLeft;
+    let quotaDecremented = false;
+    if (!isSampleRun && user.generationsLeft < UNLIMITED_QUOTA) {
       user.generationsLeft -= 1;
       user.lastUsed = new Date().toISOString();
       db.users[googleId] = user;
       writeDB(db);
+      quotaDecremented = true;
     } else if (isSampleRun) {
       console.log(`[AI Vision] Sample run for ${user.email} — quota not decremented (${user.generationsLeft} remaining)`);
     }
@@ -2846,18 +3100,22 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     } catch (err: any) {
       console.error("[AI Vision] Generation failed:", err?.message ?? err);
 
-      // Restore quota on generation failure
-      try {
-        const dbRetry = readDB();
-        const u = dbRetry.users[googleId];
-        if (u && u.generationsLeft < 999) {
-          const cap = isConceptTestAccountEmail(u.email) ? 999 : FREE_TIER_MAX_CONCEPTS;
-          u.generationsLeft = Math.min(cap, u.generationsLeft + 1);
-          dbRetry.users[googleId] = u;
-          writeDB(dbRetry);
+      // Server-authoritative refund: only if THIS request decremented, credit back
+      // exactly the 1 it took — never above the pre-decrement balance (genBeforeDecrement).
+      if (quotaDecremented) {
+        try {
+          const dbRetry = readDB();
+          const u = dbRetry.users[googleId];
+          if (u && u.generationsLeft < UNLIMITED_QUOTA) {
+            const cap = isConceptTestAccountEmail(u.email) ? UNLIMITED_QUOTA : FREE_TIER_MAX_CONCEPTS;
+            u.generationsLeft = refundGenerations(u.generationsLeft, 1, genBeforeDecrement, cap);
+            dbRetry.users[googleId] = u;
+            writeDB(dbRetry);
+            console.log(`[AI Vision] Refunded 1 generation to ${u.email} after failure (now ${u.generationsLeft})`);
+          }
+        } catch (restoreErr) {
+          console.error("[AI Vision] Failed to restore quota after error:", restoreErr);
         }
-      } catch (restoreErr) {
-        console.error("[AI Vision] Failed to restore quota after error:", restoreErr);
       }
 
       const msg: string = err?.message ?? "";
@@ -2882,6 +3140,402 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     }
   });
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // AC-001 / AC-002 — User Dashboard: saved Library + dashboard summary.
+  // All routes are auth'd (requireAuth → googleId). Library rows live in the
+  // `saved_items` Postgres table; image outputs are uploaded to Cloudinary so the
+  // stored URLs are durable and re-downloadable. The subscription/billing side of
+  // the dashboard is still mock on the client (no live tier rail yet), so only the
+  // "save your work → see it in Library → download later" loop is wired here.
+  // ══════════════════════════════════════════════════════════════════════════
+  const LIBRARY_TOOLS = [
+    "ai_vision",
+    "shopping",
+    "room_audit",
+    "style_quiz",
+    "design_brief",
+    "cultural",
+  ];
+
+  // Map a saved_items DB row → the LibraryItem shape the client expects.
+  function rowToLibraryItem(r: any) {
+    return {
+      id: r.id,
+      tool: r.tool,
+      title: r.title,
+      createdAt:
+        r.created_at instanceof Date ? r.created_at.toISOString() : r.created_at,
+      thumbnailUrl: r.thumbnail_url ?? null,
+      fullPreviewUrl: r.full_url ?? null,
+      metadata: r.metadata ?? {},
+    };
+  }
+
+  // POST /api/user/library — save a generated output to the user's Library.
+  // Body: { tool, title, imageDataUrl?, thumbnailUrl?, metadata? }. A data-URL
+  // image is uploaded to Cloudinary first; on upload failure the row is still
+  // saved (without an image) so the user never silently loses their work.
+  app.post("/api/user/library", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    const db = readDB();
+    const user = db.users[googleId];
+    if (!user) return res.status(404).json({ error: "User not found." });
+
+    // Paid-only: the Library (and the dashboard it feeds) is a paid feature. Today
+    // that's owner/unlimited accounts until a subscription rail sets isPaid.
+    const isPaidUser = isConceptTestAccountEmail(user.email) || user.isPaid === true;
+    if (!isPaidUser) {
+      return res
+        .status(403)
+        .json({ error: "Saving to your library is a paid feature.", code: "paid_required" });
+    }
+
+    const { tool, title, imageDataUrl, thumbnailUrl, metadata } = req.body ?? {};
+    if (!tool || !LIBRARY_TOOLS.includes(tool)) {
+      return res.status(400).json({ error: "Invalid or missing tool." });
+    }
+    if (!title || typeof title !== "string" || !title.trim()) {
+      return res.status(400).json({ error: "A title is required." });
+    }
+
+    // Dedup: same user + same content → return the existing row (idempotent Save)
+    // and skip the (re)upload entirely, so leaving/returning can't create a copy.
+    const contentHash = createHash("sha256")
+      .update(
+        `${tool}|${typeof imageDataUrl === "string" ? imageDataUrl : JSON.stringify(metadata ?? {})}`
+      )
+      .digest("hex");
+    try {
+      const dup = await getPool().query(
+        `SELECT * FROM saved_items WHERE user_id = $1 AND content_hash = $2 LIMIT 1`,
+        [googleId, contentHash]
+      );
+      if (dup.rowCount && dup.rowCount > 0) {
+        return res.status(200).json(rowToLibraryItem(dup.rows[0]));
+      }
+    } catch (e: any) {
+      console.error("[library] dedup check failed:", e?.message ?? e);
+    }
+
+    let fullUrl: string | null = null;
+    let thumb: string | null = typeof thumbnailUrl === "string" ? thumbnailUrl : null;
+
+    if (typeof imageDataUrl === "string" && imageDataUrl.startsWith("data:")) {
+      try {
+        const up = await cloudinary.uploader.upload(imageDataUrl, {
+          folder: "user-library",
+          resource_type: "image",
+        });
+        bumpApiCount("cloudinary"); // I-010
+        fullUrl = up.secure_url;
+        thumb =
+          thumb ??
+          cloudinary.url(up.public_id, {
+            width: 400,
+            height: 500,
+            crop: "fill",
+            quality: "auto",
+            fetch_format: "auto",
+            secure: true,
+          });
+      } catch (e: any) {
+        console.error("[library] Cloudinary upload failed:", e?.message ?? e);
+        // fall through — save the row without an image rather than 500
+      }
+    }
+
+    try {
+      const r = await getPool().query(
+        `INSERT INTO saved_items (user_id, user_email, tool, title, thumbnail_url, full_url, metadata, content_hash)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)
+         RETURNING *`,
+        [
+          googleId,
+          user.email,
+          tool,
+          title.trim().slice(0, 200),
+          thumb,
+          fullUrl,
+          JSON.stringify(metadata ?? {}),
+          contentHash,
+        ]
+      );
+      recordActivity(user.email, `save_${tool}`); // I-016
+      return res.status(201).json(rowToLibraryItem(r.rows[0]));
+    } catch (e: any) {
+      // Unique (user_id, content_hash) race → it already exists; return that row.
+      if (e?.code === "23505") {
+        try {
+          const ex = await getPool().query(
+            `SELECT * FROM saved_items WHERE user_id = $1 AND content_hash = $2 LIMIT 1`,
+            [googleId, contentHash]
+          );
+          if (ex.rowCount && ex.rowCount > 0) {
+            return res.status(200).json(rowToLibraryItem(ex.rows[0]));
+          }
+        } catch {
+          /* fall through to 500 */
+        }
+      }
+      console.error("[library] insert failed:", e?.message ?? e);
+      return res.status(500).json({ error: "Could not save to your library." });
+    }
+  });
+
+  // GET /api/user/library?tool=&q= — the user's saved items, newest first.
+  app.get("/api/user/library", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    const tool = typeof req.query.tool === "string" ? req.query.tool : null;
+    const q =
+      typeof req.query.q === "string" ? req.query.q.trim().toLowerCase() : null;
+    try {
+      const params: any[] = [googleId];
+      let where = "user_id = $1";
+      if (tool && tool !== "all" && LIBRARY_TOOLS.includes(tool)) {
+        params.push(tool);
+        where += ` AND tool = $${params.length}`;
+      }
+      if (q) {
+        params.push(`%${q}%`);
+        where += ` AND lower(title) LIKE $${params.length}`;
+      }
+      const r = await getPool().query(
+        `SELECT * FROM saved_items WHERE ${where} ORDER BY created_at DESC LIMIT 200`,
+        params
+      );
+      return res.json({
+        items: r.rows.map(rowToLibraryItem),
+        total: r.rowCount,
+        page: 1,
+      });
+    } catch (e: any) {
+      console.error("[library] list failed:", e?.message ?? e);
+      return res.status(500).json({ error: "Could not load your library." });
+    }
+  });
+
+  // GET /api/user/library/:id — one saved item (for open / re-download).
+  app.get("/api/user/library/:id", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    try {
+      const r = await getPool().query(
+        `SELECT * FROM saved_items WHERE id = $1 AND user_id = $2`,
+        [req.params.id, googleId]
+      );
+      if (r.rowCount === 0) return res.status(404).json({ error: "Not found." });
+      return res.json(rowToLibraryItem(r.rows[0]));
+    } catch (e: any) {
+      console.error("[library] get-one failed:", e?.message ?? e);
+      return res.status(500).json({ error: "Could not load that item." });
+    }
+  });
+
+  // DELETE /api/user/library/:id — remove one of the user's saved items.
+  app.delete("/api/user/library/:id", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    try {
+      const r = await getPool().query(
+        `DELETE FROM saved_items WHERE id = $1 AND user_id = $2`,
+        [req.params.id, googleId]
+      );
+      if (r.rowCount === 0) return res.status(404).json({ error: "Not found." });
+      return res.status(204).end();
+    } catch (e: any) {
+      console.error("[library] delete failed:", e?.message ?? e);
+      return res.status(500).json({ error: "Could not delete that item." });
+    }
+  });
+
+  // POST /api/user/library/bulk-delete — remove several of the user's items at once.
+  app.post("/api/user/library/bulk-delete", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    const ids: string[] = Array.isArray(req.body?.ids)
+      ? req.body.ids.filter(
+          (x: any) => typeof x === "string" && /^[0-9a-f-]{36}$/i.test(x)
+        )
+      : [];
+    if (ids.length === 0) return res.status(400).json({ error: "No valid ids provided." });
+    try {
+      const r = await getPool().query(
+        `DELETE FROM saved_items WHERE user_id = $1 AND id = ANY($2::uuid[])`,
+        [googleId, ids]
+      );
+      return res.json({ deleted: r.rowCount ?? 0 });
+    } catch (e: any) {
+      console.error("[library] bulk-delete failed:", e?.message ?? e);
+      return res.status(500).json({ error: "Could not delete those items." });
+    }
+  });
+
+  // GET /api/user/dashboard — Overview + rail summary in one call. Plan/quota
+  // reflect the real account (free for everyone; unlimited "studio" for the
+  // owner/demo accounts — no paid tier rail exists yet). Recent activity + the
+  // library count come from saved_items.
+  app.get("/api/user/dashboard", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    const db = readDB();
+    const user = db.users[googleId];
+    if (!user) return res.status(404).json({ error: "User not found." });
+
+    const unlimited = isConceptTestAccountEmail(user.email);
+    const tier: "free" | "studio" = unlimited ? "studio" : "free";
+    const cap = (c: number) => (unlimited ? null : c);
+
+    // Actual usage THIS CYCLE (calendar month) from the activity log — so even
+    // Unlimited plans show what's been spent per tool. Capped tiers keep their
+    // remaining-based count (cap − left) which matches the "N / cap" they see.
+    const now = new Date();
+    const monthStartIso = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const log: any[] = Array.isArray(db.activityLog) ? db.activityLog : [];
+    const countAction = (action: string) =>
+      log.filter(
+        (e) => e?.userEmail === user.email && e?.action === action && e?.ts >= monthStartIso
+      ).length;
+    const usageCount = {
+      aiVision: countAction("generate_vision"),
+      shopping: countAction("shopping_search"),
+      roomAudit: countAction("generate_audit"),
+      styleQuiz: countAction("quiz_complete"),
+    };
+    const capUsed = (c: number, left: number) => Math.max(0, c - (left ?? 0));
+
+    let recentActivity: any[] = [];
+    let libraryTotal = 0;
+    try {
+      // One round-trip: recent 5 + total (COUNT(*) OVER() = full match count pre-LIMIT).
+      const rr = await getPool().query(
+        `SELECT id, tool, title, thumbnail_url, created_at, COUNT(*) OVER()::int AS total
+           FROM saved_items WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5`,
+        [googleId]
+      );
+      recentActivity = rr.rows.map((r: any) => ({
+        id: r.id,
+        tool: r.tool,
+        title: r.title,
+        createdAt:
+          r.created_at instanceof Date ? r.created_at.toISOString() : r.created_at,
+        thumbnailUrl: r.thumbnail_url ?? null,
+      }));
+      libraryTotal = rr.rows[0]?.total ?? 0;
+    } catch (e: any) {
+      console.error("[dashboard] saved_items read failed:", e?.message ?? e);
+      // degrade gracefully — an empty library is better than a 500 here
+    }
+
+    return res.json({
+      user: {
+        id: googleId,
+        email: user.email,
+        name: user.name,
+        picture: user.picture || null,
+      },
+      plan: {
+        tier,
+        status: "active",
+        renewsAt: null,
+        periodEndAt: null,
+        latestChargeStatus: null,
+      },
+      quota: {
+        aiVision: {
+          used: unlimited ? usageCount.aiVision : capUsed(FREE_TIER_MAX_CONCEPTS, user.generationsLeft),
+          cap: cap(FREE_TIER_MAX_CONCEPTS),
+          resetsAt: null,
+        },
+        shopping: {
+          used: unlimited ? usageCount.shopping : capUsed(FREE_TIER_MAX_SHOPPING_LISTS, user.shoppingListsLeft ?? 0),
+          cap: cap(FREE_TIER_MAX_SHOPPING_LISTS),
+          resetsAt: null,
+        },
+        roomAudit: { used: unlimited ? usageCount.roomAudit : 0, cap: unlimited ? null : 1, resetsAt: null },
+        styleQuiz: { used: unlimited ? usageCount.styleQuiz : 0, cap: unlimited ? null : 5, resetsAt: null },
+        designBrief: { used: 0, cap: unlimited ? null : 1, resetsAt: null },
+        cultural: { used: 0, cap: unlimited ? null : 1, resetsAt: null },
+      },
+      recentActivity,
+      nextBooking: null,
+      counts: { libraryTotal, upcomingBookings: 0 },
+    });
+  });
+
+  // POST /api/user/library/:id/share — mint (or reuse) an expiring share token for
+  // one of the user's items. Reuses an existing, non-expired token so a link the
+  // user already shared stays valid; otherwise creates a fresh 30-day token.
+  app.post("/api/user/library/:id/share", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    const db = readDB();
+    const user = db.users[googleId];
+    if (!user) return res.status(404).json({ error: "User not found." });
+    const isPaidUser = isConceptTestAccountEmail(user.email) || user.isPaid === true;
+    if (!isPaidUser) {
+      return res.status(403).json({ error: "Sharing is a paid feature.", code: "paid_required" });
+    }
+    try {
+      const r = await getPool().query(
+        `UPDATE saved_items
+            SET share_token = CASE
+                  WHEN share_token IS NOT NULL AND share_expires_at > now() THEN share_token
+                  ELSE gen_random_uuid()::text END,
+                share_expires_at = CASE
+                  WHEN share_token IS NOT NULL AND share_expires_at > now() THEN share_expires_at
+                  ELSE now() + interval '30 days' END
+          WHERE id = $1 AND user_id = $2
+          RETURNING share_token, share_expires_at`,
+        [req.params.id, googleId]
+      );
+      if (r.rowCount === 0) return res.status(404).json({ error: "Not found." });
+      const row = r.rows[0];
+      return res.json({
+        token: row.share_token,
+        expiresAt:
+          row.share_expires_at instanceof Date
+            ? row.share_expires_at.toISOString()
+            : row.share_expires_at,
+      });
+    } catch (e: any) {
+      console.error("[share] mint failed:", e?.message ?? e);
+      return res.status(500).json({ error: "Could not create a share link." });
+    }
+  });
+
+  // GET /api/share/:token — PUBLIC (no auth) read of one saved item by its expiring
+  // share token. Returns only presentational fields — never the owner's identity.
+  app.get("/api/share/:token", async (req, res) => {
+    try {
+      const r = await getPool().query(
+        `SELECT id, tool, title, thumbnail_url, full_url, metadata, created_at, share_expires_at
+           FROM saved_items WHERE share_token = $1`,
+        [req.params.token]
+      );
+      if (r.rowCount === 0) return res.status(404).json({ error: "Not found." });
+      const row = r.rows[0];
+      const exp = row.share_expires_at ? new Date(row.share_expires_at).getTime() : 0;
+      if (!exp || exp <= Date.now()) {
+        return res.status(410).json({ error: "This link has expired.", code: "expired" });
+      }
+      return res.json({
+        id: row.id,
+        tool: row.tool,
+        title: row.title,
+        thumbnailUrl: row.thumbnail_url ?? null,
+        fullPreviewUrl: row.full_url ?? null,
+        metadata: row.metadata ?? {},
+        createdAt:
+          row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
+      });
+    } catch (e: any) {
+      console.error("[share] get failed:", e?.message ?? e);
+      return res.status(500).json({ error: "Could not load that item." });
+    }
+  });
+
   // ── POST /api/room-audit/analyze — run Gemini room audit server-side ──
   app.post("/api/room-audit/analyze", async (req, res) => {
     const googleId = requireAuth(req, res);
@@ -2893,6 +3547,30 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     }
     const matches = imageDataUrl.match(/^data:(image\/[\w+]+);base64,(.+)$/);
     if (!matches) return res.status(400).json({ error: "Invalid image format." });
+
+    // ── Quota check + decrement (server-authoritative) ─────────────────────────
+    // Free-tier room audits draw from the SAME generationsLeft pool as concepts.
+    // Decrement is owned here (not by any client-callable endpoint): we take the
+    // credit BEFORE the Gemini call and refund it in the catch below if Gemini
+    // fails or returns an unusable result — bounded so a failure can only ever
+    // undo this request's decrement. Paid/owner accounts are never metered.
+    const db = readDB();
+    const user = db.users[googleId];
+    if (!user) return res.status(404).json({ error: "User not found." });
+
+    const isMeteredAudit = !user.isPaid && !isConceptTestAccountEmail(user.email);
+    const auditBeforeDecrement = user.generationsLeft;
+    let auditQuotaDecremented = false;
+    if (isMeteredAudit) {
+      if (user.generationsLeft <= 0) {
+        return res.status(403).json({ error: "No generations left.", generationsLeft: 0 });
+      }
+      user.generationsLeft -= 1;
+      user.lastUsed = new Date().toISOString();
+      db.users[googleId] = user;
+      writeDB(db);
+      auditQuotaDecremented = true;
+    }
 
     try {
       const apiKey = process.env.GEMINI_API_KEY ?? "";
@@ -2939,20 +3617,46 @@ Output ONLY valid JSON with no markdown fences, no explanation:
           .join("") ?? "";
       const cleaned = rawText.replace(/```json|```/g, "").trim();
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        return res.status(422).json({ error: "Could not parse audit results." });
-      }
+      // Throw (don't early-return) on any unusable result so the catch below
+      // refunds the quota this request took — a failed audit must not burn credit.
+      if (!jsonMatch) throw new Error("Could not parse audit results.");
       const parsed = JSON.parse(jsonMatch[0]);
+      if (
+        typeof parsed?.overallScore !== "number" ||
+        !Array.isArray(parsed?.dimensions) ||
+        parsed.dimensions.length < 6 ||
+        !Array.isArray(parsed?.fixNow)
+      ) {
+        throw new Error("Incomplete audit response");
+      }
       // I-016 — log generate_audit with the user's email
       try {
         const auditDb = readDB();
         const auditUser = auditDb.users[googleId];
         if (auditUser) recordActivity(auditUser.email, "generate_audit");
       } catch { /* non-fatal */ }
-      return res.json({ result: parsed });
+      return res.json({ result: parsed, generationsLeft: user.generationsLeft });
 
     } catch (err: any) {
       console.error("[Room Audit] analyze error:", err?.message ?? err);
+
+      // Server-authoritative refund: only if THIS request decremented, credit back
+      // exactly the 1 it took — never above the pre-decrement balance.
+      if (auditQuotaDecremented) {
+        try {
+          const dbRetry = readDB();
+          const u = dbRetry.users[googleId];
+          if (u && u.generationsLeft < UNLIMITED_QUOTA) {
+            const cap = isConceptTestAccountEmail(u.email) ? UNLIMITED_QUOTA : FREE_TIER_MAX_CONCEPTS;
+            u.generationsLeft = refundGenerations(u.generationsLeft, 1, auditBeforeDecrement, cap);
+            dbRetry.users[googleId] = u;
+            writeDB(dbRetry);
+            console.log(`[Room Audit] Refunded 1 generation to ${u.email} after failure (now ${u.generationsLeft})`);
+          }
+        } catch (restoreErr) {
+          console.error("[Room Audit] Failed to restore quota after error:", restoreErr);
+        }
+      }
       return res.status(500).json({ error: "Audit failed. Please try again." });
     }
   });
@@ -3113,6 +3817,66 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     }
   });
 
+  // ── Insights tab: traffic pulse + blog readership + search/GEO ─────────────
+  //   GET /api/admin/insights       → aggregated GA4 + GSC + watchlist (6h cache)
+  //   GET /api/admin/geo-phrases    → { phrases }  (editable watchlist)
+  //   PUT /api/admin/geo-phrases    → replace the phrase list { phrases: string[] }
+  app.get("/api/admin/insights", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const db = readDB();
+    const phrases = Array.isArray(db.geoPhrases) ? db.geoPhrases : [];
+    try {
+      const data = await getInsights(phrases);
+      const snaps = Array.isArray(db.geoSnapshots) ? db.geoSnapshots : [];
+      // Enrich each watched phrase with its rank + position history (for the trend).
+      const watchlist = phrases.map((p) => {
+        const key = p.trim().toLowerCase();
+        const rank = data.watchlist.find((w) => w.phrase === key)
+          || { phrase: key, found: false, clicks: 0, impressions: 0, ctrPct: 0, position: null };
+        const history = snaps
+          .filter((s) => s.phrase === key)
+          .sort((a, b) => a.date.localeCompare(b.date))
+          .map((s) => ({ date: s.date, position: s.position }));
+        const volume = data.volumes?.[key] ?? { google: null, bing: null };
+        return { ...rank, display: p, history, volume };
+      });
+      res.json({ ...data, watchlist });
+    } catch (err) {
+      console.error("[insights] fetch failed:", err instanceof Error ? err.message : err);
+      res.status(500).json({ error: "insights unavailable" });
+    }
+  });
+
+  app.get("/api/admin/geo-phrases", (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    res.json({ phrases: Array.isArray(dbCache?.geoPhrases) ? dbCache!.geoPhrases : [] });
+  });
+
+  app.put("/api/admin/geo-phrases", (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const raw = Array.isArray(req.body?.phrases) ? req.body.phrases : null;
+    if (!raw) {
+      res.status(400).json({ error: "expected { phrases: string[] }" });
+      return;
+    }
+    const seen = new Set<string>();
+    const clean: string[] = [];
+    for (const p of raw) {
+      const s = String(p ?? "").trim();
+      if (!s) continue;
+      const k = s.toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      clean.push(s);
+      if (clean.length >= 25) break;
+    }
+    const db = readDB();
+    db.geoPhrases = clean;
+    writeDB(db);
+    clearInsightsCache(); // list changed → next /insights rebuilds
+    res.json({ ok: true, phrases: clean });
+  });
+
   // ── GET /api/admin/feedback — durable feedback inbox (newest first) ────────
   app.get("/api/admin/feedback", (req, res) => {
     if (!requireAdmin(req, res)) return;
@@ -3212,7 +3976,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       disabled: SHOPPING_DISABLED,
     };
 
-    res.json({ items: getPlatforms(), usage });
+    res.json({ items: getPlatformsWithDerived(), usage });
   });
 
   app.put("/api/admin/platforms", (req, res) => {
@@ -3235,6 +3999,101 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     db.platforms = clean;
     writeDB(db);
     res.json({ ok: true, items: clean });
+  });
+
+  // ── Calendly booking webhook (public, signature-verified) ─────────────────
+  // Calendly POSTs invitee.created / invitee.canceled here. On a fresh, valid
+  // signature we normalise the booking, upsert the contact into HubSpot (tagging
+  // free vs paid via booking_type), and persist it to the durable store so the
+  // admin Consultations tab shows it. Always 200s quickly on a valid signature so
+  // Calendly doesn't retry; auth failures get 401 (and are NOT recorded).
+  app.post("/api/calendly/webhook", async (req, res) => {
+    const signingKey = (process.env.CALENDLY_WEBHOOK_SIGNING_KEY || "").trim();
+    if (!signingKey) {
+      console.error("[calendly-webhook] CALENDLY_WEBHOOK_SIGNING_KEY not set — rejecting");
+      return res.status(503).json({ error: "webhook not configured" });
+    }
+    const raw = (req as any).rawBody as Buffer | undefined;
+    const ok = verifyCalendlySignature(raw ?? JSON.stringify(req.body ?? {}), req.header("Calendly-Webhook-Signature"), signingKey);
+    if (!ok) {
+      console.error("[calendly-webhook] signature verification failed");
+      return res.status(401).json({ error: "invalid signature" });
+    }
+
+    const parsed = parseWebhookPayload(req.body);
+    if (!parsed) return res.status(200).json({ ok: true, ignored: "unparseable" });
+    // We only act on invitee lifecycle events.
+    if (parsed.event !== "invitee.created" && parsed.event !== "invitee.canceled") {
+      return res.status(200).json({ ok: true, ignored: parsed.event });
+    }
+
+    const cfg = getBookingsConfig();
+    const booking = normalizeBooking(parsed.scheduledEvent, parsed.invitee, cfg, "webhook");
+    if (!booking) return res.status(200).json({ ok: true, ignored: "no invitee email" });
+
+    // On cancel, just flip status. On create, sync to HubSpot (best-effort).
+    let hubspot: StoredBooking["hubspot"];
+    if (parsed.event === "invitee.created") {
+      const r = await upsertContactBooking({ email: booking.email, name: booking.name, kind: booking.kind });
+      hubspot = r.configured
+        ? { synced: r.ok, at: new Date().toISOString(), error: r.ok ? undefined : r.error }
+        : undefined;
+      if (r.configured && !r.ok) console.error("[calendly-webhook] HubSpot sync failed:", r.error);
+    } else {
+      booking.status = "canceled";
+    }
+
+    const db = readDB();
+    upsertBookingRecord(db, { ...booking, ...(hubspot ? { hubspot } : {}) });
+    logActivity(db, booking.email, `calendly_${booking.kind}_${parsed.event === "invitee.created" ? "booked" : "canceled"}`);
+    writeDB(db);
+    return res.status(200).json({ ok: true });
+  });
+
+  // ── GET /api/admin/consultations — booking tracker for the admin tab ──────
+  // Live-reads recent bookings from BOTH Calendly accounts (whichever tokens are
+  // set), merges each row's stored HubSpot-sync status, folds in webhook rows,
+  // and reports per-account connection state. Falls back to the durable store
+  // alone when no token is set.
+  app.get("/api/admin/consultations", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const db = readDB();
+    const stored: StoredBooking[] = Array.isArray(db.calendlyBookings) ? db.calendlyBookings : [];
+    const merged = new Map<string, StoredBooking>(stored.map((b) => [b.inviteeUri, b]));
+
+    let paidConnected = false;
+    let freeConnected = false;
+    let paidError: string | null = null;
+    let freeError: string | null = null;
+
+    if (isBookingsConfigured()) {
+      const live = await fetchBookings();
+      paidConnected = live.paidConfigured && !live.paidError;
+      freeConnected = live.freeConfigured && !live.freeError;
+      paidError = live.paidError;
+      freeError = live.freeError;
+      for (const b of live.bookings) {
+        const prev = merged.get(b.inviteeUri);
+        merged.set(b.inviteeUri, { ...b, hubspot: prev?.hubspot });
+      }
+      // Persist merged live rows so hubspot status + webhook rows stay coherent.
+      for (const b of merged.values()) upsertBookingRecord(db, b);
+      writeDB(db);
+    }
+
+    const all = Array.from(merged.values()).sort(
+      (a, b) => Date.parse(b.createdAt || b.startTime || "") - Date.parse(a.createdAt || a.startTime || ""),
+    );
+    res.json({
+      configured: isBookingsConfigured(),
+      paidConnected,
+      freeConnected,
+      paidError,
+      freeError,
+      hubspotConfigured: isHubspotConfigured(),
+      free: all.filter((b) => b.kind === "free"),
+      paid: all.filter((b) => b.kind === "paid"),
+    });
   });
 
   // ── GET /api/admin/usage — observability aggregator (I-011 · I-021b) ──
@@ -3289,6 +4148,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       : budgetExceeded
         ? { disabled: true, code: "daily_budget_exceeded" as const, dailyBudget: SERPER_DAILY_BUDGET, todayCount: usage.count, resetAt: nextUtcMidnightIso() }
         : { disabled: false, dailyBudget: SERPER_DAILY_BUDGET, todayCount: usage.count };
+    const serperBalance = await fetchSerperBalance(); // prepaid credits remaining (cached 5m)
 
     // ── Funnels (last 7d) ────────────────────────────────────────────────
     // Quiz also accepts the older `quiz_start` action name for back-compat.
@@ -3454,7 +4314,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     res.json({
       counters,
       activity: allActivityRaw.slice(-50).reverse(), // forensic feed — unfiltered (newest first)
-      platforms: getPlatforms(),
+      platforms: getPlatformsWithDerived(),
       serperLog: (db.serperLog || []).slice(-100).reverse(), // newest first
       users: {
         total: userList.length,
@@ -3464,6 +4324,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         free: userList.filter((u) => !isPaidUser(u)).length,
       },
       shoppingStatus,
+      serperBalance,
       funnels,
       activation,
       newsletter,

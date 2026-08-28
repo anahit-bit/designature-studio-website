@@ -10,7 +10,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { adminLogout } from '../../lib/adminAuth';
 
-export type AdminNavKey = 'overview' | 'users' | 'comments' | 'feedback' | 'waitlist' | 'orders' | 'platforms';
+export type AdminNavKey = 'overview' | 'insights' | 'users' | 'comments' | 'feedback' | 'waitlist' | 'orders' | 'consultations' | 'platforms';
 
 interface Counts {
   users: number;
@@ -31,11 +31,13 @@ interface NavDef {
 
 const NAV: NavDef[] = [
   { key: 'overview', label: 'Overview', to: '/admin', icon: '▤' },
+  { key: 'insights', label: 'Insights', to: '/admin/insights', icon: '◔' },
   { key: 'users', label: 'Users', to: '/admin/users', icon: '◍' },
   { key: 'comments', label: 'Comments', to: '/admin/comments', icon: '❝', alerts: true },
   { key: 'feedback', label: 'Feedback', to: '/admin/feedback', icon: '✎', alerts: true },
   { key: 'waitlist', label: 'Waitlist', to: '/admin/waitlist', icon: '✦' },
   { key: 'orders', label: 'Orders', to: '/admin/orders', icon: '▣' },
+  { key: 'consultations', label: 'Consultations', to: '/admin/consultations', icon: '☎' },
   { key: 'platforms', label: 'Platforms', to: '/admin/platforms', icon: '⬡' },
 ];
 

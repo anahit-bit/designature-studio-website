@@ -77,3 +77,134 @@ export async function fetchSearchConsole(rangeDays = 28): Promise<GscResult> {
     return { ok: false, error: err instanceof Error ? err.message.split("\n")[0].slice(0, 200) : "GSC query failed", ...EMPTY };
   }
 }
+
+// ─── Insights: expanded query/page tables + exact-phrase rank lookup ──────────
+
+export interface GscQueryRow { query: string; page: string; clicks: number; impressions: number; ctrPct: number; position: number; }
+export interface GscPageRow { page: string; clicks: number; impressions: number; position: number; }
+
+export interface GscInsightsResult {
+  ok: boolean;
+  error?: string;
+  queries: GscQueryRow[];
+  /** How many brand queries were filtered out of `queries` (shown as a note). */
+  brandHidden: number;
+  /** Top /journal pages by impressions — per-post search visibility (GEO working). */
+  journalPages: GscPageRow[];
+}
+
+/**
+ * Brand-query detector. Brand searches (designature + its many typos: designature,
+ * designatire, designatude, designurne, plus studioture, "stature design") are people
+ * who already know the studio — no discovery insight — so we hide them.
+ *
+ * `\bdesign[au]` catches "designa…" and "designu…" (all the observed typos) WITHOUT
+ * catching the legitimate discovery words design / designer / designers / designs
+ * (those are design+space / design+e / design+s). Add new typo stems if they appear.
+ */
+const BRAND_QUERY_RE = /\bdesign[au]|studioture|stature\s*design/i;
+export function isBrandQuery(q: string | undefined): boolean {
+  return BRAND_QUERY_RE.test((q || "").trim());
+}
+
+/** Expanded query table (with position, brand queries hidden) + per-Journal-page perf. Never throws. */
+export async function fetchGscInsights(rangeDays = 28): Promise<GscInsightsResult> {
+  const sc = getSearchConsoleClient();
+  if (!sc) return { ok: false, error: "Service account not configured", queries: [], brandHidden: 0, journalPages: [] };
+  const siteUrl = gscSiteUrl();
+  const base = { startDate: isoDaysAgo(rangeDays), endDate: isoDaysAgo(0) };
+
+  try {
+    const [queries, pages] = await Promise.all([
+      // query + page dimensions → each row is "for search X, YOUR page Y ranked at
+      // position Z with N impressions / C clicks" — the tangible query→page mapping.
+      // Fetch extra rows so brand-filtering still leaves a full discovery table.
+      sc.searchanalytics.query({ siteUrl, requestBody: { ...base, dimensions: ["query", "page"], rowLimit: 100 } }),
+      sc.searchanalytics.query({
+        siteUrl,
+        requestBody: {
+          ...base,
+          dimensions: ["page"],
+          rowLimit: 15,
+          dimensionFilterGroups: [{ filters: [{ dimension: "page", operator: "contains", expression: "/journal" }] }],
+        },
+      }),
+    ]);
+
+    const allQueries = (queries.data.rows || []).map((r) => ({
+      query: r.keys?.[0] || "",
+      page: r.keys?.[1] || "",
+      clicks: Math.round(r.clicks ?? 0),
+      impressions: Math.round(r.impressions ?? 0),
+      ctrPct: Number(((r.ctr ?? 0) * 100).toFixed(1)),
+      position: Number((r.position ?? 0).toFixed(1)),
+    }));
+    const discovery = allQueries
+      .filter((q) => !isBrandQuery(q.query))
+      .sort((a, b) => b.impressions - a.impressions || a.position - b.position);
+    // Count DISTINCT brand queries hidden (not query+page rows) for an honest note.
+    const brandHidden = new Set(allQueries.filter((q) => isBrandQuery(q.query)).map((q) => q.query)).size;
+
+    return {
+      ok: true,
+      brandHidden,
+      queries: discovery.slice(0, 25),
+      journalPages: (pages.data.rows || []).map((r) => ({
+        page: r.keys?.[0] || "",
+        clicks: Math.round(r.clicks ?? 0),
+        impressions: Math.round(r.impressions ?? 0),
+        position: Number((r.position ?? 0).toFixed(1)),
+      })),
+    };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message.split("\n")[0].slice(0, 200) : "GSC insights failed", queries: [], brandHidden: 0, journalPages: [] };
+  }
+}
+
+export interface PhraseRank {
+  phrase: string;
+  found: boolean;
+  clicks: number;
+  impressions: number;
+  ctrPct: number;
+  /** Google average position; null when the phrase has no impressions in range. */
+  position: number | null;
+}
+
+/**
+ * Exact-phrase rank lookup for the GEO watchlist. GSC query strings are
+ * lowercased, so we match on the lowercased phrase. `found:false` means the site
+ * had zero impressions for that exact query in range (not ranking yet).
+ */
+export async function lookupPhrase(phrase: string, rangeDays = 28): Promise<PhraseRank> {
+  const clean = phrase.trim().toLowerCase();
+  const empty: PhraseRank = { phrase: clean, found: false, clicks: 0, impressions: 0, ctrPct: 0, position: null };
+  const sc = getSearchConsoleClient();
+  if (!sc || !clean) return empty;
+  const siteUrl = gscSiteUrl();
+  const base = { startDate: isoDaysAgo(rangeDays), endDate: isoDaysAgo(0) };
+
+  try {
+    const res = await sc.searchanalytics.query({
+      siteUrl,
+      requestBody: {
+        ...base,
+        dimensions: ["query"],
+        rowLimit: 1,
+        dimensionFilterGroups: [{ filters: [{ dimension: "query", operator: "equals", expression: clean }] }],
+      },
+    });
+    const row = res.data.rows?.[0];
+    if (!row) return empty;
+    return {
+      phrase: clean,
+      found: true,
+      clicks: Math.round(row.clicks ?? 0),
+      impressions: Math.round(row.impressions ?? 0),
+      ctrPct: Number(((row.ctr ?? 0) * 100).toFixed(1)),
+      position: Number((row.position ?? 0).toFixed(1)),
+    };
+  } catch {
+    return empty;
+  }
+}

@@ -10,12 +10,17 @@ import RoomAuditExperience from './RoomAuditExperience';
 import FeedbackModal from './FeedbackModal';
 import AIVisionShowcase from './AIVisionShowcase';
 import VisionExperience from './VisionExperience';
+import { buildShoppingListPdf } from '../lib/shoppingPdf';
 import FeedbackBand from './FeedbackBand';
 import ShoppingListShowcase from './ShoppingListShowcase';
 import ShoppingExperience from './ShoppingExperience';
 import StyleQuizScreen from './StyleQuizScreen';
 import ShoppingOfflineCard from './ShoppingOfflineCard';
 import RetailerLogoStrip from './RetailerLogoStrip';
+import ExplorerRail from './studio/ExplorerRail';
+import { ExplorerPanelHeader, ComingSoonPanel } from './studio/ExplorerPanel';
+import { EXPLORER_TOOLS, toolById, DEFAULT_TOOL_ID, LIVE_HASH_TO_ID } from './studio/explorerRoster';
+import type { StudioTool } from './studio/StudioTabs';
 import { cld, cldSrcSet } from '../lib/cld';
 import { useShoppingStatus } from '../lib/shoppingStatus';
 import { trackCalendly, trackVisionStart, trackShoppingStart } from '../lib/track';
@@ -29,8 +34,8 @@ const FREE_TIER_MAX_CONCEPT_SLOTS = 3;
 
 // All styles available in AI Vision chip selector (superset of quiz styles)
 const VISION_STYLES = [
-  'Japandi', 'Modern', 'Mid-Century', 'Bohemian', 'Rustic', 'Art Deco',
-  'Industrial', 'Coastal', 'Minimalist', 'Maximalist', 'Biophilic'
+  'Warm Contemporary', 'Japandi', 'Modern', 'Mid-Century', 'Bohemian', 'Rustic', 'Art Deco',
+  'Industrial', 'Coastal', 'Minimalist', 'Maximalist', 'Dopamine', 'Biophilic'
 ];
 
 // ── Sample room + inspiration gallery shown in the empty state ─────────────
@@ -66,7 +71,7 @@ declare global {
 
 // ─── Main Component ────────────────────────────────────────────────────────
 const AIConceptsPage: React.FC = () => {
-  const { language, t, navigateTo } = useLanguage();
+  const { language, t, navigateTo, setNavGuard } = useLanguage();
 
   // Go to /pricing and land on the plan cards (not the hero). PricingPage reads this flag
   // once on mount (see PRICING_SCROLL_KEY there) and scrolls to #pricing-plans.
@@ -254,15 +259,22 @@ const AIConceptsPage: React.FC = () => {
   }, []);
   const [quizResultForVision, setQuizResultForVision] = useState<{ style: string; pct: number }[]>(() => readPersistedQuizResult());
 
-  // Initial tool can be deep-linked from the home AI section via URL hash
-  // (e.g. /ai-concepts#vision). Falls back to the default 'quiz' otherwise.
-  const [activeTool, setActiveTool] = useState<'quiz' | 'vision' | 'shopping' | 'audit'>(() => {
-    if (typeof window === 'undefined') return 'quiz';
-    // Shared-link arrivals always land on Quiz (regardless of hash).
+  // AI-021 EXPLORER — `selectedId` (a roster slug) is the source of truth for which
+  // rail card is open. `activeTool` (one of the 4 live tools) is DERIVED from it and
+  // still drives every live tool-content block below. A non-live selection keeps
+  // activeTool at its last live value while the Coming-Soon panel renders instead.
+  const [selectedId, setSelectedId] = useState<string>(() => {
+    if (typeof window === 'undefined') return DEFAULT_TOOL_ID;
+    // Shared-link arrivals (quiz result) always land on Find My Style.
     const params = new URLSearchParams(window.location.search);
-    if (params.get('dna') && params.get('pcts')) return 'quiz';
+    if (params.get('dna') && params.get('pcts')) return 'find-style';
     const h = window.location.hash.replace(/^#/, '');
-    return h === 'vision' || h === 'shopping' || h === 'audit' || h === 'quiz' ? h : 'quiz';
+    if (toolById(h)) return h;                              // new explorer slug
+    if (h in LIVE_HASH_TO_ID) return LIVE_HASH_TO_ID[h as StudioTool]; // legacy #quiz/#vision/#shopping/#audit
+    return DEFAULT_TOOL_ID;
+  });
+  const [activeTool, setActiveTool] = useState<StudioTool>(() => {
+    return toolById(selectedId)?.liveTool ?? 'vision';
   });
   // Refresh the Quiz→Vision DNA snapshot whenever the user lands on AI Vision.
   useEffect(() => {
@@ -437,17 +449,29 @@ const AIConceptsPage: React.FC = () => {
     } catch { /* ignore corrupt snapshot */ }
   }, [user]);
 
-  // ── Warn before leaving if unsaved concepts ──
+  // ── Warn before leaving if a generation is running or there are unsaved concepts ──
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (results.length > 0 || sessionConceptArchive.length > 0) {
+      if (isProcessing || results.length > 0 || sessionConceptArchive.length > 0) {
         e.preventDefault();
         e.returnValue = '';
       }
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [results, sessionConceptArchive]);
+  }, [isProcessing, results, sessionConceptArchive]);
+
+  // ── Guard in-app navigation while an AI Vision generation is running, so leaving
+  //    the page (header nav, logo, "My account") doesn't silently discard it. The
+  //    rail already blocks tool-switching mid-generation; this covers leaving entirely.
+  useEffect(() => {
+    setNavGuard(
+      isProcessing
+        ? 'A design is still generating — if you leave now you’ll lose it. Leave anyway?'
+        : null,
+    );
+    return () => setNavGuard(null);
+  }, [isProcessing, setNavGuard]);
 
   // ── Hide visible Google button when logged in ──
   useEffect(() => {
@@ -519,6 +543,24 @@ const AIConceptsPage: React.FC = () => {
     // The identity-change effect also clears state, but reset here for immediacy.
     resetEphemeralState();
   }, [signOut, resetEphemeralState]);
+
+  // ── AI-021 EXPLORER selection ──────────────────────────────────────────
+  /** Switch to a LIVE tool from inside the page (e.g. quiz→vision handoff,
+   *  "Shop this room"). Keeps the rail selection in sync with activeTool. */
+  const goToLiveTool = useCallback((lt: StudioTool) => {
+    setActiveTool(lt);
+    setSelectedId(LIVE_HASH_TO_ID[lt]);
+  }, []);
+
+  /** Rail card click. Live cards drive activeTool; non-live cards just open the
+   *  Coming-Soon panel. Blocked mid-generation so we never drop a running job. */
+  const handleSelectTool = useCallback((id: string) => {
+    const tool = toolById(id);
+    if (!tool || isProcessing) return;
+    setSelectedId(id);
+    if (tool.liveTool) setActiveTool(tool.liveTool);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [isProcessing]);
 
 
   // ── Escape key for lightbox ──
@@ -890,118 +932,11 @@ const AIConceptsPage: React.FC = () => {
   // ── Shopping search ──
   // ── PDF Download ──
   const handleDownloadShoppingPDF = async () => {
-    const { jsPDF } = await import('jspdf');
-    const conceptImage = allSessionConcepts[selectedConceptIndex];
-
-    const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-    const pageW = 210;
-    const margin = 14;
-    const contentW = pageW - margin * 2;
-    let y = margin;
-
-    // ── Header ──
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(18);
-    doc.setTextColor(10, 10, 10);
-    doc.text('DESIGNATURE', margin, y);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(150, 100, 80);
-    doc.text('ONLINE INTERIOR DESIGN STUDIO', margin, y + 5);
-    doc.setTextColor(150, 150, 150);
-    doc.text('designature.studio', pageW - margin, y + 2, { align: 'right' });
-    y += 12;
-
-    // ── Concept image ──
-    if (conceptImage) {
-      try {
-        const imgH = Math.round(contentW * 0.5);
-        doc.addImage(conceptImage, 'JPEG', margin, y, contentW, imgH);
-        y += imgH + 4;
-      } catch (e) { /* skip if image fails */ }
-    }
-
-    // ── Title ──
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(10, 10, 10);
-    doc.text('Shopping List', margin, y);
-    y += 2;
-    doc.setDrawColor(196, 97, 58);
-    doc.setLineWidth(0.5);
-    doc.line(margin, y, margin + contentW, y);
-    y += 6;
-
-    // ── Products ──
-    for (const group of shoppingResults) {
-      // Normalise: paid uses byRetailer, free uses products
-      const products = group.products && group.products.length > 0
-        ? group.products
-        : group.byRetailer
-          ? group.byRetailer.filter((e: any) => e.product).map((e: any) => ({ ...e.product, source: e.retailer }))
-          : [];
-      if (products.length === 0) continue;
-
-      // Category header
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.setTextColor(10, 10, 10);
-      doc.text(group.item.category.toUpperCase(), margin, y);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
-      doc.setTextColor(150, 150, 150);
-      doc.text('— ' + group.item.description, margin + doc.getTextWidth(group.item.category.toUpperCase()) + 3, y);
-      y += 5;
-
-      for (const product of products) {
-        // Check page space
-        if (y > 265) { doc.addPage(); y = margin; }
-
-        // Product row
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8);
-        doc.setTextColor(10, 10, 10);
-        const titleLines = doc.splitTextToSize(product.title, contentW - 50);
-        doc.text(titleLines[0], margin + 3, y);
-
-        // Source + price on right
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7.5);
-        doc.setTextColor(120, 120, 120);
-        doc.text(product.source || '', pageW - margin - 35, y);
-        if (product.price) {
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(10, 10, 10);
-          doc.text(product.price, pageW - margin, y, { align: 'right' });
-        }
-        y += 4;
-
-        // Link — clean clickable label (no raw URL), cobalt like the web UI.
-        if (product.link && product.link !== '#') {
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(7);
-          doc.setTextColor(0, 71, 171);
-          const label = `View at ${product.source || 'retailer'} →`;
-          doc.textWithLink(label, margin + 3, y, { url: product.link });
-          y += 5;
-        }
-
-        // Divider
-        doc.setDrawColor(220, 220, 220);
-        doc.setLineWidth(0.2);
-        doc.line(margin, y, margin + contentW, y);
-        y += 3;
-      }
-      y += 3;
-    }
-
-    // ── Footer ──
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(180, 180, 180);
-    doc.text('Generated by Designature Studio AI · designature.studio · Prices and availability may vary.', pageW / 2, 290, { align: 'center' });
-
-    doc.save('Designature_Shopping_List.pdf');
+    // Shared builder (lib/shoppingPdf) — same document for fresh + saved lists,
+    // with the brand logo + aspect-correct hero.
+    await buildShoppingListPdf(shoppingResults, {
+      conceptImage: allSessionConcepts[selectedConceptIndex],
+    });
   };
 
   // ── Apply the quiz's top style to AI Vision (handoff target for StyleQuizScreen) ──
@@ -1009,7 +944,7 @@ const AIConceptsPage: React.FC = () => {
     if (style) setSelectedStyle(style);
     setQuizResultForVision(readPersistedQuizResult());
     if (navigate) {
-      setActiveTool('vision');
+      goToLiveTool('vision');
       setTimeout(() => {
         document.getElementById('ai-concepts-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 50);
@@ -1090,7 +1025,7 @@ const AIConceptsPage: React.FC = () => {
   const focusShoppingTabAndRunSearch = () => {
     setSearchSourceImage(allSessionConcepts[selectedConceptIndex] || standaloneShoppingImage || null);
     setSearchSourceIsStandalone(false);
-    setActiveTool('shopping');
+    goToLiveTool('shopping');
     setTimeout(() => {
       void handleShoppingSearch();
       const el = document.getElementById('shop-this-look');
@@ -1111,7 +1046,7 @@ const AIConceptsPage: React.FC = () => {
   const focusShoppingTabAndRunStandaloneSearch = () => {
     setSearchSourceImage(standaloneShoppingImage);
     setSearchSourceIsStandalone(true);
-    setActiveTool('shopping');
+    goToLiveTool('shopping');
     setTimeout(() => {
       void handleShoppingSearch(undefined, true);
       const el = document.getElementById('shop-this-look');
@@ -1163,270 +1098,47 @@ const AIConceptsPage: React.FC = () => {
 
 
   // ─────────────────────────────────────────────────────────────────────────
+  // AI-021 — the selected roster tool + whether it's one of the 4 live experiences.
+  const selectedTool = toolById(selectedId) ?? EXPLORER_TOOLS.find((tl) => tl.id === DEFAULT_TOOL_ID)!;
+  const isLiveSelected = !!selectedTool.liveTool;
+
+  // "Used this session" — LIVE tools the user has actually run this run, derived from
+  // existing in-session signals. Drives the rail's "✓ Used" marker. Client-side only,
+  // resets with the session / on identity change. (Per-tool COUNTS + per-project
+  // journey history are the separate journey-diagram feature, logged as a ticket.)
+  const usedTools = useMemo(() => {
+    const s = new Set<string>();
+    if (quizResultForVision.length > 0) s.add('find-style');
+    if (allSessionConcepts.length > 0) s.add('redesign');
+    if (shoppingDone || shoppingResults.length > 0) s.add('shop');
+    if (auditComplete) s.add('score-room');
+    return s;
+  }, [quizResultForVision, allSessionConcepts, shoppingDone, shoppingResults, auditComplete]);
+
   return (
     <div className="min-h-screen bg-white flex flex-col font-body text-black">
       <Header />
 
-      {/* ── PAGE HERO (compact ~248px — interim hub until AI-021 journey) ── */}
-      <div className="pt-24 bg-[#0a0a0a]">
-        <div className="max-w-[1600px] mx-auto px-8 md:px-16 py-7 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/60 mb-3">
-              {t('ai.engine')}
-            </p>
-            <h1 className="font-display text-4xl md:text-[56px] font-bold tracking-tight leading-[0.92] uppercase text-white">
-              AI {t('ai.design')} <span className="italic font-light text-white/50">{t('ai.studio')}</span>
-            </h1>
-            <span aria-hidden className="block w-16 h-[2px] bg-[#9E5E41] mt-4 mb-4" />
-            <p className="text-[11px] text-white/60 uppercase tracking-[0.18em] mb-5">
-              {t('ai.desc')}
-            </p>
-            <button
-              onClick={() => {
-                if (!user) {
-                  triggerGoogleSignIn();
-                } else {
-                  document.getElementById('ai-concepts-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-              }}
-              className="inline-flex items-center gap-3 bg-[#0047AB] text-white text-[10px] font-bold uppercase tracking-[0.25em] px-6 py-3.5 hover:bg-[#003d99] transition-colors"
-            >
-              {t('ai.signInToStart')} →
-            </button>
-          </div>
-          <div className="w-full md:w-[300px] flex-shrink-0">
-            {authLoading ? (
-              <div className="w-full h-[100px]" />
-            ) : (
-              <>
-                {user && (
-                  <div className="flex flex-col gap-3 mb-3">
-                    <div className="flex items-center gap-3 p-3 bg-white/5 border border-white/10">
-                      {user.picture && <img src={user.picture} alt={user.name} className="w-8 h-8 rounded-full" />}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[12px] font-bold text-white truncate">{user.name}</div>
-                        <div className="text-[11px] text-white/65 truncate">{user.email}</div>
-                      </div>
-                      <button type="button" onClick={handleLogout}>
-                        <LogOut className="w-3.5 h-3.5 text-white/65 hover:text-white transition-colors" />
-                      </button>
-                    </div>
-                    <div className="text-[11px] text-white/85 uppercase tracking-[0.15em] text-left font-bold">
-                      {user.generationsLeft >= 999 ? t('ai.unlimited') : `${user.generationsLeft} ${t('ai.remaining')}`}
-                    </div>
-                  </div>
-                )}
-                <div className={user ? 'hidden' : 'block'}>
-                  <p className="text-[11px] text-white/80 uppercase tracking-[0.2em] text-left mb-2.5">
-                    {t('ai.unlockAll')}
-                  </p>
-                  <div id="google-signin-btn" className="w-full min-h-[42px]" />
-                  <p className="text-[10px] text-white/65 uppercase tracking-[0.18em] text-left mt-2.5">
-                    {t('ai.noCard')}
-                  </p>
-                </div>
-              </>
-            )}
-            <div className="flex gap-0 mt-5 pt-4 border-t border-white/10">
-              <div className="flex-1 pr-5 border-r border-white/10">
-                <div className="font-display text-2xl font-medium text-white leading-none">Free</div>
-                <div className="text-[10px] text-white/70 uppercase tracking-[0.18em] mt-1.5">{t('ai.toExplore')}</div>
-              </div>
-              <div className="flex-1 pl-5 text-right">
-                <div className="font-display text-2xl font-medium text-[#9E5E41] leading-none">3</div>
-                <div className="text-[10px] text-white/70 uppercase tracking-[0.18em] mt-1.5">{t('ai.liveTools')}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* ── AI-021 EXPLORER shell: dark card rail (left) + auth-aware panel (right) ── */}
+      <div id="ai-concepts-tools" className="pt-24 scroll-mt-24 lg:flex lg:items-start">
+        <ExplorerRail selectedId={selectedId} onSelect={handleSelectTool} usedIds={usedTools} />
+        <div className="flex-1 min-w-0 flex flex-col bg-white lg:min-h-[calc(100vh-6rem)]">
+          <ExplorerPanelHeader
+            tool={selectedTool}
+            user={user}
+            authLoading={authLoading}
+            onLogout={handleLogout}
+            unlimitedLabel={t('ai.unlimited')}
+            remainingLabel={t('ai.remaining')}
+            unlockAllLabel={t('ai.unlockAll')}
+            noCardLabel={t('ai.noCard')}
+          />
 
-      {/* ── TOOL SELECTOR GRID (full-bleed, 6 tools) ── */}
-      <div>
-        <div>
-          <div id="ai-concepts-tools" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 border-y-2 border-black">
-
-            {/* Tool 1 — Style Quiz (LIVE) */}
-            <button
-              type="button"
-              onClick={() => { if (!isProcessing) setActiveTool('quiz'); }}
-              aria-label={t('ai.styleQuiz')}
-              className={`group relative p-4 border-r border-black/10 transition-all text-left w-full appearance-none ${isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${activeTool === 'quiz' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
-              style={{ minHeight: '130px' }}
-            >
-              <div className={`text-[10px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'quiz' ? 'text-white/75' : 'text-black/55'}`}>01</div>
-              <div className={`font-display text-base font-bold leading-tight mb-1 ${activeTool === 'quiz' ? 'text-white' : 'text-black'}`}>{t('ai.styleQuiz')}</div>
-              <div className={`text-[11px] leading-relaxed uppercase tracking-wide ${activeTool === 'quiz' ? 'text-white/85' : 'text-black/70'}`}>
-                {t('ai.discoverDNA')}
-                {user && (
-                  <span className={`block mt-1 font-bold ${activeTool === 'quiz' ? 'text-white' : 'text-black'}`}>
-                    · {t('ai.unlimited')}
-                  </span>
-                )}
-              </div>
-              <div className="absolute bottom-3 right-3">
-                <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'quiz' ? 'text-white bg-white/20' : 'text-[#15803d] bg-[#15803d]/10'}`}>{t('ai.nowActive')}</span>
-              </div>
-            </button>
-
-            {/* Tool 2 — AI Vision (LIVE) */}
-            <button
-              type="button"
-              onClick={() => setActiveTool('vision')}
-              aria-label={t('ai.aiVision')}
-              className={`group relative p-4 cursor-pointer border-r border-black/10 transition-all text-left w-full appearance-none ${activeTool === 'vision' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
-              style={{ minHeight: '130px' }}
-            >
-              <div className={`text-[10px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'vision' ? 'text-white/75' : 'text-black/55'}`}>02</div>
-              <div className={`font-display text-base font-bold leading-tight mb-1 ${activeTool === 'vision' ? 'text-white' : 'text-black'}`}>{t('ai.aiVision')}</div>
-              <div className={`text-[11px] leading-relaxed uppercase tracking-wide ${activeTool === 'vision' ? 'text-white/85' : 'text-black/70'}`}>
-                {t('ai.transformRoom')}
-                {user && (
-                  <span className={`block mt-1 font-bold ${activeTool === 'vision' ? 'text-white' : 'text-black'}`}>
-                    · {user.generationsLeft >= 999 ? 'Unlimited' : `${user.generationsLeft} ${t('ai.remaining')}`}
-                  </span>
-                )}
-                {!user && (
-                  <span className="block mt-1">
-                    · 3 {t('ai.toExplore')}
-                  </span>
-                )}
-              </div>
-              <div className="absolute bottom-3 right-3">
-                <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'vision' ? 'text-white bg-white/20' : 'text-[#15803d] bg-[#15803d]/10'}`}>{t('ai.nowActive')}</span>
-              </div>
-            </button>
-
-            {/* Tool 3 — Shopping List (LIVE / OFFLINE) */}
-            {(() => {
-              const shoppingDown = !!shoppingStatus?.disabled;
-              return (
-            <button
-              type="button"
-              onClick={() => { if (!isProcessing) setActiveTool('shopping'); }}
-              aria-label={t('ai.shoppingList')}
-              className={`group relative p-4 border-r border-black/10 transition-all text-left w-full appearance-none ${isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${activeTool === 'shopping' ? 'bg-[#0047AB] text-white' : `bg-white text-black hover:bg-neutral-50${shoppingDown ? ' opacity-60' : ''}`}`}
-              style={{ minHeight: '130px' }}
-            >
-              <div className={`text-[10px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'shopping' ? 'text-white/75' : 'text-black/55'}`}>03</div>
-              <div className={`font-display text-base font-bold leading-tight mb-1 ${activeTool === 'shopping' ? 'text-white' : 'text-black'}`}>{t('ai.shoppingList')}</div>
-              <div className={`text-[11px] leading-relaxed uppercase tracking-wide ${activeTool === 'shopping' ? 'text-white/85' : 'text-black/70'}`}>
-                {t('ai.shopInterior')}
-                {user && (
-                  <span className={`block mt-1 font-bold ${activeTool === 'shopping' ? 'text-white' : 'text-black'}`}>
-                    · {(user.shoppingListsLeft ?? 3) >= 999 ? 'Unlimited' : `${user.shoppingListsLeft ?? 3} ${t('ai.remainingShopping')}`}
-                  </span>
-                )}
-                {!user && (
-                  <span className="block mt-1">
-                    · 3 {t('ai.toExplore')}
-                  </span>
-                )}
-              </div>
-              <div className="absolute bottom-3 right-3">
-                {shoppingDown ? (
-                  <span
-                    className={`text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'shopping' ? 'text-white/65 bg-black/20' : 'text-black/45 bg-black/[0.06]'}`}
-                    title={shoppingStatus?.code === 'daily_budget_exceeded' ? 'Daily limit reached — back tomorrow' : 'Shopping List is offline'}
-                  >
-                    offline
-                  </span>
-                ) : (
-                  <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'shopping' ? 'text-white bg-white/20' : 'text-[#15803d] bg-[#15803d]/10'}`}>{t('ai.nowActive')}</span>
-                )}
-              </div>
-            </button>
-              );
-            })()}
-
-            {/* Tool 4 — Room Audit (Design+ · non-paid opens the in-studio paid landing, NOT a pricing redirect) */}
-            <button
-              type="button"
-              onClick={() => { if (!(isProcessing || auditProcessing)) setActiveTool('audit'); }}
-              aria-label={t('ai.roomAudit')}
-              className={`group relative p-4 border-r border-black/10 transition-all text-left w-full appearance-none ${
-                (isProcessing || auditProcessing) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-              } ${activeTool === 'audit' ? 'bg-[#0047AB] text-white' : 'bg-white text-black hover:bg-neutral-50'}`}
-              style={{ minHeight: '130px' }}
-            >
-              <div className={`text-[10px] font-bold uppercase tracking-[0.25em] mb-3 ${activeTool === 'audit' ? 'text-white/75' : 'text-black/55'}`}>04</div>
-              <div className={`font-display text-base font-bold leading-tight mb-1 ${activeTool === 'audit' ? 'text-white' : 'text-black'}`}>{t('ai.roomAudit')}</div>
-              <div className={`text-[11px] leading-relaxed uppercase tracking-wide ${activeTool === 'audit' ? 'text-white/85' : 'text-black/70'}`}>
-                {t('ai.scoreSpace')}
-                {user?.isPaid && (
-                  <span className={`block mt-1 font-bold ${activeTool === 'audit' ? 'text-white' : 'text-black'}`}>
-                    · {user.auditsLeft === 999 ? 'Unlimited' : user.auditsLeft} {t('ai.remaining')}
-                  </span>
-                )}
-              </div>
-              <div className="absolute bottom-3 right-3">
-                {user?.isPaid ? (
-                  <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'audit' ? 'text-white bg-white/20' : 'text-[#15803d] bg-[#15803d]/10'}`}>{t('ai.nowActive')}</span>
-                ) : (
-                  <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${activeTool === 'audit' ? 'text-white bg-white/20' : 'text-white bg-[#9E5E41]'}`}>DESIGN+</span>
-                )}
-              </div>
-            </button>
-
-            {/* Tool 5 — Design Brief (SOON) */}
-            <div
-              className="group relative p-4 border-r border-black/8 cursor-not-allowed opacity-[0.62] vf-locked-tile vf-locked-soon"
-              style={{ minHeight: '130px' }}
-            >
-              <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/55 mb-3">05</div>
-              <div className="font-display text-base font-bold leading-tight mb-1 text-black/75">{t('ai.designBrief')}</div>
-              <div className="text-[11px] text-black/60 leading-relaxed uppercase tracking-wide">
-                {t('ai.buildBrief')}
-              </div>
-              <div className="absolute bottom-3 right-3">
-                <span className="text-[10px] font-bold uppercase tracking-wide text-black/55 bg-black/5 px-1.5 py-0.5">SOON</span>
-              </div>
-            </div>
-
-            {/* Tool 6 — Cultural Advisor (SOON) */}
-            <div
-              className="group relative p-4 cursor-not-allowed opacity-[0.62] vf-locked-tile vf-locked-soon"
-              style={{ minHeight: '130px' }}
-            >
-              <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/55 mb-3">06</div>
-              <div className="font-display text-base font-bold leading-tight mb-1 text-black/75">{t('ai.culturalAdvisor')}</div>
-              <div className="text-[11px] text-black/60 leading-relaxed uppercase tracking-wide">
-                {t('ai.blendStyles')}
-              </div>
-              <div className="absolute bottom-3 right-3">
-                <span className="text-[10px] font-bold uppercase tracking-wide text-black/55 bg-black/5 px-1.5 py-0.5">SOON</span>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-        {/* Active tool bar (full-bleed cobalt stripe) */}
-        <div id="active-tool-bar">
-          <div className="bg-[#0047AB] flex items-center justify-between px-8 md:px-16 py-3">
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/75 mb-0.5">
-                {activeTool === 'quiz' ? '01' : activeTool === 'vision' ? '02' : activeTool === 'shopping' ? '03' : '04'} — {t('ai.nowActive')}
-              </div>
-              <div className="text-[13px] font-bold text-white">
-                {activeTool === 'quiz' ? t('ai.styleQuiz') : activeTool === 'vision' ? t('ai.aiVision') : activeTool === 'shopping' ? t('ai.shoppingList') : t('ai.roomAudit')}
-              </div>
-              <div className="text-[12px] text-white/85 mt-0.5">
-                {activeTool === 'quiz'
-                  ? t('ai.quizDesc')
-                  : activeTool === 'vision'
-                  ? t('ai.visionDesc')
-                  : activeTool === 'shopping'
-                  ? t('ai.shopDesc')
-                  : t('ai.auditDesc')}
-              </div>
-            </div>
-            <div className="text-[11px] font-bold uppercase tracking-[0.15em] text-white/75 hidden md:block">
-              {t('ai.jumpToTool')} ↑
-            </div>
-          </div>
-        </div>
-      </div>
+          {/* ── LIVE tool experiences (unchanged) render for the 4 shipped tools;
+                 the 12 not-yet-built tools fall through to <ComingSoonPanel/> below. ── */}
+          {isLiveSelected ? (
+          <>
+          {/* AI-021 — the old cobalt "active tool" stripe is now the ExplorerPanelHeader. */}
 
       {/* ── AI VISION SHOWCASE (logged-out) ── */}
       {!authLoading && !user && activeTool === 'vision' && (
@@ -1494,7 +1206,7 @@ const AIConceptsPage: React.FC = () => {
             setStandaloneShoppingImage(conceptUrl);
             setSearchSourceImage(conceptUrl);
             setSearchSourceIsStandalone(false);
-            setActiveTool('shopping');
+            goToLiveTool('shopping');
             setTimeout(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }), 50);
           }}
           validationError={validationError}
@@ -1555,8 +1267,14 @@ const AIConceptsPage: React.FC = () => {
           processShoppingFile={processShoppingFile}
           handleShopDrop={handleShopDrop}
           runSearch={(opts) => {
-            const standalone = !!standaloneShoppingImage && !selectedConceptUrl;
-            setSearchSourceImage(standaloneShoppingImage || selectedConceptUrl);
+            // A standalone image the user uploaded in the Shopping entry ALWAYS wins —
+            // even if a prior AI Vision concept is still in the session. (Bug: after
+            // "Start over" the old concept lingered in allSessionConcepts, so a newly
+            // uploaded image was ignored and the search re-analyzed the old concept.)
+            // Coming from AI Vision "Shop this concept" nulls standaloneShoppingImage,
+            // so that path still correctly shops the concept.
+            const standalone = !!standaloneShoppingImage;
+            setSearchSourceImage(standalone ? standaloneShoppingImage : selectedConceptUrl);
             setSearchSourceIsStandalone(standalone);
             void handleShoppingSearch(undefined, standalone, opts);
           }}
@@ -1606,7 +1324,7 @@ const AIConceptsPage: React.FC = () => {
                 setApiAspectRatio(ar);
               };
               img.src = auditedRoom;
-              setActiveTool('vision');
+              goToLiveTool('vision');
               setTimeout(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }), 50);
             }}
             navigateTo={navigateTo}
@@ -2090,7 +1808,7 @@ const AIConceptsPage: React.FC = () => {
                     '4 key furniture pieces identified',
                     '12 real products with live pricing',
                     'Direct links to trusted retailers',
-                    'No affiliate fees or sponsored results',
+                    'Independent picks — we may earn a small commission',
                   ].map((item) => (
                     <li key={item} className="flex items-center gap-3">
                       <span className="w-4 h-4 flex-shrink-0 flex items-center justify-center bg-[#22c55e] text-white text-[9px] font-bold rounded-full">✓</span>
@@ -2098,6 +1816,7 @@ const AIConceptsPage: React.FC = () => {
                     </li>
                   ))}
                 </ul>
+                <p className="text-[11px] text-black/45 leading-snug mt-3">Some retailer links may earn us a commission at no extra cost to you. It never changes what we recommend.</p>
               </div>
 
               {/* Sample product grid */}
@@ -2735,7 +2454,7 @@ const AIConceptsPage: React.FC = () => {
                               '4 key furniture pieces identified',
                               '12 real products with live pricing',
                               'Direct links to trusted retailers',
-                              'No affiliate fees or sponsored results',
+                              'Independent picks — we may earn a small commission',
                             ].map((item) => (
                               <li key={item} className="flex items-center gap-3">
                                 <span className="w-4 h-4 flex-shrink-0 flex items-center justify-center bg-[#22c55e] text-white text-[9px] font-bold rounded-full">✓</span>
@@ -2743,6 +2462,7 @@ const AIConceptsPage: React.FC = () => {
                               </li>
                             ))}
                           </ul>
+                          <p className="text-[11px] text-black/45 leading-snug mt-3">Some retailer links may earn us a commission at no extra cost to you. It never changes what we recommend.</p>
                         </div>
 
                         {/* Sample product grid */}
@@ -2996,6 +2716,12 @@ const AIConceptsPage: React.FC = () => {
             </div>
           )}
         </div>
+        </div>
+      </div>
+          </>
+          ) : (
+            <ComingSoonPanel tool={selectedTool} user={user} onSeePlans={goToPricingPlans} />
+          )}
         </div>
       </div>
 

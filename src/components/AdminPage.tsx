@@ -50,6 +50,8 @@ interface UsageResponse {
     | { disabled: false; dailyBudget: number; todayCount: number }
     | { disabled: true; code: 'disabled'; dailyBudget: number; todayCount: number }
     | { disabled: true; code: 'daily_budget_exceeded'; dailyBudget: number; todayCount: number; resetAt: string };
+  /** Prepaid Serper credits remaining (depletes on use, not monthly). null when unavailable. */
+  serperBalance: { balance: number; rateLimit: number } | null;
   funnels: FunnelRow[];
   activation: {
     anonToSignupRatePct: number | null;
@@ -534,7 +536,7 @@ export const AcquisitionBody: React.FC<{ data: AcquisitionData | null }> = ({ da
   );
 };
 
-const IncidentBody: React.FC<{ rows: SerperLogEntry[]; status: UsageResponse['shoppingStatus'] }> = ({ rows, status }) => {
+const IncidentBody: React.FC<{ rows: SerperLogEntry[]; status: UsageResponse['shoppingStatus']; serperBalance: UsageResponse['serperBalance'] }> = ({ rows, status, serperBalance }) => {
   const pillClass = status.disabled ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-800';
   const pillText = status.disabled
     ? status.code === 'disabled'
@@ -543,9 +545,16 @@ const IncidentBody: React.FC<{ rows: SerperLogEntry[]; status: UsageResponse['sh
     : `online · ${status.todayCount} / ${status.dailyBudget} today`;
   return (
     <div className="bg-white border border-[#DAD2C3] p-6">
+      {serperBalance && (
+        <div className="mb-3.5 flex items-center justify-between bg-[#F4EFE7] border border-[#DAD2C3] px-4 py-2.5">
+          <span className="text-[10px] tracking-[0.22em] uppercase text-neutral-500 font-bold">Serper credits remaining</span>
+          <span className="font-serif text-[22px] text-black tabular-nums">{serperBalance.balance.toLocaleString('en-US')}</span>
+        </div>
+      )}
       <div className="flex justify-between items-center mb-3.5">
         <span className="text-xs text-neutral-500">
           Today: <strong className="text-black">{status.todayCount}</strong> / <strong className="text-black">{status.dailyBudget}</strong> credits used
+          <span className="text-neutral-400"> · prepaid, depletes on use (no monthly reset)</span>
         </span>
         <span className={`text-[9px] tracking-[0.22em] uppercase font-bold py-1 px-2.5 ${pillClass}`}>{pillText}</span>
       </div>
@@ -590,7 +599,6 @@ const AdminPage: React.FC = () => {
   const navigate = useNavigate();
   const [data, setData] = useState<UsageResponse | null>(null);
   const [counts, setCounts] = useState<Counts | null>(null);
-  const [acquisition, setAcquisition] = useState<AcquisitionData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
 
@@ -618,12 +626,6 @@ const AdminPage: React.FC = () => {
     fetch('/api/admin/counts', { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (!cancelled && d) setCounts(d); })
-      .catch(() => {});
-
-    // Acquisition (I-027) — server-cached ~6h, so fetch once on mount (not polled).
-    fetch('/api/admin/acquisition', { credentials: 'include' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (!cancelled && d) setAcquisition(d); })
       .catch(() => {});
 
     const id = window.setInterval(load, POLL_MS);
@@ -706,12 +708,8 @@ const AdminPage: React.FC = () => {
             <CostBody data={data.cost} />
           </CollapsibleSection>
 
-          <CollapsibleSection title="Acquisition" sub="Where do visitors come from?" storageKey="acquisition" defaultOpen={false}>
-            <AcquisitionBody data={acquisition} />
-          </CollapsibleSection>
-
           <CollapsibleSection title="Shopping incident view" sub="Last 100 Serper calls · forensic trail" storageKey="incident" defaultOpen={false}>
-            <IncidentBody rows={data.serperLog} status={data.shoppingStatus} />
+            <IncidentBody rows={data.serperLog} status={data.shoppingStatus} serperBalance={data.serperBalance} />
           </CollapsibleSection>
         </>
       )}

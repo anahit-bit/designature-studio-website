@@ -16,6 +16,7 @@
     "annual_cost": "$58.00 (annual plan)",
     "free_tier_quota": null,
     "renewal_date": "2026-11-21",
+    "cadence": "annual",
     "powers": "DNS for designature.studio",
     "criticality": 4
   },

@@ -38,6 +38,7 @@ export type RouteKey =
   | "portfolioDetail"
   | "services"
   | "studio"
+  | "deliverables"
   | "aiConcepts"
   | "aiVision"
   | "pricing"
@@ -74,8 +75,10 @@ export function normalizePath(pathname: string): string {
   return p || "/";
 }
 
-/** URL-path prefixes that must never be indexed (private / transactional). */
-const PRIVATE_PREFIXES = ["/admin", "/booking", "/deliverables"];
+/** URL-path prefixes that must never be indexed (private / transactional).
+ * `/retail` is the internal supplier directory — reachable by a shared link
+ * (no login), but kept out of search indexes. */
+const PRIVATE_PREFIXES = ["/admin", "/booking", "/retail"];
 
 export function classifyRoute(pathname: string): RouteInfo {
   const p = normalizePath(pathname);
@@ -102,6 +105,8 @@ export function classifyRoute(pathname: string): RouteInfo {
       return { key: "services" };
     case "/studio":
       return { key: "studio" };
+    case "/deliverables":
+      return { key: "deliverables" };
     case "/ai-concepts":
       return { key: "aiConcepts" };
     case "/ai-vision":
@@ -173,6 +178,18 @@ const STATIC_META: Record<
     ogTitle: "The Studio — About Designature Studio",
     ogDescription:
       "A Yerevan collective of architects and interior designers, founded in 2021 and dedicated to the art of living well.",
+    ogImage: DEFAULT_OG_IMAGE,
+  },
+  deliverables: {
+    path: "/deliverables",
+    title:
+      "Interior Design Deliverables — Brief, Concept, 3D Renders, Technical Drawings" +
+      SUFFIX,
+    description:
+      "See exactly what a Designature Studio interior design project ships: written brief, AI concept previews, photoreal 3D renders, and a contractor-ready technical drawing set. Download real samples.",
+    ogTitle: "Interior Design Deliverables — What a Studio Project Ships",
+    ogDescription:
+      "Brief, concept, AI previews, photoreal 3D renders, and a 40+ sheet technical drawing set — with real sample PDFs to download.",
     ogImage: DEFAULT_OG_IMAGE,
   },
   aiConcepts: {

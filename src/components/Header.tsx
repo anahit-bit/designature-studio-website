@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, ArrowRight, LogOut } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 import { useAuth } from '../AuthContext';
@@ -11,9 +12,11 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
-  const { language, setLanguage, t, navigateTo, currentPage } = useLanguage();
+  const { language, setLanguage, t, navigateTo, currentPage, confirmNav } = useLanguage();
   const { user, isLoading: authLoading, signOut } = useAuth();
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  const routerNavigate = useNavigate();
+  const location = useLocation();
 
   // Close account dropdown when clicking outside
   useEffect(() => {
@@ -30,7 +33,7 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
   // On white-background pages without hero images, we need black text from the start.
   // S-013: Home now opens on a cream text band (not a dark image hero), so dark
   // text is needed there too.
-  const isDarkTextNeeded = isScrolled || currentPage === 'home' || currentPage === 'portfolio' || currentPage === 'project-detail' || currentPage === 'services' || currentPage === 'studio' || currentPage === 'pricing' || currentPage === 'faq' || currentPage === 'journal' || currentPage === 'journal-detail' || currentPage === 'journal-category' || currentPage === 'terms' || currentPage === 'privacy' || currentPage === 'refund' || currentPage === 'consultation' || currentPage === 'booking-confirmed' || currentPage === 'booking-failed';
+  const isDarkTextNeeded = isScrolled || currentPage === 'home' || currentPage === 'portfolio' || currentPage === 'project-detail' || currentPage === 'services' || currentPage === 'studio' || currentPage === 'deliverables' || currentPage === 'pricing' || currentPage === 'faq' || currentPage === 'journal' || currentPage === 'journal-detail' || currentPage === 'journal-category' || currentPage === 'terms' || currentPage === 'privacy' || currentPage === 'refund' || currentPage === 'consultation' || currentPage === 'booking-confirmed' || currentPage === 'booking-failed';
   const isAIConceptsPage = currentPage === 'ai-concepts';
   const useLightNav = isAIConceptsPage && !isScrolled;
   // Pages with a dark photo hero (e.g. the Journal) pass onDark so the header
@@ -53,10 +56,10 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
   }, [isMobileMenuOpen]);
 
   const navLinks = [
-    { name: t('nav.studio'), href: '/studio', page: 'studio', action: () => navigateTo('studio') },
     { name: t('nav.portfolio'), href: '/portfolio', page: 'portfolio', action: () => navigateTo('portfolio') },
     { name: t('nav.services'), href: '/services', page: 'services', action: () => navigateTo('services') },
     { name: t('nav.journal'), href: '/journal', page: 'journal', action: () => navigateTo('journal') },
+    { name: t('nav.studio'), href: '/studio', page: 'studio', action: () => navigateTo('studio') },
     { name: t('nav.pricing'), href: '/pricing', page: 'pricing', action: () => navigateTo('pricing') },
     { name: t('nav.aiStudio'), href: '/ai-concepts', page: 'ai-concepts', action: () => { setSigninSource('header_nav'); navigateTo('ai-concepts'); window.scrollTo({ top: 0 }); }, isHighlight: true },
   ];
@@ -171,6 +174,32 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
     );
   };
 
+  // AC-001 — "My account" account link. PAID-ONLY: shown only to signed-in paying
+  // users (user.isPaid) — never for logged-out visitors or free accounts. Uses
+  // react-router (the /account route lives outside LanguageContext's Page map).
+  const isAccountActive = location.pathname.startsWith('/account');
+  const MyStudioLink = ({ inMobileMenu = false }: { inMobileMenu?: boolean }) => {
+    if (!user?.isPaid) return null;
+    const color = inMobileMenu
+      ? 'text-black hover:text-[#0047AB]'
+      : isAccountActive
+        ? (onDarkBg ? 'text-white' : 'text-black')
+        : (onDarkBg ? 'text-white/75 hover:text-white' : 'text-black/70 hover:text-black');
+    return (
+      <button
+        onClick={() => {
+          if (!confirmNav()) return;
+          routerNavigate('/account');
+          window.scrollTo({ top: 0 });
+          if (inMobileMenu) setIsMobileMenuOpen(false);
+        }}
+        className={`${inMobileMenu ? 'text-base md:text-lg' : 'text-[11px]'} font-body font-bold uppercase tracking-[0.18em] transition-colors ${color}`}
+      >
+        My account
+      </button>
+    );
+  };
+
   return (
     <>
       <style>{`
@@ -195,10 +224,14 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
         <div className="max-w-[1800px] mx-auto px-8 md:px-16 flex items-center">
           <div
             onClick={() => {
-              if (currentPage === 'home') {
+              // Use the real pathname (not LanguageContext's currentPage, which
+              // falls back to 'home' for unmapped routes like /account — that made
+              // the logo do nothing there). react-router navigates home from anywhere.
+              if (location.pathname === '/') {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               } else {
-                navigateTo('home');
+                if (!confirmNav()) return;
+                routerNavigate('/');
                 window.scrollTo({ top: 0, behavior: 'auto' });
               }
             }}
@@ -251,6 +284,7 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
           </nav>
 
           <div className="hidden lg:flex items-center gap-8">
+            <MyStudioLink />
             <SecondaryCTA />
             <CTAButton />
           </div>
@@ -301,6 +335,16 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
                 {link.name}
               </a>
             ))}
+            {user?.isPaid && (
+              <div
+                className={`transition-all duration-700 ${
+                  isMobileMenuOpen ? 'translate-x-0 opacity-100' : 'translate-x-12 opacity-0'
+                }`}
+                style={{ transitionDelay: `${navLinks.length * 50}ms` }}
+              >
+                <MyStudioLink inMobileMenu />
+              </div>
+            )}
           </nav>
 
           <div className="px-8 pb-10 md:px-16 md:pb-16 flex flex-col items-center gap-6">

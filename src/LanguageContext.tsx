@@ -1,9 +1,9 @@
 
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, useRef, ReactNode, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 export type Language = 'en' | 'am';
-export type Page = 'home' | 'portfolio' | 'project-detail' | 'services' | 'studio' | 'ai-concepts' | 'ai-vision' | 'pricing' | 'faq' | 'journal' | 'journal-detail' | 'journal-category' | 'terms' | 'privacy' | 'refund' | 'consultation' | 'booking-confirmed' | 'booking-failed';
+export type Page = 'home' | 'portfolio' | 'project-detail' | 'services' | 'studio' | 'deliverables' | 'ai-concepts' | 'ai-vision' | 'pricing' | 'faq' | 'journal' | 'journal-detail' | 'journal-category' | 'terms' | 'privacy' | 'refund' | 'consultation' | 'booking-confirmed' | 'booking-failed';
 export type PortfolioFilter = 'All' | 'Residential' | 'Commercial';
 
 // URL ⇄ page-state mapping. URL is the source of truth; localStorage persistence
@@ -15,6 +15,7 @@ function pathToPageState(pathname: string): { page: Page; projectId: string | nu
   if (projectMatch) return { page: 'project-detail', projectId: decodeURIComponent(projectMatch[1]) };
   if (pathname === '/services') return { page: 'services', projectId: null };
   if (pathname === '/studio') return { page: 'studio', projectId: null };
+  if (pathname === '/deliverables') return { page: 'deliverables', projectId: null };
   if (pathname === '/ai-concepts') return { page: 'ai-concepts', projectId: null };
   if (pathname === '/ai-vision') return { page: 'ai-vision', projectId: null };
   if (pathname === '/pricing') return { page: 'pricing', projectId: null };
@@ -43,6 +44,8 @@ function pageToPath(page: Page, projectId?: string | null, filter?: PortfolioFil
       return '/services';
     case 'studio':
       return '/studio';
+    case 'deliverables':
+      return '/deliverables';
     case 'ai-concepts':
       return '/ai-concepts';
     case 'ai-vision':
@@ -82,13 +85,19 @@ interface LanguageContextType {
   selectedProjectId: string | null;
   setSelectedProjectId: (id: string | null) => void;
   navigateTo: (page: Page, projectId?: string, filter?: PortfolioFilter) => void;
+  /** Register a warning shown (via confirm) before any in-app navigation that would
+   *  leave the current page; pass null to clear. Used so an in-flight AI Vision
+   *  generation isn't silently discarded when the user navigates away. */
+  setNavGuard: (message: string | null) => void;
+  /** True if navigation may proceed (no guard set, or the user confirmed the warning). */
+  confirmNav: () => boolean;
 }
 
 const translations = {
   en: {
     // Nav
     'nav.home': 'Home',
-    'nav.studio': 'Studio',
+    'nav.studio': 'About',
     'nav.portfolio': 'Portfolio',
     'nav.services': 'Services',
     'nav.aiStudio': 'AI Studio',
@@ -96,6 +105,7 @@ const translations = {
     'nav.pricing': 'Pricing',
     'nav.contact': 'Contact',
     'nav.blog': 'Blog',
+    'nav.deliverables': 'Deliverables',
     'nav.journal': 'Journal',
     'nav.bookConsultation': 'Book a Consultation',
     'nav.freeConsultation': 'Free Consultation',
@@ -636,6 +646,7 @@ const translations = {
     'ai.volumeDesc': '3D massing studies based on 2D inputs.',
     'ai.images': 'images',
     'ai.style.japandi': 'Japandi',
+    'ai.style.warmcontemporary': 'Warm Contemporary',
     'ai.style.modern': 'Modern',
     'ai.style.midCentury': 'Mid-Century',
     'ai.style.midcentury': 'Mid-Century',
@@ -715,7 +726,7 @@ const translations = {
     'ai.quiz.share': 'Share with a friend',
     'ai.quiz.saveStyle': 'Save my style',
     'ai.quiz.shareToast': 'Link copied — your friend will see your DNA',
-    'ai.quiz.savedToast': 'Saved to your dashboard (coming soon)',
+    'ai.quiz.savedToast': 'Saved to My account — find it in your Library',
     'ai.quiz.upgradeToSave': 'Save your DNA with the Design tier — $19/mo',
     'ai.quiz.sharedBanner': 'Viewing a shared style',
     'ai.quiz.takeYourQuiz': 'Take your own quiz →',
@@ -947,27 +958,27 @@ const translations = {
 
     // Studio Page
     'studio.heroTitle': 'The Studio',
-    'studio.heroSub': 'Where architectural precision meets artistic soul. Founded in 2021, we redefine the boundaries of modern living.',
+    'studio.heroSub': "An engineer's rigor, a designer's eye. Founded in Yerevan in 2021, Designature is a boutique interior design studio — now building the tools to bring that craft to anyone, anywhere, online.",
     'studio.hero.title': 'The Studio',
     'studio.hero.desc': 'A collective of architects and designers dedicated to the art of living well.',
     'studio.aboutTitle': 'Our Story',
     'studio.aboutHeading': 'Crafting Spaces with Purpose',
-    'studio.aboutDesc1': 'Designature Studio was born from a desire to bridge the gap between technical engineering and pure aesthetic expression.',
-    'studio.aboutDesc2': 'We believe that a space should do more than just function—it should tell a story, evoke emotion, and stand as a testament to the vision of its inhabitants.',
+    'studio.aboutDesc1': 'Designature grew out of more than a decade of working remotely with clients around the world. I started out in engineering, and it taught me that the spaces that move people are also the ones built with the most discipline. Structure and beauty were never at odds — the rigor is what lets the beauty feel effortless.',
+    'studio.aboutDesc2': "That conviction is the studio's method. We listen before we draw and understand before we decide, then engineer every detail — light, proportion, material, flow — so the finished room feels inevitable rather than decorated. Since 2021 we've done this one project at a time, in Yerevan and beyond.",
     'studio.founded': 'Founded',
     'studio.projects': 'Projects Delivered',
-    'studio.founderTitle': 'The Visionary',
-    'studio.founderRole': 'Founder & Lead Designer',
+    'studio.founderTitle': 'Founder & Engineer',
+    'studio.founderRole': 'Engineer & Founding Designer',
     'studio.founder.label': 'Founder & Lead Architect',
     'studio.founder.role': 'Architect · Interior Designer',
     'studio.founder.quote': 'Design is not just what it looks like and feels like. Design is how it works.',
     'studio.founder.bio': 'With over a decade of experience across Europe and the Middle East, Anahit brings a global perspective to local craftsmanship.',
-    'studio.founderQuote': 'Design is not just what it looks like; it\'s how it makes you feel when you walk through the door.',
-    'studio.founderBio': 'With over a decade of experience in international architectural firms, Anahit Ghasabyan founded Designature to bring a new level of personalized, high-end design to Armenia and beyond.',
+    'studio.founderQuote': "Beauty isn't something you add at the end — it's what precision looks like when it's done right.",
+    'studio.founderBio': 'Anahit is an engineer turned interior designer. After more than a decade working remotely with international clients, she founded Designature in 2021 — bringing that blend of technical rigor and design instinct to homes across Armenia and beyond, and now to anyone online.',
     'studio.story.title': 'Our Story & Philosophy',
     'studio.story.p1': 'Founded in 2021, Designature was born from a simple belief: that the spaces we inhabit profoundly shape the quality of our lives.',
     'studio.story.p2': 'We don\'t believe in "styles" as fixed rules. We believe in signatures — the unique intersection of a client\'s personality and the architectural potential of a site.',
-    'studio.story.p3': 'We design for the human being first — listening before drawing, understanding before deciding. Every material is chosen for what it truly is, not what a trend demands of it. The result is spaces that feel deeply considered today, and will remain that way a decade from now.',
+    'studio.story.p3': "Now we're taking that craft online. Great interior design has always meant hiring a studio; we're building an AI-powered layer — room visualizations, style direction, curated sourcing — so anyone can start with a designer's thinking today, and step up to the full studio when they're ready.",
     'studio.contactHeading': 'Let\'s Connect',
     'studio.contactSub': 'Whether you have a fully formed vision or just the seed of an idea, we\'re here to help you grow it.',
     'studio.contact.title': 'Get in touch',
@@ -1047,10 +1058,7 @@ const translations = {
     'pricing.3month': '3 / month',
     'pricing.1month': '1 / month',
     'pricing.300month': '300 / month',
-    'pricing.projectDiscount': 'Project Discount',
-    'pricing.10off': '10% off full design project',
     'pricing.studio.desc': 'For designers or anyone renovating multiple spaces.',
-    'pricing.20off': '20% off full design project',
     'pricing.inclCultural': 'incl. Cultural Advisor',
     'pricing.projectFolders': 'Project folders',
     'pricing.saveConcepts': 'save concepts & images per project',
@@ -1150,7 +1158,7 @@ const translations = {
   am: {
     // Nav
     'nav.home': 'Գլխավոր',
-    'nav.studio': 'Ստուդիա',
+    'nav.studio': 'About',
     'nav.portfolio': 'Պորտֆոլիո',
     'nav.services': 'Ծառայություններ',
     'nav.aiStudio': 'AI Ստուդիա',
@@ -1158,6 +1166,7 @@ const translations = {
     'nav.pricing': 'Գներ',
     'nav.contact': 'Կապ',
     'nav.blog': 'Բլոգ',
+    'nav.deliverables': 'Deliverables',
     'nav.journal': 'Ամսագիր',
     'nav.bookConsultation': 'Ամրագրել Խորհրդատվություն',
     'nav.freeConsultation': 'Անվճար Խորհրդատվություն',
@@ -1714,6 +1723,7 @@ const translations = {
     'ai.volumeDesc': '3D ծավալային ուսումնասիրություններ:',
     'ai.images': 'նկար',
     'ai.style.japandi': 'Japandi',
+    'ai.style.warmcontemporary': 'Warm Contemporary',
     'ai.style.artdeco': 'Art Deco',
     'ai.style.transitional': 'Transitional',
     'ai.style.art deco': 'Art Deco',
@@ -1800,7 +1810,7 @@ const translations = {
     'ai.quiz.share': 'Կիսվել ընկերոջ հետ',
     'ai.quiz.saveStyle': 'Պահպանել իմ ոճը',
     'ai.quiz.shareToast': 'Հղումը պատճենվեց — Ձեր ընկերը կտեսնի Ձեր ԴՆԹ-ն',
-    'ai.quiz.savedToast': 'Պահպանված է Ձեր վահանակում (շուտով)',
+    'ai.quiz.savedToast': 'Saved to My account — find it in your Library',
     'ai.quiz.upgradeToSave': 'Պահպանեք Ձեր ԴՆԹ-ն Design-ով — $19/ամիս',
     'ai.quiz.sharedBanner': 'Դիտում եք կիսված ոճ',
     'ai.quiz.takeYourQuiz': 'Անցեք Ձեր սեփական քվիզը →',
@@ -1970,17 +1980,17 @@ const translations = {
 
     // Studio Page
     'studio.heroTitle': 'Ստուդիա',
-    'studio.heroSub': 'Այնտեղ, որտեղ ճարտարապետական ճշգրտությունը հանդիպում է գեղարվեստական հոգուն: Հիմնադրված 2021-ին, մենք վերասահմանում ենք ժամանակակից կյանքի սահմանները:',
+    'studio.heroSub': "An engineer's rigor, a designer's eye. Founded in Yerevan in 2021, Designature is a boutique interior design studio — now building the tools to bring that craft to anyone, anywhere, online.",
     'studio.aboutTitle': 'Մեր Պատմությունը',
     'studio.aboutHeading': 'Ստեղծելով Տարածքներ Նպատակով',
-    'studio.aboutDesc1': 'Դիզայնեյչր Ստուդիան ծնվել է տեխնիկական ինժեներիայի և մաքուր էսթետիկ արտահայտման միջև կամուրջ ստեղծելու ցանկությունից:',
-    'studio.aboutDesc2': 'Մենք հավատում ենք, որ տարածքը պետք է ավելին անի, քան պարզապես գործի. այն պետք է պատմի պատմություն, արթնացնի էմոցիաներ և լինի իր բնակիչների տեսլականի վկայությունը:',
+    'studio.aboutDesc1': 'Designature grew out of more than a decade of working remotely with clients around the world. I started out in engineering, and it taught me that the spaces that move people are also the ones built with the most discipline. Structure and beauty were never at odds — the rigor is what lets the beauty feel effortless.',
+    'studio.aboutDesc2': "That conviction is the studio's method. We listen before we draw and understand before we decide, then engineer every detail — light, proportion, material, flow — so the finished room feels inevitable rather than decorated. Since 2021 we've done this one project at a time, in Yerevan and beyond.",
     'studio.founded': 'Հիմնադրվել է',
     'studio.projects': 'Ավարտված Նախագծեր',
-    'studio.founderTitle': 'Տեսլականը',
-    'studio.founderRole': 'Հիմնադիր և Գլխավոր Դիզայներ',
-    'studio.founderQuote': 'Դիզայնը միայն այն չէ, թե ինչ տեսք ունի. այն այն է, թե ինչպես եք Ձեզ զգում, երբ ներս եք մտնում դռնից:',
-    'studio.founderBio': 'Միջազգային ճարտարապետական ընկերություններում ավելի քան տասը տարվա փորձով Անահիտ Ղասաբյանը հիմնադրել է Դիզայնեյչրը՝ Հայաստանում և դրանից դուրս անհատականացված, բարձրակարգ դիզայնի նոր մակարդակ բերելու համար:',
+    'studio.founderTitle': 'Founder & Engineer',
+    'studio.founderRole': 'Engineer & Founding Designer',
+    'studio.founderQuote': "Beauty isn't something you add at the end — it's what precision looks like when it's done right.",
+    'studio.founderBio': 'Anahit is an engineer turned interior designer. After more than a decade working remotely with international clients, she founded Designature in 2021 — bringing that blend of technical rigor and design instinct to homes across Armenia and beyond, and now to anyone online.',
     'studio.contactHeading': 'Կապվեք Մեզ Հետ',
     'studio.contactSub': 'Անկախ նրանից, թե Դուք ունեք ամբողջական տեսլական, թե պարզապես գաղափարի սաղմ, մենք այստեղ ենք՝ օգնելու Ձեզ աճեցնել այն:',
     'studio.emailUs': 'Էլ. Փոստ',
@@ -2043,7 +2053,7 @@ const translations = {
     'studio.story.title': 'Մեր Պատմությունը և Փիլիսոփայությունը',
     'studio.story.p1': 'Հիմնադրված 2021-ին, Դիզայնեյչրը ծնվել է մի պարզ համոզմունքից. որ մեր բնակած տարածքները խորապես ձևավորում են մեր կյանքի որակը:',
     'studio.story.p2': 'Մենք չենք հավատում «ոճերին» որպես ամրագրված կանոնների: Մենք հավատում ենք ստորագրություններին — հաճախորդի անհատականության և կայքի ճարտարապետական ներուժի յուրահատուկ հատումին:',
-    'studio.story.p3': 'Մենք նախ դիզայն ենք անում մարդու համար — ունկնդրելով նախքան նկարելը, հասկանալով նախքան որոշելը: Արդյունքն այն տարածքներն են, որոնք այսօր խոր մտածված են թվում — և մի տասնամյակ հետո կմնան նույնը:',
+    'studio.story.p3': "Now we're taking that craft online. Great interior design has always meant hiring a studio; we're building an AI-powered layer — room visualizations, style direction, curated sourcing — so anyone can start with a designer's thinking today, and step up to the full studio when they're ready.",
     'studio.contact.title': 'Կապ Հաստատել',
     'studio.contact.hero': 'Ստեղծենք ինչ-որ հիշարժան',
     'studio.contact.desc': 'Ունե՞ք նախագծի գաղափար: Կուրախանայինք լսել: Մեր թիմը պատրաստ է օգնել Ձեր տեսլականն իրականացնելու:',
@@ -2102,13 +2112,10 @@ const translations = {
     'pricing.3month': '3 / ամիս',
     'pricing.1month': '1 / ամիս',
     'pricing.300month': '300 / ամիս',
-    'pricing.projectDiscount': 'Նախագծի Զեղչ',
-    'pricing.10off': 'Ամբողջական նախագծից 10% զեղչ',
     'pricing.discount': 'Վաղ Զեղչ',
     'pricing.studio.badge': 'Studio',
     'pricing.studio.name': 'Studio',
     'pricing.studio.desc': 'Դիզայներների կամ բազմաթիվ տարածքներ վերանորոգողների համար:',
-    'pricing.20off': 'Ամբողջական նախագծից 20% զեղչ',
     'pricing.inclCultural': 'ներառ. Cultural Advisor',
     'pricing.projectFolders': 'Նախագծի թղթապանակներ',
     'pricing.saveConcepts': 'պահել կոնցեպտներ և նկարներ ըստ նախագծի',
@@ -2244,8 +2251,21 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     return translations[language][key as keyof typeof translations['en']] || key;
   };
 
+  // In-flight-work guard. A ref (not state) so reads are always current and setting
+  // it never re-renders. When set, leaving the current page asks for confirmation.
+  const navGuardRef = useRef<string | null>(null);
+  const setNavGuard = (message: string | null) => { navGuardRef.current = message; };
+  const confirmNav = () => {
+    const message = navGuardRef.current;
+    if (!message) return true;
+    return window.confirm(message);
+  };
+
   const navigateTo = (page: Page, projectId?: string, filter?: PortfolioFilter) => {
-    navigate(pageToPath(page, projectId, filter));
+    const target = pageToPath(page, projectId, filter);
+    // Only guard real page changes — re-selecting the current page shouldn't prompt.
+    if (target !== location.pathname && !confirmNav()) return;
+    navigate(target);
   };
 
   // Backwards-compat shims: existing call sites do `setSelectedProjectId(id)` then
@@ -2271,6 +2291,8 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
       portfolioFilter,
       setPortfolioFilter,
       navigateTo,
+      setNavGuard,
+      confirmNav,
     }}>
       {children}
     </LanguageContext.Provider>
