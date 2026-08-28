@@ -39,7 +39,7 @@ const ProjectSection: React.FC = () => {
               <div className="aspect-[4/5] overflow-hidden bg-neutral-100 mb-4 relative shadow-sm group-hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.12)] transition-all duration-700">
                 <ResponsiveImage
                   src={project.imageUrl}
-                  alt={language === 'en' ? project.titleEN : project.titleAM}
+                  alt={project.titleEN}
                   aspectRatio="4/5"
                   crop="fill"
                   sizes="(min-width: 768px) 50vw, 100vw"
@@ -53,10 +53,10 @@ const ProjectSection: React.FC = () => {
               
               <div className="space-y-2 px-1">
                 <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-black/70">
-                  {language === 'en' ? project.categoryEN : project.categoryAM}
+                  {project.categoryEN}
                 </p>
                 <h4 className="text-xl md:text-2xl font-bold font-display tracking-tight uppercase transition-transform duration-700 group-hover:translate-x-2">
-                  {language === 'en' ? project.titleEN : project.titleAM}
+                  {project.titleEN}
                 </h4>
               </div>
             </div>

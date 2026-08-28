@@ -39,29 +39,19 @@ interface SanityProject {
   gallery?: Array<{ url: string; alt?: string; slot?: string }>
 }
 
-// ── Hard-coded AM translations for category enum ───────────────────────────
-// Other bilingual fields (title, description, location) fall back to EN
-// until the i18n plugin is enabled in Sanity.
-const CATEGORY_AM: Record<'Residential' | 'Commercial', 'Բնակելի' | 'Կոմերցիոն'> = {
-  Residential: 'Բնակելի',
-  Commercial: 'Կոմերցիոն',
-}
-
 // ── Mapper: Sanity doc → ProjectData ───────────────────────────────────────
+// Armenian twin fields (titleAM/descriptionAM/…) removed 2026-08-27 when the
+// owner dropped Armenian sitewide — see feedback_no_armenian_translations.md.
 function toProjectData(doc: SanityProject): ProjectData {
   return {
     id: doc._id.replace(/^project-/, ''),
     titleEN: doc.title,
-    titleAM: doc.title, // EN fallback until i18n is enabled
     categoryEN: doc.category,
-    categoryAM: CATEGORY_AM[doc.category],
     imageUrl: doc.coverImage,
     descriptionEN: doc.description,
-    descriptionAM: doc.description,
     area: doc.area ?? '',
     date: doc.date ?? '',
     locationEN: doc.location ?? '',
-    locationAM: doc.location ?? '',
     gallery: (doc.gallery ?? []).map((g) => g.url),
   }
 }

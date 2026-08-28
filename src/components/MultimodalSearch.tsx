@@ -68,7 +68,7 @@ const MultimodalSearch: React.FC = () => {
                 {t('ai.engine')}
               </span>
             </div>
-            <h3 className={`font-bold font-display tracking-tight leading-[0.9] uppercase mb-4 ${language === 'am' ? 'text-3xl md:text-4xl lg:text-5xl' : 'text-5xl md:text-6xl lg:text-7xl'}`}>
+            <h3 className="font-bold font-display tracking-tight leading-[0.9] uppercase mb-4 text-5xl md:text-6xl lg:text-7xl">
               <span>{t('ai.designFirst.title1')}</span><br />
               <span className="italic font-light text-white/70">{t('ai.designFirst.title2')}</span>
             </h3>

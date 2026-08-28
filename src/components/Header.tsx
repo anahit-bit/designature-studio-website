@@ -12,7 +12,7 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
-  const { language, setLanguage, t, navigateTo, currentPage, confirmNav } = useLanguage();
+  const { t, navigateTo, currentPage, confirmNav } = useLanguage();
   const { user, isLoading: authLoading, signOut } = useAuth();
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const routerNavigate = useNavigate();
@@ -73,9 +73,9 @@ const Header: React.FC<{ onDark?: boolean }> = ({ onDark = false }) => {
         {t('btn.bookCall')}
         <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
       </button>
-      <span className={`text-[10px] font-semibold font-body tracking-wider uppercase leading-none transition-colors duration-700 ${
+      <span className={`text-[10px] font-semibold font-body tracking-wider uppercase leading-none italic transition-colors duration-700 ${
         (showDarkText) ? 'text-black/75' : 'text-white/85'
-      } ${language === 'en' ? 'italic' : ''}`}>
+      }`}>
         {t('btn.firstConvo')}
       </span>
     </div>
