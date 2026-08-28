@@ -29,9 +29,9 @@ const ProjectDetail: React.FC = () => {
 
   if (!project) return null;
 
-  const title = language === 'en' ? project.titleEN : project.titleAM;
-  const description = language === 'en' ? project.descriptionEN : project.descriptionAM;
-  const location = language === 'en' ? project.locationEN : project.locationAM;
+  const title = project.titleEN;
+  const description = project.descriptionEN;
+  const location = project.locationEN;
 
   // Map Tailwind aspect class → ratio string + sizes hint (slot position
   // determines how wide the slot is in the layout, which determines which

@@ -54,13 +54,13 @@ const FeaturedWork: React.FC = () => {
         >
           {featured.map((p, idx) => {
             const isFeature = idx === 0;
-            const title = language === 'en' ? p.titleEN : p.titleAM;
+            const title = p.titleEN;
             // Locations come from Sanity in the form "City, Country" (e.g.
             // "Yerevan, Armenia"). Residential cards surface the city; commercial
             // cards surface the country, so projects abroad read at a glance.
-            const locStr = language === 'en' ? p.locationEN : p.locationAM;
+            const locStr = p.locationEN;
             const [city = '', country = ''] = locStr.split(',').map(s => s.trim());
-            const categoryLabel = language === 'en' ? p.categoryEN : p.categoryAM;
+            const categoryLabel = p.categoryEN;
             const location =
               p.categoryEN === 'Commercial'
                 ? country

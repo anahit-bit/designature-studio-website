@@ -165,7 +165,7 @@ const StudioPage: React.FC = () => {
                 </div>
                 <div>
                   <span className="font-display text-3xl font-bold text-black block mb-1">9</span>
-                  <span className="text-[11px] uppercase tracking-[0.3em] text-black/65">{language === 'en' ? 'Countries' : 'Երկրներ'}</span>
+                  <span className="text-[11px] uppercase tracking-[0.3em] text-black/65">Countries</span>
                 </div>
               </div>
 
@@ -190,7 +190,7 @@ const StudioPage: React.FC = () => {
               <div className="lg:sticky lg:top-32 lg:self-start">
                 <p className="text-[11px] font-bold uppercase tracking-[0.5em] text-black/65 mb-4">{t('studio.aboutTitle')}</p>
                 <h3 className="font-display text-3xl md:text-4xl font-light leading-tight">
-                  {language === 'en' ? <>Engineered to feel<br /><em>effortless</em></> : t('studio.aboutHeading')}
+                  Engineered to feel<br /><em>effortless</em>
                 </h3>
               </div>
 
@@ -260,12 +260,12 @@ const StudioPage: React.FC = () => {
                   type="button"
                   key={project.id}
                   onClick={() => { navigateTo('project-detail', project.id); window.scrollTo({ top: 0 }); }}
-                  aria-label={language === 'en' ? project.titleEN : project.titleAM}
+                  aria-label={project.titleEN}
                   className="group relative aspect-[4/5] bg-neutral-100 overflow-hidden text-left w-full appearance-none border-0 p-0 cursor-pointer"
                 >
                   <ResponsiveImage
                     src={project.imageUrl}
-                    alt={language === 'en' ? project.titleEN : project.titleAM}
+                    alt={project.titleEN}
                     aspectRatio="4/5"
                     crop="fill"
                     sizes="(min-width: 1024px) 25vw, 50vw"
@@ -276,10 +276,10 @@ const StudioPage: React.FC = () => {
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-70 group-hover:opacity-90 transition-opacity duration-500" aria-hidden="true" />
                   <div className="absolute inset-x-0 bottom-0 p-5">
                     <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/70 mb-1">
-                      {language === 'en' ? project.categoryEN : project.categoryAM}
+                      {project.categoryEN}
                     </p>
                     <p className="text-sm font-medium text-white leading-tight">
-                      {language === 'en' ? project.titleEN : project.titleAM}
+                      {project.titleEN}
                     </p>
                   </div>
                 </button>
