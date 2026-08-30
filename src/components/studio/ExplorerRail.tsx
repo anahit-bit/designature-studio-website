@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { EXPLORER_TOOLS, PHASES, type ExplorerTool } from './explorerRoster';
+import type { RouterResult } from '../../data/studioRouter';
 
 interface ExplorerRailProps {
   /** Currently-selected tool slug. */
@@ -8,6 +9,15 @@ interface ExplorerRailProps {
   onSelect: (id: string) => void;
   /** Slugs of LIVE tools the user has actually run this session (→ "✓ Used" marker). */
   usedIds?: Set<string>;
+  /** Open the AI-032 "Start here" survey. Pinned above the catalogue. */
+  onStartHere?: () => void;
+  /** True while the survey panel is the thing on screen. */
+  startHereOn?: boolean;
+  /** The visitor's workflow, once they have one. The rail leads with it. */
+  workflow?: RouterResult | null;
+  onOpenStep?: (id: string) => void;
+  onChangeWorkflow?: () => void;
+  onClearWorkflow?: () => void;
 }
 
 // ── Filters ────────────────────────────────────────────────────────────────
@@ -175,7 +185,21 @@ function SoonCard({
  * one featured card is the single accent. Filters default to Live so the page opens
  * on just the 4 usable tools. Presentational only — emits onSelect(id).
  */
-const ExplorerRail: React.FC<ExplorerRailProps> = ({ selectedId, onSelect, usedIds }) => {
+const ExplorerRail: React.FC<ExplorerRailProps> = ({
+  selectedId, onSelect, usedIds, onStartHere, startHereOn,
+  workflow, onOpenStep, onChangeWorkflow, onClearWorkflow,
+}) => {
+  // With a workflow in hand the catalogue stops being the point — it collapses
+  // to one line. It never disappears: a workflow is an offer, not a cage.
+  //
+  // It has to follow the workflow as it ARRIVES, not just as it was at mount —
+  // the workflow is usually built after the rail is already on screen. Once the
+  // visitor toggles it themselves, their choice wins and we stop steering.
+  const [catalogueOpen, setCatalogueOpen] = useState(!workflow);
+  const [catalogueTouched, setCatalogueTouched] = useState(false);
+  useEffect(() => {
+    if (!catalogueTouched) setCatalogueOpen(!workflow);
+  }, [workflow, catalogueTouched]);
   const [filter, setFilter] = useState<Filter>('live');
 
   const groups = useMemo(() => {
@@ -196,6 +220,125 @@ const ExplorerRail: React.FC<ExplorerRailProps> = ({ selectedId, onSelect, usedI
         <h2 className="font-display text-[28px] leading-none text-white">The whole journey.</h2>
       </div>
 
+      {/* Pinned above the catalogue, and never filtered away: the answer to
+          "which of these nineteen is mine?" has to sit above the nineteen. */}
+      {onStartHere && (
+        <button
+          type="button"
+          onClick={onStartHere}
+          aria-current={startHereOn ? 'true' : undefined}
+          className={`block w-[calc(100%-28px)] mx-[14px] mt-4 text-left rounded-[11px] p-3.5 border transition-all duration-150 hover:-translate-y-0.5 ${
+            startHereOn
+              ? 'bg-[#0047AB]/20 border-[#0047AB]'
+              : 'bg-[#C97A60]/10 border-dashed border-[#C97A60]/55 hover:border-[#C97A60]'
+          }`}
+        >
+          <span className="block text-[9.5px] font-bold uppercase tracking-[0.2em] text-[#C97A60]">
+            Start here
+          </span>
+          <span className="block font-display text-[21px] leading-[1.12] text-white mt-1">
+            Don&rsquo;t know where to start?
+          </span>
+          <span className="block text-[11.5px] text-white/55 leading-[1.45] mt-1.5">
+            Four questions, about a minute. You get your own short path — in the right order.
+          </span>
+        </button>
+      )}
+
+
+      {/* ── The visitor's own workflow, once they have one ── */}
+      {workflow && workflow.steps.length > 0 && (
+        <div className="mx-[14px] mt-4 rounded-[12px] border border-[#0047AB]/50 bg-[#0047AB]/10 p-[15px_14px]">
+          <div className="flex items-baseline justify-between gap-2.5">
+            <span className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-[#5b8def]">
+              Your workflow
+            </span>
+            <span className="text-[9.5px] text-white/40">{workflow.steps.length} steps</span>
+          </div>
+          <h3 className="font-display text-[22px] font-semibold text-white leading-[1.1] mt-1">
+            {workflow.scenario?.name}
+          </h3>
+
+          <ol className="mt-3">
+            {workflow.steps.map((s) => {
+              const current = s.tool.id === selectedId;
+              const openable = s.tool.status === 'live';
+              return (
+                <li key={s.tool.id} className="border-b border-white/[0.08] last:border-b-0">
+                  <button
+                    type="button"
+                    disabled={!openable}
+                    onClick={() => openable && onOpenStep?.(s.tool.id)}
+                    aria-current={current ? 'true' : undefined}
+                    className={`w-full grid grid-cols-[19px_minmax(0,1fr)_auto] gap-2.5 items-center py-2 text-left ${
+                      openable ? 'cursor-pointer' : 'cursor-default'
+                    }`}
+                  >
+                    <span
+                      className={`text-[10.5px] ${
+                        current ? 'text-[#5b8def]' : s.isBlocker ? 'text-[#C97A60]' : 'text-white/40'
+                      }`}
+                    >
+                      {current ? '\u25B6' : String(s.step).padStart(2, '0')}
+                    </span>
+                    <span
+                      className={`text-[12.5px] font-semibold leading-tight truncate ${
+                        current ? 'text-white' : openable ? 'text-white/75' : 'text-white/35'
+                      }`}
+                    >
+                      {s.tool.name}
+                    </span>
+                    <span className="text-[8.5px] font-bold uppercase tracking-[0.1em] text-white/40">
+                      {current ? 'Here' : openable ? 'Open' : 'Soon'}
+                    </span>
+                  </button>
+                  {s.check && (
+                    <span className="flex items-center gap-2 pb-1.5 pl-[29px] text-[10px] text-white/35">
+                      <span className={s.check.level === 'high' ? 'text-[#C97A60]' : 'text-white/25'}>
+                        &#9670;
+                      </span>
+                      {s.check.level === 'high' ? 'Designer check \u2014 worth it here' : 'Designer check'}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+
+          <div className="flex gap-3 items-center mt-3 pt-3 border-t border-white/10">
+            <button
+              type="button"
+              onClick={onChangeWorkflow}
+              className="text-[9.5px] font-semibold uppercase tracking-[0.12em] text-white/50 hover:text-white"
+            >
+              Change my workflow
+            </button>
+            <button
+              type="button"
+              onClick={onClearWorkflow}
+              className="text-[9.5px] font-semibold uppercase tracking-[0.12em] text-white/50 hover:text-white"
+            >
+              Start over
+            </button>
+          </div>
+        </div>
+      )}
+
+      {workflow && (
+        <button
+          type="button"
+          onClick={() => { setCatalogueTouched(true); setCatalogueOpen((v) => !v); }}
+          aria-expanded={catalogueOpen}
+          className="flex items-center gap-2.5 w-[calc(100%-28px)] mx-[14px] mt-3.5 rounded-[10px] border border-white/[0.14] px-[13px] py-3 text-left text-[12.5px] font-semibold text-white/65 hover:text-white hover:border-white/30"
+        >
+          {catalogueOpen ? '\u25BE' : '\u25B8'} All {EXPLORER_TOOLS.length} tools
+          <span className="ml-auto text-[10px] text-white/40">
+            {catalogueOpen ? 'Hide' : 'Browse'}
+          </span>
+        </button>
+      )}
+
+      {catalogueOpen && (<>
       {/* Filter bar — defaults to Live */}
       <div className="flex flex-wrap gap-[7px] px-[22px] pt-4 pb-1.5">
         {FILTERS.map((f) => {
@@ -259,6 +402,7 @@ const ExplorerRail: React.FC<ExplorerRailProps> = ({ selectedId, onSelect, usedI
           </div>
         );
       })}
+      </>)}
     </aside>
   );
 };

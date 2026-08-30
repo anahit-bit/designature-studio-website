@@ -3,6 +3,7 @@ import { useLanguage } from '../LanguageContext';
 import { cld } from '../lib/cld';
 import { AuthUser } from '../AuthContext';
 import { ConsultationReviewBand } from './ConsultationCTA';
+import NextStepBand from './studio/NextStepBand';
 import Marquee from './studio/Marquee';
 import ShoppingOfflineCard from './ShoppingOfflineCard';
 import { SHOPPING_LOGOS, LogoChip } from './ShoppingListShowcase';
@@ -67,6 +68,8 @@ interface Props {
   /** #11: fetch ONE alternate product for an item, excluding sources already shown (paid; 1 credit). */
   fetchAlternate: (item: any, excludeSources: string[]) => Promise<any | null>;
   handleDownloadShoppingPDF: () => void | Promise<void>;
+  /** AI-032 v2 seam — hand off to the next card in the workflow. */
+  onGoToTool?: (id: string) => void;
   navigateTo: (page: string) => void;
 }
 
@@ -558,6 +561,7 @@ const ShoppingExperience: React.FC<Props> = (p) => {
         </div>
         {/* One conversion band per AI result — $99 review + full-project rung.
             Replaces the old "Book the studio → /pricing" mis-point. */}
+        <NextStepBand toolId="shop" onGo={p.onGoToTool} />
         <ConsultationReviewBand tool="shopping" />
       </>
     );
