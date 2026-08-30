@@ -7,10 +7,12 @@ straight from the filesystem with no server and no fetch (a JSON-fetching page
 is blocked on file://). Re-run after every generate.ts run.
 
     python scripts/style-library/contact-sheet.py
+    python scripts/style-library/contact-sheet.py "E:\some\other\folder"
 """
 import json, os, sys
 
-ROOT = r"E:\Business\Claude\_Plan\Website\style-room-library"
+# Matches DEFAULT_OUT in generate.ts. Pass a different folder as argv[1].
+ROOT = sys.argv[1] if len(sys.argv) > 1 else r"E:\Business\Claude\_Inputs\style-quiz"
 OUT = os.path.join(ROOT, "index.html")
 
 manifest_path = os.path.join(ROOT, "manifest.json")
@@ -25,7 +27,7 @@ for i in images:
     if i["style"] not in styles: styles.append(i["style"])
     if i["room"] not in rooms: rooms.append(i["room"])
 
-by_pair = {(i["style"], i["room"]): i["file"] for i in images}
+by_pair = {(i["style"], i["room"]): i for i in images}
 missing = [(s, r) for s in styles for r in rooms if (s, r) not in by_pair]
 
 def esc(s): return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
@@ -35,11 +37,16 @@ for s in styles:
     cells.append(f'<h2 class="style" id="{esc(s).replace(" ", "-").lower()}">{esc(s)}</h2>')
     cells.append('<div class="row">')
     for r in rooms:
-        f = by_pair.get((s, r))
-        if f:
+        img = by_pair.get((s, r))
+        if img:
+            f = img["file"]
+            accent = img.get("accent")
+            # The accent is the whole point of the palette work — label it, or a
+            # reviewer cannot tell a deliberate colour from a model whim.
+            acc = f'<span class="acc">{esc(accent)}</span>' if accent else ""
             cells.append(
                 f'<figure><a href="{f}" target="_blank"><img loading="lazy" src="{f}" alt="{esc(s)} {esc(r)}"></a>'
-                f'<figcaption>{esc(r)}</figcaption></figure>')
+                f'<figcaption>{esc(r)}{acc}</figcaption></figure>')
         else:
             cells.append(f'<figure class="gap"><div class="ph">missing</div><figcaption>{esc(r)}</figcaption></figure>')
     cells.append("</div>")
@@ -69,6 +76,7 @@ html = f"""<!doctype html>
   figure{{margin:0}}
   img{{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:#F2F2F2;border:1px solid var(--line)}}
   figcaption{{font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-top:6px;text-align:center}}
+  .acc{{display:block;font-weight:700;letter-spacing:.06em;text-transform:none;color:var(--terra);margin-top:2px;font-size:10px}}
   .ph{{width:100%;aspect-ratio:4/3;display:grid;place-items:center;background:#FFF4E0;border:1px dashed rgba(180,83,9,.4);
        font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#B45309}}
 </style></head><body>
@@ -77,7 +85,8 @@ html = f"""<!doctype html>
   <div class="sub"><b>{len(images)}</b> images &middot; {len(styles)} styles &times; {len(rooms)} rooms &middot;
     generated with <code>{esc(data.get("model",""))}</code> at {esc(data.get("aspect",""))}
     {'&middot; <b>' + str(len(missing)) + ' missing</b>' if missing else '&middot; complete'}.
-    Click any image to open it full size. Rendered from the same style briefs and room programmes the live tool uses.</div>
+    Click any image to open it full size. Rendered from the same style briefs and room programmes the live tool uses;
+    the terracotta line under each room names the ONE palette accent that generation was given.</div>
   <nav>{nav}</nav>
 </header>
 <main>

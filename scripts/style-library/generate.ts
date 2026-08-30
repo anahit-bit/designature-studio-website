@@ -19,6 +19,7 @@
  *   npx tsx scripts/style-library/generate.ts --rooms "Living + Dining"
  *   npx tsx scripts/style-library/generate.ts --force         # re-render existing
  *   npx tsx scripts/style-library/generate.ts --concurrency 4
+ *   npx tsx scripts/style-library/generate.ts --out "D:\somewhere\else"
  *   npx tsx scripts/style-library/generate.ts --dry-run       # print plan + cost
  *
  * Resumable: a pair whose PNG already exists is skipped unless --force, so an
@@ -46,8 +47,11 @@ dotenv.config({ path: fs.existsSync(".env") ? ".env" : FALLBACK_ENV_PATH });
 
 // ── Output location ─────────────────────────────────────────────────────────
 // Outside the repo: 150 PNGs would bloat the tree, and these are owner-facing
-// review assets that later go to Cloudinary, not source.
-const OUT_ROOT = "E:\\Business\\Claude\\_Plan\\Website\\style-room-library";
+// assets that later go to Cloudinary, not source. Override with --out.
+// Forward slashes on purpose: Node resolves them fine on Windows, and a
+// backslash path here is one bad escape away from silently becoming
+// "E:BusinessClaude_Inputsstyle-quiz" with no error from tsc.
+const DEFAULT_OUT = "E:/Business/Claude/_Inputs/style-quiz";
 
 const MODEL = "gemini-2.5-flash-image";
 const ASPECT = "4:3";            // picker cards are landscape
@@ -70,6 +74,7 @@ const force = has("force");
 const dryRun = has("dry-run");
 const concurrency = Math.max(1, Number(flag("concurrency") ?? 3));
 
+const OUT_ROOT = flag("out") ?? DEFAULT_OUT;
 const styles = (onlyStyles ?? [...VISION_STYLES_FULL]) as string[];
 const rooms = (onlyRooms ?? [...ROOM_TYPES_FULL]) as string[];
 
