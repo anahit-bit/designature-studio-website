@@ -37,7 +37,7 @@ import {
   type StylePreset,
   type RoomType,
 } from "../../services/aiVision/stylePresets.js";
-import { ROOM_PROGRAM_RULES } from "../../services/aiVision/promptTemplates.js";
+import { ROOM_PROGRAM_RULES, pickAccent, renderAccent } from "../../services/aiVision/promptTemplates.js";
 import { VISION_STYLES_FULL, ROOM_TYPES_FULL } from "../../src/components/VisionExperience.js";
 
 // I-006: .env never lives inside a Drive-synced folder, so fall back outside the tree.
@@ -84,8 +84,11 @@ const slug = (s: string) =>
  * reason production does it — a style brief describes a living room by default,
  * so without this a "Japandi kitchen" comes back as a Japandi lounge.
  */
-function buildLibraryPrompt(preset: StylePreset, roomKey: RoomType): string {
+function buildLibraryPrompt(preset: StylePreset, roomKey: RoomType, accentSeed: number): string {
   const roomLabel = ROOM_TYPE_LABELS[roomKey];
+  // One accent per image, rotating across the style's palette, so a style's row
+  // shows its actual colour range instead of ten variations of the same beige.
+  const accent = pickAccent(preset, accentSeed);
   return `Photorealistic interior photograph of a ${roomLabel.toLowerCase()}, professionally designed and completely furnished in the style described below. Editorial interior photography: natural daylight from a window, eye-level camera at standing height, a wide but undistorted lens showing the whole room, sharp focus, realistic materials and textures, high detail. No people, no text, no watermark, no visible camera equipment.
 
 ROOM PROGRAM (this rule overrides any furniture examples in the style brief below — the room must be this room type, not the style's default room):
@@ -95,7 +98,7 @@ The room is architecturally simple and generic — plain flat walls, one flat ce
 
 TARGET STYLE:
 
-${STYLE_BRIEFS[preset]}
+${STYLE_BRIEFS[preset]}${renderAccent(accent)}
 
 Generate the photograph now. It must be immediately recognisable as this style, applied to this room type.`;
 }
@@ -107,6 +110,7 @@ interface Job {
   preset: StylePreset;
   roomKey: RoomType;
   file: string;
+  accentSeed: number;
 }
 
 const jobs: Job[] = [];
@@ -115,14 +119,15 @@ const wiringErrors: string[] = [];
 for (const style of styles) {
   const preset = STYLE_NAME_TO_PRESET[style];
   if (!preset) { wiringErrors.push(`style "${style}" has no preset mapping`); continue; }
-  for (const room of rooms) {
+  rooms.forEach((room, roomIndex) => {
     const roomKey = ROOM_NAME_TO_TYPE[room];
-    if (!roomKey) { wiringErrors.push(`room "${room}" has no room-type mapping`); continue; }
+    if (!roomKey) { wiringErrors.push(`room "${room}" has no room-type mapping`); return; }
     jobs.push({
       style, room, preset, roomKey,
+      accentSeed: roomIndex,
       file: path.join(OUT_ROOT, slug(style), `${slug(room)}.png`),
     });
-  }
+  });
 }
 
 if (wiringErrors.length) {
@@ -155,7 +160,7 @@ let done = 0;
 const failures: { job: Job; error: string }[] = [];
 
 async function renderOne(job: Job, attempt = 0): Promise<void> {
-  const prompt = buildLibraryPrompt(job.preset, job.roomKey);
+  const prompt = buildLibraryPrompt(job.preset, job.roomKey, job.accentSeed);
   const config: any = { temperature: 0.6, responseModalities: ["IMAGE"] };
   if (useImageConfig) config.imageConfig = { aspectRatio: ASPECT };
 
@@ -191,7 +196,7 @@ async function renderOne(job: Job, attempt = 0): Promise<void> {
   fs.mkdirSync(path.dirname(job.file), { recursive: true });
   fs.writeFileSync(job.file, Buffer.from(img.inlineData.data, "base64"));
   done++;
-  console.log(`  [${done}/${todo.length}] ${job.style} / ${job.room}`);
+  console.log(`  [${done}/${todo.length}] ${job.style} / ${job.room}  ·  ${pickAccent(job.preset, job.accentSeed)?.name ?? "no accent"}`);
 }
 
 async function main() {
@@ -217,6 +222,7 @@ async function main() {
     .filter((j) => fs.existsSync(j.file))
     .map((j) => ({
       style: j.style, room: j.room, preset: j.preset, roomKey: j.roomKey,
+      accent: pickAccent(j.preset, j.accentSeed)?.name ?? null,
       file: path.relative(OUT_ROOT, j.file).replace(/\\/g, "/"),
       bytes: fs.statSync(j.file).size,
     }));

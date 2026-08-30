@@ -123,6 +123,10 @@ const AIConceptsPage: React.FC = () => {
   const [apiAspectRatio, setApiAspectRatio] = useState<"1:1" | "3:4" | "4:3" | "9:16" | "16:9">("3:4");
   const [selectedStyle, setSelectedStyle] = useState<string>('');
   const [selectedRoom, setSelectedRoom] = useState<string>('');
+  // 2026 Colour of the Year — a MODIFIER, not a style. '' = off. Sent to the
+  // server, which uses it in place of the style palette's accent for this
+  // concept, so the colour appears whatever style or reference photos are used.
+  const [paintColor2026, setPaintColor2026] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingPhase, setProcessingPhase] = useState(0);
   /** 'extract' shows "Analyzing references…", 'generate' shows cycling phases. */
@@ -328,6 +332,7 @@ const AIConceptsPage: React.FC = () => {
     setRoomStructureWarning(false);
     setSelectedStyle('');
     setSelectedRoom('');
+    setPaintColor2026('');
     setResults([]);
     setSelectedConceptIndex(0);
     setSessionConceptArchive([]);
@@ -807,6 +812,7 @@ const AIConceptsPage: React.FC = () => {
           referenceImages: inspirationImages,
           stylePreset: selectedStyle || undefined,
           roomType: selectedRoom || undefined,
+          paintColor2026: paintColor2026 || undefined,
           variationSeed: isVariation ? variationSeedRef.current : undefined,
           isSampleRun: isSampleRun || undefined,
         }),
@@ -898,6 +904,7 @@ const AIConceptsPage: React.FC = () => {
     setRoomStructureWarning(false);
     setSelectedStyle('');
     setSelectedRoom('');
+    setPaintColor2026('');
     setError(null);
     setValidationError(null);
     setShoppingResults([]);
@@ -1160,6 +1167,8 @@ const AIConceptsPage: React.FC = () => {
           setSelectedStyle={setSelectedStyle}
           selectedRoom={selectedRoom}
           setSelectedRoom={setSelectedRoom}
+          paintColor2026={paintColor2026}
+          setPaintColor2026={setPaintColor2026}
           isProcessing={isProcessing}
           results={results}
           sessionConceptArchive={sessionConceptArchive}

@@ -5,7 +5,8 @@ import {
   ROOM_NAME_TO_TYPE,
   ROOM_TYPE_LABELS,
 } from '../../services/aiVision/stylePresets';
-import { ROOM_PROGRAM_RULES } from '../../services/aiVision/promptTemplates';
+import { ROOM_PROGRAM_RULES, pickAccent, renderAccent } from '../../services/aiVision/promptTemplates';
+import { STYLE_PALETTES, PAINT_MODIFIERS } from '../../services/aiVision/rulebook.generated';
 import { VISION_STYLES_FULL, ROOM_TYPES_FULL } from '../components/VisionExperience';
 
 describe('mid_century preset · modern interpretation (not a literal 1950s-60s replica)', () => {
@@ -182,6 +183,77 @@ describe('trend_2026 preset · the "I do not know my style" answer', () => {
 
   it('respects RD16 — cladding is applied flat to the existing wall, never carved in', () => {
     expect(brief).toContain('applied flat to the existing surface');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Palettes — one accent per generation is what stops fifteen styles producing
+// fifteen versions of the same room.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('style palettes · one accent per generation', () => {
+  it('every style has a palette with at least three accents', () => {
+    for (const label of VISION_STYLES_FULL) {
+      const preset = STYLE_NAME_TO_PRESET[label];
+      const palette = STYLE_PALETTES[preset];
+      expect(palette, `no palette for "${preset}"`).toBeTruthy();
+      const accents = palette.filter((c) => c.role === 'accent');
+      expect(accents.length, `"${preset}" has ${accents.length} accents — generations would repeat`)
+        .toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it('every colour is a real #RRGGBB hex', () => {
+    for (const palette of Object.values(STYLE_PALETTES)) {
+      for (const c of palette) expect(c.hex).toMatch(/^#[0-9A-F]{6}$/);
+    }
+  });
+
+  it('walks the accent pool as the variation seed increases, instead of repeating', () => {
+    const accents = STYLE_PALETTES.japandi.filter((c) => c.role === 'accent');
+    const picked = accents.map((_, i) => pickAccent('japandi', i)?.name);
+    expect(new Set(picked).size).toBe(accents.length);
+  });
+
+  it('is deterministic for a given seed', () => {
+    expect(pickAccent('coastal', 2)?.hex).toBe(pickAccent('coastal', 2)?.hex);
+  });
+
+  it('returns null when there is no preset — reference photos carry their own colour', () => {
+    expect(pickAccent(undefined, 0)).toBeNull();
+  });
+
+  it('renders an accent block that names the colour and protects the rest of the brief', () => {
+    const block = renderAccent(pickAccent('bohemian', 0));
+    expect(block).toContain('ACCENT COLOUR FOR THIS CONCEPT');
+    expect(block).toMatch(/#[0-9A-F]{6}/);
+    expect(block).toContain('Keep every other instruction in the style brief intact');
+  });
+});
+
+describe('2026 paint modifier · overrides the accent, never the style', () => {
+  it('exposes the three Colours of the Year', () => {
+    expect(PAINT_MODIFIERS.map((p) => p.id).sort())
+      .toEqual(['cloud_dancer', 'silhouette', 'universal_khaki']);
+  });
+
+  it('outranks the style palette when chosen', () => {
+    const withPaint = pickAccent('bohemian', 0, 'silhouette');
+    expect(withPaint?.name).toBe('Silhouette');
+    expect(withPaint?.brand).toContain('Benjamin Moore');
+  });
+
+  it('applies even with reference photos, where there is no preset at all', () => {
+    const accent = pickAccent(undefined, undefined, 'cloud_dancer');
+    expect(accent?.name).toBe('Cloud Dancer');
+  });
+
+  it('falls back to the style palette when the id is unknown', () => {
+    const accent = pickAccent('coastal', 0, 'not_a_real_colour');
+    expect(accent?.name).toBe(STYLE_PALETTES.coastal.filter((c) => c.role === 'accent')[0].name);
+  });
+
+  it('carries its own instruction into the prompt', () => {
+    expect(renderAccent(pickAccent('modern', 0, 'cloud_dancer'))).toContain('DOMINANT wall colour');
   });
 });
 
