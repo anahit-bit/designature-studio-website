@@ -80,13 +80,11 @@ const NotifyButton: React.FC<{ dark?: boolean; plan: string }> = ({ dark, plan }
 // Starts a subscription checkout: POST /api/subscriptions/subscribe → redirect to
 // the Ameriabank hosted page. Logged-out users are sent to sign-in first.
 const SubscribeButton: React.FC<{ dark?: boolean; tier: 'design' | 'studio'; interval: BillingInterval }> = ({ dark, tier, interval }) => {
-  const { user, apiFetch } = useAuth();
-  const { navigateTo } = useLanguage();
+  const { user, apiFetch, signIn } = useAuth();
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
 
-  const handle = async () => {
-    if (!user) { setSigninSource('pricing_cta'); navigateTo('ai-concepts'); return; }
+  const startCheckout = async () => {
     setLoading(true); setErr('');
     try {
       const r = await apiFetch('/api/subscriptions/subscribe', { method: 'POST', body: JSON.stringify({ tier, interval }) });
@@ -96,6 +94,13 @@ const SubscribeButton: React.FC<{ dark?: boolean; tier: 'design' | 'studio'; int
       if (data.redirectUrl) { window.location.href = data.redirectUrl; return; }
       setErr('Could not start checkout.'); setLoading(false);
     } catch { setErr('Could not start checkout.'); setLoading(false); }
+  };
+
+  const handle = () => {
+    // Logged out → sign in IN PLACE (Google popup), then continue straight to the
+    // card page — no detour to the AI Studio. Logged in → go straight to checkout.
+    if (!user) { signIn({ source: 'pricing_subscribe', onSuccess: () => { void startCheckout(); } }); return; }
+    void startCheckout();
   };
 
   return (

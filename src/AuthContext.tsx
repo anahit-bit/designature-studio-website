@@ -34,6 +34,9 @@ export interface AuthUser {
 export interface SignInOptions {
   toolUsed?: string;
   source?: string;
+  /** Runs once immediately after a successful sign-in — e.g. to resume a pending
+   *  action the user started while logged out (like continuing to checkout). */
+  onSuccess?: (user: AuthUser) => void;
 }
 
 interface AuthContextType {
@@ -136,6 +139,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (!res.ok) throw new Error(data.error || 'Auth failed');
         storeToken(data.token);
         setUser(data.user);
+        // Resume any action the user started while logged out (e.g. checkout).
+        try { opts.onSuccess?.(data.user); } catch (e) { console.error('onSuccess hook failed:', e); }
         // I-023 — GA4 signup event for first-time accounts (client-side, env-gated).
         if (data.isNewUser) {
           trackEvent('signup', { source: opts.source ?? 'unknown' });
