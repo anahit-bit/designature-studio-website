@@ -9,7 +9,7 @@
  * being a rule.
  *
  * This build: 18 gemini rules · 0 staging · 6 not sent to any model
- *             15 style briefs · 15 palettes (67 accents) · 10 room programs · 3 paint modifiers.
+ *             15 style briefs · 15 palettes (66 accents) · 10 room programs · 3 paint modifiers.
  */
 
 export interface CompiledRule {
@@ -179,13 +179,13 @@ export const STYLE_BRIEFS: Record<string, string> = {
 5. WALL & CEILING TREATMENT: bold saturated paint colors, one feature wall in a contemporary patterned wallpaper (large-scale florals, murals, geometric, checkerboard), a dense gallery wall using mixed modern frames (thin black, thin brass, colored), painted color on the ceiling optional. Ceilings stay flat and modern.
 6. DECOR & STYLING: dense gallery wall with modern art (posters, abstract prints, contemporary photography, colorful paintings), stacked art books, curated ceramics in saturated colors, many houseplants (monstera, palms, trailing pothos, rubber plants), layered patterned rugs, playful objects (contemporary sculpture, colorful vases, collected ceramics).
 7. OVERALL MOOD: joyful, personal, current, saturated. Maximum color and pattern from a modern vocabulary. The room reads like a curated contemporary home whose owner loves color and character.`,
-  biophilic: `1. COLOR PALETTE: Leaf Green #6B8C5A, Bark Brown #7A5C3A, Stone Cream #E4DED5, Sky Blue #A8C4CE, Moss #4F6B47, Terracotta #B86E4A, Natural White #F0EBE2.
-2. MATERIALS & FINISHES: raw teak and bamboo, cork flooring, natural stone with visible texture, pressed botanicals under glass, woven rattan and seagrass, vertical moss panels on feature walls, jute rugs with natural dye, unglazed clay ceramics.
-3. FURNITURE CHARACTER: organic shapes inspired by natural forms — pebble-contoured sofas, branch-like shelving, leaf-shaped tables. Low, grounded, sinuous lines referencing geological and botanical shapes rather than geometric ones.
-4. LIGHTING: full-spectrum daylight maximized through all openings, supplemented by warm LED mimicking golden-hour light. Fixtures in natural materials (rattan, stone, wood). No cold-white light sources.
-5. WALL & CEILING TREATMENT: vertical plant panels or moss walls on one feature surface, raw plaster in earthy tones, exposed natural stone, timber slat ceiling panels, no synthetic-looking finishes.
-6. DECOR & STYLING: cascading pothos and philodendron, large leafy indoor trees (fiddle leaf, rubber plant, monstera), terracotta planters of all sizes, stone pebble bowls, pressed leaf art, water features where applicable, seed pods and natural specimens.
-7. OVERALL MOOD: restorative, alive, deeply connected to nature. The room breathes through its plants and materials, reducing stress and inviting quiet contemplation.`,
+  biophilic: `1. COLOR PALETTE: Natural White #F0EBE2, Stone Cream #E4DED5, Warm Teak #A8794C, Bark Brown #7A5C3A, Riverstone Grey #8C8880, Terracotta #B86E4A, Leaf Green #6B8C5A. The green belongs to the living plants, not to the walls — at most one green surface anywhere in the room, and usually none. Every built surface stays a warm natural neutral.
+2. MATERIALS & FINISHES: raw teak and warm oak with visible grain, vertical timber battens and slats, bamboo, cork or honed concrete flooring, natural stone with real texture — river pebble, basalt, travertine — woven rattan, cane and seagrass, jute with natural dye, unglazed clay and terracotta, heavy linen. Greenery enters the room as REAL PLANTS growing in soil, never as a material applied to a wall.
+3. FURNITURE CHARACTER: organic and grounded — softly curved, pebble-contoured seating, solid timber benches with visible grain, low round tables, rattan and cane chairs. Sinuous rather than geometric, sitting low and close to the floor so the eye goes to the daylight and the planting.
+4. LIGHTING: daylight is the primary material: skylights, clerestories and full-height glazing wherever the room already has them, so light falls across timber and stone. Supplement with warm LED at golden-hour temperature and fixtures in rattan, paper, stone or wood. No cold-white sources.
+5. WALL & CEILING TREATMENT: warm vertical timber battens or slats across one or two walls, raw lime plaster in earthy tones, exposed natural stone, timber-slat ceilings. MOSS IS NOT PART OF THIS STYLE — never clad a wall, panel or ceiling in moss. A living vertical garden of real potted plants is permitted on at most ONE wall, and only in a large, well-daylit room; most rooms should have none at all. Walls stay warm neutrals.
+6. DECOR & STYLING: ONE substantial specimen tree or large plant as the room's living centrepiece — Japanese maple, olive, fiddle leaf, rubber plant — set in a stone, concrete or terracotta planter, with only two or three smaller plants elsewhere. Not a plant on every surface. A bed of river pebbles where the floor allows, unglazed planters, stone bowls, a bonsai or single branch arrangement, pressed botanical art, seed pods and natural specimens. The room should read calm and edited, never like a plant nursery or a garden centre.
+7. OVERALL MOOD: restorative, calm and materially warm. Nature arrives through daylight, timber, stone and one well-placed living thing — not through green paint, green walls or moss. A quiet, breathable room where the planting is an event rather than a texture.`,
   dopamine: `1. COLOR PALETTE: unapologetically joyful and saturated — Sunflower Yellow #F5C842, Bubblegum Pink #F58BB0, Sky Blue #6BB6E8, Fresh Mint #6ED9A8, Coral #F97C6E, Lilac #C8A6E8, Tangerine #F58A3B, Cream #FBF3E8. Multiple bright hues coexist on the same wall, upholstery, or object cluster.
 2. MATERIALS & FINISHES: mix of soft-touch and playful — velvet in saturated colors, matte lacquered wood, glossy ceramic, rattan and cane, bouclé fabric in bright hues, terrazzo, playful printed cottons, powder-coated metal. Surfaces feel tactile and inviting.
 3. FURNITURE CHARACTER: curved, rounded, playful silhouettes — marshmallow sofas, pill-shaped ottomans, kidney-shaped coffee tables, curvy accent chairs, mushroom lamps, oversized poufs. Contemporary shapes with a soft, huggable quality — every piece invites you to sit down.
@@ -341,11 +341,11 @@ export const STYLE_PALETTES: Record<string, PaletteColour[]> = {
     { name: "Stone Cream", hex: "#E4DED5", role: "field" },
     { name: "Bark Brown", hex: "#7A5C3A", role: "neutral" },
     { name: "Clay Sand", hex: "#D6C6AE", role: "neutral" },
-    { name: "Leaf Green", hex: "#6B8C5A", role: "accent" },
-    { name: "Moss", hex: "#4F6B47", role: "accent" },
-    { name: "Sky Blue", hex: "#A8C4CE", role: "accent" },
+    { name: "Riverstone Grey", hex: "#8C8880", role: "neutral" },
+    { name: "Warm Teak", hex: "#A8794C", role: "accent" },
     { name: "Terracotta", hex: "#B86E4A", role: "accent" },
-    { name: "Deep Fern", hex: "#3F5A3A", role: "accent" },
+    { name: "Leaf Green", hex: "#6B8C5A", role: "accent" },
+    { name: "Charcoal Basalt", hex: "#3A3A38", role: "accent" },
   ],
   dopamine: [
     { name: "Cream", hex: "#FBF3E8", role: "field" },

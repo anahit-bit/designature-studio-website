@@ -154,16 +154,20 @@ PALETTES = {
         ("Coral", "#E85E4A", "accent"),
         ("Peacock Teal", "#147A80", "accent"),
     ],
+    # Reworked 2026-08-31. Was 5 accents, THREE of them green (Leaf Green, Moss,
+    # Deep Fern) — so 60% of generations put a green accent on an already-green
+    # brief and every room came back as a moss wall. Now 4 accents, ONE green:
+    # in this style the green belongs to the plants, not to the surfaces.
     "biophilic": [
         ("Natural White", "#F0EBE2", "field"),
         ("Stone Cream", "#E4DED5", "field"),
         ("Bark Brown", "#7A5C3A", "neutral"),
         ("Clay Sand", "#D6C6AE", "neutral"),
-        ("Leaf Green", "#6B8C5A", "accent"),
-        ("Moss", "#4F6B47", "accent"),
-        ("Sky Blue", "#A8C4CE", "accent"),
+        ("Riverstone Grey", "#8C8880", "neutral"),
+        ("Warm Teak", "#A8794C", "accent"),
         ("Terracotta", "#B86E4A", "accent"),
-        ("Deep Fern", "#3F5A3A", "accent"),
+        ("Leaf Green", "#6B8C5A", "accent"),
+        ("Charcoal Basalt", "#3A3A38", "accent"),
     ],
     "dopamine": [
         ("Cream", "#FBF3E8", "field"),

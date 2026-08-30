@@ -153,7 +153,48 @@ if (dryRun) {
   if (todo.length > 12) console.log(`  · … and ${todo.length - 12} more`);
   process.exit(0);
 }
-if (!todo.length) { console.log("Nothing to do."); process.exit(0); }
+if (!todo.length) { console.log("Nothing to generate."); writeManifest(); process.exit(0); }
+
+// ── Manifest ────────────────────────────────────────────────────────────────
+// What exists on disk, so the contact sheet and any later Cloudinary upload read
+// from one place instead of re-walking the tree.
+//
+// Built from the FULL grid, never from `jobs` — `jobs` is filtered by --styles
+// and --rooms, so building it from there made a single-style re-render truncate
+// the manifest to ten entries and the contact sheet lost fourteen styles. It also
+// runs on EVERY exit path, including "nothing to generate", because a re-render
+// that produces no new files must still leave a correct index behind.
+function writeManifest(): number {
+  const fullGrid: Job[] = [];
+  for (const style of VISION_STYLES_FULL) {
+    const preset = STYLE_NAME_TO_PRESET[style];
+    if (!preset) continue;
+    ROOM_TYPES_FULL.forEach((room, roomIndex) => {
+      const roomKey = ROOM_NAME_TO_TYPE[room];
+      if (!roomKey) return;
+      fullGrid.push({
+        style, room, preset, roomKey, accentSeed: roomIndex,
+        file: path.join(OUT_ROOT, slug(style), `${slug(room)}.png`),
+      });
+    });
+  }
+  const images = fullGrid
+    .filter((j) => fs.existsSync(j.file))
+    .map((j) => ({
+      style: j.style, room: j.room, preset: j.preset, roomKey: j.roomKey,
+      accent: pickAccent(j.preset, j.accentSeed)?.name ?? null,
+      file: path.relative(OUT_ROOT, j.file).split(path.sep).join("/"),
+      bytes: fs.statSync(j.file).size,
+    }));
+  fs.mkdirSync(OUT_ROOT, { recursive: true });
+  fs.writeFileSync(
+    path.join(OUT_ROOT, "manifest.json"),
+    JSON.stringify({ model: MODEL, aspect: ASPECT, generated: images.length, images }, null, 2),
+  );
+  console.log(`manifest: ${images.length}/${fullGrid.length} images present`);
+  return images.length;
+}
+
 
 // ── Generation ──────────────────────────────────────────────────────────────
 const apiKey = process.env.GEMINI_API_KEY ?? "";
@@ -221,22 +262,9 @@ async function main() {
   });
   await Promise.all(workers);
 
-  // Manifest: what exists, so the contact sheet and any later Cloudinary
-  // upload read from one place instead of re-walking the tree.
-  const manifest = jobs
-    .filter((j) => fs.existsSync(j.file))
-    .map((j) => ({
-      style: j.style, room: j.room, preset: j.preset, roomKey: j.roomKey,
-      accent: pickAccent(j.preset, j.accentSeed)?.name ?? null,
-      file: path.relative(OUT_ROOT, j.file).replace(/\\/g, "/"),
-      bytes: fs.statSync(j.file).size,
-    }));
-  fs.writeFileSync(
-    path.join(OUT_ROOT, "manifest.json"),
-    JSON.stringify({ model: MODEL, aspect: ASPECT, generated: manifest.length, images: manifest }, null, 2),
-  );
+  const present = writeManifest();
 
-  console.log(`\nDone. ${done} generated · ${failures.length} failed · ${manifest.length}/${jobs.length} present.`);
+  console.log(`\nDone. ${done} generated · ${failures.length} failed · ${present} present.`);
   console.log(`Spent about $${(done * COST_PER_IMAGE).toFixed(2)}.`);
   if (failures.length) {
     console.log("Failed pairs (re-run the same command to retry only these):");
