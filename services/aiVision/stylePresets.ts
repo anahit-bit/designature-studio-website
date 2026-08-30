@@ -20,7 +20,8 @@ export type StylePreset =
   | "minimalist"
   | "maximalist"
   | "biophilic"
-  | "dopamine";
+  | "dopamine"
+  | "trend_2026";
 
 export type RoomType =
   | "living_room"
@@ -31,7 +32,8 @@ export type RoomType =
   | "home_office"
   | "kids_room"
   | "outdoor"
-  | "hallway";
+  | "hallway"
+  | "living_dining";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Hardcoded style briefs (skips the Gemini text-extraction call for presets)
@@ -178,6 +180,20 @@ export const STYLE_BRIEFS: Record<StylePreset, string> = {
 7. OVERALL MOOD: joyful, mood-boosting, playful, saturated. The room is designed to lift the spirit the moment you walk in — every color and shape chosen for how it makes you feel. Curved edges, bright hues, and soft materials create a space that feels like a hug.
 `.trim(),
 
+  // The "I don't know my style" answer — the studio's 2026 house direction.
+  // Written from 2026 forecast reporting (warm neutrals displacing grey, craft
+  // and longevity over fast furniture), not from a single brand's palette, so it
+  // stays a design position rather than a colour-of-the-year advert.
+  trend_2026: `
+1. COLOR PALETTE: warm, grounded, tonal — Universal Khaki #C0B49A, Soft Clay #C08A6E, Warm Sand #E2D6C2, Olive #7C7F5E, Chocolate Brown #4A3A30, Cloud Dancer off-white #F0EEE9, Burnt Umber #6B4F3F. Greys are deliberately absent. Colors sit close together in tone — depth comes from layering related warm neutrals, not from contrast.
+2. MATERIALS & FINISHES: solid and reclaimed wood with visible grain, architectural millwork and fluted or slatted panelling, boucle and chenille, heavy linen and cotton with woven texture, rough honed stone, unlacquered brass ageing naturally, rattan and natural fibre, marble used as an accent rather than a field. Everything matte or satin; nothing high-gloss.
+3. FURNITURE CHARACTER: sculptural but comfortable — curved and rounded silhouettes, deep supportive cushioning, a substantial low sofa in warm neutral upholstery, one vintage or vintage-feeling piece with real age, modular and multifunctional storage that hides clutter. Pieces look built to keep rather than bought for a season. Nothing spindly, nothing obviously trend-chasing.
+4. LIGHTING: layered and warm — a sculptural pendant in plaster, alabaster or unlacquered brass, wall sconces washing a textured wall, table lamps with linen or paper shades, concealed warm LED under joinery. No cool-white sources, no single central downlight grid.
+5. WALL & CEILING TREATMENT: warm limewash or matte mineral paint in a tonal neutral, one wall in slatted or fluted timber applied flat to the existing surface, plain flat ceilings kept clean, restrained shadow-gap trim. In a small room the wall colour may continue onto the ceiling in the same tone.
+6. DECOR & STYLING: fewer, better objects — one hand-thrown ceramic, stacked art or design books, a large textured artwork, an antique or vintage object with patina, one architectural plant in a matte planter, a heavy woven throw. Surfaces are styled but never crowded.
+7. OVERALL MOOD: warm, tactile, collected, quietly current. The 2026 direction — comfort over minimalism, warm neutrals over grey, craft and longevity over fast furniture. A room that looks assembled over years rather than delivered in a week.
+`.trim(),
+
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -193,6 +209,7 @@ export const ROOM_TYPE_LABELS: Record<RoomType, string> = {
   kids_room:    "KIDS ROOM",
   outdoor:      "OUTDOOR SPACE",
   hallway:      "HALLWAY",
+  living_dining: "OPEN-PLAN LIVING + DINING ROOM",
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -202,6 +219,8 @@ export const ROOM_TYPE_LABELS: Record<RoomType, string> = {
 export const STYLE_NAME_TO_PRESET: Record<string, StylePreset> = {
   "Japandi":      "japandi",
   "Warm Contemporary": "warm_contemporary",
+  "Trend 2026":   "trend_2026",
+  "Transitional": "transitional",
   "Modern":       "modern",
   "Mid-Century":  "mid_century",
   "Bohemian":     "bohemian",
@@ -230,6 +249,8 @@ export const ROOM_NAME_TO_TYPE: Record<string, RoomType> = {
   // Short forms (live VisionExperience chips)
   "Living":      "living_room",
   "Dining":      "dining_room",
+  // Open-plan combo — one room holding both zones, never two rooms.
+  "Living + Dining": "living_dining",
   // Identical in both conventions
   "Bedroom":     "bedroom",
   "Kitchen":     "kitchen",

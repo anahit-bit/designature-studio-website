@@ -36,6 +36,12 @@ export const ROOM_PROGRAM_RULES: Record<RoomType, string> = {
 
   outdoor: `The room MUST be a fully realized OUTDOOR SPACE (patio, terrace, or balcony as appropriate to the original photo). Include outdoor-rated seating (sofa, chairs, or dining set as fits the space), an outdoor rug, planters with real outdoor plants, string lights or outdoor sconces, and appropriate styling. All materials must be weather-appropriate. Do NOT include indoor furniture that would not survive weather.`,
 
+  // Open-plan combo. The failure mode here is architectural, not decorative:
+  // asked for "two zones" the model reaches for a partition, a screen, or a
+  // level change — all of which are new architecture (RD3/RD6). So the zoning
+  // devices are named explicitly and the walls are ruled out in the same breath.
+  living_dining: `The room MUST be a fully realized OPEN-PLAN LIVING + DINING ROOM containing BOTH zones, readable as two zones within one single space. LOUNGE ZONE: a sofa, one or two armchairs, a coffee table, a floor or table lamp, and a rug whose edges define the zone's footprint. DINING ZONE: a dining table with 4-6 dining chairs beneath its own pendant or chandelier, plus a sideboard or credenza against a wall where the space allows. Separate the two zones ONLY with the rug edge, the lighting, the furniture backs, or a low console — NEVER with a new wall, partition, screen, glazed divider, step or level change, and never by splitting the ceiling. Leave a clear walking route of at least 900mm between the two zones and to every door. Both zones must share ONE material and colour vocabulary — the same woods, metals and textiles — so the space reads as a single room rather than two rooms photographed together. Do NOT include beds, kitchen cabinetry, desks, or bathroom fixtures.`,
+
   hallway: `The room MUST be a fully realized HALLWAY. Include a narrow console or hall table, wall art or a gallery arrangement, a runner rug, wall sconces or pendants, and appropriate styling. Do NOT include living-room furniture, beds, or dining tables. The space should read as a transit space.`,
 };
 

@@ -649,6 +649,7 @@ const translations = {
     'ai.images': 'images',
     'ai.style.japandi': 'Japandi',
     'ai.style.warmcontemporary': 'Warm Contemporary',
+    'ai.style.trend2026': 'Trend 2026',
     'ai.style.modern': 'Modern',
     'ai.style.midCentury': 'Mid-Century',
     'ai.style.midcentury': 'Mid-Century',

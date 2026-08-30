@@ -29,13 +29,18 @@ const THUMB_AFTER_OPTS = { quality: 'best' as const, enhance: true, sharpen: 60 
 // AI-023 Variant D — full-bleed editorial gallery flow.
 // Spec: WEBSITE-PLAN-ai-vision-VARIANT-D.html.
 
+// Every entry MUST have a STYLE_NAME_TO_PRESET mapping and a STYLE_BRIEFS entry,
+// or the chip silently generates with no style at all. stylePresets.test asserts it.
 export const VISION_STYLES_FULL = [
-  'Warm Contemporary', 'Mid-Century', 'Japandi', 'Coastal', 'Modern', 'Bohemian', 'Rustic',
-  'Industrial', 'Art Deco', 'Minimalist', 'Maximalist', 'Dopamine', 'Biophilic',
+  'Trend 2026', 'Warm Contemporary', 'Mid-Century', 'Japandi', 'Coastal', 'Modern',
+  'Transitional', 'Bohemian', 'Rustic', 'Industrial', 'Art Deco', 'Minimalist',
+  'Maximalist', 'Dopamine', 'Biophilic',
 ] as const;
 
+// Every entry MUST have a ROOM_NAME_TO_TYPE mapping, or the room silently falls
+// back to living_room and the user gets a sofa in their kitchen. Asserted too.
 export const ROOM_TYPES_FULL = [
-  'Living', 'Dining', 'Bedroom', 'Kitchen', 'Bathroom',
+  'Living', 'Dining', 'Living + Dining', 'Bedroom', 'Kitchen', 'Bathroom',
   'Home Office', 'Hallway', 'Kids Room', 'Outdoor',
 ] as const;
 
