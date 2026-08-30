@@ -76,12 +76,25 @@ That split is not a workaround; it is exactly the line the law draws.
 2. **The name lives in the reference layer** — the look's own page, Journal articles, FAQ answers,
    search, meta descriptions, and the honest "reference points" credit line. All of it factual,
    all of it disclaimered.
-3. **The name never goes into the generation prompt.** The brief describes the look longhand; it does
-   not say "in the style of ___". Two reasons: it removes any evidence trail of intentionally
-   producing a named designer's clone (the live question in the AI-style litigation, e.g. *Andersen v.
-   Stability AI*), and — separately — concrete attribute descriptions simply render better than a name
-   the model half-remembers. **This is an enforceable engineering rule: a test asserts no reference
-   name string appears in any brief or prompt builder.**
+3. **The name never goes into the generation prompt** — not even though the client never sees it.
+   "Invisible to the user" is not the same as invisible, and there are three separate reasons:
+   - **It is not private.** The prompt is sent to Google's API and lives in their logs under their
+     terms; it also lands in our server logs, our brief cache, error traces, and anything a
+     contractor or a future engineer reads. It is discoverable.
+   - **It changes what the product is, evidentially.** Our whole position is that we wrote an
+     original aesthetic that happens to resemble a look people know. A prompt reading "in the style
+     of ___" documents an intent to reproduce a named person's work — it converts a defensible
+     product into an exhibit, and intent is exactly what the AI-style cases turn on (*Andersen v.
+     Stability AI*).
+   - **It renders worse.** A proper-name style token makes the model average its vague memory of that
+     name, and the name then competes with our explicit constraints. Nine sections with hex values and
+     a NEVER list beat a surname every time, and they are reproducible. There is no quality upside to
+     weigh against the risk.
+
+   **Enforced by a test**: no reference name string appears in `SIGNATURE_BRIEFS`, in the prompt
+   builders, or in any generation payload. The one legitimate place a name lives in code is the
+   **search alias map** (`"studio mcgee" -> bright_modern_farmhouse`) — that is a lookup table for
+   what the client typed, and it must never be passed into a prompt.
 
 ### Making the names understandable (the actual craft problem)
 
@@ -160,6 +173,54 @@ Two of these need no analysis, and should ship alongside:
 - **House looks.** Anahit's own signatures, and each published Designature project as a selectable
   look — Featherlight, Still Waters, Blue Haven already have real photography. Free, fully ownable,
   and it markets the studio.
+
+
+## Keeping it simple for the client (two shelves, one choice)
+
+The risk with two shelves is not legal, it is comprehension. Three rules keep it simple:
+
+1. **One line each, and they never overlap.** *Signature Looks — a complete look, worked out in
+   detail.* *Styles — a broad direction.* Signature Looks sit **above** the style chips, because
+   they are the better answer for most people; the 13 chips stay exactly as they are.
+2. **One choice at a time.** Picking a Signature Look clears any selected style chip, and picking a
+   chip clears the selected look. They are the same field with two ways of filling it — never two
+   settings the client has to reconcile ("which one wins?" is the confusion to design out).
+3. **Search is a shortcut, not the path.** Most people will never type anything; they will look at
+   six pictures and pick one. The search field exists for the person who arrives with a name already
+   in their head, and it must never be the only way to find a look.
+
+### Where Signature Looks belong in the Style Quiz
+
+Not as a question, and not as a second grid — the quiz is already 13 styles and adding 15 looks would
+double its length for no gain. Put them at the **end**, where they answer the question the result
+raises:
+
+> Your style is **Warm Contemporary**.
+> The closest Signature Look is **Bright Modern Farmhouse** → *try it on your room*
+
+One line on the existing result screen (`StyleQuizScreen.tsx`, `renderResult`), mapping each quiz
+outcome to its nearest look. The quiz keeps one job — find your taste — and becomes a feeder into the
+paid shelf instead of competing with it.
+
+## Writing the Journal articles (the names' natural home)
+
+An article is the safest place for a designer's name and the highest-intent SEO we can write, so yes:
+write them. Six rules keep them clean:
+
+- **Teach, don't dupe.** "What actually defines the Studio McGee look" is editorial. "Get the Studio
+  McGee look for less" is dupe framing — the exact thing *L'Oréal v Bellure* punished, and the five
+  UK designers are governed by that law. Never price-compare against a named designer.
+- **Link out to them.** An outbound link to the designer's own site reinforces that we are referring
+  to them rather than borrowing from them, and it is ordinary editorial practice.
+- **Never their photographs.** Not embedded, not hotlinked, not "credit: ___". Every image is our own
+  render or our own shot. This is where style articles actually get into trouble — copyright claims
+  on photos are far more common, and far easier to lose, than trademark claims on names.
+- **No logos, no brand fonts, no "x" framing.** "Designature x Studio McGee" implies a collaboration
+  that does not exist. A descriptive headline and slug ("studio-mcgee-style-guide") is reference;
+  a name in a domain, a product, or a plan tier is not.
+- **Never imply endorsement or use.** Do not say or hint that a designer uses, likes, or approves our
+  tool, and do not say "official" or "partner" without a signed agreement.
+- **Disclaimer on every one of them**, the same component as the `/looks/` pages.
 
 ## The roster (15 looks — reference, ship label, and the line that makes it understood)
 
@@ -274,6 +335,11 @@ write sections 1–9 → render on 3 fixed test rooms → compare against the re
 - [ ] Append sections 8–9 in `buildGenerationPrompt()` / `buildStagingPrompt()`.
 - [ ] `SIGNATURE_LOOKS_FULL` + card row in `VisionExperience.tsx`; thumbnails via `cld()`.
 - [ ] Paid gate: signature look + free tier → one render, then upsell (reuse `isPaid` path).
+- [ ] Mutual exclusion: selecting a Signature Look clears `selectedStyle` and vice versa — one field,
+      two ways of filling it.
+- [ ] Search alias map (`"studio mcgee" -> bright_modern_farmhouse`, plus each look's alias list),
+      kept strictly out of the generation payload.
+- [ ] Quiz result → nearest Signature Look line in `StyleQuizScreen.tsx` `renderResult`.
 - [ ] Bilingual copy (EN + AM) in `src/LanguageContext.tsx` — names stay in English, descriptions translate.
 - [ ] Analytics event on look selection (`src/lib/track.ts`) so we learn which looks sell.
 - [ ] V2: `/looks/<slug>` route + `STATIC_META` + `classifyRoute()` + sitemap + prerender copy
