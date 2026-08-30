@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""
+r"""
 Builds a review page for the style x room library.
 
 Writes index.html next to the images with relative <img> paths, so it opens
