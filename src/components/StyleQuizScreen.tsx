@@ -13,6 +13,7 @@ import ValueStrip from './studio/ValueStrip';
 import Marquee from './studio/Marquee';
 import SigninVeil from './studio/SigninVeil';
 import { ConsultationReviewBand } from './ConsultationCTA';
+import NextStepBand from './studio/NextStepBand';
 
 // ── The 9 quiz styles (must match quizImageWeights.ts) ──
 const STYLES = [
@@ -152,6 +153,8 @@ interface StyleQuizScreenProps {
   /** Apply the quiz top style to AI Vision. `navigate` switches tools now (logged-in). */
   onApplyStyle: (style: string, navigate: boolean) => void;
   /** Trigger Google sign-in with a source slug (reuses the page-level attribution). */
+  /** AI-032 v2 seam — hand off to the next card in the workflow. */
+  onGoToTool?: (id: string) => void;
   onSignIn: (sourceSlug?: string) => void;
 }
 
@@ -163,7 +166,7 @@ interface StyleQuizScreenProps {
  * mount it unchanged. Guests play free (D1); Save is greyed + lockchipped (D6);
  * Share + Apply stay available.
  */
-const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignIn }) => {
+const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignIn, onGoToTool }) => {
   const { t, navigateTo } = useLanguage();
   const { user, isLoading: authLoading } = useAuth();
 
@@ -844,6 +847,7 @@ const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignI
 
         {/* One conversion band per AI result — $99 review + full-project rung.
             Replaces the old free "Book a conversation → home" band. */}
+        <NextStepBand toolId="find-style" onGo={onGoToTool} />
         <ConsultationReviewBand tool="quiz" />
       </section>
     );

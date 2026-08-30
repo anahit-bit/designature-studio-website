@@ -9,6 +9,7 @@ import FeedbackBand from './FeedbackBand';
 import Marquee from './studio/Marquee';
 import { STYLES } from './AIVisionShowcase';
 import { ConsultationReviewBand } from './ConsultationCTA';
+import NextStepBand from './studio/NextStepBand';
 
 // Responsive ladders matched to the surfaces they serve.
 // AI-030f: HERO_FULL + RESULT_AFTER ladders widened so high-DPR / 4K
@@ -95,6 +96,8 @@ interface VisionExperienceProps {
   setError: (e: string | null) => void;
   isLightboxOpen: boolean;
   setIsLightboxOpen: (b: boolean) => void;
+  /** AI-032 v2 seam — hand off to the next card in the workflow. */
+  onGoToTool?: (id: string) => void;
   translateStyle: (s: string) => string;
 }
 
@@ -733,6 +736,7 @@ export default function VisionExperience(p: VisionExperienceProps) {
       </section>
       {/* One conversion band per AI result — the contextual $99 review + a full-project
           rung (ConsultationReviewBand). Replaces the old "Get this designed → studio" band. */}
+      <NextStepBand toolId="redesign" onGo={p.onGoToTool} />
       <ConsultationReviewBand tool="vision" />
       </div>
     );
