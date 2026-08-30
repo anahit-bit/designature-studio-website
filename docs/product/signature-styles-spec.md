@@ -118,6 +118,9 @@ product: we are answering a factual question the client asked in their own words
 merchandise. It also gives us the intent data — which designers people actually type — that tells us
 which looks to build next and who to approach for licensing.
 
+**Mockup of all four surfaces** (shelf · about-this-look panel · search bridge · result):
+<https://claude.ai/code/artifact/d2b5dae6-e127-4294-b737-61196ce21713>
+
 ### The reference layer, in order of strength
 
 | Where the name appears | Risk | Do it? |

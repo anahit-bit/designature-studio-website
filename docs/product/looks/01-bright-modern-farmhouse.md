@@ -21,6 +21,9 @@ never in the generation prompt, never on our images. See the naming section of
 | **Disclaimer** (with the line, always) | Independent interpretation. Not affiliated with or endorsed by Studio McGee. |
 | **Search terms that resolve here** | studio mcgee, shea mcgee, mcgee and co, modern farmhouse, utah farmhouse, warm minimal farmhouse |
 
+**Where this copy appears:** mockup of the four surfaces —
+<https://claude.ai/code/artifact/d2b5dae6-e127-4294-b737-61196ce21713>
+
 ---
 
 ## The brief
