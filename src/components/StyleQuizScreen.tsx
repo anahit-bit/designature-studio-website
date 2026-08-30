@@ -4,7 +4,7 @@ import { useLanguage } from '../LanguageContext';
 import { useAuth } from '../AuthContext';
 import { accountApi } from '../lib/accountApi';
 import { fingerprint, isSaved, markSaved } from '../lib/savedMarks';
-import { QUIZ_IMAGE_WEIGHTS, TIER_POINTS } from '../data/quizImageWeights';
+import { TIER_POINTS, weightsForUrl } from '../data/quizImageWeights';
 import { cld, cldSrcSet } from '../lib/cld';
 import { trackQuizStart, trackQuizComplete } from '../lib/track';
 import StatusHdr from './studio/StatusHdr';
@@ -14,10 +14,13 @@ import Marquee from './studio/Marquee';
 import SigninVeil from './studio/SigninVeil';
 import { ConsultationReviewBand } from './ConsultationCTA';
 
-// ── The 9 quiz styles (must match quizImageWeights.ts) ──
+// ── The 15 quiz styles (must match quizImageWeights.ts AND VISION_STYLES_FULL) ──
+// Kept identical to AI Vision's chip list so a quiz verdict always names a style
+// the visitor can then actually generate. quizStyles.test asserts the match.
 const STYLES = [
   'Japandi', 'Modern', 'Mid-Century', 'Bohemian', 'Rustic', 'Art Deco',
   'Industrial', 'Coastal', 'Transitional',
+  'Biophilic', 'Minimalist', 'Maximalist', 'Dopamine', 'Trend 2026', 'Warm Contemporary',
 ];
 
 const QUIZ_LENGTH = 18;
@@ -86,6 +89,33 @@ export const QUIZ_ROOMS_FALLBACK: QuizRooms = {
   'Transitional': [
     { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774940232/10_tuag7j.jpg', credit: 'Transitional' },
     { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774938188/2_2_kdupyu.jpg', credit: 'Transitional' },
+  ],
+
+  // Added 2026-08-31. Unlike the nine above, these are folder-scoped uploads, so
+  // their URLs DO carry the Quiz/<Style>/ path and the weights table resolves on it.
+  'Biophilic': [
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120632/Quiz/Biophilic/bedroom.png', credit: 'Biophilic' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120630/Quiz/Biophilic/living.png', credit: 'Biophilic' },
+  ],
+  'Minimalist': [
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120606/Quiz/Minimalist/bedroom.png', credit: 'Minimalist' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120603/Quiz/Minimalist/living.png', credit: 'Minimalist' },
+  ],
+  'Maximalist': [
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120615/Quiz/Maximalist/bedroom.png', credit: 'Maximalist' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120613/Quiz/Maximalist/living.png', credit: 'Maximalist' },
+  ],
+  'Dopamine': [
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120624/Quiz/Dopamine/bedroom.png', credit: 'Dopamine' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120621/Quiz/Dopamine/living.png', credit: 'Dopamine' },
+  ],
+  'Trend 2026': [
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120585/Quiz/Trend-2026/bedroom.png', credit: 'Trend 2026' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120582/Quiz/Trend-2026/living.png', credit: 'Trend 2026' },
+  ],
+  'Warm Contemporary': [
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120597/Quiz/Warm-Contemporary/bedroom.png', credit: 'Warm Contemporary' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120594/Quiz/Warm-Contemporary/living.png', credit: 'Warm Contemporary' },
   ],
 };
 
@@ -384,11 +414,6 @@ const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignI
     if (readingTimerRef.current) clearTimeout(readingTimerRef.current);
   }, []);
 
-  const extractCloudinaryPath = (url: string): string => {
-    const match = url.match(/Quiz\/[^?]+/);
-    return match ? match[0] : '';
-  };
-
   const computeResult = useCallback((votes: Record<string, number>): QuizResult => {
     const total = Object.values(votes).reduce((a, b) => a + b, 0) || 1;
     const stylesWithVotes = STYLES.filter(s => (votes[s] || 0) > 0);
@@ -419,8 +444,7 @@ const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignI
     const newVotes = { ...quizVotes };
     const styleChanges: Record<string, number> = {};
     if (vote === 'love') {
-      const imagePath = extractCloudinaryPath(currentQuizImage.url);
-      const weights = QUIZ_IMAGE_WEIGHTS[imagePath];
+      const weights = weightsForUrl(currentQuizImage.url);
       if (weights) {
         styleChanges[weights.primary] = (styleChanges[weights.primary] || 0) + TIER_POINTS.primary;
         for (const s of weights.strong) styleChanges[s] = (styleChanges[s] || 0) + TIER_POINTS.strong;

@@ -186,12 +186,18 @@ describe('Multi-attribute scoring', () => {
     expect(Object.keys(changes)).toHaveLength(1);
   });
 
-  it('QUIZ_IMAGE_WEIGHTS has entries for all 9 style folders', () => {
+  it('QUIZ_IMAGE_WEIGHTS has entries for all 15 style folders', () => {
     const folders = new Set(
       Object.keys(QUIZ_IMAGE_WEIGHTS).map(k => k.split('/')[1])
     );
-    const expected = ['Art-Deco', 'Bohemian', 'Coastal', 'Industrial', 'Japandi', 'Mid-Century', 'Modern', 'Rustic', 'Transitional'];
+    const expected = [
+      'Art-Deco', 'Bohemian', 'Coastal', 'Industrial', 'Japandi', 'Mid-Century',
+      'Modern', 'Rustic', 'Transitional',
+      // Added 2026-08-31 so the quiz can return every style AI Vision offers.
+      'Biophilic', 'Minimalist', 'Maximalist', 'Dopamine', 'Trend-2026', 'Warm-Contemporary',
+    ];
     for (const f of expected) expect(folders.has(f)).toBe(true);
+    expect(folders.size, 'a folder appeared that no style claims').toBe(expected.length);
   });
 
   it('Coastal typo is fixed — ezelfi not ezeifi', () => {
@@ -199,8 +205,11 @@ describe('Multi-attribute scoring', () => {
     expect(QUIZ_IMAGE_WEIGHTS['Quiz/Coastal/10_ezeifi.jpg']).toBeUndefined();
   });
 
-  it('total image count is 136', () => {
-    expect(Object.keys(QUIZ_IMAGE_WEIGHTS)).toHaveLength(136);
+  // 136 curated photographs + 60 studio renders (6 new styles x 10 rooms).
+  // Pinned exactly: a silent drop in the corpus makes the quiz less accurate
+  // without anything visibly breaking.
+  it('total image count is 196', () => {
+    expect(Object.keys(QUIZ_IMAGE_WEIGHTS)).toHaveLength(196);
   });
 });
 

@@ -5,10 +5,14 @@
  * and 0–3 HINT styles (0.3 points each). When a user "Loves" an image, points distribute
  * proportionally across all listed styles.
  *
- * Style names are case-sensitive and must match the 9 styles exactly:
- *   Japandi, Modern, Mid-Century, Bohemian, Rustic, Art Deco, Industrial, Coastal, Transitional
+ * Style names are case-sensitive and must match the 15 AI Vision styles exactly:
+ *   Japandi, Modern, Mid-Century, Bohemian, Rustic, Art Deco, Industrial, Coastal,
+ *   Transitional, Biophilic, Minimalist, Maximalist, Dopamine, Trend 2026, Warm Contemporary
  *
- * Total: 136 images across 9 folders.
+ * 136 curated photographs across the original 9 folders, plus 60 studio renders
+ * across the 6 styles added 2026-08-31 — those come from the same style briefs
+ * AI Vision generates from, so a quiz verdict points at a style that renders the
+ * way the quiz promised.
  */
 
 export type QuizStyle =
@@ -20,7 +24,13 @@ export type QuizStyle =
   | 'Art Deco'
   | 'Industrial'
   | 'Coastal'
-  | 'Transitional';
+  | 'Transitional'
+  | 'Biophilic'
+  | 'Minimalist'
+  | 'Maximalist'
+  | 'Dopamine'
+  | 'Trend 2026'
+  | 'Warm Contemporary';
 
 export interface QuizImageWeight {
   primary: QuizStyle;
@@ -744,6 +754,330 @@ export const QUIZ_IMAGE_WEIGHTS: Record<string, QuizImageWeight> = {
     strong: ['Modern', 'Industrial'],
     hint: [],
   },
+
+  // ─────────────────────────────────────────────────────────────
+  // BIOPHILIC (10 studio renders, added 2026-08-31)
+  // ─────────────────────────────────────────────────────────────
+  'Quiz/Biophilic/bathroom.png': {
+    primary: 'Biophilic',
+    strong: ['Japandi'],
+    hint: ['Rustic', 'Coastal'],
+  },
+  'Quiz/Biophilic/bedroom.png': {
+    primary: 'Biophilic',
+    strong: ['Japandi'],
+    hint: ['Rustic', 'Coastal'],
+  },
+  'Quiz/Biophilic/dining.png': {
+    primary: 'Biophilic',
+    strong: ['Japandi'],
+    hint: ['Rustic', 'Coastal'],
+  },
+  'Quiz/Biophilic/hallway.png': {
+    primary: 'Biophilic',
+    strong: ['Japandi'],
+    hint: ['Rustic', 'Coastal'],
+  },
+  'Quiz/Biophilic/home-office.png': {
+    primary: 'Biophilic',
+    strong: ['Japandi'],
+    hint: ['Rustic', 'Coastal'],
+  },
+  'Quiz/Biophilic/kids-room.png': {
+    primary: 'Biophilic',
+    strong: ['Japandi'],
+    hint: ['Rustic', 'Coastal'],
+  },
+  'Quiz/Biophilic/kitchen.png': {
+    primary: 'Biophilic',
+    strong: ['Japandi'],
+    hint: ['Rustic', 'Coastal'],
+  },
+  'Quiz/Biophilic/living.png': {
+    primary: 'Biophilic',
+    strong: ['Japandi'],
+    hint: ['Rustic', 'Coastal'],
+  },
+  'Quiz/Biophilic/living-and-dining.png': {
+    primary: 'Biophilic',
+    strong: ['Japandi'],
+    hint: ['Rustic', 'Coastal'],
+  },
+  'Quiz/Biophilic/outdoor.png': {
+    primary: 'Biophilic',
+    strong: ['Japandi'],
+    hint: ['Rustic', 'Coastal'],
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // MINIMALIST (10 studio renders, added 2026-08-31)
+  // ─────────────────────────────────────────────────────────────
+  'Quiz/Minimalist/bathroom.png': {
+    primary: 'Minimalist',
+    strong: ['Modern', 'Japandi'],
+    hint: ['Transitional'],
+  },
+  'Quiz/Minimalist/bedroom.png': {
+    primary: 'Minimalist',
+    strong: ['Modern', 'Japandi'],
+    hint: ['Transitional'],
+  },
+  'Quiz/Minimalist/dining.png': {
+    primary: 'Minimalist',
+    strong: ['Modern', 'Japandi'],
+    hint: ['Transitional'],
+  },
+  'Quiz/Minimalist/hallway.png': {
+    primary: 'Minimalist',
+    strong: ['Modern', 'Japandi'],
+    hint: ['Transitional'],
+  },
+  'Quiz/Minimalist/home-office.png': {
+    primary: 'Minimalist',
+    strong: ['Modern', 'Japandi'],
+    hint: ['Transitional'],
+  },
+  'Quiz/Minimalist/kids-room.png': {
+    primary: 'Minimalist',
+    strong: ['Modern', 'Japandi'],
+    hint: ['Transitional'],
+  },
+  'Quiz/Minimalist/kitchen.png': {
+    primary: 'Minimalist',
+    strong: ['Modern', 'Japandi'],
+    hint: ['Transitional'],
+  },
+  'Quiz/Minimalist/living.png': {
+    primary: 'Minimalist',
+    strong: ['Modern', 'Japandi'],
+    hint: ['Transitional'],
+  },
+  'Quiz/Minimalist/living-and-dining.png': {
+    primary: 'Minimalist',
+    strong: ['Modern', 'Japandi'],
+    hint: ['Transitional'],
+  },
+  'Quiz/Minimalist/outdoor.png': {
+    primary: 'Minimalist',
+    strong: ['Modern', 'Japandi'],
+    hint: ['Transitional'],
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // MAXIMALIST (10 studio renders, added 2026-08-31)
+  // ─────────────────────────────────────────────────────────────
+  'Quiz/Maximalist/bathroom.png': {
+    primary: 'Maximalist',
+    strong: ['Bohemian'],
+    hint: ['Art Deco', 'Dopamine'],
+  },
+  'Quiz/Maximalist/bedroom.png': {
+    primary: 'Maximalist',
+    strong: ['Bohemian'],
+    hint: ['Art Deco', 'Dopamine'],
+  },
+  'Quiz/Maximalist/dining.png': {
+    primary: 'Maximalist',
+    strong: ['Bohemian'],
+    hint: ['Art Deco', 'Dopamine'],
+  },
+  'Quiz/Maximalist/hallway.png': {
+    primary: 'Maximalist',
+    strong: ['Bohemian'],
+    hint: ['Art Deco', 'Dopamine'],
+  },
+  'Quiz/Maximalist/home-office.png': {
+    primary: 'Maximalist',
+    strong: ['Bohemian'],
+    hint: ['Art Deco', 'Dopamine'],
+  },
+  'Quiz/Maximalist/kids-room.png': {
+    primary: 'Maximalist',
+    strong: ['Bohemian'],
+    hint: ['Art Deco', 'Dopamine'],
+  },
+  'Quiz/Maximalist/kitchen.png': {
+    primary: 'Maximalist',
+    strong: ['Bohemian'],
+    hint: ['Art Deco', 'Dopamine'],
+  },
+  'Quiz/Maximalist/living.png': {
+    primary: 'Maximalist',
+    strong: ['Bohemian'],
+    hint: ['Art Deco', 'Dopamine'],
+  },
+  'Quiz/Maximalist/living-and-dining.png': {
+    primary: 'Maximalist',
+    strong: ['Bohemian'],
+    hint: ['Art Deco', 'Dopamine'],
+  },
+  'Quiz/Maximalist/outdoor.png': {
+    primary: 'Maximalist',
+    strong: ['Bohemian'],
+    hint: ['Art Deco', 'Dopamine'],
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // DOPAMINE (10 studio renders, added 2026-08-31)
+  // ─────────────────────────────────────────────────────────────
+  'Quiz/Dopamine/bathroom.png': {
+    primary: 'Dopamine',
+    strong: ['Maximalist'],
+    hint: ['Mid-Century', 'Bohemian'],
+  },
+  'Quiz/Dopamine/bedroom.png': {
+    primary: 'Dopamine',
+    strong: ['Maximalist'],
+    hint: ['Mid-Century', 'Bohemian'],
+  },
+  'Quiz/Dopamine/dining.png': {
+    primary: 'Dopamine',
+    strong: ['Maximalist'],
+    hint: ['Mid-Century', 'Bohemian'],
+  },
+  'Quiz/Dopamine/hallway.png': {
+    primary: 'Dopamine',
+    strong: ['Maximalist'],
+    hint: ['Mid-Century', 'Bohemian'],
+  },
+  'Quiz/Dopamine/home-office.png': {
+    primary: 'Dopamine',
+    strong: ['Maximalist'],
+    hint: ['Mid-Century', 'Bohemian'],
+  },
+  'Quiz/Dopamine/kids-room.png': {
+    primary: 'Dopamine',
+    strong: ['Maximalist'],
+    hint: ['Mid-Century', 'Bohemian'],
+  },
+  'Quiz/Dopamine/kitchen.png': {
+    primary: 'Dopamine',
+    strong: ['Maximalist'],
+    hint: ['Mid-Century', 'Bohemian'],
+  },
+  'Quiz/Dopamine/living.png': {
+    primary: 'Dopamine',
+    strong: ['Maximalist'],
+    hint: ['Mid-Century', 'Bohemian'],
+  },
+  'Quiz/Dopamine/living-and-dining.png': {
+    primary: 'Dopamine',
+    strong: ['Maximalist'],
+    hint: ['Mid-Century', 'Bohemian'],
+  },
+  'Quiz/Dopamine/outdoor.png': {
+    primary: 'Dopamine',
+    strong: ['Maximalist'],
+    hint: ['Mid-Century', 'Bohemian'],
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // TREND 2026 (10 studio renders, added 2026-08-31)
+  // ─────────────────────────────────────────────────────────────
+  'Quiz/Trend-2026/bathroom.png': {
+    primary: 'Trend 2026',
+    strong: ['Warm Contemporary', 'Transitional'],
+    hint: ['Japandi'],
+  },
+  'Quiz/Trend-2026/bedroom.png': {
+    primary: 'Trend 2026',
+    strong: ['Warm Contemporary', 'Transitional'],
+    hint: ['Japandi'],
+  },
+  'Quiz/Trend-2026/dining.png': {
+    primary: 'Trend 2026',
+    strong: ['Warm Contemporary', 'Transitional'],
+    hint: ['Japandi'],
+  },
+  'Quiz/Trend-2026/hallway.png': {
+    primary: 'Trend 2026',
+    strong: ['Warm Contemporary', 'Transitional'],
+    hint: ['Japandi'],
+  },
+  'Quiz/Trend-2026/home-office.png': {
+    primary: 'Trend 2026',
+    strong: ['Warm Contemporary', 'Transitional'],
+    hint: ['Japandi'],
+  },
+  'Quiz/Trend-2026/kids-room.png': {
+    primary: 'Trend 2026',
+    strong: ['Warm Contemporary', 'Transitional'],
+    hint: ['Japandi'],
+  },
+  'Quiz/Trend-2026/kitchen.png': {
+    primary: 'Trend 2026',
+    strong: ['Warm Contemporary', 'Transitional'],
+    hint: ['Japandi'],
+  },
+  'Quiz/Trend-2026/living.png': {
+    primary: 'Trend 2026',
+    strong: ['Warm Contemporary', 'Transitional'],
+    hint: ['Japandi'],
+  },
+  'Quiz/Trend-2026/living-and-dining.png': {
+    primary: 'Trend 2026',
+    strong: ['Warm Contemporary', 'Transitional'],
+    hint: ['Japandi'],
+  },
+  'Quiz/Trend-2026/outdoor.png': {
+    primary: 'Trend 2026',
+    strong: ['Warm Contemporary', 'Transitional'],
+    hint: ['Japandi'],
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // WARM CONTEMPORARY (10 studio renders, added 2026-08-31)
+  // ─────────────────────────────────────────────────────────────
+  'Quiz/Warm-Contemporary/bathroom.png': {
+    primary: 'Warm Contemporary',
+    strong: ['Transitional'],
+    hint: ['Modern', 'Japandi'],
+  },
+  'Quiz/Warm-Contemporary/bedroom.png': {
+    primary: 'Warm Contemporary',
+    strong: ['Transitional'],
+    hint: ['Modern', 'Japandi'],
+  },
+  'Quiz/Warm-Contemporary/dining.png': {
+    primary: 'Warm Contemporary',
+    strong: ['Transitional'],
+    hint: ['Modern', 'Japandi'],
+  },
+  'Quiz/Warm-Contemporary/hallway.png': {
+    primary: 'Warm Contemporary',
+    strong: ['Transitional'],
+    hint: ['Modern', 'Japandi'],
+  },
+  'Quiz/Warm-Contemporary/home-office.png': {
+    primary: 'Warm Contemporary',
+    strong: ['Transitional'],
+    hint: ['Modern', 'Japandi'],
+  },
+  'Quiz/Warm-Contemporary/kids-room.png': {
+    primary: 'Warm Contemporary',
+    strong: ['Transitional'],
+    hint: ['Modern', 'Japandi'],
+  },
+  'Quiz/Warm-Contemporary/kitchen.png': {
+    primary: 'Warm Contemporary',
+    strong: ['Transitional'],
+    hint: ['Modern', 'Japandi'],
+  },
+  'Quiz/Warm-Contemporary/living.png': {
+    primary: 'Warm Contemporary',
+    strong: ['Transitional'],
+    hint: ['Modern', 'Japandi'],
+  },
+  'Quiz/Warm-Contemporary/living-and-dining.png': {
+    primary: 'Warm Contemporary',
+    strong: ['Transitional'],
+    hint: ['Modern', 'Japandi'],
+  },
+  'Quiz/Warm-Contemporary/outdoor.png': {
+    primary: 'Warm Contemporary',
+    strong: ['Transitional'],
+    hint: ['Modern', 'Japandi'],
+  },
 };
 
 /**
@@ -755,3 +1089,36 @@ export const TIER_POINTS = {
   strong: 1,
   hint: 0.3,
 } as const;
+
+/**
+ * Resolve an image URL to its weights.
+ *
+ * Two URL shapes reach this. Assets uploaded with a folder carry the path in the
+ * public_id, so the delivery URL contains "Quiz/<Style>/<room>.png". The original
+ * corpus predates that: this Cloudinary account ran in dynamic-folders mode, its
+ * public_ids sit at the ACCOUNT ROOT, and the URL is just "/upload/v123/8_o9nuyt.jpg"
+ * with no "Quiz/" anywhere in it.
+ *
+ * The caller used to match /Quiz\/[^?]+/ and nothing else, so every one of the 136
+ * hand-authored entries for the original nine styles silently missed and the quiz
+ * fell back to awarding primary-only points by folder of origin. The strong/hint
+ * tiers — the entire reason the table distinguishes a near-miss from a wrong
+ * answer — had never once fired for a real vote.
+ *
+ * So: try the full path, then fall back to the bare filename.
+ */
+const BY_BASENAME: Record<string, QuizImageWeight> = (() => {
+  const index: Record<string, QuizImageWeight> = {};
+  for (const [key, weight] of Object.entries(QUIZ_IMAGE_WEIGHTS)) {
+    const base = key.split('/').pop();
+    if (base && !(base in index)) index[base] = weight;
+  }
+  return index;
+})();
+
+export function weightsForUrl(url: string): QuizImageWeight | undefined {
+  const path = url.match(/Quiz\/[^?]+/)?.[0];
+  if (path && QUIZ_IMAGE_WEIGHTS[path]) return QUIZ_IMAGE_WEIGHTS[path];
+  const file = url.split('?')[0].split('/').pop();
+  return file ? BY_BASENAME[file] : undefined;
+}
