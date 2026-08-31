@@ -10,7 +10,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { adminLogout } from '../../lib/adminAuth';
 
-export type AdminNavKey = 'overview' | 'insights' | 'users' | 'comments' | 'feedback' | 'waitlist' | 'orders' | 'consultations' | 'platforms';
+export type AdminNavKey = 'overview' | 'insights' | 'users' | 'comments' | 'feedback' | 'waitlist' | 'orders' | 'consultations' | 'platforms' | 'reviews';
 
 interface Counts {
   users: number;
@@ -38,6 +38,7 @@ const NAV: NavDef[] = [
   { key: 'waitlist', label: 'Waitlist', to: '/admin/waitlist', icon: '✦' },
   { key: 'orders', label: 'Orders', to: '/admin/orders', icon: '▣' },
   { key: 'consultations', label: 'Consultations', to: '/admin/consultations', icon: '☎' },
+  { key: 'reviews', label: 'Designer checks', to: '/admin/reviews', icon: '◆', alerts: true },
   { key: 'platforms', label: 'Platforms', to: '/admin/platforms', icon: '⬡' },
 ];
 

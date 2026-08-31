@@ -3325,6 +3325,203 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     }
   });
 
+
+  // ─── AI-038 · Designer Check ─────────────────────────────────────────────
+  // A written review of ONE saved artifact, asked for at a join between two
+  // cards. v1 is notes, not a call — there is no slot to book here, and the
+  // note the designer writes IS the deliverable.
+  //
+  //   POST /api/reviews              requireAuth  → ask for a check
+  //   GET  /api/reviews              requireAuth  → my checks
+  //   GET  /api/admin/reviews        requireAdmin → the queue, oldest first
+  //   POST /api/admin/reviews/:id    requireAdmin → file the verdict + note
+
+  const REVIEW_VERDICTS = ["go", "fix", "wont_work"] as const;
+
+  /** Shape a DB row for the client. Never leaks the assignee to the visitor. */
+  function rowToReview(r: any, forAdmin = false) {
+    return {
+      id: r.id,
+      itemId: r.item_id,
+      tool: r.tool,
+      nextTool: r.next_tool,
+      scenario: r.scenario,
+      ask: r.ask,
+      status: r.status,
+      verdict: r.verdict,
+      note: r.note,
+      createdAt: r.created_at,
+      answeredAt: r.answered_at,
+      ...(forAdmin
+        ? {
+            assignee: r.assignee,
+            userEmail: r.user_email,
+            itemTitle: r.item_title ?? null,
+            itemThumb: r.item_thumbnail_url ?? null,
+          }
+        : {}),
+    };
+  }
+
+  app.post("/api/reviews", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+
+    const itemId = typeof req.body?.itemId === "string" ? req.body.itemId : null;
+    const tool = typeof req.body?.tool === "string" ? req.body.tool.slice(0, 64) : null;
+    const nextTool =
+      typeof req.body?.nextTool === "string" ? req.body.nextTool.slice(0, 64) : null;
+    const scenario =
+      typeof req.body?.scenario === "string" ? req.body.scenario.slice(0, 64) : null;
+    // Capped hard: this is context for a human, not a brief.
+    const ask = typeof req.body?.ask === "string" ? req.body.ask.trim().slice(0, 500) : null;
+
+    if (!itemId || !tool) {
+      return res
+        .status(400)
+        .json({ error: "Save the work first, then ask for a check on it." });
+    }
+
+    try {
+      // The artifact has to be the caller's own — a review request is also a
+      // read grant, so this check is doing real work, not just tidiness.
+      const owned = await getPool().query(
+        `SELECT id, user_email FROM saved_items WHERE id = $1 AND user_id = $2`,
+        [itemId, googleId]
+      );
+      if (owned.rowCount === 0) {
+        return res.status(404).json({ error: "We couldn't find that item." });
+      }
+
+      const r = await getPool().query(
+        `INSERT INTO review_requests (user_id, user_email, item_id, tool, next_tool, scenario, ask)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING *`,
+        [
+          googleId,
+          owned.rows[0].user_email ?? null,
+          itemId,
+          tool,
+          nextTool,
+          scenario,
+          ask,
+        ]
+      );
+      return res.status(201).json({ review: rowToReview(r.rows[0]) });
+    } catch (e: any) {
+      // The partial unique index means a second ask while one is still open is
+      // a duplicate, not an error worth alarming anyone about.
+      if (e?.code === "23505") {
+        return res
+          .status(409)
+          .json({ error: "A designer is already looking at this one." });
+      }
+      console.error("[reviews] create failed:", e?.message ?? e);
+      return res.status(500).json({ error: "Could not request that check." });
+    }
+  });
+
+  app.get("/api/reviews", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    try {
+      const r = await getPool().query(
+        `SELECT * FROM review_requests WHERE user_id = $1 ORDER BY created_at DESC LIMIT 100`,
+        [googleId]
+      );
+      return res.json({ reviews: r.rows.map((row: any) => rowToReview(row)) });
+    } catch (e: any) {
+      console.error("[reviews] list failed:", e?.message ?? e);
+      return res.status(500).json({ error: "Could not load your checks." });
+    }
+  });
+
+  app.get("/api/admin/reviews", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const status =
+      typeof req.query.status === "string" ? req.query.status : "open";
+    try {
+      // Oldest waiting first, so nothing rots at the bottom of the queue.
+      const where =
+        status === "answered" ? "status = 'answered'" : "status <> 'answered'";
+      const r = await getPool().query(
+        `SELECT rr.*, si.title AS item_title, si.thumbnail_url AS item_thumbnail_url
+           FROM review_requests rr
+           LEFT JOIN saved_items si ON si.id = rr.item_id
+          WHERE ${where}
+          ORDER BY rr.created_at ASC
+          LIMIT 200`
+      );
+      const open = await getPool().query(
+        `SELECT count(*)::int AS n FROM review_requests WHERE status <> 'answered'`
+      );
+      return res.json({
+        reviews: r.rows.map((row: any) => rowToReview(row, true)),
+        openCount: open.rows[0]?.n ?? 0,
+      });
+    } catch (e: any) {
+      console.error("[reviews] admin list failed:", e?.message ?? e);
+      return res.status(500).json({ error: "Could not load the queue." });
+    }
+  });
+
+  app.post("/api/admin/reviews/:id", async (req, res) => {
+    const admin = requireAdmin(req, res);
+    if (!admin) return;
+
+    const verdict = typeof req.body?.verdict === "string" ? req.body.verdict : null;
+    const note = typeof req.body?.note === "string" ? req.body.note.trim() : "";
+
+    // Claiming one ("I'm looking at this") is a status move with no verdict yet.
+    if (req.body?.claim === true) {
+      try {
+        const r = await getPool().query(
+          `UPDATE review_requests
+              SET status = 'in_review', assignee = $2
+            WHERE id = $1 AND status = 'requested'
+            RETURNING *`,
+          [req.params.id, admin.email]
+        );
+        if (r.rowCount === 0) {
+          return res.status(409).json({ error: "Someone already has that one." });
+        }
+        return res.json({ review: rowToReview(r.rows[0], true) });
+      } catch (e: any) {
+        console.error("[reviews] claim failed:", e?.message ?? e);
+        return res.status(500).json({ error: "Could not claim that check." });
+      }
+    }
+
+    if (!verdict || !REVIEW_VERDICTS.includes(verdict as any)) {
+      return res.status(400).json({ error: "Pick one of the three verdicts." });
+    }
+    // A verdict without a note is not a deliverable. "Good to go" still needs a
+    // sentence saying why, or the visitor has bought nothing they can act on.
+    if (note.length < 10) {
+      return res
+        .status(400)
+        .json({ error: "Add a note — the note is what they're actually getting." });
+    }
+
+    try {
+      const r = await getPool().query(
+        `UPDATE review_requests
+            SET status = 'answered', verdict = $2, note = $3,
+                assignee = COALESCE(assignee, $4), answered_at = now()
+          WHERE id = $1 AND status <> 'answered'
+          RETURNING *`,
+        [req.params.id, verdict, note.slice(0, 4000), admin.email]
+      );
+      if (r.rowCount === 0) {
+        return res.status(404).json({ error: "Not found, or already answered." });
+      }
+      return res.json({ review: rowToReview(r.rows[0], true) });
+    } catch (e: any) {
+      console.error("[reviews] answer failed:", e?.message ?? e);
+      return res.status(500).json({ error: "Could not file that verdict." });
+    }
+  });
+
   // GET /api/user/dashboard — Overview + rail summary in one call. Plan/quota
   // reflect the real account (free for everyone; unlimited "studio" for the
   // owner/demo accounts — no paid tier rail exists yet). Recent activity + the
@@ -3752,7 +3949,16 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         waitlistCountCache = { val: waitlist, exp: Date.now() + 60_000 };
       }
     } catch { /* degrade */ }
-    res.json({ users, comments, feedback: feedbackNew, waitlist, orders });
+    // AI-038 — waiting checks are somebody's time being spent, so they get a
+    // badge like the other queues. Degrades to 0 if the table isn't there yet.
+    let reviews = 0;
+    try {
+      const rv = await getPool().query(
+        `SELECT COUNT(*)::int AS n FROM review_requests WHERE status <> 'answered'`,
+      );
+      reviews = rv.rows[0]?.n || 0;
+    } catch { /* degrade */ }
+    res.json({ users, comments, feedback: feedbackNew, waitlist, orders, reviews });
   });
 
   // ── GET /api/admin/acquisition — GA4 + Search Console read-back (I-027) ────

@@ -10,6 +10,7 @@ import Marquee from './studio/Marquee';
 import { STYLES } from './AIVisionShowcase';
 import { ConsultationReviewBand } from './ConsultationCTA';
 import NextStepBand from './studio/NextStepBand';
+import DesignerCheck from './studio/DesignerCheck';
 
 // Responsive ladders matched to the surfaces they serve.
 // AI-030f: HERO_FULL + RESULT_AFTER ladders widened so high-DPR / 4K
@@ -110,6 +111,9 @@ export default function VisionExperience(p: VisionExperienceProps) {
   // Library (paid feature) so they can re-open/download/share it later. Free users
   // get an upsell instead of a fake "Saved". `signedIn` guards the preview no-op.
   const [savedMarks, setSavedMarks] = useState<Set<string>>(new Set());
+  // AI-038 — a Designer Check is written against ONE saved artifact, so the
+  // review needs the id the save returns, not just the "it saved" mark.
+  const [savedItemId, setSavedItemId] = useState<string | null>(null);
   const [savingConcept, setSavingConcept] = useState(false);
   const signedIn = !!getStoredToken();
   const canSaveLibrary = signedIn && p.isPaid; // saving to the Library is paid-only
@@ -123,11 +127,12 @@ export default function VisionExperience(p: VisionExperienceProps) {
     try {
       const style = p.selectedStyle ? p.translateStyle(p.selectedStyle) : 'Concept';
       const room = p.selectedRoom || 'Room';
-      await accountApi.saveLibraryItem({
+      const saved = await accountApi.saveLibraryItem({
         tool: 'ai_vision',
         title: `${room} — ${style}`,
         imageDataUrl: p.selectedConceptUrl,
       });
+      setSavedItemId(saved?.id ?? null);
       markSaved(conceptMark);
       setSavedMarks((prev) => new Set(prev).add(conceptMark));
     } catch {
@@ -736,6 +741,16 @@ export default function VisionExperience(p: VisionExperienceProps) {
       </section>
       {/* One conversion band per AI result — the contextual $99 review + a full-project
           rung (ConsultationReviewBand). Replaces the old "Get this designed → studio" band. */}
+      {canSaveLibrary && (
+        <div className="px-6 md:px-10 py-5 border-t border-black/8">
+          <DesignerCheck
+            itemId={savedItemId}
+            tool="redesign"
+            nextTool="shop"
+            onNeedsSave={handleSaveConcept}
+          />
+        </div>
+      )}
       <NextStepBand toolId="redesign" onGo={p.onGoToTool} />
       <ConsultationReviewBand tool="vision" />
       </div>
