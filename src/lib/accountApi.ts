@@ -234,6 +234,23 @@ async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 // ── client surface ───────────────────────────────────────────────────────────
+
+/** A written designer review of one saved item (AI-038). */
+export interface DesignerReview {
+  id: string;
+  itemId: string | null;
+  tool: string;
+  nextTool: string | null;
+  scenario: string | null;
+  ask: string | null;
+  status: 'requested' | 'in_review' | 'answered';
+  /** Only three, on purpose — anything richer is a design project. */
+  verdict: 'go' | 'fix' | 'wont_work' | null;
+  note: string | null;
+  createdAt: string;
+  answeredAt: string | null;
+}
+
 export const accountApi = {
   // reads — the Library loop is LIVE, so prefer the real endpoint when signed in.
   getDashboard(): Promise<DashboardData> {
@@ -298,6 +315,27 @@ export const accountApi = {
         body: JSON.stringify(payload),
       });
     return mock.saveLibraryItem(payload);
+  },
+
+  // ─── AI-038 · Designer Check ───────────────────────────────────────────
+  // A written review of ONE saved item. Notes, not a call — there is no slot
+  // here to book, and the note that comes back IS the deliverable.
+
+  requestReview(payload: {
+    itemId: string;
+    tool: string;
+    nextTool?: string | null;
+    scenario?: string | null;
+    ask?: string | null;
+  }): Promise<{ review: DesignerReview }> {
+    return api<{ review: DesignerReview }>('/api/reviews', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  listReviews(): Promise<{ reviews: DesignerReview[] }> {
+    return api<{ reviews: DesignerReview[] }>('/api/reviews');
   },
 
   deleteLibraryItem(id: string): Promise<void> {
