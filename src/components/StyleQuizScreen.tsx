@@ -14,13 +14,22 @@ import Marquee from './studio/Marquee';
 import SigninVeil from './studio/SigninVeil';
 import { ConsultationReviewBand } from './ConsultationCTA';
 
-// ── The 15 quiz styles (must match quizImageWeights.ts AND VISION_STYLES_FULL) ──
-// Kept identical to AI Vision's chip list so a quiz verdict always names a style
-// the visitor can then actually generate. quizStyles.test asserts the match.
+// ── The quiz styles ──
+// Every AI Vision style a visitor can be TOLD they are, so a verdict always names
+// something they can then generate. quizStyles.test asserts the match against
+// VISION_STYLES_FULL, allowing only the documented exclusion below.
+//
+// Trend 2026 is deliberately absent (owner, 2026-09-01). It is a dated editorial
+// position, not a personal taste: "your style is Trend 2026" says nothing about
+// the visitor, it goes stale in January, and the quiz would need renaming every
+// year. It stays a first-class AI Vision chip — it is only a quiz VERDICT that
+// makes no sense.
+export const QUIZ_EXCLUDED_STYLES = ['Trend 2026'] as const;
+
 const STYLES = [
   'Japandi', 'Modern', 'Mid-Century', 'Bohemian', 'Rustic', 'Art Deco',
   'Industrial', 'Coastal', 'Transitional',
-  'Biophilic', 'Minimalist', 'Maximalist', 'Dopamine', 'Trend 2026', 'Warm Contemporary',
+  'Biophilic', 'Minimalist', 'Maximalist', 'Dopamine', 'Warm Contemporary',
 ];
 
 const QUIZ_LENGTH = 18;

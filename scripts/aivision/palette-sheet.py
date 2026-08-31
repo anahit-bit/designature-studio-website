@@ -25,7 +25,7 @@ XLSX = r"E:\Business\Claude\_Plan\Website\AI-Vision-Rulebook.xlsx"
 OUT = sys.argv[1] if len(sys.argv) > 1 else r"E:\Business\Claude\_Plan\Website\AI-Vision-Palettes.html"
 
 wb = load_workbook(XLSX, data_only=True)
-sb, pal = wb["Style Briefs"], wb["Palettes"]
+sb, pal, p26 = wb["Style Briefs"], wb["Palettes"], wb["Paint 2026"]
 
 # ── Briefs: display name, preset, colour line, mood line ────────────────────
 briefs = {}
@@ -113,7 +113,57 @@ for key in order:
   </div>
 </section>""")
 
-nav = " · ".join(f'<a href="#{esc(k)}">{esc(briefs[k]["label"])}</a>' for k in order)
+# -- Paint 2026: the Colour-of-the-Year modifier ----------------------------
+paints = []
+for r in range(2, p26.max_row + 1):
+    hexv = str(p26.cell(r, 4).value or "").strip().upper()
+    if not hexv.startswith("#") or len(hexv) != 7:
+        continue  # trailing note rows
+    paints.append({
+        "name": str(p26.cell(r, 2).value or "").strip(),
+        "brand": str(p26.cell(r, 3).value or "").strip(),
+        "hex": hexv,
+        "role": str(p26.cell(r, 6).value or "").strip(),
+        "note": str(p26.cell(r, 7).value or "").strip(),
+        "instruction": str(p26.cell(r, 8).value or "").strip(),
+    })
+
+paint_cards = "".join(
+    f'<figure class="paint">'
+    f'<span class="disc{" pale" if luminance(p["hex"]) > 0.7 else ""}" style="background:{p["hex"]}"></span>'
+    f'<figcaption><b>{esc(p["name"])}</b><em>{esc(p["brand"])}</em><code>{esc(p["hex"])}</code>'
+    f'<i class="role accent">{esc(p["role"])}</i>'
+    f'<span class="pnote">{esc(p["note"])}</span>'
+    f'<span class="pinstr">{esc(p["instruction"])}</span>'
+    f'</figcaption></figure>' for p in paints)
+
+paint_section = f"""
+<section class="card paint2026" id="paint-2026">
+  <header>
+    <h2>2026 Colour of the Year</h2>
+    <code class="key">modifier</code>
+    <span class="count">{len(paints)} options &middot; not a style</span>
+  </header>
+  <div class="body paintbody">
+    <div class="paints">{paint_cards}</div>
+    <div class="words">
+      <p class="mood">Choosing one of these does not replace the style. It replaces the single
+      ACCENT the style&rsquo;s palette would have supplied, so the colour is guaranteed to appear
+      while the materials, furniture, lighting and mood all survive intact.</p>
+      <h3>Why it works with reference photos too</h3>
+      <p class="colour">Because it overrides the accent rather than the brief, it applies even when a
+      visitor uploads their own inspiration photos and there is no preset in play at all.</p>
+      <h3>Where it is applied</h3>
+      <p class="colour">In <code>buildGenerationPrompt</code>, never inside the style brief. Briefs are
+      cached by <code>getCacheKey</code>; folding a colour into one would cache it there and leak that
+      colour into the visitor&rsquo;s next, unrelated generation.</p>
+      <p class="note">Hexes are close approximations read from published swatches, not brand data
+      files. Confirm against a real fan deck before printing anything.</p>
+    </div>
+  </div>
+</section>"""
+
+nav = '<a href="#paint-2026">Colour of the Year</a> &middot; ' + " · ".join(f'<a href="#{esc(k)}">{esc(briefs[k]["label"])}</a>' for k in order)
 
 html = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
@@ -161,7 +211,17 @@ html = f"""<!doctype html>
   .rot b{{color:var(--cobalt);margin-right:5px}}
   .note{{font-size:10.5px;color:var(--mute);line-height:1.6;margin:8px 0 0}}
 
-  @media(max-width:900px){{.body{{grid-template-columns:1fr}}}}
+  .paint2026 header{{background:#0B2240}}
+  .paint2026 h2{{color:#fff}}
+  .paint2026 .key{{background:transparent;border-color:rgba(255,255,255,.35);color:rgba(255,255,255,.75)}}
+  .paint2026 .count{{color:#E8C9A0}}
+  .paintbody{{grid-template-columns:minmax(340px,540px) 1fr}}
+  .paints{{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}}
+  .paint figcaption em{{display:block;font-style:normal;font-size:8.5px;letter-spacing:.06em;color:var(--mute);margin-top:1px}}
+  .pnote{{display:block;margin-top:7px;font-size:10px;line-height:1.55;color:#3d3d3d;text-align:left}}
+  .pinstr{{display:block;margin-top:6px;font-size:9.5px;line-height:1.55;color:var(--mute);text-align:left;
+           border-left:2px solid var(--terra);padding-left:8px}}
+  @media(max-width:900px){{.body{{grid-template-columns:1fr}}.paintbody{{grid-template-columns:1fr}}}}
   @media print{{header.top{{position:static}} nav{{display:none}} .card{{page-break-inside:avoid}}}}
 </style></head><body>
 <header class="top">
@@ -173,7 +233,7 @@ html = f"""<!doctype html>
     and re-run <code>scripts/aivision/palette-sheet.py</code>; do not edit this page.</div>
   <nav>{nav}</nav>
 </header>
-<main>{''.join(cards)}</main>
+<main>{paint_section}{''.join(cards)}</main>
 </body></html>"""
 
 os.makedirs(os.path.dirname(OUT), exist_ok=True)

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { QUIZ_IMAGE_WEIGHTS, TIER_POINTS, weightsForUrl, type QuizStyle } from '../data/quizImageWeights';
-import { QUIZ_ROOMS_FALLBACK } from '../components/StyleQuizScreen';
+import { QUIZ_ROOMS_FALLBACK, QUIZ_EXCLUDED_STYLES } from '../components/StyleQuizScreen';
 import { VISION_STYLES_FULL } from '../components/VisionExperience';
 import { STYLE_NAME_TO_PRESET } from '../../services/aiVision/stylePresets';
 
@@ -10,9 +10,19 @@ import { STYLE_NAME_TO_PRESET } from '../../services/aiVision/stylePresets';
 describe('quiz styles cover every AI Vision style', () => {
   const quizStyles = new Set(Object.values(QUIZ_IMAGE_WEIGHTS).map((w) => w.primary));
 
-  it('every AI Vision chip is reachable as a quiz verdict', () => {
+  it('every AI Vision chip is reachable as a quiz verdict, except documented exclusions', () => {
+    const excluded = new Set<string>(QUIZ_EXCLUDED_STYLES);
     for (const style of VISION_STYLES_FULL) {
+      if (excluded.has(style)) continue;
       expect(quizStyles.has(style as QuizStyle), `"${style}" has no quiz images, so the quiz can never return it`).toBe(true);
+    }
+  });
+
+  // An exclusion must be a deliberate decision, not a style someone forgot to
+  // wire up — so it still has to be a real AI Vision style.
+  it('every excluded style is a real AI Vision style', () => {
+    for (const style of QUIZ_EXCLUDED_STYLES) {
+      expect(VISION_STYLES_FULL as readonly string[], `"${style}" is excluded from a list it was never on`).toContain(style);
     }
   });
 
@@ -42,8 +52,10 @@ describe('quiz styles cover every AI Vision style', () => {
     for (const [style, n] of counts) expect(n, `"${style}" has only ${n} images`).toBeGreaterThanOrEqual(5);
   });
 
-  it('every style has a fallback pair for the pre-fetch render', () => {
+  it('every non-excluded style has a fallback pair for the pre-fetch render', () => {
+    const excluded = new Set<string>(QUIZ_EXCLUDED_STYLES);
     for (const style of VISION_STYLES_FULL) {
+      if (excluded.has(style)) continue;
       expect(QUIZ_ROOMS_FALLBACK[style]?.length, `"${style}" has no fallback rooms`).toBeGreaterThanOrEqual(1);
     }
   });
