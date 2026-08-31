@@ -1,8 +1,16 @@
 // One-off, idempotent uploader for the Shopping List (03) redesign assets.
-// - 4 sample room renders + 16 product thumbnails (from the source worktree) → asset_folder "Tool 03 Example"
-// - retailer logos (fetched from clearbit) → asset_folder "Retailers"
+// - 4 sample room renders + 16 product thumbnails → Cloudinary folder "shopping/showcase/"
+// - retailer favicons (Google favicon API) → Cloudinary folder "retailers/"
 // Prints a public_id → secure_url map. Re-running skips assets that already exist (overwrite:false).
 // Usage: node scripts/upload-shopping-assets.mjs
+//
+// NOTE (2026-08-21): Previously used `asset_folder` which is a Cloudinary
+// UI-display-only field — it does NOT affect the public_id path. That's why
+// the earlier runs of this script landed all files at the ACCOUNT ROOT
+// (violating the folder-hygiene rule — see memory). Switched to `folder`
+// which does set the path. Existing uploads at root remain (they'd need a
+// dedicated migration to move); this fix only ensures future/new uploads
+// land in the right place.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -27,10 +35,10 @@ const RETAILERS = [
   ['wayfair', 'wayfair.com'], ['desenio', 'desenio.com'], ['society6', 'society6.com'],
 ];
 
-async function up(fileOrUrl, public_id, asset_folder) {
+async function up(fileOrUrl, public_id, folder) {
   try {
     const r = await cloudinary.uploader.upload(fileOrUrl, {
-      public_id, asset_folder, overwrite: false, unique_filename: false, use_filename: false, resource_type: 'image',
+      public_id, folder, overwrite: false, unique_filename: false, use_filename: false, resource_type: 'image',
     });
     return { public_id, url: `${r.secure_url}`, version: r.version, status: 'ok' };
   } catch (e) {
@@ -41,11 +49,11 @@ async function up(fileOrUrl, public_id, asset_folder) {
 const out = { rooms: {}, products: {}, logos: {} };
 
 for (const room of ROOMS) {
-  const r = await up(path.join(SRC, `${room}.webp`), `shopping-room-${room}`, 'Tool 03 Example');
+  const r = await up(path.join(SRC, `${room}.webp`), `shopping-room-${room}`, 'shopping/showcase');
   out.rooms[room] = r;
   console.error(`[room]    ${room.padEnd(8)} ${r.status === 'ok' ? r.url : r.status}`);
   for (let i = 1; i <= 4; i++) {
-    const p = await up(path.join(SRC, 'products', `${room}-${i}.webp`), `shopping-${room}-${i}`, 'Tool 03 Example');
+    const p = await up(path.join(SRC, 'products', `${room}-${i}.webp`), `shopping-${room}-${i}`, 'shopping/showcase');
     out.products[`${room}-${i}`] = p;
     console.error(`[product] ${room}-${i}     ${p.status === 'ok' ? p.url : p.status}`);
   }
@@ -56,7 +64,7 @@ for (const room of ROOMS) {
 // Quality varies per retailer (32px–256px); low-res marks can be swapped for
 // licensed SVGs later (owner follow-up). Text fallback covers any miss.
 for (const [slug, domain] of RETAILERS) {
-  const l = await up(`https://www.google.com/s2/favicons?domain=${domain}&sz=256`, `retailer-${slug}`, 'Retailers');
+  const l = await up(`https://www.google.com/s2/favicons?domain=${domain}&sz=256`, `retailer-${slug}`, 'retailers');
   out.logos[slug] = l;
   console.error(`[logo]    ${slug.padEnd(14)} ${l.status === 'ok' ? l.url : l.status}`);
 }

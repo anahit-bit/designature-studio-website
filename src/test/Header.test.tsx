@@ -53,15 +53,8 @@ describe('Header Component', () => {
     expect(screen.getAllByText(/Portfolio/i)[0]).toBeInTheDocument();
   });
 
-  // Language switcher is currently hidden (UI commented out) — re-enable this test when switcher is restored.
-  it.skip('toggles language when language switcher is clicked', () => {
-    renderWithProvider(<Header />);
-    const switcher = screen.getAllByRole('button', { name: /AM/i })[0];
-    expect(switcher).toBeInTheDocument();
-    fireEvent.click(switcher);
-    expect(screen.getAllByText(/Ստուդիա/i)[0]).toBeInTheDocument();
-    expect(screen.getAllByText(/EN/i)[0]).toBeInTheDocument();
-  });
+  // Language-switcher test removed 2026-08-27 — Armenian dropped sitewide.
+  // (See feedback_no_armenian_translations.md.)
 
   it('opens mobile menu on menu button click', () => {
     renderWithProvider(<Header />);
