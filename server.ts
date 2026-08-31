@@ -5388,6 +5388,55 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     }
   });
 
+  // ── POST /api/subscriptions/cancel — cancel at period end (access kept) ───────
+  // Per the locked policy: cancel anytime, keep access until the end of the paid
+  // period, no partial refund. Sets cancel_at_period_end; the daily sweep
+  // (finalizeCancellation) downgrades to free once the period ends.
+  app.post("/api/subscriptions/cancel", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    try {
+      const sub = await activeSubscriptionFor(googleId);
+      if (!sub) return res.status(404).json({ error: "No active subscription to cancel." });
+      await getPool().query(
+        `UPDATE subscriptions SET cancel_at_period_end=true, cancelled_at=now(), updated_at=now() WHERE id=$1`,
+        [sub.id],
+      );
+      recordActivity(readDB().users[googleId]?.email || googleId, "subscription_cancel_requested", {
+        user_id: googleId, subscription_id: sub.id,
+      });
+      return res.json({
+        ok: true,
+        cancelAtPeriodEnd: true,
+        currentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end).toISOString() : null,
+      });
+    } catch (err) {
+      console.error("[subscriptions/cancel] error:", err);
+      return res.status(500).json({ error: "Could not cancel your subscription." });
+    }
+  });
+
+  // ── POST /api/subscriptions/reactivate — undo a pending cancellation ──────────
+  app.post("/api/subscriptions/reactivate", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    try {
+      const sub = await activeSubscriptionFor(googleId);
+      if (!sub) return res.status(404).json({ error: "No active subscription." });
+      await getPool().query(
+        `UPDATE subscriptions SET cancel_at_period_end=false, cancelled_at=NULL, updated_at=now() WHERE id=$1`,
+        [sub.id],
+      );
+      recordActivity(readDB().users[googleId]?.email || googleId, "subscription_reactivated", {
+        user_id: googleId, subscription_id: sub.id,
+      });
+      return res.json({ ok: true, cancelAtPeriodEnd: false });
+    } catch (err) {
+      console.error("[subscriptions/reactivate] error:", err);
+      return res.status(500).json({ error: "Could not reactivate your subscription." });
+    }
+  });
+
   // ── POST /api/admin/subscriptions/run-billing — manually run the daily sweep ──
   // Admin-only. Lets the owner trigger the recurring-charge sweep on demand
   // (testing, or a catch-up) instead of waiting for the 24h timer.
