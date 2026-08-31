@@ -115,12 +115,15 @@ BRIEFS = {
    "IS NOT PART OF THIS STYLE — never clad a wall, panel or ceiling in moss. A living vertical garden of real potted "
    "plants is permitted on at most ONE wall of a large, well-daylit room.",
  ("biophilic", "decor"):
-   "bring the outside in, generously but with order. A substantial specimen tree or large plant as the living "
-   "centrepiece — Japanese maple, olive, fiddle leaf, rubber plant — in a stone, concrete or terracotta planter, with "
-   "five to eight further plants at genuinely different heights: floor palms, a trailing plant on a shelf, herbs or "
-   "succulents on a sill, a branch arrangement in a vase. Add a bed of river pebbles where the floor allows, stone "
-   "bowls, botanical art, seed pods and natural specimens. Layered and abundant, still deliberate — a planted room, "
-   "not a garden centre.",
+   "bring the outside in across the WHOLE room, evenly. Not one hero plant standing alone, and not wall-to-wall "
+   "foliage. Distribute greenery at THREE scales: one or two floor-standing plants or a small indoor tree (Japanese "
+   "maple, olive, fiddle leaf, rubber plant) in a stone, concrete or terracotta planter; three or four mid-height "
+   "plants on furniture, shelves and window sills; and one or two trailing or climbing plants softening a high edge or "
+   "the top of a shelf. Roughly eight to twelve plants in a normal room, varied in leaf shape and in shade of green, "
+   "each with enough space to be read individually. Around them: a bed of river pebbles where the floor allows, stone "
+   "and unglazed bowls, a branch or dried arrangement, botanical art, seed pods and natural specimens. The room should "
+   "feel as though nature runs through it — balanced and lived-with, never a single plant placed for the photograph "
+   "and never a garden centre.",
  ("biophilic", "lighting"):
    "daylight is the primary material: skylights, clerestories and full-height glazing wherever the room already has "
    "them, and where a window looks out, let real greenery be visible through it so the planting continues outside. "

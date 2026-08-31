@@ -99,8 +99,35 @@ describe('maximalist preset · contemporary color + pattern (not a Baroque/Victo
     expect(brief).toMatch(/velvet|rattan|lacquered/);
   });
 
-  it('reads as playful or joyful, not palatial', () => {
-    expect(brief).toMatch(/playful|joyful/);
+  // Updated 2026-09-01. This used to assert /playful|joyful/, which was right when
+  // Maximalist was "contemporary joyful" — but that is exactly what made it
+  // indistinguishable from Dopamine. The owner split them: Dopamine keeps the
+  // bright, joyful, candy vocabulary; Maximalist is depth, pattern and
+  // collection. The anti-palace intent of this test is unchanged.
+  it('reads as layered and collected, not palatial', () => {
+    expect(brief).toMatch(/layered|collected|rich/);
+  });
+
+  it('does not borrow the candy-bright vocabulary that belongs to Dopamine', () => {
+    for (const banned of ['bubblegum', 'candy', 'sunflower yellow', 'marshmallow', 'pastel']) {
+      expect(brief, `maximalist should leave "${banned}" to dopamine`).not.toContain(banned);
+    }
+  });
+});
+
+// The two styles were near-duplicates: both briefs said joyful, saturated,
+// contemporary and curved, and a visitor could not tell their rooms apart.
+describe('maximalist and dopamine are actually different styles', () => {
+  it('share no palette colour', () => {
+    const hex = (k: string) => new Set(STYLE_PALETTES[k].map((c) => c.hex));
+    const max = hex('maximalist');
+    const overlap = [...hex('dopamine')].filter((h) => max.has(h));
+    expect(overlap, `identical hexes in both palettes: ${overlap.join(', ')}`).toHaveLength(0);
+  });
+
+  it('dopamine keeps the bright register, maximalist keeps the deep one', () => {
+    expect(STYLE_BRIEFS.dopamine.toLowerCase()).toMatch(/bright|joyful/);
+    expect(STYLE_BRIEFS.maximalist.toLowerCase()).toMatch(/deep|jewel/);
   });
 });
 
