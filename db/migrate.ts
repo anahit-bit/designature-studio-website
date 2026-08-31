@@ -349,6 +349,7 @@ const CREDIT_PURCHASES_TABLE = `
 const CREDIT_PURCHASES_USER_INDEX = `
   CREATE INDEX IF NOT EXISTS idx_credit_purchases_user_time
     ON credit_purchases (user_id, created_at DESC);
+`;
 
 // ─── AI-038 · Designer Check ────────────────────────────────────────────────
 // A written review of ONE artifact, requested at a join between two cards.

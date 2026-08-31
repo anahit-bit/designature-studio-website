@@ -122,3 +122,60 @@ describe('DesignerCheck', () => {
     );
   });
 });
+
+describe('DesignerCheck — closing the loop', () => {
+  beforeEach(() => vi.restoreAllMocks());
+
+  it('picks up a review answered elsewhere, so the note has somewhere to arrive', async () => {
+    // The designer answers in the admin queue, in another tab. Without this the
+    // customer would never see the note anywhere.
+    vi.spyOn(accountApi, 'listReviews').mockResolvedValue({
+      reviews: [
+        REVIEW({
+          itemId: 'i1',
+          status: 'answered',
+          verdict: 'go',
+          note: 'Layout works. The rug is too small — go one size up.',
+        }),
+      ],
+    });
+
+    render(<DesignerCheck itemId="i1" tool="redesign" />);
+
+    await waitFor(() => expect(screen.getByText('Good to go')).toBeTruthy());
+    expect(screen.getByText(/The rug is too small/)).toBeTruthy();
+  });
+
+  it('ignores reviews belonging to a different artifact', async () => {
+    vi.spyOn(accountApi, 'listReviews').mockResolvedValue({
+      reviews: [REVIEW({ itemId: 'someone-elses-item', status: 'answered', verdict: 'go', note: 'x'.repeat(20) })],
+    });
+
+    render(<DesignerCheck itemId="i1" tool="redesign" />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Ask for a check/ })).toBeTruthy(),
+    );
+    expect(screen.queryByText('Good to go')).toBeNull();
+  });
+
+  it('re-checks when the tab regains focus — leave, answer, come back', async () => {
+    const spy = vi.spyOn(accountApi, 'listReviews').mockResolvedValue({ reviews: [] });
+    render(<DesignerCheck itemId="i1" tool="redesign" />);
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+
+    spy.mockResolvedValue({
+      reviews: [REVIEW({ itemId: 'i1', status: 'answered', verdict: 'fix', note: 'Move the sofa off the radiator.' })],
+    });
+    fireEvent.focus(window);
+
+    await waitFor(() => expect(screen.getByText('Change this first')).toBeTruthy());
+  });
+
+  it('keeps showing what it has if the sync fails', async () => {
+    vi.spyOn(accountApi, 'listReviews').mockRejectedValue(new Error('offline'));
+    render(<DesignerCheck itemId="i1" tool="redesign" initial={REVIEW()} />);
+
+    await waitFor(() => expect(screen.getByText(/A designer has this/)).toBeTruthy());
+  });
+});
