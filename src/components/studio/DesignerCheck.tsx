@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Check, Diamond, Loader2 } from 'lucide-react';
 import { accountApi, type DesignerReview } from '../../lib/accountApi';
 
@@ -44,6 +44,35 @@ const DesignerCheck: React.FC<{
   const [ask, setAsk] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Pull whatever the server already knows about this artifact.
+   *
+   * Without this the loop never closes: the visitor asks, a designer answers in
+   * the admin queue, and the note has nowhere to arrive. Local state alone only
+   * ever knows about a request made in this tab, in this session.
+   *
+   * Re-runs on window focus, because the realistic shape of the studio's own
+   * testing — and of a real customer's day — is "leave the tab, come back".
+   */
+  const syncFromServer = useCallback(async () => {
+    if (!itemId) return;
+    try {
+      const { reviews } = await accountApi.listReviews();
+      const mine = reviews.find((r) => r.itemId === itemId);
+      if (mine) setReview(mine);
+    } catch {
+      /* offline or signed out — keep whatever we already show */
+    }
+  }, [itemId]);
+
+  useEffect(() => { void syncFromServer(); }, [syncFromServer]);
+
+  useEffect(() => {
+    const onFocus = () => { void syncFromServer(); };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [syncFromServer]);
 
   const submit = async () => {
     if (!itemId || busy) return;
