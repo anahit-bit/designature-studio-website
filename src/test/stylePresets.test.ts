@@ -108,6 +108,22 @@ describe('maximalist preset · contemporary color + pattern (not a Baroque/Victo
     expect(brief).toMatch(/layered|collected|rich/);
   });
 
+  // The word-bans above passed while the RENDERS came back as a Victorian
+  // drawing room — gilt-framed oil portraits, an antique glazed cabinet, stacked
+  // Persian rugs. Rulebook RD22 in miniature: banned words do not enforce, only
+  // looking at the output does. So the brief now has to SAY contemporary in the
+  // two sections that were pulling it period.
+  it('keeps the furniture and the art contemporary, not period', () => {
+    const furniture = brief.split('3. furniture character:')[1].split('4. lighting:')[0];
+    const decor = brief.split('6. decor & styling:')[1].split('7. overall mood:')[0];
+    expect(furniture).toMatch(/contemporary|modern|current/);
+    expect(decor).toMatch(/contemporary|modern/);
+  });
+
+  it('allows at most one genuinely vintage piece, so the room cannot become an antique shop', () => {
+    expect(brief).toMatch(/one piece may be genuinely vintage|exactly one/);
+  });
+
   it('does not borrow the candy-bright vocabulary that belongs to Dopamine', () => {
     for (const banned of ['bubblegum', 'candy', 'sunflower yellow', 'marshmallow', 'pastel']) {
       expect(brief, `maximalist should leave "${banned}" to dopamine`).not.toContain(banned);
