@@ -3636,7 +3636,14 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     if (!user) return res.status(404).json({ error: "User not found." });
 
     const unlimited = isConceptTestAccountEmail(user.email);
-    const tier: "free" | "studio" = unlimited ? "studio" : "free";
+    // Real subscription (Rail A) drives the plan tier, status, and paid quota caps.
+    const sub = unlimited ? null : await activeSubscriptionFor(googleId).catch(() => null);
+    const paidQuota = sub
+      ? (await fetchPricingPlans().catch(() => [])).find((p) => p.key === sub.tier)?.quotas ?? null
+      : null;
+    const tier: "free" | "design" | "studio" = unlimited ? "studio" : sub ? sub.tier : "free";
+    const genCap = unlimited ? null : paidQuota ? paidQuota.generations : FREE_TIER_MAX_CONCEPTS;
+    const shopCap = unlimited ? null : paidQuota ? paidQuota.shopping : FREE_TIER_MAX_SHOPPING_LISTS;
     const cap = (c: number) => (unlimited ? null : c);
 
     // Actual usage THIS CYCLE (calendar month) from the activity log — so even
@@ -3689,20 +3696,32 @@ Output ONLY valid JSON, no markdown fences, no commentary:
       },
       plan: {
         tier,
-        status: "active",
-        renewsAt: null,
-        periodEndAt: null,
-        latestChargeStatus: null,
+        status: sub
+          ? sub.cancel_at_period_end
+            ? "canceled"
+            : sub.status === "past_due"
+            ? "past_due"
+            : "active"
+          : "active",
+        renewsAt:
+          sub && !sub.cancel_at_period_end && sub.current_period_end
+            ? new Date(sub.current_period_end).toISOString()
+            : null,
+        periodEndAt:
+          sub && sub.cancel_at_period_end && sub.current_period_end
+            ? new Date(sub.current_period_end).toISOString()
+            : null,
+        latestChargeStatus: sub ? (sub.status === "past_due" ? "failed" : "paid") : null,
       },
       quota: {
         aiVision: {
-          used: unlimited ? usageCount.aiVision : capUsed(FREE_TIER_MAX_CONCEPTS, user.generationsLeft),
-          cap: cap(FREE_TIER_MAX_CONCEPTS),
+          used: unlimited ? usageCount.aiVision : Math.max(0, (genCap ?? 0) - (user.generationsLeft ?? 0)),
+          cap: genCap,
           resetsAt: null,
         },
         shopping: {
-          used: unlimited ? usageCount.shopping : capUsed(FREE_TIER_MAX_SHOPPING_LISTS, user.shoppingListsLeft ?? 0),
-          cap: cap(FREE_TIER_MAX_SHOPPING_LISTS),
+          used: unlimited ? usageCount.shopping : Math.max(0, (shopCap ?? 0) - (user.shoppingListsLeft ?? 0)),
+          cap: shopCap,
           resetsAt: null,
         },
         roomAudit: { used: unlimited ? usageCount.roomAudit : 0, cap: unlimited ? null : 1, resetsAt: null },
