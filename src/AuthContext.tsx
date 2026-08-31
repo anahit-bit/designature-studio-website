@@ -29,6 +29,8 @@ export interface AuthUser {
   isPaid?: boolean;
   /** Paid-tier audit quota (999 = unlimited) */
   auditsLeft?: number;
+  /** Subscription tier — 'free' | 'design' | 'studio'. Drives plan labels. */
+  plan?: 'free' | 'design' | 'studio';
 }
 
 export interface SignInOptions {
@@ -259,6 +261,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               shoppingListsLeft: data?.shoppingListsLeft ?? prev.shoppingListsLeft,
               auditsLeft: data?.auditsLeft ?? prev.auditsLeft,
               isPaid: data?.isPaid ?? prev.isPaid,
+              plan: data?.plan ?? prev.plan,
             }
           : prev
       );
