@@ -51,7 +51,7 @@ export const FAQ_SECTIONS: FaqSection[] = [
       },
       {
         q: 'Can I choose the room type and style?',
-        a: 'Yes. You can select from 8 room types (Living Room, Dining Room, Bedroom, Kitchen, Bathroom, Home Office, Kids Room, Outdoor) and from over a dozen curated styles including Japandi, Mid-Century Modern, Bohemian, Art Deco, Biophilic, and more. Both fields are optional — the AI can also detect the room type automatically.',
+        a: 'Yes. You can select from 10 room types (Living, Dining, Living + Dining, Bedroom, Kitchen, Bathroom, Home Office, Hallway, Kids Room, Outdoor) and from 15 curated styles including Japandi, Mid-Century, Bohemian, Art Deco, Biophilic, Minimalist and Trend 2026. The room is optional — the AI detects it from your photo. The style is optional too, but only if you add reference photos instead: every concept needs one or the other.',
       },
       {
         q: 'What makes a good input photo?',

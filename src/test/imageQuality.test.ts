@@ -114,18 +114,34 @@ describe('image delivery — cld() optimization invariants (unit)', () => {
   });
 });
 
-describe('Style-Quiz fallback dataset — version-form delivery (unit)', () => {
+describe('Style-Quiz fallback dataset — delivery form (unit)', () => {
   const all = Object.values(QUIZ_ROOMS_FALLBACK).flat();
 
-  it('has 2 rooms per style across all 9 styles', () => {
-    expect(Object.keys(QUIZ_ROOMS_FALLBACK)).toHaveLength(9);
+  it('covers all 15 styles', () => {
+    expect(Object.keys(QUIZ_ROOMS_FALLBACK)).toHaveLength(15);
     Object.values(QUIZ_ROOMS_FALLBACK).forEach((rooms) => expect(rooms.length).toBeGreaterThanOrEqual(1));
   });
 
-  it('every fallback URL is canonical version-form (/upload/v<ver>/<id>.<ext>) — NOT a folder path', () => {
+  // The account holds TWO generations of asset, and they have different valid
+  // URL shapes — a single rule cannot cover both.
+  //
+  // ROOT assets (the original 9 styles) were uploaded before folder scoping, so
+  // their public_id is a bare id. Only the version form resolves for them; a
+  // folder-path URL 404s, and that bug shipped once.
+  //
+  // FOLDER-SCOPED assets (the 6 styles added 2026-08-31) were uploaded with
+  // `folder`, so the path IS the public_id and /upload/v<ver>/Quiz/<Style>/<id>
+  // is the canonical form. All 12 verified 200 before this test was relaxed.
+  //
+  // Requiring version-form of everything would now reject perfectly good URLs;
+  // dropping the rule entirely would let the original 404 bug back in.
+  it('root assets use version-form, folder-scoped assets use the full Quiz path', () => {
     for (const { url } of all) {
-      // version + single public-id segment + extension; rejects /upload/.../Quiz/<Style>/<id> (404s here)
-      expect(url, url).toMatch(/\/image\/upload\/v\d+\/[^/]+\.\w+$/);
+      if (url.includes('/Quiz/')) {
+        expect(url, url).toMatch(/\/image\/upload\/v\d+\/Quiz\/[^/]+\/[^/]+\.\w+$/);
+      } else {
+        expect(url, url).toMatch(/\/image\/upload\/v\d+\/[^/]+\.\w+$/);
+      }
     }
   });
 

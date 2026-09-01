@@ -32,6 +32,7 @@ export async function generateConcept(
         styleBrief: input.styleBrief,
         roomType: input.roomType,
         variationSeed: input.variationSeed,
+        accent: input.accent,
       });
       return { url, engine: "staging" };
     } catch (err: any) {
