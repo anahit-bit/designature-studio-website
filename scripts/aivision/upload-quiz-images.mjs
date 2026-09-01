@@ -88,6 +88,45 @@ if (dryRun) {
   process.exit(0);
 }
 
+// GUARD (added after the 2026-09-01 incident).
+//
+// A previous run of this script destroyed 43 of the owner's curated photographs.
+// Cause: this Cloudinary account is in dynamic-folders mode, so `folder` sets the
+// ASSET FOLDER and uniqueness is enforced on the DISPLAY NAME within it. Several
+// legacy photographs were named after rooms — "living", "bedroom", "kitchen" —
+// exactly the names we upload under. With overwrite:true they were replaced, and
+// the account has no backup, so they are gone permanently.
+//
+// So: count each target folder before and after, and refuse to continue if the
+// total drops. An upload must only ever ADD.
+async function folderCount(folder) {
+  try {
+    const r = await cloudinary.api.resources_by_asset_folder(folder, { type: 'upload', max_results: 500 });
+    return r.resources.length;
+  } catch { return 0; }
+}
+
+const targetFolders = [...new Set(jobs.map((j) => j.folder))];
+const before = {};
+for (const f of targetFolders) before[f] = await folderCount(f);
+
+const ourIds = new Set(jobs.map((j) => `${j.folder}/${j.publicId}`));
+for (const f of targetFolders) {
+  const r = await cloudinary.api.resources_by_asset_folder(f, { type: 'upload', max_results: 500 }).catch(() => ({ resources: [] }));
+  const collisions = r.resources.filter((x) => {
+    const display = String(x.display_name ?? String(x.public_id).split('/').pop());
+    return !String(x.public_id).startsWith('Quiz/') && ourIds.has(`${f}/${display}`);
+  });
+  if (collisions.length && overwrite) {
+    console.error(`
+REFUSING TO RUN. ${collisions.length} existing asset(s) in ${f} share a display name with an image we are about to upload:`);
+    for (const c of collisions) console.error(`  ${c.public_id} (display "${c.display_name ?? ''}")`);
+    console.error('Overwriting them would destroy them and this account has no backup.');
+    console.error('Rename ours, or pass --no-overwrite.');
+    process.exit(1);
+  }
+}
+
 const missing = jobs.filter((j) => !fs.existsSync(j.file));
 if (missing.length) {
   console.error('Missing source files:', missing.map((m) => m.file).join('\n  '));
@@ -111,6 +150,18 @@ for (const j of jobs) {
   } catch (e) {
     results.push({ ...j, url: null, status: 'ERR: ' + (e?.message || e?.error?.message || String(e)) });
     console.error(`  [FAIL] ${j.folder}/${j.publicId} — ${e?.message || e}`);
+  }
+}
+
+// Post-flight: an upload must only ever ADD to a folder.
+for (const f of targetFolders) {
+  const after = await folderCount(f);
+  if (after < before[f]) {
+    console.error(`
+*** ${f}: ${before[f]} -> ${after}. ${before[f] - after} asset(s) DISAPPEARED. ***`);
+    console.error('Something was overwritten. Check the folder before uploading anything else.');
+  } else {
+    console.log(`  ${f}: ${before[f]} -> ${after}`);
   }
 }
 

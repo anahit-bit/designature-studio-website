@@ -200,16 +200,27 @@ describe('Multi-attribute scoring', () => {
     expect(folders.size, 'a folder appeared that no style claims').toBe(expected.length);
   });
 
-  it('Coastal typo is fixed — ezelfi not ezeifi', () => {
-    expect(QUIZ_IMAGE_WEIGHTS['Quiz/Coastal/10_ezelfi.jpg']).toBeDefined();
+  // The correctly-spelled asset this used to assert was one of the 43 photographs
+  // destroyed on 2026-09-01, so it is no longer in the table. The half that still
+  // means something is the misspelling — it must never reappear.
+  it('the Coastal ezeifi typo never comes back', () => {
     expect(QUIZ_IMAGE_WEIGHTS['Quiz/Coastal/10_ezeifi.jpg']).toBeUndefined();
   });
 
-  // 136 curated photographs + 60 studio renders (6 new styles x 10 rooms).
-  // Pinned exactly: a silent drop in the corpus makes the quiz less accurate
-  // without anything visibly breaking.
-  it('total image count is 196', () => {
-    expect(Object.keys(QUIZ_IMAGE_WEIGHTS)).toHaveLength(196);
+  // 93 surviving photographs + 150 studio renders (15 styles x 10 rooms), which
+  // sit together in each folder by the owner's decision.
+  //
+  // It was 136 photographs. On 2026-09-01 an upload run with overwrite:true
+  // destroyed 43 of them on Cloudinary — they had display names colliding with
+  // the room names we upload under, there was no backup on the account, and they
+  // are unrecoverable. Their weight entries were removed because they can never
+  // match anything again.
+  //
+  // Pinned exactly: a silent drop makes the quiz less accurate while nothing
+  // visibly breaks, and an image with no weights row still "works" — it just
+  // quietly scores primary-only.
+  it('total image count is 243', () => {
+    expect(Object.keys(QUIZ_IMAGE_WEIGHTS)).toHaveLength(243);
   });
 });
 

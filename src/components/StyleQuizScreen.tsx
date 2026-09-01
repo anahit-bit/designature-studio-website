@@ -58,6 +58,12 @@ type QuizRoom = { url: string; credit: string };
 type QuizRooms = Record<string, QuizRoom[]>;
 
 // Minimal fallback so the deck/mosaic render before /api/images resolves.
+//
+// 2026-09-01: five entries here pointed at photographs that an upload run
+// destroyed on Cloudinary, so the live quiz was serving 404s from a hardcoded
+// list — Coastal had BOTH of its fallbacks dead. They now point at renders in
+// Quiz/<Style>/, which we generate and can therefore always replace.
+// A fallback URL is only as safe as our control over the asset behind it.
 // IMPORTANT: this Cloudinary account is in dynamic-folders mode — the public_ids
 // live at ROOT, so the canonical delivery URL is /upload/v<version>/<public_id>.<ext>
 // (the form /api/images returns). Folder-path URLs (/upload/.../Quiz/<Style>/<id>)
@@ -69,23 +75,23 @@ export const QUIZ_ROOMS_FALLBACK: QuizRooms = {
   ],
   'Industrial': [
     { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774954080/5_an8tny.jpg', credit: 'Industrial' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774938215/8_o9nuyt.jpg', credit: 'Industrial' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788243820/Quiz/Industrial/living.png', credit: 'Industrial' },
   ],
   'Bohemian': [
     { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774949652/8_r7zpqa.jpg', credit: 'Bohemian' },
     { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774949648/10_u56vvx.jpg', credit: 'Bohemian' },
   ],
   'Japandi': [
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774954453/14_valixc.png', credit: 'Japandi' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788243758/Quiz/Japandi/living.png', credit: 'Japandi' },
     { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774954428/13_logbtm.png', credit: 'Japandi' },
   ],
   'Coastal': [
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950277/14_mwuyw1.jpg', credit: 'Coastal' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950152/9_cbgmet.jpg', credit: 'Coastal' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788243768/Quiz/Coastal/living.png', credit: 'Coastal' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788243773/Quiz/Coastal/bedroom.png', credit: 'Coastal' },
   ],
   'Modern': [
     { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950446/3_1_vpngnt.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774938203/10_y7bds9.jpg', credit: 'Modern' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788243783/Quiz/Modern/bedroom.png', credit: 'Modern' },
   ],
   'Art Deco': [
     { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775713413/17_gmhspd.png', credit: 'Art Deco' },

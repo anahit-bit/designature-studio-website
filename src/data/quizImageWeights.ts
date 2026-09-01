@@ -9,10 +9,11 @@
  *   Japandi, Modern, Mid-Century, Bohemian, Rustic, Art Deco, Industrial, Coastal,
  *   Transitional, Biophilic, Minimalist, Maximalist, Dopamine, Trend 2026, Warm Contemporary
  *
- * 136 curated photographs across the original 9 folders, plus 60 studio renders
- * across the 6 styles added 2026-08-31 — those come from the same style briefs
- * AI Vision generates from, so a quiz verdict points at a style that renders the
- * way the quiz promised.
+ * 136 curated photographs across the original 9 folders, plus 150 studio renders
+ * (15 styles x 10 rooms) added 2026-08-31 and 2026-09-01. The renders come from the
+ * same style briefs AI Vision generates from, so a quiz verdict points at a style
+ * that renders the way the quiz promised. Photographs and renders sit together in
+ * each folder by the owner's decision.
  */
 
 export type QuizStyle =
@@ -82,51 +83,6 @@ export const QUIZ_IMAGE_WEIGHTS: Record<string, QuizImageWeight> = {
     strong: ['Transitional'],
     hint: [],
   },
-  'Quiz/Art-Deco/10_ng0u6i.png': {
-    primary: 'Art Deco',
-    strong: [],
-    hint: ['Mid-Century'],
-  },
-  'Quiz/Art-Deco/9_byfcww.png': {
-    primary: 'Art Deco',
-    strong: [],
-    hint: ['Modern'],
-  },
-  'Quiz/Art-Deco/7_pgjj4k.png': {
-    primary: 'Art Deco',
-    strong: [],
-    hint: ['Mid-Century', 'Industrial'],
-  },
-  'Quiz/Art-Deco/11_ibhacx.png': {
-    primary: 'Art Deco',
-    strong: ['Industrial'],
-    hint: ['Modern'],
-  },
-  'Quiz/Art-Deco/8_ky76uo.png': {
-    primary: 'Art Deco',
-    strong: ['Transitional'],
-    hint: ['Coastal'],
-  },
-  'Quiz/Art-Deco/6_slhnwf.png': {
-    primary: 'Art Deco',
-    strong: [],
-    hint: [],
-  },
-  'Quiz/Art-Deco/4_nx2j48.png': {
-    primary: 'Art Deco',
-    strong: [],
-    hint: [],
-  },
-  'Quiz/Art-Deco/5_uwjq3d.png': {
-    primary: 'Art Deco',
-    strong: ['Industrial'],
-    hint: ['Modern'],
-  },
-  'Quiz/Art-Deco/3_ozxssy.png': {
-    primary: 'Art Deco',
-    strong: [],
-    hint: ['Mid-Century', 'Industrial'],
-  },
 
   // ─────────────────────────────────────────────────────────────
   // BOHEMIAN (17 images)
@@ -135,16 +91,6 @@ export const QUIZ_IMAGE_WEIGHTS: Record<string, QuizImageWeight> = {
     primary: 'Bohemian',
     strong: ['Coastal', 'Rustic'],
     hint: [],
-  },
-  'Quiz/Bohemian/15.png': {
-    primary: 'Bohemian',
-    strong: ['Rustic', 'Industrial'],
-    hint: ['Mid-Century'],
-  },
-  'Quiz/Bohemian/16.png': {
-    primary: 'Bohemian',
-    strong: ['Coastal'],
-    hint: ['Rustic'],
   },
   'Quiz/Bohemian/8_r7zpqa.jpg': {
     primary: 'Bohemian',
@@ -220,60 +166,10 @@ export const QUIZ_IMAGE_WEIGHTS: Record<string, QuizImageWeight> = {
   // ─────────────────────────────────────────────────────────────
   // COASTAL (12 images)
   // ─────────────────────────────────────────────────────────────
-  'Quiz/Coastal/1_fhcew.png': {
-    primary: 'Coastal',
-    strong: ['Transitional'],
-    hint: ['Rustic'],
-  },
-  'Quiz/Coastal/3_plpqea.png': {
-    primary: 'Coastal',
-    strong: ['Rustic', 'Transitional'],
-    hint: [],
-  },
-  'Quiz/Coastal/2_wtzdsm.png': {
-    primary: 'Coastal',
-    strong: ['Transitional'],
-    hint: ['Japandi'],
-  },
-  'Quiz/Coastal/5fh_efe33o.png': {
-    primary: 'Coastal',
-    strong: ['Transitional'],
-    hint: ['Japandi'],
-  },
-  'Quiz/Coastal/5fh_1_d1hmni.png': {
-    primary: 'Coastal',
-    strong: ['Rustic', 'Transitional'],
-    hint: [],
-  },
-  'Quiz/Coastal/14_mwuyw1.jpg': {
-    primary: 'Coastal',
-    strong: ['Transitional', 'Mid-Century'],
-    hint: [],
-  },
-  'Quiz/Coastal/11_apahvb.jpg': {
-    primary: 'Coastal',
-    strong: ['Bohemian'],
-    hint: [],
-  },
   'Quiz/Coastal/11_vyzuiy.jpg': {
     primary: 'Coastal',
     strong: ['Rustic', 'Transitional'],
     hint: ['Japandi'],
-  },
-  'Quiz/Coastal/9_cbgmet.jpg': {
-    primary: 'Coastal',
-    strong: ['Transitional'],
-    hint: ['Japandi'],
-  },
-  'Quiz/Coastal/6_hzsje7.jpg': {
-    primary: 'Coastal',
-    strong: ['Bohemian'],
-    hint: ['Rustic'],
-  },
-  'Quiz/Coastal/10_ezelfi.jpg': {
-    primary: 'Coastal',
-    strong: ['Transitional'],
-    hint: [],
   },
   'Quiz/Coastal/11_yfryd9.jpg': {
     primary: 'Coastal',
@@ -292,11 +188,6 @@ export const QUIZ_IMAGE_WEIGHTS: Record<string, QuizImageWeight> = {
   'Quiz/Industrial/4_mihws1.jpg': {
     primary: 'Industrial',
     strong: ['Modern'],
-    hint: [],
-  },
-  'Quiz/Industrial/4_epdhym.jpg': {
-    primary: 'Industrial',
-    strong: ['Modern', 'Mid-Century'],
     hint: [],
   },
   'Quiz/Industrial/7_sbp5pc.png': {
@@ -319,50 +210,20 @@ export const QUIZ_IMAGE_WEIGHTS: Record<string, QuizImageWeight> = {
     strong: ['Modern', 'Mid-Century'],
     hint: [],
   },
-  'Quiz/Industrial/3_lfjbhw.png': {
-    primary: 'Industrial',
-    strong: ['Mid-Century'],
-    hint: ['Rustic'],
-  },
   'Quiz/Industrial/1_rnka7n.png': {
     primary: 'Industrial',
     strong: ['Modern', 'Mid-Century'],
     hint: ['Bohemian'],
-  },
-  'Quiz/Industrial/8_sida3r.png': {
-    primary: 'Industrial',
-    strong: ['Modern', 'Mid-Century'],
-    hint: [],
   },
   'Quiz/Industrial/2_tsbxx2.png': {
     primary: 'Industrial',
     strong: ['Modern'],
     hint: [],
   },
-  'Quiz/Industrial/8_o9nuyt.png': {
-    primary: 'Industrial',
-    strong: ['Modern'],
-    hint: ['Bohemian'],
-  },
 
   // ─────────────────────────────────────────────────────────────
   // JAPANDI (17 images)
   // ─────────────────────────────────────────────────────────────
-  'Quiz/Japandi/14_valixc.png': {
-    primary: 'Japandi',
-    strong: ['Modern'],
-    hint: ['Rustic'],
-  },
-  'Quiz/Japandi/11_k5sz1q.png': {
-    primary: 'Japandi',
-    strong: ['Modern'],
-    hint: ['Mid-Century'],
-  },
-  'Quiz/Japandi/10_ckvfbb.png': {
-    primary: 'Japandi',
-    strong: ['Modern'],
-    hint: [],
-  },
   'Quiz/Japandi/9_ti0qtx.png': {
     primary: 'Japandi',
     strong: ['Mid-Century'],
@@ -452,26 +313,6 @@ export const QUIZ_IMAGE_WEIGHTS: Record<string, QuizImageWeight> = {
     strong: ['Modern'],
     hint: ['Bohemian'],
   },
-  'Quiz/Mid-Century/Gemini_image2.png': {
-    primary: 'Mid-Century',
-    strong: ['Bohemian'],
-    hint: ['Rustic'],
-  },
-  'Quiz/Mid-Century/Gemini_image1.png': {
-    primary: 'Mid-Century',
-    strong: ['Bohemian'],
-    hint: ['Rustic'],
-  },
-  'Quiz/Mid-Century/2_ogcvop.jpg': {
-    primary: 'Mid-Century',
-    strong: ['Rustic'],
-    hint: ['Transitional'],
-  },
-  'Quiz/Mid-Century/1_jfs2a7.jpg': {
-    primary: 'Mid-Century',
-    strong: ['Rustic'],
-    hint: [],
-  },
   'Quiz/Mid-Century/6_diegbi.jpg': {
     primary: 'Mid-Century',
     strong: ['Industrial'],
@@ -521,11 +362,6 @@ export const QUIZ_IMAGE_WEIGHTS: Record<string, QuizImageWeight> = {
     strong: ['Industrial', 'Mid-Century'],
     hint: [],
   },
-  'Quiz/Modern/8_qclh6h.jpg': {
-    primary: 'Modern',
-    strong: ['Bohemian'],
-    hint: [],
-  },
   'Quiz/Modern/2_migzxd.jpg': {
     primary: 'Modern',
     strong: ['Japandi'],
@@ -536,39 +372,14 @@ export const QUIZ_IMAGE_WEIGHTS: Record<string, QuizImageWeight> = {
     strong: ['Japandi'],
     hint: [],
   },
-  'Quiz/Modern/5_1_zrnyds.jpg': {
-    primary: 'Modern',
-    strong: ['Mid-Century', 'Industrial'],
-    hint: [],
-  },
   'Quiz/Modern/12_huqew7.jpg': {
     primary: 'Modern',
     strong: ['Japandi'],
     hint: [],
   },
-  'Quiz/Modern/7_kon4yg.jpg': {
-    primary: 'Modern',
-    strong: ['Bohemian'],
-    hint: [],
-  },
   'Quiz/Modern/4_2_ltlsjx.jpg': {
     primary: 'Modern',
     strong: ['Transitional', 'Industrial'],
-    hint: [],
-  },
-  'Quiz/Modern/2_1_gkkng2.jpg': {
-    primary: 'Modern',
-    strong: ['Bohemian'],
-    hint: [],
-  },
-  'Quiz/Modern/4_3_saxtc0.jpg': {
-    primary: 'Modern',
-    strong: ['Art Deco'],
-    hint: [],
-  },
-  'Quiz/Modern/4_1_kwkvid.jpg': {
-    primary: 'Modern',
-    strong: ['Industrial', 'Japandi'],
     hint: [],
   },
   'Quiz/Modern/11_2_o8cxz7.jpg': {
@@ -589,11 +400,6 @@ export const QUIZ_IMAGE_WEIGHTS: Record<string, QuizImageWeight> = {
   'Quiz/Modern/9_yushkk.jpg': {
     primary: 'Modern',
     strong: ['Transitional', 'Mid-Century'],
-    hint: [],
-  },
-  'Quiz/Modern/11_1_ebcyvz.jpg': {
-    primary: 'Modern',
-    strong: ['Bohemian', 'Japandi'],
     hint: [],
   },
   'Quiz/Modern/5_ffa6z6.jpg': {
@@ -626,16 +432,6 @@ export const QUIZ_IMAGE_WEIGHTS: Record<string, QuizImageWeight> = {
     strong: ['Industrial'],
     hint: ['Mid-Century'],
   },
-  'Quiz/Modern/12_1_egand7.jpg': {
-    primary: 'Modern',
-    strong: ['Transitional'],
-    hint: ['Mid-Century'],
-  },
-  'Quiz/Modern/10_y7bds9.jpg': {
-    primary: 'Modern',
-    strong: ['Industrial'],
-    hint: [],
-  },
 
   // ─────────────────────────────────────────────────────────────
   // RUSTIC (11 images)
@@ -651,16 +447,6 @@ export const QUIZ_IMAGE_WEIGHTS: Record<string, QuizImageWeight> = {
     hint: [],
   },
   'Quiz/Rustic/11_pa7qji.png': {
-    primary: 'Rustic',
-    strong: ['Bohemian'],
-    hint: ['Industrial'],
-  },
-  'Quiz/Rustic/8_aree19.png': {
-    primary: 'Rustic',
-    strong: ['Bohemian'],
-    hint: [],
-  },
-  'Quiz/Rustic/9_bydnws.png': {
     primary: 'Rustic',
     strong: ['Bohemian'],
     hint: ['Industrial'],
@@ -1077,6 +863,501 @@ export const QUIZ_IMAGE_WEIGHTS: Record<string, QuizImageWeight> = {
     primary: 'Warm Contemporary',
     strong: ['Transitional'],
     hint: ['Modern', 'Japandi'],
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // JAPANDI — 10 studio renders added 2026-09-01,
+  // alongside the existing photographs in this folder
+  // ─────────────────────────────────────────────────────────────
+  'Quiz/Japandi/bathroom.png': {
+    primary: 'Japandi',
+    strong: ['Minimalist'],
+    hint: ['Modern', 'Biophilic'],
+  },
+  'Quiz/Japandi/bedroom.png': {
+    primary: 'Japandi',
+    strong: ['Minimalist'],
+    hint: ['Modern', 'Biophilic'],
+  },
+  'Quiz/Japandi/dining.png': {
+    primary: 'Japandi',
+    strong: ['Minimalist'],
+    hint: ['Modern', 'Biophilic'],
+  },
+  'Quiz/Japandi/hallway.png': {
+    primary: 'Japandi',
+    strong: ['Minimalist'],
+    hint: ['Modern', 'Biophilic'],
+  },
+  'Quiz/Japandi/home-office.png': {
+    primary: 'Japandi',
+    strong: ['Minimalist'],
+    hint: ['Modern', 'Biophilic'],
+  },
+  'Quiz/Japandi/kids-room.png': {
+    primary: 'Japandi',
+    strong: ['Minimalist'],
+    hint: ['Modern', 'Biophilic'],
+  },
+  'Quiz/Japandi/kitchen.png': {
+    primary: 'Japandi',
+    strong: ['Minimalist'],
+    hint: ['Modern', 'Biophilic'],
+  },
+  'Quiz/Japandi/living.png': {
+    primary: 'Japandi',
+    strong: ['Minimalist'],
+    hint: ['Modern', 'Biophilic'],
+  },
+  'Quiz/Japandi/living-and-dining.png': {
+    primary: 'Japandi',
+    strong: ['Minimalist'],
+    hint: ['Modern', 'Biophilic'],
+  },
+  'Quiz/Japandi/outdoor.png': {
+    primary: 'Japandi',
+    strong: ['Minimalist'],
+    hint: ['Modern', 'Biophilic'],
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // MODERN — 10 studio renders added 2026-09-01,
+  // alongside the existing photographs in this folder
+  // ─────────────────────────────────────────────────────────────
+  'Quiz/Modern/bathroom.png': {
+    primary: 'Modern',
+    strong: ['Minimalist'],
+    hint: ['Transitional', 'Mid-Century'],
+  },
+  'Quiz/Modern/bedroom.png': {
+    primary: 'Modern',
+    strong: ['Minimalist'],
+    hint: ['Transitional', 'Mid-Century'],
+  },
+  'Quiz/Modern/dining.png': {
+    primary: 'Modern',
+    strong: ['Minimalist'],
+    hint: ['Transitional', 'Mid-Century'],
+  },
+  'Quiz/Modern/hallway.png': {
+    primary: 'Modern',
+    strong: ['Minimalist'],
+    hint: ['Transitional', 'Mid-Century'],
+  },
+  'Quiz/Modern/home-office.png': {
+    primary: 'Modern',
+    strong: ['Minimalist'],
+    hint: ['Transitional', 'Mid-Century'],
+  },
+  'Quiz/Modern/kids-room.png': {
+    primary: 'Modern',
+    strong: ['Minimalist'],
+    hint: ['Transitional', 'Mid-Century'],
+  },
+  'Quiz/Modern/kitchen.png': {
+    primary: 'Modern',
+    strong: ['Minimalist'],
+    hint: ['Transitional', 'Mid-Century'],
+  },
+  'Quiz/Modern/living.png': {
+    primary: 'Modern',
+    strong: ['Minimalist'],
+    hint: ['Transitional', 'Mid-Century'],
+  },
+  'Quiz/Modern/living-and-dining.png': {
+    primary: 'Modern',
+    strong: ['Minimalist'],
+    hint: ['Transitional', 'Mid-Century'],
+  },
+  'Quiz/Modern/outdoor.png': {
+    primary: 'Modern',
+    strong: ['Minimalist'],
+    hint: ['Transitional', 'Mid-Century'],
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // MID-CENTURY — 10 studio renders added 2026-09-01,
+  // alongside the existing photographs in this folder
+  // ─────────────────────────────────────────────────────────────
+  'Quiz/Mid-Century/bathroom.png': {
+    primary: 'Mid-Century',
+    strong: ['Modern'],
+    hint: ['Transitional', 'Warm Contemporary'],
+  },
+  'Quiz/Mid-Century/bedroom.png': {
+    primary: 'Mid-Century',
+    strong: ['Modern'],
+    hint: ['Transitional', 'Warm Contemporary'],
+  },
+  'Quiz/Mid-Century/dining.png': {
+    primary: 'Mid-Century',
+    strong: ['Modern'],
+    hint: ['Transitional', 'Warm Contemporary'],
+  },
+  'Quiz/Mid-Century/hallway.png': {
+    primary: 'Mid-Century',
+    strong: ['Modern'],
+    hint: ['Transitional', 'Warm Contemporary'],
+  },
+  'Quiz/Mid-Century/home-office.png': {
+    primary: 'Mid-Century',
+    strong: ['Modern'],
+    hint: ['Transitional', 'Warm Contemporary'],
+  },
+  'Quiz/Mid-Century/kids-room.png': {
+    primary: 'Mid-Century',
+    strong: ['Modern'],
+    hint: ['Transitional', 'Warm Contemporary'],
+  },
+  'Quiz/Mid-Century/kitchen.png': {
+    primary: 'Mid-Century',
+    strong: ['Modern'],
+    hint: ['Transitional', 'Warm Contemporary'],
+  },
+  'Quiz/Mid-Century/living.png': {
+    primary: 'Mid-Century',
+    strong: ['Modern'],
+    hint: ['Transitional', 'Warm Contemporary'],
+  },
+  'Quiz/Mid-Century/living-and-dining.png': {
+    primary: 'Mid-Century',
+    strong: ['Modern'],
+    hint: ['Transitional', 'Warm Contemporary'],
+  },
+  'Quiz/Mid-Century/outdoor.png': {
+    primary: 'Mid-Century',
+    strong: ['Modern'],
+    hint: ['Transitional', 'Warm Contemporary'],
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // BOHEMIAN — 10 studio renders added 2026-09-01,
+  // alongside the existing photographs in this folder
+  // ─────────────────────────────────────────────────────────────
+  'Quiz/Bohemian/bathroom.png': {
+    primary: 'Bohemian',
+    strong: ['Maximalist'],
+    hint: ['Rustic', 'Biophilic'],
+  },
+  'Quiz/Bohemian/bedroom.png': {
+    primary: 'Bohemian',
+    strong: ['Maximalist'],
+    hint: ['Rustic', 'Biophilic'],
+  },
+  'Quiz/Bohemian/dining.png': {
+    primary: 'Bohemian',
+    strong: ['Maximalist'],
+    hint: ['Rustic', 'Biophilic'],
+  },
+  'Quiz/Bohemian/hallway.png': {
+    primary: 'Bohemian',
+    strong: ['Maximalist'],
+    hint: ['Rustic', 'Biophilic'],
+  },
+  'Quiz/Bohemian/home-office.png': {
+    primary: 'Bohemian',
+    strong: ['Maximalist'],
+    hint: ['Rustic', 'Biophilic'],
+  },
+  'Quiz/Bohemian/kids-room.png': {
+    primary: 'Bohemian',
+    strong: ['Maximalist'],
+    hint: ['Rustic', 'Biophilic'],
+  },
+  'Quiz/Bohemian/kitchen.png': {
+    primary: 'Bohemian',
+    strong: ['Maximalist'],
+    hint: ['Rustic', 'Biophilic'],
+  },
+  'Quiz/Bohemian/living.png': {
+    primary: 'Bohemian',
+    strong: ['Maximalist'],
+    hint: ['Rustic', 'Biophilic'],
+  },
+  'Quiz/Bohemian/living-and-dining.png': {
+    primary: 'Bohemian',
+    strong: ['Maximalist'],
+    hint: ['Rustic', 'Biophilic'],
+  },
+  'Quiz/Bohemian/outdoor.png': {
+    primary: 'Bohemian',
+    strong: ['Maximalist'],
+    hint: ['Rustic', 'Biophilic'],
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // RUSTIC — 10 studio renders added 2026-09-01,
+  // alongside the existing photographs in this folder
+  // ─────────────────────────────────────────────────────────────
+  'Quiz/Rustic/bathroom.png': {
+    primary: 'Rustic',
+    strong: ['Industrial'],
+    hint: ['Bohemian', 'Biophilic'],
+  },
+  'Quiz/Rustic/bedroom.png': {
+    primary: 'Rustic',
+    strong: ['Industrial'],
+    hint: ['Bohemian', 'Biophilic'],
+  },
+  'Quiz/Rustic/dining.png': {
+    primary: 'Rustic',
+    strong: ['Industrial'],
+    hint: ['Bohemian', 'Biophilic'],
+  },
+  'Quiz/Rustic/hallway.png': {
+    primary: 'Rustic',
+    strong: ['Industrial'],
+    hint: ['Bohemian', 'Biophilic'],
+  },
+  'Quiz/Rustic/home-office.png': {
+    primary: 'Rustic',
+    strong: ['Industrial'],
+    hint: ['Bohemian', 'Biophilic'],
+  },
+  'Quiz/Rustic/kids-room.png': {
+    primary: 'Rustic',
+    strong: ['Industrial'],
+    hint: ['Bohemian', 'Biophilic'],
+  },
+  'Quiz/Rustic/kitchen.png': {
+    primary: 'Rustic',
+    strong: ['Industrial'],
+    hint: ['Bohemian', 'Biophilic'],
+  },
+  'Quiz/Rustic/living.png': {
+    primary: 'Rustic',
+    strong: ['Industrial'],
+    hint: ['Bohemian', 'Biophilic'],
+  },
+  'Quiz/Rustic/living-and-dining.png': {
+    primary: 'Rustic',
+    strong: ['Industrial'],
+    hint: ['Bohemian', 'Biophilic'],
+  },
+  'Quiz/Rustic/outdoor.png': {
+    primary: 'Rustic',
+    strong: ['Industrial'],
+    hint: ['Bohemian', 'Biophilic'],
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // ART DECO — 10 studio renders added 2026-09-01,
+  // alongside the existing photographs in this folder
+  // ─────────────────────────────────────────────────────────────
+  'Quiz/Art-Deco/bathroom.png': {
+    primary: 'Art Deco',
+    strong: ['Transitional'],
+    hint: ['Maximalist', 'Mid-Century'],
+  },
+  'Quiz/Art-Deco/bedroom.png': {
+    primary: 'Art Deco',
+    strong: ['Transitional'],
+    hint: ['Maximalist', 'Mid-Century'],
+  },
+  'Quiz/Art-Deco/dining.png': {
+    primary: 'Art Deco',
+    strong: ['Transitional'],
+    hint: ['Maximalist', 'Mid-Century'],
+  },
+  'Quiz/Art-Deco/hallway.png': {
+    primary: 'Art Deco',
+    strong: ['Transitional'],
+    hint: ['Maximalist', 'Mid-Century'],
+  },
+  'Quiz/Art-Deco/home-office.png': {
+    primary: 'Art Deco',
+    strong: ['Transitional'],
+    hint: ['Maximalist', 'Mid-Century'],
+  },
+  'Quiz/Art-Deco/kids-room.png': {
+    primary: 'Art Deco',
+    strong: ['Transitional'],
+    hint: ['Maximalist', 'Mid-Century'],
+  },
+  'Quiz/Art-Deco/kitchen.png': {
+    primary: 'Art Deco',
+    strong: ['Transitional'],
+    hint: ['Maximalist', 'Mid-Century'],
+  },
+  'Quiz/Art-Deco/living.png': {
+    primary: 'Art Deco',
+    strong: ['Transitional'],
+    hint: ['Maximalist', 'Mid-Century'],
+  },
+  'Quiz/Art-Deco/living-and-dining.png': {
+    primary: 'Art Deco',
+    strong: ['Transitional'],
+    hint: ['Maximalist', 'Mid-Century'],
+  },
+  'Quiz/Art-Deco/outdoor.png': {
+    primary: 'Art Deco',
+    strong: ['Transitional'],
+    hint: ['Maximalist', 'Mid-Century'],
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // INDUSTRIAL — 10 studio renders added 2026-09-01,
+  // alongside the existing photographs in this folder
+  // ─────────────────────────────────────────────────────────────
+  'Quiz/Industrial/bathroom.png': {
+    primary: 'Industrial',
+    strong: ['Modern'],
+    hint: ['Rustic', 'Minimalist'],
+  },
+  'Quiz/Industrial/bedroom.png': {
+    primary: 'Industrial',
+    strong: ['Modern'],
+    hint: ['Rustic', 'Minimalist'],
+  },
+  'Quiz/Industrial/dining.png': {
+    primary: 'Industrial',
+    strong: ['Modern'],
+    hint: ['Rustic', 'Minimalist'],
+  },
+  'Quiz/Industrial/hallway.png': {
+    primary: 'Industrial',
+    strong: ['Modern'],
+    hint: ['Rustic', 'Minimalist'],
+  },
+  'Quiz/Industrial/home-office.png': {
+    primary: 'Industrial',
+    strong: ['Modern'],
+    hint: ['Rustic', 'Minimalist'],
+  },
+  'Quiz/Industrial/kids-room.png': {
+    primary: 'Industrial',
+    strong: ['Modern'],
+    hint: ['Rustic', 'Minimalist'],
+  },
+  'Quiz/Industrial/kitchen.png': {
+    primary: 'Industrial',
+    strong: ['Modern'],
+    hint: ['Rustic', 'Minimalist'],
+  },
+  'Quiz/Industrial/living.png': {
+    primary: 'Industrial',
+    strong: ['Modern'],
+    hint: ['Rustic', 'Minimalist'],
+  },
+  'Quiz/Industrial/living-and-dining.png': {
+    primary: 'Industrial',
+    strong: ['Modern'],
+    hint: ['Rustic', 'Minimalist'],
+  },
+  'Quiz/Industrial/outdoor.png': {
+    primary: 'Industrial',
+    strong: ['Modern'],
+    hint: ['Rustic', 'Minimalist'],
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // COASTAL — 10 studio renders added 2026-09-01,
+  // alongside the existing photographs in this folder
+  // ─────────────────────────────────────────────────────────────
+  'Quiz/Coastal/bathroom.png': {
+    primary: 'Coastal',
+    strong: ['Transitional'],
+    hint: ['Japandi', 'Minimalist'],
+  },
+  'Quiz/Coastal/bedroom.png': {
+    primary: 'Coastal',
+    strong: ['Transitional'],
+    hint: ['Japandi', 'Minimalist'],
+  },
+  'Quiz/Coastal/dining.png': {
+    primary: 'Coastal',
+    strong: ['Transitional'],
+    hint: ['Japandi', 'Minimalist'],
+  },
+  'Quiz/Coastal/hallway.png': {
+    primary: 'Coastal',
+    strong: ['Transitional'],
+    hint: ['Japandi', 'Minimalist'],
+  },
+  'Quiz/Coastal/home-office.png': {
+    primary: 'Coastal',
+    strong: ['Transitional'],
+    hint: ['Japandi', 'Minimalist'],
+  },
+  'Quiz/Coastal/kids-room.png': {
+    primary: 'Coastal',
+    strong: ['Transitional'],
+    hint: ['Japandi', 'Minimalist'],
+  },
+  'Quiz/Coastal/kitchen.png': {
+    primary: 'Coastal',
+    strong: ['Transitional'],
+    hint: ['Japandi', 'Minimalist'],
+  },
+  'Quiz/Coastal/living.png': {
+    primary: 'Coastal',
+    strong: ['Transitional'],
+    hint: ['Japandi', 'Minimalist'],
+  },
+  'Quiz/Coastal/living-and-dining.png': {
+    primary: 'Coastal',
+    strong: ['Transitional'],
+    hint: ['Japandi', 'Minimalist'],
+  },
+  'Quiz/Coastal/outdoor.png': {
+    primary: 'Coastal',
+    strong: ['Transitional'],
+    hint: ['Japandi', 'Minimalist'],
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // TRANSITIONAL — 10 studio renders added 2026-09-01,
+  // alongside the existing photographs in this folder
+  // ─────────────────────────────────────────────────────────────
+  'Quiz/Transitional/bathroom.png': {
+    primary: 'Transitional',
+    strong: ['Warm Contemporary'],
+    hint: ['Modern', 'Art Deco'],
+  },
+  'Quiz/Transitional/bedroom.png': {
+    primary: 'Transitional',
+    strong: ['Warm Contemporary'],
+    hint: ['Modern', 'Art Deco'],
+  },
+  'Quiz/Transitional/dining.png': {
+    primary: 'Transitional',
+    strong: ['Warm Contemporary'],
+    hint: ['Modern', 'Art Deco'],
+  },
+  'Quiz/Transitional/hallway.png': {
+    primary: 'Transitional',
+    strong: ['Warm Contemporary'],
+    hint: ['Modern', 'Art Deco'],
+  },
+  'Quiz/Transitional/home-office.png': {
+    primary: 'Transitional',
+    strong: ['Warm Contemporary'],
+    hint: ['Modern', 'Art Deco'],
+  },
+  'Quiz/Transitional/kids-room.png': {
+    primary: 'Transitional',
+    strong: ['Warm Contemporary'],
+    hint: ['Modern', 'Art Deco'],
+  },
+  'Quiz/Transitional/kitchen.png': {
+    primary: 'Transitional',
+    strong: ['Warm Contemporary'],
+    hint: ['Modern', 'Art Deco'],
+  },
+  'Quiz/Transitional/living.png': {
+    primary: 'Transitional',
+    strong: ['Warm Contemporary'],
+    hint: ['Modern', 'Art Deco'],
+  },
+  'Quiz/Transitional/living-and-dining.png': {
+    primary: 'Transitional',
+    strong: ['Warm Contemporary'],
+    hint: ['Modern', 'Art Deco'],
+  },
+  'Quiz/Transitional/outdoor.png': {
+    primary: 'Transitional',
+    strong: ['Warm Contemporary'],
+    hint: ['Modern', 'Art Deco'],
   },
 };
 
