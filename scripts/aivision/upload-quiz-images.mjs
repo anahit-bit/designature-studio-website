@@ -10,7 +10,11 @@
 //   node scripts/aivision/upload-quiz-images.mjs --styles "Biophilic"
 //   node scripts/aivision/upload-quiz-images.mjs --all              # all 15 (replaces nothing)
 //
-// Idempotent: overwrite:false, so re-running skips what is already there.
+// Re-uploads by default (overwrite:true). The first version used overwrite:false
+// and that was wrong for this job: every time a style is re-rendered from the
+// workbook, the copy on Cloudinary becomes stale, and a "skipped, already there"
+// run would silently leave the OLD image serving the quiz. Pass --no-overwrite
+// only if you deliberately want to add without replacing.
 //
 // FOLDER HYGIENE (hard rule): pass `folder`, never `asset_folder`. asset_folder
 // is a UI-display field only and does NOT set the public_id path — an earlier
@@ -41,6 +45,7 @@ const argv = process.argv.slice(2);
 const flag = (n) => { const i = argv.indexOf(`--${n}`); return i >= 0 ? argv[i + 1] : undefined; };
 const has = (n) => argv.includes(`--${n}`);
 const dryRun = has('dry-run');
+const overwrite = !has('no-overwrite');
 
 const manifest = JSON.parse(fs.readFileSync(path.join(SRC, 'manifest.json'), 'utf8'));
 const allStyles = [...new Set(manifest.images.map((i) => i.style))];
@@ -74,6 +79,7 @@ const jobs = manifest.images
 
 console.log(`Styles: ${styles.join(' · ')}`);
 console.log(`Images: ${jobs.length}`);
+console.log(`Mode:   ${overwrite ? 'OVERWRITE existing + invalidate CDN' : 'skip existing (--no-overwrite)'}`);
 console.log(`Target: ${[...new Set(jobs.map((j) => j.folder))].join(', ')}`);
 
 if (dryRun) {
@@ -94,7 +100,8 @@ for (const j of jobs) {
     const r = await cloudinary.uploader.upload(j.file, {
       public_id: j.publicId,
       folder: j.folder,
-      overwrite: false,
+      overwrite,
+      invalidate: overwrite,   // bust the CDN cache, or the old render keeps serving
       unique_filename: false,
       use_filename: false,
       resource_type: 'image',
