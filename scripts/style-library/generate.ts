@@ -74,6 +74,14 @@ const force = has("force");
 const dryRun = has("dry-run");
 const concurrency = Math.max(1, Number(flag("concurrency") ?? 3));
 
+// A second (or third) take on the same room. Variant 1 is the original file,
+// <room>.png; variant 2+ writes <room>-v2.png so nothing is overwritten, shifts
+// the palette accent by one, and asks for a different arrangement — otherwise
+// the extra image is the same photograph with a recoloured cushion.
+const variant = Math.max(1, Number(flag("variant") ?? 1));
+// Cap rooms per style, for topping a folder up by a known number.
+const limit = flag("limit") ? Math.max(1, Number(flag("limit"))) : undefined;
+
 const OUT_ROOT = flag("out") ?? DEFAULT_OUT;
 const styles = (onlyStyles ?? [...VISION_STYLES_FULL]) as string[];
 const rooms = (onlyRooms ?? [...ROOM_TYPES_FULL]) as string[];
@@ -94,6 +102,9 @@ function buildLibraryPrompt(preset: StylePreset, roomKey: RoomType, accentSeed: 
   // One accent per image, rotating across the style's palette, so a style's row
   // shows its actual colour range instead of ten variations of the same beige.
   const accent = pickAccent(preset, accentSeed);
+  const variantHint = variant > 1
+    ? ` This is an alternative take on the same style and room type: use a different furniture arrangement, a different camera position within the room, and different accessories from the previous version, while keeping the style and the room programme identical.`
+    : "";
   return `Photorealistic interior photograph of a ${roomLabel.toLowerCase()}, professionally designed and completely furnished in the style described below. Editorial interior photography: natural daylight from a window, eye-level camera at standing height, a wide but undistorted lens showing the whole room, sharp focus, realistic materials and textures, high detail. No people, no text, no watermark, no visible camera equipment.
 
 ROOM PROGRAM (this rule overrides any furniture examples in the style brief below — the room must be this room type, not the style's default room):
@@ -105,7 +116,7 @@ TARGET STYLE:
 
 ${STYLE_BRIEFS[preset]}${renderAccent(accent)}
 
-Generate the photograph now. It must be immediately recognisable as this style, applied to this room type.`;
+Generate the photograph now. It must be immediately recognisable as this style, applied to this room type.${variantHint}`;
 }
 
 // ── Job list ────────────────────────────────────────────────────────────────
@@ -116,6 +127,7 @@ interface Job {
   roomKey: RoomType;
   file: string;
   accentSeed: number;
+  variant: number;
 }
 
 const jobs: Job[] = [];
@@ -124,13 +136,16 @@ const wiringErrors: string[] = [];
 for (const style of styles) {
   const preset = STYLE_NAME_TO_PRESET[style];
   if (!preset) { wiringErrors.push(`style "${style}" has no preset mapping`); continue; }
-  rooms.forEach((room, roomIndex) => {
+  const chosen = limit ? rooms.slice(0, limit) : rooms;
+  chosen.forEach((room, roomIndex) => {
     const roomKey = ROOM_NAME_TO_TYPE[room];
     if (!roomKey) { wiringErrors.push(`room "${room}" has no room-type mapping`); return; }
     jobs.push({
-      style, room, preset, roomKey,
-      accentSeed: roomIndex,
-      file: path.join(OUT_ROOT, slug(style), `${slug(room)}.png`),
+      style, room, preset, roomKey, variant,
+      // Shift the accent per variant so take 2 is not the same colour as take 1.
+      accentSeed: roomIndex + (variant - 1),
+      file: path.join(OUT_ROOT, slug(style),
+        variant > 1 ? `${slug(room)}-v${variant}.png` : `${slug(room)}.png`),
     });
   });
 }
@@ -165,33 +180,39 @@ if (!todo.length) { console.log("Nothing to generate."); writeManifest(); proces
 // runs on EVERY exit path, including "nothing to generate", because a re-render
 // that produces no new files must still leave a correct index behind.
 function writeManifest(): number {
-  const fullGrid: Job[] = [];
-  for (const style of VISION_STYLES_FULL) {
+  // Walk the output directory rather than reconstructing the grid: variants
+  // (<room>-v2.png) exist on disk but are not derivable from styles x rooms, and
+  // rebuilding from the grid would drop every one of them from the index.
+  const slugToStyle = new Map(VISION_STYLES_FULL.map((s) => [slug(s), s]));
+  const slugToRoom = new Map(ROOM_TYPES_FULL.map((r) => [slug(r), r]));
+  const images: any[] = [];
+  for (const dir of fs.existsSync(OUT_ROOT) ? fs.readdirSync(OUT_ROOT) : []) {
+    const style = slugToStyle.get(dir);
+    if (!style) continue;                       // skip index.html, manifest.json, stray folders
     const preset = STYLE_NAME_TO_PRESET[style];
-    if (!preset) continue;
-    ROOM_TYPES_FULL.forEach((room, roomIndex) => {
-      const roomKey = ROOM_NAME_TO_TYPE[room];
-      if (!roomKey) return;
-      fullGrid.push({
-        style, room, preset, roomKey, accentSeed: roomIndex,
-        file: path.join(OUT_ROOT, slug(style), `${slug(room)}.png`),
+    for (const f of fs.readdirSync(path.join(OUT_ROOT, dir))) {
+      if (!f.endsWith(".png")) continue;
+      const m = f.replace(/\.png$/, "").match(/^(.*?)(?:-v(\d+))?$/);
+      const roomSlug = m?.[1] ?? "";
+      const room = slugToRoom.get(roomSlug);
+      if (!room) continue;
+      const v = Number(m?.[2] ?? 1);
+      const roomIndex = ROOM_TYPES_FULL.indexOf(room as never);
+      images.push({
+        style, room, preset, roomKey: ROOM_NAME_TO_TYPE[room], variant: v,
+        accent: pickAccent(preset, roomIndex + (v - 1))?.name ?? null,
+        file: `${dir}/${f}`,
+        bytes: fs.statSync(path.join(OUT_ROOT, dir, f)).size,
       });
-    });
+    }
   }
-  const images = fullGrid
-    .filter((j) => fs.existsSync(j.file))
-    .map((j) => ({
-      style: j.style, room: j.room, preset: j.preset, roomKey: j.roomKey,
-      accent: pickAccent(j.preset, j.accentSeed)?.name ?? null,
-      file: path.relative(OUT_ROOT, j.file).split(path.sep).join("/"),
-      bytes: fs.statSync(j.file).size,
-    }));
+  images.sort((a, b) => a.file.localeCompare(b.file));
   fs.mkdirSync(OUT_ROOT, { recursive: true });
   fs.writeFileSync(
     path.join(OUT_ROOT, "manifest.json"),
     JSON.stringify({ model: MODEL, aspect: ASPECT, generated: images.length, images }, null, 2),
   );
-  console.log(`manifest: ${images.length}/${fullGrid.length} images present`);
+  console.log(`manifest: ${images.length} images on disk`);
   return images.length;
 }
 

@@ -1359,6 +1359,301 @@ export const QUIZ_IMAGE_WEIGHTS: Record<string, QuizImageWeight> = {
     strong: ['Warm Contemporary'],
     hint: ['Modern', 'Art Deco'],
   },
+
+  // ─────────────────────────────────────────────────────────────
+  // SECOND TAKES (<room>-v2), added 2026-09-01 to bring every quiz
+  // folder to 20 images. Same neighbours as each style's first take.
+  // ─────────────────────────────────────────────────────────────
+  'Quiz/Art-Deco/dining-v2.png': {
+    primary: 'Art Deco',
+    strong: ['Transitional'],
+    hint: ['Maximalist', 'Mid-Century'],
+  },
+  'Quiz/Art-Deco/living-v2.png': {
+    primary: 'Art Deco',
+    strong: ['Transitional'],
+    hint: ['Maximalist', 'Mid-Century'],
+  },
+  'Quiz/Biophilic/bathroom-v2.png': {
+    primary: 'Biophilic',
+    strong: ['Japandi'],
+    hint: ['Rustic', 'Coastal'],
+  },
+  'Quiz/Biophilic/bedroom-v2.png': {
+    primary: 'Biophilic',
+    strong: ['Japandi'],
+    hint: ['Rustic', 'Coastal'],
+  },
+  'Quiz/Biophilic/dining-v2.png': {
+    primary: 'Biophilic',
+    strong: ['Japandi'],
+    hint: ['Rustic', 'Coastal'],
+  },
+  'Quiz/Biophilic/hallway-v2.png': {
+    primary: 'Biophilic',
+    strong: ['Japandi'],
+    hint: ['Rustic', 'Coastal'],
+  },
+  'Quiz/Biophilic/home-office-v2.png': {
+    primary: 'Biophilic',
+    strong: ['Japandi'],
+    hint: ['Rustic', 'Coastal'],
+  },
+  'Quiz/Biophilic/kids-room-v2.png': {
+    primary: 'Biophilic',
+    strong: ['Japandi'],
+    hint: ['Rustic', 'Coastal'],
+  },
+  'Quiz/Biophilic/kitchen-v2.png': {
+    primary: 'Biophilic',
+    strong: ['Japandi'],
+    hint: ['Rustic', 'Coastal'],
+  },
+  'Quiz/Biophilic/living-and-dining-v2.png': {
+    primary: 'Biophilic',
+    strong: ['Japandi'],
+    hint: ['Rustic', 'Coastal'],
+  },
+  'Quiz/Biophilic/living-v2.png': {
+    primary: 'Biophilic',
+    strong: ['Japandi'],
+    hint: ['Rustic', 'Coastal'],
+  },
+  'Quiz/Biophilic/outdoor-v2.png': {
+    primary: 'Biophilic',
+    strong: ['Japandi'],
+    hint: ['Rustic', 'Coastal'],
+  },
+  'Quiz/Coastal/bedroom-v2.png': {
+    primary: 'Coastal',
+    strong: ['Transitional'],
+    hint: ['Japandi', 'Minimalist'],
+  },
+  'Quiz/Coastal/dining-v2.png': {
+    primary: 'Coastal',
+    strong: ['Transitional'],
+    hint: ['Japandi', 'Minimalist'],
+  },
+  'Quiz/Coastal/living-and-dining-v2.png': {
+    primary: 'Coastal',
+    strong: ['Transitional'],
+    hint: ['Japandi', 'Minimalist'],
+  },
+  'Quiz/Coastal/living-v2.png': {
+    primary: 'Coastal',
+    strong: ['Transitional'],
+    hint: ['Japandi', 'Minimalist'],
+  },
+  'Quiz/Dopamine/bathroom-v2.png': {
+    primary: 'Dopamine',
+    strong: ['Maximalist'],
+    hint: ['Mid-Century', 'Bohemian'],
+  },
+  'Quiz/Dopamine/bedroom-v2.png': {
+    primary: 'Dopamine',
+    strong: ['Maximalist'],
+    hint: ['Mid-Century', 'Bohemian'],
+  },
+  'Quiz/Dopamine/dining-v2.png': {
+    primary: 'Dopamine',
+    strong: ['Maximalist'],
+    hint: ['Mid-Century', 'Bohemian'],
+  },
+  'Quiz/Dopamine/hallway-v2.png': {
+    primary: 'Dopamine',
+    strong: ['Maximalist'],
+    hint: ['Mid-Century', 'Bohemian'],
+  },
+  'Quiz/Dopamine/home-office-v2.png': {
+    primary: 'Dopamine',
+    strong: ['Maximalist'],
+    hint: ['Mid-Century', 'Bohemian'],
+  },
+  'Quiz/Dopamine/kids-room-v2.png': {
+    primary: 'Dopamine',
+    strong: ['Maximalist'],
+    hint: ['Mid-Century', 'Bohemian'],
+  },
+  'Quiz/Dopamine/kitchen-v2.png': {
+    primary: 'Dopamine',
+    strong: ['Maximalist'],
+    hint: ['Mid-Century', 'Bohemian'],
+  },
+  'Quiz/Dopamine/living-and-dining-v2.png': {
+    primary: 'Dopamine',
+    strong: ['Maximalist'],
+    hint: ['Mid-Century', 'Bohemian'],
+  },
+  'Quiz/Dopamine/living-v2.png': {
+    primary: 'Dopamine',
+    strong: ['Maximalist'],
+    hint: ['Mid-Century', 'Bohemian'],
+  },
+  'Quiz/Dopamine/outdoor-v2.png': {
+    primary: 'Dopamine',
+    strong: ['Maximalist'],
+    hint: ['Mid-Century', 'Bohemian'],
+  },
+  'Quiz/Industrial/living-v2.png': {
+    primary: 'Industrial',
+    strong: ['Modern'],
+    hint: ['Rustic', 'Minimalist'],
+  },
+  'Quiz/Maximalist/bathroom-v2.png': {
+    primary: 'Maximalist',
+    strong: ['Bohemian'],
+    hint: ['Art Deco', 'Dopamine'],
+  },
+  'Quiz/Maximalist/bedroom-v2.png': {
+    primary: 'Maximalist',
+    strong: ['Bohemian'],
+    hint: ['Art Deco', 'Dopamine'],
+  },
+  'Quiz/Maximalist/dining-v2.png': {
+    primary: 'Maximalist',
+    strong: ['Bohemian'],
+    hint: ['Art Deco', 'Dopamine'],
+  },
+  'Quiz/Maximalist/hallway-v2.png': {
+    primary: 'Maximalist',
+    strong: ['Bohemian'],
+    hint: ['Art Deco', 'Dopamine'],
+  },
+  'Quiz/Maximalist/home-office-v2.png': {
+    primary: 'Maximalist',
+    strong: ['Bohemian'],
+    hint: ['Art Deco', 'Dopamine'],
+  },
+  'Quiz/Maximalist/kids-room-v2.png': {
+    primary: 'Maximalist',
+    strong: ['Bohemian'],
+    hint: ['Art Deco', 'Dopamine'],
+  },
+  'Quiz/Maximalist/kitchen-v2.png': {
+    primary: 'Maximalist',
+    strong: ['Bohemian'],
+    hint: ['Art Deco', 'Dopamine'],
+  },
+  'Quiz/Maximalist/living-and-dining-v2.png': {
+    primary: 'Maximalist',
+    strong: ['Bohemian'],
+    hint: ['Art Deco', 'Dopamine'],
+  },
+  'Quiz/Maximalist/living-v2.png': {
+    primary: 'Maximalist',
+    strong: ['Bohemian'],
+    hint: ['Art Deco', 'Dopamine'],
+  },
+  'Quiz/Maximalist/outdoor-v2.png': {
+    primary: 'Maximalist',
+    strong: ['Bohemian'],
+    hint: ['Art Deco', 'Dopamine'],
+  },
+  'Quiz/Minimalist/bathroom-v2.png': {
+    primary: 'Minimalist',
+    strong: ['Modern', 'Japandi'],
+    hint: ['Transitional'],
+  },
+  'Quiz/Minimalist/bedroom-v2.png': {
+    primary: 'Minimalist',
+    strong: ['Modern', 'Japandi'],
+    hint: ['Transitional'],
+  },
+  'Quiz/Minimalist/dining-v2.png': {
+    primary: 'Minimalist',
+    strong: ['Modern', 'Japandi'],
+    hint: ['Transitional'],
+  },
+  'Quiz/Minimalist/hallway-v2.png': {
+    primary: 'Minimalist',
+    strong: ['Modern', 'Japandi'],
+    hint: ['Transitional'],
+  },
+  'Quiz/Minimalist/home-office-v2.png': {
+    primary: 'Minimalist',
+    strong: ['Modern', 'Japandi'],
+    hint: ['Transitional'],
+  },
+  'Quiz/Minimalist/kids-room-v2.png': {
+    primary: 'Minimalist',
+    strong: ['Modern', 'Japandi'],
+    hint: ['Transitional'],
+  },
+  'Quiz/Minimalist/kitchen-v2.png': {
+    primary: 'Minimalist',
+    strong: ['Modern', 'Japandi'],
+    hint: ['Transitional'],
+  },
+  'Quiz/Minimalist/living-and-dining-v2.png': {
+    primary: 'Minimalist',
+    strong: ['Modern', 'Japandi'],
+    hint: ['Transitional'],
+  },
+  'Quiz/Minimalist/living-v2.png': {
+    primary: 'Minimalist',
+    strong: ['Modern', 'Japandi'],
+    hint: ['Transitional'],
+  },
+  'Quiz/Minimalist/outdoor-v2.png': {
+    primary: 'Minimalist',
+    strong: ['Modern', 'Japandi'],
+    hint: ['Transitional'],
+  },
+  'Quiz/Rustic/living-v2.png': {
+    primary: 'Rustic',
+    strong: ['Industrial'],
+    hint: ['Bohemian', 'Biophilic'],
+  },
+  'Quiz/Warm-Contemporary/bathroom-v2.png': {
+    primary: 'Warm Contemporary',
+    strong: ['Transitional'],
+    hint: ['Modern', 'Japandi'],
+  },
+  'Quiz/Warm-Contemporary/bedroom-v2.png': {
+    primary: 'Warm Contemporary',
+    strong: ['Transitional'],
+    hint: ['Modern', 'Japandi'],
+  },
+  'Quiz/Warm-Contemporary/dining-v2.png': {
+    primary: 'Warm Contemporary',
+    strong: ['Transitional'],
+    hint: ['Modern', 'Japandi'],
+  },
+  'Quiz/Warm-Contemporary/hallway-v2.png': {
+    primary: 'Warm Contemporary',
+    strong: ['Transitional'],
+    hint: ['Modern', 'Japandi'],
+  },
+  'Quiz/Warm-Contemporary/home-office-v2.png': {
+    primary: 'Warm Contemporary',
+    strong: ['Transitional'],
+    hint: ['Modern', 'Japandi'],
+  },
+  'Quiz/Warm-Contemporary/kids-room-v2.png': {
+    primary: 'Warm Contemporary',
+    strong: ['Transitional'],
+    hint: ['Modern', 'Japandi'],
+  },
+  'Quiz/Warm-Contemporary/kitchen-v2.png': {
+    primary: 'Warm Contemporary',
+    strong: ['Transitional'],
+    hint: ['Modern', 'Japandi'],
+  },
+  'Quiz/Warm-Contemporary/living-and-dining-v2.png': {
+    primary: 'Warm Contemporary',
+    strong: ['Transitional'],
+    hint: ['Modern', 'Japandi'],
+  },
+  'Quiz/Warm-Contemporary/living-v2.png': {
+    primary: 'Warm Contemporary',
+    strong: ['Transitional'],
+    hint: ['Modern', 'Japandi'],
+  },
+  'Quiz/Warm-Contemporary/outdoor-v2.png': {
+    primary: 'Warm Contemporary',
+    strong: ['Transitional'],
+    hint: ['Modern', 'Japandi'],
+  },
 };
 
 /**

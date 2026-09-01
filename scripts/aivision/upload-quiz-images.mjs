@@ -46,6 +46,9 @@ const flag = (n) => { const i = argv.indexOf(`--${n}`); return i >= 0 ? argv[i +
 const has = (n) => argv.includes(`--${n}`);
 const dryRun = has('dry-run');
 const overwrite = !has('no-overwrite');
+// Upload only take N of each room (2 = the <room>-v2.png top-up set). Without
+// this, topping a folder up re-pushes every image in it for no reason.
+const onlyVariant = flag('variant') ? Number(flag('variant')) : undefined;
 
 const manifest = JSON.parse(fs.readFileSync(path.join(SRC, 'manifest.json'), 'utf8'));
 const allStyles = [...new Set(manifest.images.map((i) => i.style))];
@@ -66,6 +69,7 @@ const folderFor = (style) => `Quiz/${style.trim().replace(/\s+/g, '-')}`;
 
 const jobs = manifest.images
   .filter((i) => styles.includes(i.style))
+  .filter((i) => onlyVariant === undefined || (i.variant ?? 1) === onlyVariant)
   .map((i) => ({
     style: i.style,
     room: i.room,
@@ -78,7 +82,7 @@ const jobs = manifest.images
   }));
 
 console.log(`Styles: ${styles.join(' · ')}`);
-console.log(`Images: ${jobs.length}`);
+console.log(`Images: ${jobs.length}${onlyVariant ? ` (variant ${onlyVariant} only)` : ''}`);
 console.log(`Mode:   ${overwrite ? 'OVERWRITE existing + invalidate CDN' : 'skip existing (--no-overwrite)'}`);
 console.log(`Target: ${[...new Set(jobs.map((j) => j.folder))].join(', ')}`);
 

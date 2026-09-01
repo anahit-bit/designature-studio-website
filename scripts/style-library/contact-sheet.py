@@ -27,8 +27,11 @@ for i in images:
     if i["style"] not in styles: styles.append(i["style"])
     if i["room"] not in rooms: rooms.append(i["room"])
 
-by_pair = {(i["style"], i["room"]): i for i in images}
-missing = [(s, r) for s in styles for r in rooms if (s, r) not in by_pair]
+# Keyed by (style, room, variant): a second take shares a room with the first, so
+# a (style, room) key would silently drop every variant from the sheet.
+variants = sorted({i.get("variant", 1) for i in images})
+by_key = {(i["style"], i["room"], i.get("variant", 1)): i for i in images}
+missing = [(s, r) for s in styles for r in rooms if (s, r, 1) not in by_key]
 
 def esc(s): return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
@@ -37,18 +40,20 @@ for s in styles:
     cells.append(f'<h2 class="style" id="{esc(s).replace(" ", "-").lower()}">{esc(s)}</h2>')
     cells.append('<div class="row">')
     for r in rooms:
-        img = by_pair.get((s, r))
-        if img:
-            f = img["file"]
-            accent = img.get("accent")
-            # The accent is the whole point of the palette work — label it, or a
-            # reviewer cannot tell a deliberate colour from a model whim.
-            acc = f'<span class="acc">{esc(accent)}</span>' if accent else ""
-            cells.append(
-                f'<figure><a href="{f}" target="_blank"><img loading="lazy" src="{f}" alt="{esc(s)} {esc(r)}"></a>'
-                f'<figcaption>{esc(r)}{acc}</figcaption></figure>')
-        else:
-            cells.append(f'<figure class="gap"><div class="ph">missing</div><figcaption>{esc(r)}</figcaption></figure>')
+        for v in variants:
+            img = by_key.get((s, r, v))
+            if img:
+                f = img["file"]
+                accent = img.get("accent")
+                # The accent is the whole point of the palette work — label it, or
+                # a reviewer cannot tell a deliberate colour from a model whim.
+                acc = f'<span class="acc">{esc(accent)}</span>' if accent else ""
+                take = f' &middot; take {v}' if v > 1 else ""
+                cells.append(
+                    f'<figure><a href="{f}" target="_blank"><img loading="lazy" src="{f}" alt="{esc(s)} {esc(r)}"></a>'
+                    f'<figcaption>{esc(r)}{take}{acc}</figcaption></figure>')
+            elif v == 1:
+                cells.append(f'<figure class="gap"><div class="ph">missing</div><figcaption>{esc(r)}</figcaption></figure>')
     cells.append("</div>")
 
 nav = " · ".join(f'<a href="#{esc(s).replace(" ", "-").lower()}">{esc(s)}</a>' for s in styles)
@@ -82,7 +87,7 @@ html = f"""<!doctype html>
 </style></head><body>
 <header>
   <h1>Style &times; Room library</h1>
-  <div class="sub"><b>{len(images)}</b> images &middot; {len(styles)} styles &times; {len(rooms)} rooms &middot;
+  <div class="sub"><b>{len(images)}</b> images &middot; {len(styles)} styles &times; {len(rooms)} rooms &middot; up to {len(variants)} takes each &middot;
     generated with <code>{esc(data.get("model",""))}</code> at {esc(data.get("aspect",""))}
     {'&middot; <b>' + str(len(missing)) + ' missing</b>' if missing else '&middot; complete'}.
     Click any image to open it full size. Rendered from the same style briefs and room programmes the live tool uses;

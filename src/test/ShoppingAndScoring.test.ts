@@ -207,8 +207,9 @@ describe('Multi-attribute scoring', () => {
     expect(QUIZ_IMAGE_WEIGHTS['Quiz/Coastal/10_ezeifi.jpg']).toBeUndefined();
   });
 
-  // 93 surviving photographs + 150 studio renders (15 styles x 10 rooms), which
-  // sit together in each folder by the owner's decision.
+  // 93 surviving photographs + 208 studio renders — a first take of every
+  // style x room, plus second takes (<room>-v2) generated to bring each quiz
+  // folder to exactly 20 images on Cloudinary.
   //
   // It was 136 photographs. On 2026-09-01 an upload run with overwrite:true
   // destroyed 43 of them on Cloudinary — they had display names colliding with
@@ -219,8 +220,8 @@ describe('Multi-attribute scoring', () => {
   // Pinned exactly: a silent drop makes the quiz less accurate while nothing
   // visibly breaks, and an image with no weights row still "works" — it just
   // quietly scores primary-only.
-  it('total image count is 243', () => {
-    expect(Object.keys(QUIZ_IMAGE_WEIGHTS)).toHaveLength(243);
+  it('total image count is 301', () => {
+    expect(Object.keys(QUIZ_IMAGE_WEIGHTS)).toHaveLength(301);
   });
 });
 
