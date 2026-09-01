@@ -145,6 +145,7 @@ const PricingSection: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
                 <div className="flex items-start gap-2"><CHECK_W /><span className="text-[13px] text-white/80 leading-relaxed"><strong className="text-white font-semibold">Shopping Lists</strong> — {t('pricing.20month')} <span className="text-white/65">· {t('pricing.budgetFilter')}</span></span></div>
                 <div className="flex items-start gap-2"><CHECK_W /><span className="text-[13px] text-white/80 leading-relaxed"><strong className="text-white font-semibold">Room Audit</strong> — {t('pricing.3month')}</span></div>
                 <div className="flex items-start gap-2"><CHECK_W /><span className="text-[13px] text-white/80 leading-relaxed"><strong className="text-white font-semibold">Design Brief</strong> — {t('pricing.1month')}</span></div>
+                <div className="flex items-start gap-2"><CHECK_W /><span className="text-[13px] text-white/80 leading-relaxed"><strong className="text-white font-semibold">{t('pricing.designerCheck')}</strong> <span className="text-white/65">— {t('pricing.designerCheck.soon')}</span></span></div>
               </div>
             </div>
             <div className="pt-4 mt-auto border-t border-white/15">
@@ -173,6 +174,7 @@ const PricingSection: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
                 <div className="flex items-start gap-2"><CHECK /><span className="text-[13px] text-black/75 leading-relaxed"><strong className="text-black font-semibold">Room Audit</strong> — {t('pricing.300month')}</span></div>
                 <div className="flex items-start gap-2"><CHECK /><span className="text-[13px] text-black/75 leading-relaxed"><strong className="text-black font-semibold">All 6 AI tools</strong> {t('pricing.inclCultural')}</span></div>
                 <div className="flex items-start gap-2"><CHECK /><span className="text-[13px] text-black/75 leading-relaxed"><strong className="text-black font-semibold">{t('pricing.projectFolders')}</strong> — {t('pricing.saveConcepts')}</span></div>
+                <div className="flex items-start gap-2"><CHECK /><span className="text-[13px] text-black/75 leading-relaxed"><strong className="text-black font-semibold">{t('pricing.designerCheck')}</strong> <span className="text-black/55">— {t('pricing.designerCheck.soon')}</span></span></div>
               </div>
             </div>
             <div className="pt-4 mt-auto border-t border-black/8">

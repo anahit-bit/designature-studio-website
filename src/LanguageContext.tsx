@@ -1064,6 +1064,12 @@ const translations = {
     'pricing.inclCultural': 'incl. Cultural Advisor',
     'pricing.projectFolders': 'Project folders',
     'pricing.saveConcepts': 'save concepts & images per project',
+    // AI-038 — the human review, trailed on the plans before it is sellable.
+    // Deliberately says "coming soon" and names no price: until AI-040 lands the
+    // advice is not actionable, and charging for it would sell a problem
+    // rather than a solution.
+    'pricing.designerCheck': 'Designer review',
+    'pricing.designerCheck.soon': 'coming soon — a real designer reads any step of your workflow and writes back',
     'pricing.notify': 'Notify me when live',
     'pricing.notify.sent': "✓ Got it — we'll notify you",
     'pricing.notify.btn': 'Notify me',
