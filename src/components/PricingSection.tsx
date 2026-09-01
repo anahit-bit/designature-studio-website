@@ -103,6 +103,15 @@ const SubscribeButton: React.FC<{ dark?: boolean; tier: 'design' | 'studio'; int
     void startCheckout();
   };
 
+  // Already on this tier → show a "Current plan" marker instead of Subscribe.
+  if (user?.plan === tier) {
+    return (
+      <div className={`w-full py-3.5 text-[11px] font-bold uppercase tracking-[0.2em] text-center border ${dark ? 'border-white/30 text-white/80' : 'border-black/20 text-black/60'}`}>
+        ✓ Current plan
+      </div>
+    );
+  }
+
   return (
     <div>
       <button
