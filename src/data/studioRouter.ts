@@ -97,7 +97,12 @@ export const QUESTIONS: RouterQuestion[] = [
 // A check rides the arrow between two cards, never becomes a step of its own,
 // and never blocks. Rule-based rather than hand-authored per scenario: loud
 // where a mistake PROPAGATES downstream or where the next step SPENDS money,
-// quiet everywhere else. Offering it on every join teaches people to ignore it.
+// quiet everywhere else.
+//
+// Availability is UNIVERSAL — every join offers one. The tiering lives in how
+// hard the reason argues and in the styling, never in the words: the same
+// invitation with two weights, because two different phrasings read as two
+// unrelated features rather than one thing you can ask for anywhere.
 
 export type CheckLevel = 'high' | 'offer';
 
@@ -143,7 +148,7 @@ export function checkFor(fromId: string, toId: string): JoinCheck | null {
       why: 'Get this wrong and you find out on site, which is the expensive way to find out.',
     };
   }
-  return { level: 'offer', why: 'Available if you want it. No pressure either way.' };
+  return { level: 'offer', why: 'A second pair of eyes before you carry on.' };
 }
 
 // ── Scenarios ──────────────────────────────────────────────────────────────

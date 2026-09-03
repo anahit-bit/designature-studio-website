@@ -211,10 +211,15 @@ describe('answering the questions', () => {
     pick('Just one room');
     pick('A list I can buy from');
 
-    const loud = screen.getAllByText(/Want a designer to look before you go on\?/);
-    const quiet = screen.getAllByText('Designer check available');
+    // One invitation on every join — the tiering is weight, not wording, so a
+    // visitor never sees what looks like two different features.
+    const invitations = screen.getAllByText('Have a designer look at this.');
     const steps = screen.getAllByText(/^(Score My Room|Plan My Room|Redesign My Room|Shop My Room)$/);
-    expect(loud.length + quiet.length).toBe(steps.length - 1);
+    expect(invitations.length).toBe(steps.length - 1);
+
+    // The loud ones argue; the quiet ones still give a reason rather than a label.
+    expect(screen.getAllByText(/Your render gets built on this layout/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/A second pair of eyes before you carry on/).length).toBeGreaterThan(0);
   });
 });
 
