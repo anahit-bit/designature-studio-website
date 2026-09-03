@@ -266,18 +266,25 @@ const StartHerePanel: React.FC<{
                             }`}
                             aria-hidden="true"
                           />
-                          {s.check.level === 'high' ? (
-                            <span className="text-[11.5px] text-black/55 leading-snug">
-                              <strong className="font-semibold text-[#9E5E41]">
-                                Want a designer to look before you go on?
-                              </strong>{' '}
-                              {s.check.why}
-                            </span>
-                          ) : (
-                            <span className="text-[11.5px] text-black/40 leading-snug">
-                              Designer check available
-                            </span>
-                          )}
+                          {/* One invitation, two weights. An earlier version used
+                              different WORDS for the loud and quiet joins, which read
+                              as two unrelated features. The tiering belongs in the
+                              styling and in how much the reason argues — never in
+                              whether it sounds like the same offer. */}
+                          <span
+                            className={`text-[11.5px] leading-snug ${
+                              s.check.level === 'high' ? 'text-black/55' : 'text-black/40'
+                            }`}
+                          >
+                            <strong
+                              className={`font-semibold ${
+                                s.check.level === 'high' ? 'text-[#9E5E41]' : 'text-black/50'
+                              }`}
+                            >
+                              Have a designer look at this.
+                            </strong>{' '}
+                            {s.check.why}
+                          </span>
                         </li>
                       )}
                     </React.Fragment>
