@@ -62,6 +62,10 @@ interface VisionExperienceProps {
   inspirationImages: string[];
   /** AI-029 — true when the uploaded photo shows only one wall (head-on). */
   structureWarning?: boolean;
+  /** Chip label the analysis read the photo as, shown under "Auto-detect". */
+  detectedRoom?: string | null;
+  /** RD26 — what the chosen room's programme will do on THIS photo. */
+  programmeTip?: string | null;
   selectedStyle: string;
   setSelectedStyle: (s: string) => void;
   selectedRoom: string;
@@ -1024,6 +1028,23 @@ export default function VisionExperience(p: VisionExperienceProps) {
               </button>
             ))}
           </div>
+
+          {/* Auto-detect is a real answer now, not a fallback to Living Room —
+              say what was read, so leaving the chips alone is an informed choice. */}
+          {!p.selectedRoom && p.detectedRoom && (
+            <p className="text-center text-[11px] text-black/55">
+              We read this photo as a <span className="font-bold text-black/75">{p.detectedRoom}</span>. Pick a room above to override.
+            </p>
+          )}
+
+          {/* RD26 — what the chosen room's programme will do with THIS photo,
+              said before a generation is spent rather than discovered after. */}
+          {p.programmeTip && (
+            <div className="mx-auto max-w-[440px] flex items-start gap-2.5 bg-[#FBF3EC] border-l-2 border-[#9E5E41] px-4 py-3">
+              <span aria-hidden className="text-[#9E5E41] text-[13px] leading-none mt-[1px]">⚠</span>
+              <p className="text-[11px] leading-relaxed text-[#7a4630]">{p.programmeTip}</p>
+            </div>
+          )}
         </div>
             </div>
           </div>

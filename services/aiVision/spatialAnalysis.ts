@@ -15,6 +15,8 @@
 
 import { GoogleGenAI } from "@google/genai";
 import sharp from "sharp";
+import type { RoomType } from "./stylePresets.js";
+import { ROOM_TYPE_LABELS } from "./stylePresets.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -43,6 +45,13 @@ export interface RoomStructure {
   doors: Array<{ wall: Surface; box: Box; note?: string }>;
   /** Fixed non-wall architecture: radiators, columns, niches, fireplaces, beams. */
   fixedFeatures: Array<{ label: string; box: Box }>;
+  /**
+   * What the photograph appears to be a room OF. The analysis is already looking
+   * at the pixels, so this rides along for free — and without it, leaving the
+   * room chip blank fell through to `living_room`, which put a sofa in a
+   * bathroom. Null when the model would not commit.
+   */
+  detectedRoom: RoomType | null;
   /** One-paragraph plain-language preservation instruction. */
   summary: string;
 }
@@ -65,11 +74,14 @@ Return STRICT JSON only (no prose, no markdown fences) matching exactly this sha
   "windows": [{ "wall": "back|left|right", "shape": "rectangular|arched|floor-to-ceiling|...", "box": [x0,y0,x1,y1], "note": "optional" }],
   "doors": [{ "wall": "back|left|right", "box": [x0,y0,x1,y1], "note": "optional" }],
   "fixedFeatures": [{ "label": "radiator|column|niche|fireplace|beam|...", "box": [x0,y0,x1,y1] }],
+  "detectedRoom": "exactly one of: living_room, dining_room, living_dining, bedroom, kitchen, bathroom, home_office, kids_room, outdoor, hallway — or null if genuinely unclear",
   "summary": "one paragraph telling the editor which walls, windows and proportions to preserve and which surfaces are out of frame and must not be invented"
 }
 
 Critical rules:
 - If only one wall is visible (a head-on shot), put just that wall in visibleWalls and list "left" and "right" in outOfFrameWalls. A head-on photo of a single wall must NOT be turned into an enclosed box with side walls.
+- A doorway, archway, cased opening or open passage counts as a DOOR whether or not a door leaf is hanging in it. An empty room with no opening in frame must report an empty doors array — do not infer a doorway you cannot see.
+- Judge detectedRoom from what the room is EQUIPPED for, not from what it could become. An empty or half-empty room with a bed frame in it is a bedroom; a corridor-shaped space with no fixtures is a hallway. Use null rather than guessing.
 - Measure each window and door box as precisely as you can from the pixels.
 - Preserve the real spacing between windows and the wall edges beside them — note it in the summary if a window sits close to or far from a corner.
 - Include only fixed architecture. Do NOT include furniture, rugs, or decor.
@@ -103,6 +115,19 @@ function coerceSurfaceList(v: unknown): Surface[] {
     if (s && !out.includes(s)) out.push(s);
   }
   return out;
+}
+
+/**
+ * Accept a detected room only if it is one of the room types the product
+ * actually has a programme for. Anything else — "studio", "garage", "cafe" —
+ * becomes null, so the caller asks the user instead of guessing. RD20 keeps
+ * commercial spaces out of scope, and silently mapping one onto the nearest
+ * residential programme is exactly how a cafe gets told to build a dining room.
+ */
+function coerceRoomType(v: unknown): RoomType | null {
+  if (typeof v !== "string") return null;
+  const s = v.toLowerCase().trim().replace(/[\s-]+/g, "_");
+  return s in ROOM_TYPE_LABELS ? (s as RoomType) : null;
 }
 
 function coerceBox(v: unknown): Box | null {
@@ -191,6 +216,7 @@ export function parseRoomStructure(raw: string): RoomStructure | null {
     windows: windows as RoomStructure["windows"],
     doors: doors as RoomStructure["doors"],
     fixedFeatures: fixedFeatures as RoomStructure["fixedFeatures"],
+    detectedRoom: coerceRoomType(obj.detectedRoom),
     summary: typeof obj.summary === "string" ? obj.summary.trim() : "",
   };
 
@@ -266,7 +292,7 @@ export async function analyzeRoomStructure(roomPhoto: {
       return null;
     }
     console.log(
-      `[ai-vision] Spatial analysis: view="${structure.cameraView}", visible=[${structure.visibleWalls.join(",")}], outOfFrame=[${structure.outOfFrameWalls.join(",")}], windows=${structure.windows.length}, doors=${structure.doors.length}`
+      `[ai-vision] Spatial analysis: view="${structure.cameraView}", visible=[${structure.visibleWalls.join(",")}], outOfFrame=[${structure.outOfFrameWalls.join(",")}], windows=${structure.windows.length}, doors=${structure.doors.length}, room=${structure.detectedRoom ?? "unknown"}`
     );
     return structure;
   } catch (err: any) {
@@ -292,14 +318,20 @@ function fmtBox(b: Box): string {
   return `x:${pct(b[0])}–${pct(b[2])}, y:${pct(b[1])}–${pct(b[3])}`;
 }
 
-/** Framing metrics derived from the primary (largest) window, all frame-normalized. */
+/** Framing metrics derived from the primary (largest) opening, all frame-normalized. */
 export interface SpatialMetrics {
-  /** Primary window width ÷ frame width. Shrinks when the room is widened. */
+  /**
+   * Primary opening width ÷ frame width. Shrinks when the room is widened.
+   * Named for the window because that is the usual anchor; a windowless room
+   * anchors on its largest door instead (see `anchor`).
+   */
   windowWidthFrac: number;
   windowHeightFrac: number;
-  /** Frame fraction to the left of / right of the primary window. */
+  /** Frame fraction to the left of / right of the primary opening. */
   leftMarginFrac: number;
   rightMarginFrac: number;
+  /** What the numbers above were measured from. */
+  anchor: "window" | "door";
 }
 
 /**
@@ -319,24 +351,46 @@ export function isSingleWallShot(s: RoomStructure | null): boolean {
   return visible.has("back") && !visible.has("left") && !visible.has("right");
 }
 
+/** Windows + doors: everything whose count must survive generation (RD1/RD2/RD7). */
+export function countOpenings(s: RoomStructure | null | undefined): {
+  windows: number;
+  doors: number;
+  total: number;
+} {
+  const windows = s?.windows?.length ?? 0;
+  const doors = s?.doors?.length ?? 0;
+  return { windows, doors, total: windows + doors };
+}
+
+const boxArea = (b: Box) => (b[2] - b[0]) * (b[3] - b[1]);
+
 /**
- * Compute framing metrics from the largest window. Pure. Returns null when
- * there is no window to anchor on. Used both to enrich the prompt (Phase 2a)
- * and to verify the generated output against the source (Phase 2b).
+ * Compute framing metrics from the largest opening in the room. Pure. Used both
+ * to enrich the prompt (Phase 2a) and to verify the generated output against the
+ * source (Phase 2b).
+ *
+ * Windows first — a window is the most reliably measured thing in an interior
+ * photo. Falling back to the largest DOOR matters more than it sounds: anchoring
+ * only on windows meant a windowless room produced no metrics, which switched
+ * off both the FRAMING & SCALE line and the entire verify-and-retry, so hallways,
+ * alcoves and interior bathrooms ran on a single unchecked generation. Returns
+ * null only when the room has neither, and RD25's opening count still covers that
+ * case.
  */
 export function spatialMetrics(s: RoomStructure | null): SpatialMetrics | null {
-  if (!s || s.windows.length === 0) return null;
-  const primary = s.windows.reduce((a, b) => {
-    const areaA = (a.box[2] - a.box[0]) * (a.box[3] - a.box[1]);
-    const areaB = (b.box[2] - b.box[0]) * (b.box[3] - b.box[1]);
-    return areaB > areaA ? b : a;
-  });
+  if (!s) return null;
+  const pool: Array<{ box: Box; anchor: "window" | "door" }> = s.windows.length
+    ? s.windows.map((w) => ({ box: w.box, anchor: "window" as const }))
+    : s.doors.map((d) => ({ box: d.box, anchor: "door" as const }));
+  if (!pool.length) return null;
+  const primary = pool.reduce((a, b) => (boxArea(b.box) > boxArea(a.box) ? b : a));
   const [x0, y0, x1, y1] = primary.box;
   return {
     windowWidthFrac: x1 - x0,
     windowHeightFrac: y1 - y0,
     leftMarginFrac: x0,
     rightMarginFrac: 1 - x1,
+    anchor: primary.anchor,
   };
 }
 
@@ -409,8 +463,9 @@ export function renderSpatialConstraints(
   const m = spatialMetrics(structure);
   if (m) {
     const pct = (n: number) => Math.round(n * 100);
+    const what = m.anchor === "window" ? "main window" : "main doorway";
     lines.push(
-      `- FRAMING & SCALE (critical — do not change): the main window fills about ${pct(
+      `- FRAMING & SCALE (critical — do not change): the ${what} fills about ${pct(
         m.windowWidthFrac
       )}% of the image width and ${pct(
         m.windowHeightFrac
@@ -418,9 +473,24 @@ export function renderSpatialConstraints(
         m.leftMarginFrac
       )}% of the frame to its left and ${pct(
         m.rightMarginFrac
-      )}% to its right. Keep these exact proportions. Do NOT widen the room, zoom out, or pull the camera back — the window and walls must occupy the same share of the image as in the original photo, at the same field of view. If in doubt, keep the room tighter, never wider.`
+      )}% to its right. Keep these exact proportions. Do NOT widen the room, zoom out, or pull the camera back — the ${what} and the walls must occupy the same share of the image as in the original photo, at the same field of view. If in doubt, keep the room tighter, never wider.`
     );
   }
+
+  // RD25, stated up front as a count the model can check itself against. A
+  // number is harder to argue with than "do not add a door".
+  const openings = countOpenings(structure);
+  lines.push(
+    `- OPENING COUNT (critical): this room has exactly ${openings.windows} window${
+      openings.windows === 1 ? "" : "s"
+    } and ${openings.doors} doorway${
+      openings.doors === 1 ? "" : "s"
+    } in frame. The renovated image must show exactly the same numbers — ${
+      openings.total === 0
+        ? "no window and no doorway at all. Every wall in view stays solid and unbroken."
+        : "no extra window, doorway, arch or opening, and none of the existing ones removed."
+    }`
+  );
 
   if (structure.summary) {
     lines.push(`- Preservation summary: ${structure.summary}`);

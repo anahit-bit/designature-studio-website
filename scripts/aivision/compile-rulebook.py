@@ -14,6 +14,13 @@ Sheets consumed:
   Rules          "Prompt text" is the exact sentence sent; blank = never sent
                  (method rules like RD21-RD23 are for us, not the model).
                  "Engines" = gemini | staging | both | none.
+                 "Prompt section" = clear | architecture | programme | furnish |
+                 finishes —
+                 which step of the Gemini prompt the rule is rendered under.
+                 One flat block was how RD8 (clear the room) came to sit inside
+                 a heading that said CRITICAL ARCHITECTURAL CONSTRAINTS, among
+                 thirteen rules that all say "keep": the model read the heading
+                 and kept the furniture (2026-09-04).
   Style Briefs   the seven sections, reassembled into one numbered brief.
   Palettes       nine colours per style; the accent-role ones are the pool a
                  single per-generation accent is drawn from.
@@ -42,6 +49,8 @@ OUT = os.path.normpath(os.path.join(HERE, "..", "..", "services", "aiVision", "r
 
 VALID_ENGINES = {"gemini", "staging", "both", "none"}
 VALID_ROLES = {"field", "neutral", "accent"}
+# Order matters: this is the order the steps appear in the generated prompt.
+PROMPT_SECTIONS = ("clear", "architecture", "programme", "furnish", "finishes")
 SECTION_TITLES = [
     "COLOR PALETTE", "MATERIALS & FINISHES", "FURNITURE CHARACTER", "LIGHTING",
     "WALL & CEILING TREATMENT", "DECOR & STYLING", "OVERALL MOOD",
@@ -75,8 +84,9 @@ def main() -> None:
     # ── Rules ───────────────────────────────────────────────────────────────
     ws = wb["Rules"]
     col = cols_of(ws)
-    need(ws, col, "Rules", "ID", "Level", "Status", "Prompt text", "Engines")
+    need(ws, col, "Rules", "ID", "Level", "Status", "Prompt text", "Engines", "Prompt section")
     gemini, staging, skipped, removed = [], [], [], []
+    sections = {name: [] for name in PROMPT_SECTIONS}
     for row in ws.iter_rows(min_row=2, values_only=True):
         if not row or not row[col["ID"]]:
             continue
@@ -96,8 +106,21 @@ def main() -> None:
         entry = (rid, level, text)
         if engines in ("gemini", "both"):
             gemini.append(entry)
+            # A rule the Gemini path sends must say which step it belongs to, or
+            # it silently vanishes from the prompt it was written for.
+            section = str(row[col["Prompt section"]] or "").strip().lower()
+            if section not in PROMPT_SECTIONS:
+                sys.exit(
+                    f"{rid}: Prompt section must be one of {list(PROMPT_SECTIONS)} "
+                    f"for a rule sent to gemini — got '{section}'."
+                )
+            sections[section].append(entry)
         if engines in ("staging", "both"):
             staging.append(entry)
+
+    empty = [s for s in PROMPT_SECTIONS if not sections[s]]
+    if empty:
+        sys.exit(f"No rules assigned to prompt section(s): {', '.join(empty)}.")
 
     # ── Style briefs ────────────────────────────────────────────────────────
     ws = wb["Style Briefs"]
@@ -197,6 +220,10 @@ def main() -> None:
         # straight back to the row that authorised it.
         return "\n".join(f"- [{rid}] {text}" for rid, _l, text in entries)
 
+    sections_ts = "\n".join(
+        f'  {name}: `{esc(block(sections[name]))}`,' for name in PROMPT_SECTIONS
+    )
+
     briefs_ts = "\n".join(f'  {k}: `{esc(v)}`,' for k, v in briefs.items())
     programs_ts = "\n".join(f'  {k}: `{esc(v)}`,' for k, v in programs.items())
     palettes_ts = "\n".join(
@@ -272,6 +299,21 @@ export const GEMINI_RULES_BLOCK = `{esc(block(gemini))}`;
 
 export const STAGING_RULES_BLOCK = `{esc(block(staging))}`;
 
+/** The order the prompt's steps are written in. */
+export type PromptSection = {" | ".join(f'"{s}"' for s in PROMPT_SECTIONS)};
+
+/**
+ * The Gemini rules split into the four steps of the prompt, in order.
+ *
+ * A single block was how "clear the room" (RD8) ended up filed under a heading
+ * reading CRITICAL ARCHITECTURAL CONSTRAINTS, next to thirteen rules that say
+ * keep this exactly — and the model kept the furniture. Removal is now its own
+ * step, stated before the preservation rules rather than inside them.
+ */
+export const GEMINI_RULE_SECTIONS: Record<PromptSection, string> = {{
+{sections_ts}
+}};
+
 /** The seven-section description behind every style chip. */
 export const STYLE_BRIEFS: Record<string, string> = {{
 {briefs_ts}
@@ -296,6 +338,8 @@ export const PAINT_MODIFIERS: PaintModifier[] = [
     io.open(OUT, "w", encoding="utf-8", newline="\n").write(src)
     print(f"wrote {OUT}")
     print(f"  gemini   : {len(gemini)} rules ({sum(len(t.split()) for _, _, t in gemini)} words)")
+    for name in PROMPT_SECTIONS:
+        print(f"    {name:<13}: {len(sections[name])} rules")
     print(f"  staging  : {len(staging)} rules ({sum(len(t.split()) for _, _, t in staging)} words)")
     print(f"  not sent : {len(skipped)} ({', '.join(skipped)})")
     if removed:

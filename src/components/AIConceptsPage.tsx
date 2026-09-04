@@ -119,6 +119,10 @@ const AIConceptsPage: React.FC = () => {
   // AI-029 Phase 1.5 — soft warning when the uploaded photo shows only one wall
   // (head-on), where the generator can't hold the real proportions. Non-blocking.
   const [roomStructureWarning, setRoomStructureWarning] = useState(false);
+  // What the spatial analysis read the photo as, and — once a room is chosen —
+  // whether that room's programme is one this photo can actually carry (RD26).
+  const [detectedRoom, setDetectedRoom] = useState<string | null>(null);
+  const [programmeTip, setProgrammeTip] = useState<string | null>(null);
   const [roomAspectRatio, setRoomAspectRatio] = useState<string>('3/4');
   const [apiAspectRatio, setApiAspectRatio] = useState<"1:1" | "3:4" | "4:3" | "9:16" | "16:9">("3:4");
   const [selectedStyle, setSelectedStyle] = useState<string>('');
@@ -289,6 +293,24 @@ const AIConceptsPage: React.FC = () => {
   useEffect(() => {
     if (activeTool === 'vision') setQuizResultForVision(readPersistedQuizResult());
   }, [activeTool, readPersistedQuizResult]);
+
+  // RD26 — re-ask whether the chosen room's programme fits THIS photo. Cheap:
+  // the endpoint reads the cached structure, so no second Gemini call and no
+  // quota. Worth doing on every room change because the answer depends on both
+  // ("Hallway" is fine on a photo with a doorway in it, and wrong on one without).
+  useEffect(() => {
+    if (!roomImage || !selectedRoom) { setProgrammeTip(null); return; }
+    let cancelled = false;
+    apiFetch('/api/ai-vision/analyze-structure', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roomPhoto: roomImage, roomType: selectedRoom }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!cancelled) setProgrammeTip(d?.programmeTip ?? null); })
+      .catch(() => { if (!cancelled) setProgrammeTip(null); });
+    return () => { cancelled = true; };
+  }, [roomImage, selectedRoom, apiFetch]);
   const [auditComplete, setAuditComplete] = useState(false);
   const [auditProcessing, setAuditProcessing] = useState(false);
   const [downloadCount, setDownloadCount] = useState<number>(() => {
@@ -330,6 +352,8 @@ const AIConceptsPage: React.FC = () => {
     setInspirationImages([]);
     setRoomImage(null);
     setRoomStructureWarning(false);
+    setDetectedRoom(null);
+    setProgrammeTip(null);
     setSelectedStyle('');
     setSelectedRoom('');
     setPaintColor2026('');
@@ -606,13 +630,18 @@ const AIConceptsPage: React.FC = () => {
         // AI-029 Phase 1.5 — soft single-wall pre-check (non-blocking). Reset
         // first, then flag only if the analysis confirms a head-on one-wall shot.
         setRoomStructureWarning(false);
+        setDetectedRoom(null);
+        setProgrammeTip(null);
         apiFetch('/api/ai-vision/analyze-structure', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ roomPhoto: dataUrl }),
         })
           .then((r) => (r.ok ? r.json() : null))
-          .then((d) => { if (d?.singleWall) setRoomStructureWarning(true); })
+          .then((d) => {
+            if (d?.singleWall) setRoomStructureWarning(true);
+            setDetectedRoom(d?.detectedRoom ?? null);
+          })
           .catch(() => { /* non-fatal — a failed pre-check never blocks upload */ });
         const img = new Image();
         img.onload = () => {
@@ -902,6 +931,8 @@ const AIConceptsPage: React.FC = () => {
     setInspirationImages([]);
     setRoomImage(null);
     setRoomStructureWarning(false);
+    setDetectedRoom(null);
+    setProgrammeTip(null);
     setSelectedStyle('');
     setSelectedRoom('');
     setPaintColor2026('');
@@ -1162,6 +1193,8 @@ const AIConceptsPage: React.FC = () => {
         <VisionExperience
           roomImage={roomImage}
           structureWarning={roomStructureWarning}
+          detectedRoom={detectedRoom}
+          programmeTip={programmeTip}
           inspirationImages={inspirationImages}
           selectedStyle={selectedStyle}
           setSelectedStyle={setSelectedStyle}

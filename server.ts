@@ -16,12 +16,12 @@ import { GoogleGenAI } from "@google/genai";
 
 // ─── AI Vision pipeline services ──────────────────────────────────────────────
 import { extractStyleBrief } from "./services/aiVision/styleExtraction.js";
-import { pickAccent } from "./services/aiVision/promptTemplates.js";
+import { pickAccent, detectProgrammeConflict } from "./services/aiVision/promptTemplates.js";
 import { generateConcept } from "./services/aiVision/generateConcept.js";
 import { getCacheKey, getCachedBrief, setCachedBrief } from "./services/aiVision/styleCache.js";
 import { analyzeRoomStructure, renderSpatialConstraints, isSingleWallShot } from "./services/aiVision/spatialAnalysis.js";
 import { getSpatialCacheKey, getCachedStructure, setCachedStructure } from "./services/aiVision/spatialCache.js";
-import { STYLE_NAME_TO_PRESET, ROOM_NAME_TO_TYPE } from "./services/aiVision/stylePresets.js";
+import { STYLE_NAME_TO_PRESET, ROOM_NAME_TO_TYPE, ROOM_TYPE_TO_CHIP } from "./services/aiVision/stylePresets.js";
 
 // ─── Shopping List search-accuracy (#12): price + direct-link + match helpers ─
 import { normalizePrice } from "./src/lib/priceParse.js";
@@ -2889,11 +2889,24 @@ Output ONLY valid JSON, no markdown fences, no commentary:
           bumpApiCount("gemini"); // AI-029 — analysis (reused by /generate via cache)
         }
       }
-      return res.json({ singleWall: isSingleWallShot(structure) });
+      // RD26 — if the user has already picked a room, say whether this photo can
+      // actually carry that programme, so the tip appears before a generation is
+      // spent rather than after. `roomType` is optional in the request body.
+      const requested = typeof req.body?.roomType === "string"
+        ? ROOM_NAME_TO_TYPE[req.body.roomType]
+        : undefined;
+      const conflict = detectProgrammeConflict(requested, structure);
+      return res.json({
+        singleWall: isSingleWallShot(structure),
+        detectedRoom: structure?.detectedRoom
+          ? ROOM_TYPE_TO_CHIP[structure.detectedRoom]
+          : null,
+        programmeTip: conflict?.userTip || null,
+      });
     } catch (err: any) {
       // Non-fatal: a failed pre-check must never block the user from generating.
       console.warn("[AI Vision] analyze-structure failed (non-fatal):", err?.message ?? err);
-      return res.json({ singleWall: false });
+      return res.json({ singleWall: false, detectedRoom: null, programmeTip: null });
     }
   });
 
@@ -3010,7 +3023,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
         throw new Error("Room photo could not be parsed as a data URL.");
       }
 
-      const resolvedRoomType = roomType
+      const chosenRoomType = roomType
         ? ROOM_NAME_TO_TYPE[roomType as string]
         : undefined;
 
@@ -3028,6 +3041,16 @@ Output ONLY valid JSON, no markdown fences, no commentary:
         }
       }
       const spatialConstraints = renderSpatialConstraints(structure);
+
+      // The room chip is optional, and leaving it blank used to fall through to
+      // `living_room` inside the prompt builder — silently, so a bathroom photo
+      // with no chip was told to hold a sofa. The spatial analysis has already
+      // looked at the pixels, so use what it saw; only fall back to the default
+      // when it would not commit to a room either.
+      const resolvedRoomType = chosenRoomType ?? structure?.detectedRoom ?? undefined;
+      if (!chosenRoomType && resolvedRoomType) {
+        console.log(`[AI Vision] room type auto-detected: ${resolvedRoomType}`);
+      }
 
       // AI-029 Phase 3 — virtual-staging engine (fal) by default: keeps the real
       // room and only adds furniture, so it never invents doorways/windows. Auto
