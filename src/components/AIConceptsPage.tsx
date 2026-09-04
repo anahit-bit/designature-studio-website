@@ -565,23 +565,19 @@ const AIConceptsPage: React.FC = () => {
   }, []);
 
   /**
-   * Is there a finished result on screen that leaving would throw away? Free users
-   * have no dashboard, so switching tools silently is how their work disappears.
-   * Saved-to-Library state is per-tool and not tracked here, so this deliberately
-   * over-asks rather than under-asks.
+   * NOTE — there is deliberately no "you'll lose your work" prompt on tool
+   * switching, because switching does not lose it.
+   *
+   * `results`, `sessionConceptArchive`, `shoppingResults` and `auditComplete` are
+   * all page state; changing card only swaps which panel renders. The only things
+   * that clear them are `resetEphemeralState()` (logout / account switch, which
+   * fixes a cross-account leak) and the tool's own "start over".
+   *
+   * An earlier version of this file DID prompt, and it was simply wrong: it told
+   * people their concepts would be cleared and then kept them. A warning that
+   * cries wolf is worse than none, because it also devalues the `beforeunload`
+   * warning below, which guards the real risk — reloading or leaving the page.
    */
-  const unsavedResultWarning = useCallback((): string | null => {
-    if (activeTool === 'vision' && (results.length > 0 || sessionConceptArchive.length > 0)) {
-      return 'You have concepts on screen that aren’t saved. Leaving this tool will clear them. Continue?';
-    }
-    if (activeTool === 'shopping' && shoppingDone && shoppingResults.length > 0) {
-      return 'Your shopping list isn’t saved. Leaving this tool will clear it. Continue?';
-    }
-    if (activeTool === 'audit' && auditComplete) {
-      return 'Your room report isn’t saved. Leaving this tool will clear it. Continue?';
-    }
-    return null;
-  }, [activeTool, results, sessionConceptArchive, shoppingDone, shoppingResults, auditComplete]);
 
   /**
    * AI-032 v2 — the "Start here" survey replaces the panel body when open. Kept as
@@ -634,19 +630,16 @@ const AIConceptsPage: React.FC = () => {
 
 
   /** Rail card click. Live cards drive activeTool; non-live cards just open the
-   *  Coming-Soon panel. Blocked mid-generation so we never drop a running job,
-   *  and confirmed first when a finished-but-unsaved result is on screen. */
+   *  Coming-Soon panel. Blocked mid-generation so we never drop a running job.
+   *  Finished results survive the switch — see the note above. */
   const handleSelectTool = useCallback((id: string) => {
     const tool = toolById(id);
+    // Still blocked mid-generation — that one IS real: a running job is lost.
     if (!tool || isProcessing) return;
-    if (id !== selectedId) {
-      const warning = unsavedResultWarning();
-      if (warning && !window.confirm(warning)) return;
-    }
     setSelectedId(id);
     if (tool.liveTool) setActiveTool(tool.liveTool);
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-  }, [isProcessing, selectedId, unsavedResultWarning]);
+  }, [isProcessing]);
 
 
   // ── Escape key for lightbox ──
