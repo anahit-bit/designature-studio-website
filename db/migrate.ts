@@ -259,6 +259,94 @@ const SAVED_ITEMS_HASH_INDEX = `
  * Throws if the DB is unreachable — the caller (server boot) decides whether to
  * hard-fail or continue degraded.
  */
+// ── Credit model (2026-09-05) ────────────────────────────────────────────────
+// Replaces the tier quotas (users.generationsLeft / shoppingListsLeft) with one
+// server-authoritative credit ledger. TWO BUCKETS, because the model needs both
+// "monthly credits do not roll over" and "pack credits never expire" — a single
+// balance cannot express that. Spend order is monthly-first (burn the expiring
+// ones before the permanent ones), which is the only order that does not quietly
+// destroy value the customer paid for.
+const CREDIT_BALANCES_TABLE = `
+  CREATE TABLE IF NOT EXISTS credit_balances (
+    user_id           text        PRIMARY KEY,
+    monthly_credits   integer     NOT NULL DEFAULT 0,   -- reset each billing cycle
+    permanent_credits integer     NOT NULL DEFAULT 0,   -- free grant + packs, never expire
+    updated_at        timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT credit_balances_non_negative
+      CHECK (monthly_credits >= 0 AND permanent_credits >= 0)
+  );
+`;
+
+// Append-only audit trail. Every grant, spend and refund writes a row — this is
+// both the ledger's proof and the metering data I-032 needs to validate prices.
+const CREDIT_TRANSACTIONS_TABLE = `
+  CREATE TABLE IF NOT EXISTS credit_transactions (
+    id             bigserial   PRIMARY KEY,
+    user_id        text        NOT NULL,
+    delta          integer     NOT NULL,          -- negative = spend
+    bucket         text        NOT NULL,          -- 'monthly' | 'permanent' | 'split'
+    reason         text        NOT NULL,          -- signup_grant|pack_purchase|sub_refill|spend|refund|admin_adjust
+    tool           text,                          -- explorerRoster id, for spend/refund
+    ref            text,                          -- credit_purchases.id | subscriptions.id | payment id
+    balance_after  integer     NOT NULL,          -- monthly+permanent after this row
+    created_at     timestamptz NOT NULL DEFAULT now()
+  );
+`;
+
+const CREDIT_TRANSACTIONS_USER_INDEX = `
+  CREATE INDEX IF NOT EXISTS idx_credit_transactions_user_time
+    ON credit_transactions (user_id, created_at DESC);
+`;
+
+// ⚠️ OrderID collision fix. `orders` and `subscription_payments` each own a
+// SEPARATE bigserial, both starting at 1 — so the two streams hand the bank the
+// same integer OrderID, which Ameria requires to be unique per merchant. One
+// shared sequence fixes it for all three streams. Bumped past the current max of
+// both existing sequences so it can never collide with a row already sent.
+const AMERIA_ORDER_ID_SEQUENCE = `
+  CREATE SEQUENCE IF NOT EXISTS ameria_order_id_seq AS bigint START 1;
+  SELECT setval(
+    'ameria_order_id_seq',
+    GREATEST(
+      (SELECT COALESCE(MAX(ameria_order_id), 0) FROM orders),
+      (SELECT COALESCE(MAX(ameria_order_id), 0) FROM subscription_payments),
+      (SELECT last_value FROM ameria_order_id_seq)
+    ) + 1000
+  );
+`;
+
+// Point the existing streams at the shared sequence. Only affects NEW inserts —
+// existing rows keep the ids already sent to the bank.
+const AMERIA_ORDER_ID_ADOPT = `
+  ALTER TABLE orders               ALTER COLUMN ameria_order_id SET DEFAULT nextval('ameria_order_id_seq');
+  ALTER TABLE subscription_payments ALTER COLUMN ameria_order_id SET DEFAULT nextval('ameria_order_id_seq');
+`;
+
+// One-time credit packs. Mirrors `orders` (the proven $99 consultation shape)
+// but grants credits instead of booking a slot. No card binding — a pack is a
+// single charge, which is why it is the one paid product billable today.
+const CREDIT_PURCHASES_TABLE = `
+  CREATE TABLE IF NOT EXISTS credit_purchases (
+    id                uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id           text        NOT NULL,
+    pack_id           text        NOT NULL,      -- 'starter' | 'project' | 'project-plus'
+    credits           integer     NOT NULL,
+    amount_usd        numeric     NOT NULL,
+    ameria_order_id   bigint      NOT NULL UNIQUE DEFAULT nextval('ameria_order_id_seq'),
+    ameria_payment_id text,
+    status            text        NOT NULL DEFAULT 'pending',  -- pending|paid|failed|refunded
+    client_email      text,
+    failure_reason    text,
+    created_at        timestamptz NOT NULL DEFAULT now(),
+    paid_at           timestamptz
+  );
+`;
+
+const CREDIT_PURCHASES_USER_INDEX = `
+  CREATE INDEX IF NOT EXISTS idx_credit_purchases_user_time
+    ON credit_purchases (user_id, created_at DESC);
+`;
+
 export async function runMigrations(): Promise<void> {
   const pool = getPool();
 
@@ -305,4 +393,17 @@ export async function runMigrations(): Promise<void> {
   await pool.query(SAVED_ITEMS_HASH_COLUMN);
   await pool.query(SAVED_ITEMS_HASH_INDEX);
   console.log("✅ saved_items table ready");
+
+  // Credit model. The shared OrderID sequence must exist BEFORE credit_purchases,
+  // whose default calls nextval() on it.
+  await pool.query(CREDIT_BALANCES_TABLE);
+  await pool.query(CREDIT_TRANSACTIONS_TABLE);
+  await pool.query(CREDIT_TRANSACTIONS_USER_INDEX);
+  console.log("✅ credit ledger tables ready");
+
+  await pool.query(AMERIA_ORDER_ID_SEQUENCE);
+  await pool.query(AMERIA_ORDER_ID_ADOPT);
+  await pool.query(CREDIT_PURCHASES_TABLE);
+  await pool.query(CREDIT_PURCHASES_USER_INDEX);
+  console.log("✅ credit purchases + shared Ameria OrderID sequence ready");
 }
