@@ -38,6 +38,10 @@ import { meterSpend, meterRefund, CREDITS_ENABLED, InsufficientCreditsError } fr
 import { meterBalance } from "./services/credits/meter.js";
 import { grantCredits, listTransactions } from "./services/credits/ledger.js";
 import { CREDIT_PLANS } from "./src/data/creditPricing.js";
+
+/** Credits granted on every billing cycle of the monthly subscription (1,000). */
+const CREDIT_SUBSCRIPTION_PLAN = CREDIT_PLANS.find((p) => p.recurring)!;
+const CREDIT_SUBSCRIPTION_CREDITS = CREDIT_SUBSCRIPTION_PLAN.credits;
 import { loadState, saveState } from "./db/state.js";
 import { sendEmail } from "./lib/email.js";
 import { computeNextRenewal, type PlatformCadence } from "./services/platforms/renewal.js";
@@ -455,7 +459,28 @@ async function expireStalePendingOrders(): Promise<void> {
 
 /** Grant a paid plan's quota to the user record (server-authoritative — the ONLY
  *  upward move for a paid user). Returns the user's email (for receipts) or "". */
-async function applyPlanToUser(googleId: string, tier: "design" | "studio"): Promise<string> {
+async function applyPlanToUser(googleId: string, tier: string): Promise<string> {
+  // Credit model: a subscription grants CREDITS, not a tier quota. `sub_refill`
+  // REPLACES the monthly bucket rather than adding to it — that is precisely what
+  // "credits refill each billing date and do not roll over" means, and it is why
+  // this can run on every renewal without compounding.
+  if (CREDITS_ENABLED) {
+    const dbC = readDB();
+    const uC = dbC.users[googleId];
+    if (!uC) return "";
+    try {
+      await grantCredits(googleId, CREDIT_SUBSCRIPTION_CREDITS, "sub_refill");
+    } catch (err) {
+      console.error("[subscriptions] credit refill failed:", err);
+    }
+    uC.plan = "studio";        // keeps existing paid-user gating/UI working
+    uC.isPaid = true;
+    uC.lastUsed = new Date().toISOString();
+    dbC.users[googleId] = uC;
+    writeDB(dbC);
+    return uC.email;
+  }
+
   let quotas: { generations: number; shopping: number } | null = null;
   try {
     const pd = (await fetchPricingPlans()).find((p) => p.key === tier);
@@ -466,7 +491,7 @@ async function applyPlanToUser(googleId: string, tier: "design" | "studio"): Pro
   const db = readDB();
   const u = db.users[googleId];
   if (!u) return "";
-  u.plan = tier;
+  u.plan = tier as typeof u.plan;
   u.isPaid = true;
   if (quotas) { u.generationsLeft = quotas.generations; u.shoppingListsLeft = quotas.shopping; }
   u.lastUsed = new Date().toISOString();
@@ -5442,7 +5467,25 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     if (!googleId) return;
     const tier = (req.body?.tier ?? "").toString();
     const interval = (req.body?.interval ?? "").toString();
-    if ((tier !== "design" && tier !== "studio") || (interval !== "monthly" && interval !== "annual")) {
+
+    // Under the credit model the only recurring product is the credit subscription,
+    // so `tier` carries its plan id instead of design/studio.
+    const isCreditSub = CREDITS_ENABLED && tier === CREDIT_SUBSCRIPTION_PLAN.id;
+
+    if (isCreditSub) {
+      // ANNUAL IS DELIBERATELY REFUSED for now. Renewals fire at current_period_end
+      // (services/subscriptions/billing.ts isRenewalDue), which for an annual term is
+      // twelve months away — so an annual subscriber would receive one grant of
+      // 1,000 credits and nothing until the following year. Granting 12,000 up front
+      // instead would remove the monthly cap the model depends on. The refill cadence
+      // needs designing before annual can be sold.
+      if (interval !== "monthly") {
+        return res.status(400).json({
+          error: "Annual credit subscriptions aren't available yet — please choose monthly.",
+          code: "annual_not_supported",
+        });
+      }
+    } else if ((tier !== "design" && tier !== "studio") || (interval !== "monthly" && interval !== "annual")) {
       return res.status(400).json({ error: "Invalid tier or interval." });
     }
     const db = readDB();
@@ -5453,11 +5496,21 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     const existing = await activeSubscriptionFor(googleId).catch(() => null);
     if (existing) return res.status(409).json({ error: "You already have an active subscription.", code: "already_subscribed" });
 
-    // Server-authoritative price — NEVER trust a client-supplied amount.
-    const plans = await fetchPricingPlans();
-    const plan = plans.find((p) => p.key === tier);
-    if (!plan) return res.status(400).json({ error: "Plan unavailable." });
-    const priceUsd = interval === "annual" ? plan.annualPriceUsd : plan.monthlyPriceUsd;
+    // Server-authoritative price — NEVER trust a client-supplied amount. The credit
+    // plan is priced from the model rather than Sanity, so the page, the ledger and the
+    // charge cannot drift apart.
+    let priceUsd: number;
+    let planLabel: string;
+    if (isCreditSub) {
+      priceUsd = CREDIT_SUBSCRIPTION_PLAN.priceUsd;
+      planLabel = `${CREDIT_SUBSCRIPTION_CREDITS} credits / month`;
+    } else {
+      const plans = await fetchPricingPlans();
+      const plan = plans.find((p) => p.key === tier);
+      if (!plan) return res.status(400).json({ error: "Plan unavailable." });
+      priceUsd = interval === "annual" ? plan.annualPriceUsd : plan.monthlyPriceUsd;
+      planLabel = `Designature Studio ${plan.name} (${interval})`;
+    }
 
     const cardHolderId = `sub-${randomUUID()}`;
     const pool = getPool();
@@ -5498,7 +5551,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       const charge = resolveChargeAmount(priceUsd);
       const init = await initPayment({
         orderId: ameriaOrderId,
-        description: `Designature Studio ${plan.name} (${interval})`,
+        description: planLabel,
         opaque: payId,
         cardHolderId,
         amount: charge.amount,

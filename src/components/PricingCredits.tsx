@@ -90,15 +90,24 @@ const PricingCredits: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
    * browser to the bank's hosted page. The server owns the amount — nothing about the
    * price travels from here, so a tampered client cannot buy 3,000 credits for $1.
    */
-  const startCheckout = async (packId: PlanId) => {
+  const startCheckout = async (planId: PlanId) => {
+    const recurring = planById(planId)?.recurring === true;
     setBuying(true);
     setBuyError('');
     try {
-      const res = await apiFetch('/api/credits/buy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pack: packId }),
-      });
+      // Packs are a one-time charge; the subscription binds the card through the
+      // existing recurring engine. Either way the server owns the amount.
+      const res = recurring
+        ? await apiFetch('/api/subscriptions/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tier: planId, interval: 'monthly' }),
+          })
+        : await apiFetch('/api/credits/buy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pack: planId }),
+          });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.redirectUrl) {
         setBuyError(data?.error || 'Could not start the payment. Please try again.');
@@ -113,13 +122,13 @@ const PricingCredits: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
   };
 
   /** Signed-out buyers sign in first, then land straight back in checkout. */
-  const buyPack = (packId: PlanId) => {
+  const buyPlan = (planId: PlanId) => {
     if (!user) {
       setSigninSource('pricing');
-      signIn({ source: 'pricing', onSuccess: () => { void startCheckout(packId); } });
+      signIn({ source: 'pricing', onSuccess: () => { void startCheckout(planId); } });
       return;
     }
-    void startCheckout(packId);
+    void startCheckout(planId);
   };
 
   const free = planById('free')!;
@@ -271,7 +280,7 @@ const PricingCredits: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
             <div className="pt-4 mt-5 border-t border-white/15">
               <p className="text-[12px] text-white/60 text-center mb-3 leading-snug">Fully creditable toward a design project with the studio</p>
               <button type="button"
-                onClick={() => buyPack(rung)}
+                onClick={() => buyPlan(rung)}
                 disabled={buying}
                 className="block w-full text-center bg-white text-black text-[11.5px] font-bold uppercase tracking-[0.2em] py-4 disabled:opacity-60 disabled:cursor-wait">
                 {buying ? 'Opening secure payment…' : <>Get {nf(active.credits)} credits &mdash; ${active.priceUsd}</>}
@@ -310,11 +319,13 @@ const PricingCredits: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
             </ul>
             <div className="pt-4 mt-5 border-t border-black/8">
               <p className="text-[12px] text-black/55 text-center mb-3 leading-snug">
-                ${monthly.annualPriceUsd} / year &mdash; two months free
+                Monthly billing &middot; cancel anytime
               </p>
               <button type="button"
-                className="block w-full text-center bg-[#0047AB] text-white text-[11px] font-bold uppercase tracking-[0.2em] py-3.5">
-                Get {nf(monthly.credits)} credits a month &mdash; ${monthly.priceUsd}
+                onClick={() => buyPlan(monthly.id)}
+                disabled={buying}
+                className="block w-full text-center bg-[#0047AB] text-white text-[11px] font-bold uppercase tracking-[0.2em] py-3.5 disabled:opacity-60 disabled:cursor-wait">
+                {buying ? 'Opening secure payment…' : <>Get {nf(monthly.credits)} credits a month &mdash; ${monthly.priceUsd}</>}
               </button>
             </div>
           </div>
