@@ -5138,12 +5138,21 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     }
 
     try {
+      // AMERIA_CALLBACK_URL is a single global pointing at the CONSULTATION callback,
+      // so every other payment stream must override it or the bank returns the browser
+      // to the wrong handler — which would look up `orders`, find nothing, and bounce
+      // the buyer to /booking/failed with the credits never granted. Same derivation
+      // the subscription flow uses.
+      const creditsCallbackUrl =
+        (process.env.AMERIA_CALLBACK_URL || "").replace(/\/callback$/, "/credits-callback");
+
       const init = await initPayment({
         orderId: purchaseOrderId,
         description: pack.credits + " credits - " + (pack.rung ?? pack.card),
         opaque: purchaseId,
         amount: charge.amount,
         currency: charge.currency,
+        backUrl: creditsCallbackUrl || undefined,
       });
       // InitPayment success is ResponseCode === 1 (not "00", which is for the
       // later GetPaymentDetails / Refund calls).
