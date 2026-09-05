@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../LanguageContext';
+import { useAuth } from '../AuthContext';
 import { setSigninSource } from '../lib/signinSource';
 import { useConsultationCta, consultationBtnClass } from './ConsultationCTA';
 import { EXPLORER_TOOLS, PHASES } from './studio/explorerRoster';
@@ -77,8 +78,49 @@ const PricingCredits: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
   const { navigateTo, t } = useLanguage();
   const bookConsultation = useConsultationCta('pricing');
 
+  const { user, signIn, apiFetch } = useAuth();
+
   /** Which rung of the one-time card is open. Only one panel shows at a time. */
   const [rung, setRung] = useState<PlanId>('project');
+  const [buying, setBuying] = useState(false);
+  const [buyError, setBuyError] = useState('');
+
+  /**
+   * Start a one-time pack purchase: ask the server to open a payment, then hand the
+   * browser to the bank's hosted page. The server owns the amount — nothing about the
+   * price travels from here, so a tampered client cannot buy 3,000 credits for $1.
+   */
+  const startCheckout = async (packId: PlanId) => {
+    setBuying(true);
+    setBuyError('');
+    try {
+      const res = await apiFetch('/api/credits/buy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pack: packId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.redirectUrl) {
+        setBuyError(data?.error || 'Could not start the payment. Please try again.');
+        setBuying(false);
+        return;
+      }
+      window.location.href = data.redirectUrl;   // leaves the SPA for the bank
+    } catch {
+      setBuyError('Could not reach the payment service. Please try again.');
+      setBuying(false);
+    }
+  };
+
+  /** Signed-out buyers sign in first, then land straight back in checkout. */
+  const buyPack = (packId: PlanId) => {
+    if (!user) {
+      setSigninSource('pricing');
+      signIn({ source: 'pricing', onSuccess: () => { void startCheckout(packId); } });
+      return;
+    }
+    void startCheckout(packId);
+  };
 
   const free = planById('free')!;
   const monthly = planById('monthly')!;
@@ -229,9 +271,14 @@ const PricingCredits: React.FC<{ compact?: boolean; hideHeader?: boolean }> = ({
             <div className="pt-4 mt-5 border-t border-white/15">
               <p className="text-[12px] text-white/60 text-center mb-3 leading-snug">Fully creditable toward a design project with the studio</p>
               <button type="button"
-                className="block w-full text-center bg-white text-black text-[11.5px] font-bold uppercase tracking-[0.2em] py-4">
-                Get {nf(active.credits)} credits &mdash; ${active.priceUsd}
+                onClick={() => buyPack(rung)}
+                disabled={buying}
+                className="block w-full text-center bg-white text-black text-[11.5px] font-bold uppercase tracking-[0.2em] py-4 disabled:opacity-60 disabled:cursor-wait">
+                {buying ? 'Opening secure payment…' : <>Get {nf(active.credits)} credits &mdash; ${active.priceUsd}</>}
               </button>
+              {buyError && (
+                <p role="alert" className="text-[12px] text-[#C97A60] text-center mt-2.5 leading-snug">{buyError}</p>
+              )}
             </div>
           </div>
 
