@@ -950,12 +950,21 @@ export default function VisionExperience(p: VisionExperienceProps) {
             {VISION_STYLES_FULL.map((style) => {
               const isPrimaryDna = p.quizDone && p.quizResult[0]?.style === style && p.selectedStyle === style;
               const isActive = p.selectedStyle === style;
+              // Trend 2026 is the one editorial, dated entry in a list of personal
+              // tastes, so it gets terracotta while unselected — the only accent
+              // free here, since cobalt already means "your quiz DNA match" and
+              // black means "selected". Selected still goes black like the rest:
+              // once it is chosen it is just your style, and two selected states
+              // would say there are two kinds of chosen.
+              const isTrend = style === 'Trend 2026';
               const base = 'px-4 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-[0.16em] border transition-all';
               const classes = isPrimaryDna
                 ? `${base} bg-[#0047AB] text-white border-[#0047AB]`
                 : isActive
                   ? `${base} bg-black text-white border-black`
-                  : `${base} bg-white text-[#404040] border-black/15 hover:border-black/55 hover:text-black`;
+                  : isTrend
+                    ? `${base} bg-[#9E5E41]/[0.07] text-[#9E5E41] border-[#9E5E41]/55 hover:bg-[#9E5E41]/[0.13] hover:border-[#9E5E41]`
+                    : `${base} bg-white text-[#404040] border-black/15 hover:border-black/55 hover:text-black`;
               return (
                 <button
                   key={style}
@@ -963,7 +972,9 @@ export default function VisionExperience(p: VisionExperienceProps) {
                   onClick={() => p.setSelectedStyle(style)}
                   className={classes}
                 >
-                  {isPrimaryDna && '✦ '}{p.translateStyle(style)}
+                  {isPrimaryDna && '✦ '}
+                  {isTrend && !isActive && <span aria-hidden="true">&#9670; </span>}
+                  {p.translateStyle(style)}
                 </button>
               );
             })}
