@@ -35,6 +35,9 @@ import { SHOPPING_TAXONOMY, SHOPPING_TAXONOMY_IDS, categoryToTaxonomyId } from "
 import { runMigrations } from "./db/migrate.js";
 import { getPool } from "./db/pgPool.js";
 import { meterSpend, meterRefund, CREDITS_ENABLED, InsufficientCreditsError } from "./services/credits/meter.js";
+import { meterBalance } from "./services/credits/meter.js";
+import { grantCredits, listTransactions } from "./services/credits/ledger.js";
+import { CREDIT_PLANS } from "./src/data/creditPricing.js";
 import { loadState, saveState } from "./db/state.js";
 import { sendEmail } from "./lib/email.js";
 import { computeNextRenewal, type PlatformCadence } from "./services/platforms/renewal.js";
@@ -5085,6 +5088,183 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     } catch (err) {
       console.error("[consultation/release] failed:", err);
       return res.status(500).json({ error: "Could not release the hold." });
+    }
+  });
+
+  // ══ Credit packs — one-time purchase (I-033) ═══════════════════════════════
+  // Deliberately modelled on the $99 consultation, not on the subscription: a pack
+  // is a SINGLE charge, so it uses InitPayment WITHOUT a CardHolderID — no binding,
+  // no renewal, no dunning. That is why it is the one paid product billable today.
+  //
+  // In sandbox the gateway forces every charge to 10 AMD regardless of the pack
+  // price (resolveChargeAmount does the substitution), so a local test shows a
+  // 10 AMD charge for a $129 pack. That is the bank's sandbox, not a bug.
+
+  app.post("/api/credits/buy", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+
+    const packId = (req.body?.pack ?? "").toString().trim();
+    const pack = CREDIT_PLANS.find((pl) => pl.id === packId && !pl.recurring && pl.priceUsd > 0);
+    if (!pack) return res.status(400).json({ error: "Unknown credit pack." });
+
+    const cfg = getAmeriaConfig();
+    if (!cfg.baseUrl || !cfg.clientId || !cfg.username || !cfg.password) {
+      console.error("[credits/buy] Ameria config missing");
+      return res.status(503).json({ error: "Payments are not configured." });
+    }
+
+    const dbBuy = readDB();
+    const buyer = dbBuy.users[googleId];
+    if (!buyer) return res.status(404).json({ error: "User not found" });
+
+    const charge = resolveChargeAmount(pack.priceUsd);
+    const poolBuy = getPool();
+
+    let purchaseId = "";
+    let purchaseOrderId = "";
+    try {
+      const r = await poolBuy.query(
+        `INSERT INTO credit_purchases (user_id, pack_id, credits, amount_usd, client_email)
+           VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, ameria_order_id`,
+        [googleId, pack.id, pack.credits, pack.priceUsd, buyer.email],
+      );
+      purchaseId = r.rows[0].id;
+      purchaseOrderId = String(r.rows[0].ameria_order_id);
+    } catch (err) {
+      console.error("[credits/buy] insert failed:", err);
+      return res.status(500).json({ error: "Could not start the purchase." });
+    }
+
+    try {
+      const init = await initPayment({
+        orderId: purchaseOrderId,
+        description: pack.credits + " credits - " + (pack.rung ?? pack.card),
+        opaque: purchaseId,
+        amount: charge.amount,
+        currency: charge.currency,
+      });
+      // InitPayment success is ResponseCode === 1 (not "00", which is for the
+      // later GetPaymentDetails / Refund calls).
+      if (Number(init.responseCode) !== 1 || !init.paymentId) {
+        console.error("[credits/buy] InitPayment rejected:", init.responseCode, init.responseMessage);
+        await poolBuy.query(
+          `UPDATE credit_purchases SET status='failed', failure_reason=$2 WHERE id=$1`,
+          [purchaseId, "init rejected: " + init.responseCode],
+        ).catch(() => {});
+        return res.status(502).json({ error: "The payment gateway rejected the request." });
+      }
+      await poolBuy.query(`UPDATE credit_purchases SET ameria_payment_id=$1 WHERE id=$2`, [init.paymentId, purchaseId]);
+      recordActivity(buyer.email, "credits_purchase_initiated", {
+        user_id: googleId, purchase_id: purchaseId, pack: pack.id, credits: pack.credits,
+      });
+      return res.json({ purchaseId, redirectUrl: buildGatewayRedirectUrl(cfg.baseUrl, init.paymentId) });
+    } catch (err) {
+      console.error("[credits/buy] InitPayment error:", err);
+      await poolBuy.query(
+        `UPDATE credit_purchases SET status='failed', failure_reason='init threw' WHERE id=$1`,
+        [purchaseId],
+      ).catch(() => {});
+      return res.status(502).json({ error: "Could not reach the payment gateway." });
+    }
+  });
+
+  // The gateway returns the BROWSER here (not a server webhook), which is why a
+  // localhost callback URL works for local testing — the bank never has to reach us.
+  app.get("/api/payments/ameria/credits-callback", async (req, res) => {
+    const qc: any = req.query;
+    const orderID = (qc.orderID ?? qc.OrderID ?? qc.orderId ?? "").toString().trim();
+    const opaque = (qc.opaque ?? qc.Opaque ?? "").toString().trim();
+    if (!orderID || !opaque || !isUuid(opaque)) return res.redirect(302, "/credits/failed");
+
+    const poolCb = getPool();
+    let purchase: any;
+    try {
+      const r = await poolCb.query(
+        `SELECT * FROM credit_purchases WHERE ameria_order_id=$1 AND id=$2 LIMIT 1`,
+        [orderID, opaque],
+      );
+      purchase = r.rows[0];
+    } catch (err) {
+      console.error("[credits-callback] lookup failed:", err);
+      return res.redirect(302, "/credits/failed");
+    }
+    if (!purchase) return res.redirect(302, "/credits/failed");
+
+    // Idempotent: a refreshed callback must never grant twice.
+    if (purchase.status === "paid") return res.redirect(302, "/credits/success?p=" + purchase.id);
+    if (purchase.status === "failed") return res.redirect(302, "/credits/failed");
+    if (!purchase.ameria_payment_id) return res.redirect(302, "/credits/failed");
+
+    const failPurchase = async (reason: string) => {
+      console.warn("[credits-callback] failed:", reason, purchase.id);
+      await poolCb.query(
+        `UPDATE credit_purchases SET status='failed', failure_reason=$2 WHERE id=$1`,
+        [purchase.id, reason.slice(0, 500)],
+      ).catch(() => {});
+    };
+
+    // Authoritative verification — never trust the redirect params alone.
+    let details;
+    try {
+      details = await getPaymentDetails(purchase.ameria_payment_id);
+    } catch {
+      await failPurchase("GetPaymentDetails threw");
+      return res.redirect(302, "/credits/failed");
+    }
+    if (details.Opaque && String(details.Opaque).trim() !== String(purchase.id).trim()) {
+      await failPurchase("opaque mismatch (" + details.Opaque + ")");
+      return res.redirect(302, "/credits/failed");
+    }
+    const chargeCb = resolveChargeAmount(Number(purchase.amount_usd));
+    const verdict = evaluatePaymentSuccess(details, chargeCb.amount, chargeCb.currency);
+    if (!verdict.ok) {
+      await failPurchase("verify failed: " + verdict.reasons.join("; "));
+      return res.redirect(302, "/credits/failed");
+    }
+
+    // Mark paid FIRST and grant only if THIS request flipped it — two concurrent
+    // callbacks then cannot both credit the account.
+    let flipped = false;
+    try {
+      const upd = await poolCb.query(
+        `UPDATE credit_purchases SET status='paid', paid_at=now()
+          WHERE id=$1 AND status <> 'paid' RETURNING id`,
+        [purchase.id],
+      );
+      flipped = upd.rowCount === 1;
+    } catch (err) {
+      console.error("[credits-callback] mark-paid failed (payment captured):", err);
+      return res.redirect(302, "/credits/failed");
+    }
+
+    if (flipped) {
+      try {
+        await grantCredits(purchase.user_id, purchase.credits, "pack_purchase", { ref: purchase.id });
+        recordActivity(purchase.client_email, "credits_purchased", {
+          user_id: purchase.user_id, purchase_id: purchase.id,
+          pack: purchase.pack_id, credits: purchase.credits,
+        });
+      } catch (err) {
+        // Payment captured but the grant failed — loud, because it needs manual repair.
+        console.error("[credits-callback] GRANT FAILED AFTER CAPTURE:", purchase.id, err);
+      }
+    }
+    return res.redirect(302, "/credits/success?p=" + purchase.id);
+  });
+
+  // Balance + ledger history for /account and the studio header.
+  app.get("/api/credits/balance", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    try {
+      const balance = await meterBalance(googleId);
+      const transactions = CREDITS_ENABLED ? await listTransactions(googleId, 50) : [];
+      res.json({ enabled: CREDITS_ENABLED, balance, transactions });
+    } catch (err) {
+      console.error("[credits/balance] failed:", err);
+      res.status(500).json({ error: "Could not load your credit balance." });
     }
   });
 
