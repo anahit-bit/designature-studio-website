@@ -6,7 +6,7 @@
  * in app_state); the credit model stores it in Postgres. Every existing user therefore has
  * tier quota and NO credit balance. A hard cutover would lock all of them out at once.
  *
- * So `CREDITS_ENABLED` (env, default OFF) decides which system meters a run:
+ * So `creditsEnabled()` (env, default OFF) decides which system meters a run:
  *   off — `meterSpend` returns null and the caller keeps its existing tier logic untouched
  *   on  — the ledger meters the run, and a user with no balance row is lazily granted the
  *         free tier's credits so nobody arrives at a locked door
@@ -35,8 +35,17 @@ import {
 } from './ledger.js';
 import { creditsFor, planById } from '../../src/data/creditPricing.js';
 
-/** Off unless explicitly enabled — production keeps the tier path until the switch is thrown. */
-export const CREDITS_ENABLED = process.env.CREDITS_ENABLED === 'true';
+/**
+ * Off unless explicitly enabled — production keeps the tier path until the switch is thrown.
+ *
+ * A FUNCTION, not a const: `server.ts` imports this module at the top of the file but calls
+ * `dotenv.config()` further down, and ESM evaluates every import before any module-body
+ * statement. A module-level const would therefore latch `false` before the .env is loaded —
+ * the same ordering trap that forced `getPool()` to be lazy.
+ */
+export function creditsEnabled(): boolean {
+  return process.env.CREDITS_ENABLED === 'true';
+}
 
 /** The free tier's one-time grant (50). Read from the model so the page and the DB agree. */
 export const FREE_GRANT_CREDITS = planById('free')!.credits;
@@ -73,7 +82,7 @@ export async function meterSpend(
   toolId: string,
   opts: { ref?: string; unlimited?: boolean } = {},
 ): Promise<SpendReceipt | null> {
-  if (!CREDITS_ENABLED) return null;
+  if (!creditsEnabled()) return null;
   if (opts.unlimited) return null; // owner / unlimited accounts are never metered
   if (creditsFor(toolId) === 0) return null; // free tools never touch the ledger
 
@@ -94,6 +103,6 @@ export async function meterRefund(receipt: SpendReceipt | null): Promise<void> {
 
 /** Balance for `/account` and the studio header. Zeroed when credits are not active. */
 export async function meterBalance(userId: string): Promise<CreditBalance | null> {
-  if (!CREDITS_ENABLED) return null;
+  if (!creditsEnabled()) return null;
   return getBalance(userId);
 }

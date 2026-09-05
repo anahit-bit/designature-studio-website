@@ -34,7 +34,7 @@ import { SHOPPING_TAXONOMY, SHOPPING_TAXONOMY_IDS, categoryToTaxonomyId } from "
 // ─── Payments foundation (I-024 / B0): Postgres migration at boot ─────────────
 import { runMigrations } from "./db/migrate.js";
 import { getPool } from "./db/pgPool.js";
-import { meterSpend, meterRefund, CREDITS_ENABLED, InsufficientCreditsError } from "./services/credits/meter.js";
+import { meterSpend, meterRefund, creditsEnabled, FREE_GRANT_CREDITS, InsufficientCreditsError } from "./services/credits/meter.js";
 import { meterBalance } from "./services/credits/meter.js";
 import { grantCredits, listTransactions } from "./services/credits/ledger.js";
 import { CREDIT_PLANS } from "./src/data/creditPricing.js";
@@ -464,7 +464,7 @@ async function applyPlanToUser(googleId: string, tier: string): Promise<string> 
   // REPLACES the monthly bucket rather than adding to it — that is precisely what
   // "credits refill each billing date and do not roll over" means, and it is why
   // this can run on every renewal without compounding.
-  if (CREDITS_ENABLED) {
+  if (creditsEnabled()) {
     const dbC = readDB();
     const uC = dbC.users[googleId];
     if (!uC) return "";
@@ -2323,10 +2323,10 @@ Output ONLY valid JSON, no markdown fences, no commentary:
         writeDB(dbShop);
       }
       console.log(`[SHOP] ${shopUser.email} | isPaid=${shopUser.isPaid} | shoppingListsLeft=${shopUser.shoppingListsLeft}`);
-      // Credit model (flagged). When CREDITS_ENABLED the ledger meters the run and the
+      // Credit model (flagged). When creditsEnabled() the ledger meters the run and the
       // tier counters are bypassed; when off, none of this executes.
       let shopCreditReceipt: Awaited<ReturnType<typeof meterSpend>> = null;
-      if (CREDITS_ENABLED) {
+      if (creditsEnabled()) {
         try {
             shopCreditReceipt = await meterSpend(googleIdShopping, "shop", { unlimited: isUnlimitedAccountEmail(shopUser.email) });
         } catch (err) {
@@ -2337,7 +2337,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
         }
       }
 
-      if (!CREDITS_ENABLED && shopUser.shoppingListsLeft < 1) {
+      if (!creditsEnabled() && shopUser.shoppingListsLeft < 1) {
         return res.status(403).json({
           error: "No shopping list runs left",
           shoppingListsLeft: shopUser.shoppingListsLeft,
@@ -3284,10 +3284,10 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     const user = db.users[googleId];
     if (!user) return res.status(404).json({ error: "User not found." });
 
-    // Credit model (flagged). When CREDITS_ENABLED the ledger meters the run and the
+    // Credit model (flagged). When creditsEnabled() the ledger meters the run and the
     // tier counters are bypassed; when off, none of this executes.
     let creditReceipt: Awaited<ReturnType<typeof meterSpend>> = null;
-    if (CREDITS_ENABLED && !isSampleRun) {
+    if (creditsEnabled() && !isSampleRun) {
       try {
         creditReceipt = await meterSpend(googleId, "redesign", { unlimited: isUnlimitedAccountEmail(user.email) });
       } catch (err) {
@@ -3298,7 +3298,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
       }
     }
 
-    if (!CREDITS_ENABLED && user.generationsLeft <= 0 && !isSampleRun) {
+    if (!creditsEnabled() && user.generationsLeft <= 0 && !isSampleRun) {
       return res
         .status(403)
         .json({ error: "No generations left.", generationsLeft: 0 });
@@ -3308,7 +3308,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     // the refund so sample/unlimited runs (which never decrement) never gain credit.
     const genBeforeDecrement = user.generationsLeft;
     let quotaDecremented = false;
-    if (!CREDITS_ENABLED && !isSampleRun && user.generationsLeft < UNLIMITED_QUOTA) {
+    if (!creditsEnabled() && !isSampleRun && user.generationsLeft < UNLIMITED_QUOTA) {
       user.generationsLeft -= 1;
       user.lastUsed = new Date().toISOString();
       db.users[googleId] = user;
@@ -3894,7 +3894,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     // Credit model (flagged). Room Audit is its own card with its own price — under the
     // tier system it shared the concepts pool, which the credit model makes unnecessary.
     let auditCreditReceipt: Awaited<ReturnType<typeof meterSpend>> = null;
-    if (CREDITS_ENABLED && isMeteredAudit) {
+    if (creditsEnabled() && isMeteredAudit) {
       try {
         auditCreditReceipt = await meterSpend(googleId, "score-room", {
           unlimited: isUnlimitedAccountEmail(user.email),
@@ -3907,7 +3907,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
       }
     }
 
-    if (!CREDITS_ENABLED && isMeteredAudit) {
+    if (!creditsEnabled() && isMeteredAudit) {
       if (user.generationsLeft <= 0) {
         return res.status(403).json({ error: "No generations left.", generationsLeft: 0 });
       }
@@ -5294,8 +5294,8 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     if (!googleId) return;
     try {
       const balance = await meterBalance(googleId);
-      const transactions = CREDITS_ENABLED ? await listTransactions(googleId, 50) : [];
-      res.json({ enabled: CREDITS_ENABLED, balance, transactions });
+      const transactions = creditsEnabled() ? await listTransactions(googleId, 50) : [];
+      res.json({ enabled: creditsEnabled(), balance, transactions });
     } catch (err) {
       console.error("[credits/balance] failed:", err);
       res.status(500).json({ error: "Could not load your credit balance." });
@@ -5470,7 +5470,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
     // Under the credit model the only recurring product is the credit subscription,
     // so `tier` carries its plan id instead of design/studio.
-    const isCreditSub = CREDITS_ENABLED && tier === CREDIT_SUBSCRIPTION_PLAN.id;
+    const isCreditSub = creditsEnabled() && tier === CREDIT_SUBSCRIPTION_PLAN.id;
 
     if (isCreditSub) {
       // ANNUAL IS DELIBERATELY REFUSED for now. Renewals fire at current_period_end
@@ -6160,6 +6160,9 @@ ${bodyHtml}
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log(`✅ Shopping quota protection: ACTIVE (owner = ${CONCEPT_TEST_ACCOUNT_EMAIL})`);
+    console.log(creditsEnabled()
+      ? `✅ Credit model: ACTIVE (free grant ${FREE_GRANT_CREDITS} credits · ledger meters every run)`
+      : "ℹ️  Credit model: OFF — tier quotas are metering (set CREDITS_ENABLED=true to switch)");
   });
 }
 
