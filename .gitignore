@@ -20,3 +20,4 @@ users.json
 
 # #12 identify test fixtures (dev-only, large binaries)
 scripts/identify-test-images/
+scripts/aivision/__pycache__/

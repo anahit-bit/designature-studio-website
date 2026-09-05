@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { STYLE_BRIEFS, STYLE_NAME_TO_PRESET } from '../../services/aiVision/stylePresets';
+import {
+  STYLE_BRIEFS,
+  STYLE_NAME_TO_PRESET,
+  ROOM_NAME_TO_TYPE,
+  ROOM_TYPE_LABELS,
+} from '../../services/aiVision/stylePresets';
+import { ROOM_PROGRAM_RULES, pickAccent, renderAccent } from '../../services/aiVision/promptTemplates';
+import { STYLE_PALETTES, PAINT_MODIFIERS } from '../../services/aiVision/rulebook.generated';
+import { VISION_STYLES_FULL, ROOM_TYPES_FULL } from '../components/VisionExperience';
 
 describe('mid_century preset · modern interpretation (not a literal 1950s-60s replica)', () => {
   const brief = STYLE_BRIEFS.mid_century.toLowerCase();
@@ -91,8 +99,51 @@ describe('maximalist preset · contemporary color + pattern (not a Baroque/Victo
     expect(brief).toMatch(/velvet|rattan|lacquered/);
   });
 
-  it('reads as playful or joyful, not palatial', () => {
-    expect(brief).toMatch(/playful|joyful/);
+  // Updated 2026-09-01. This used to assert /playful|joyful/, which was right when
+  // Maximalist was "contemporary joyful" — but that is exactly what made it
+  // indistinguishable from Dopamine. The owner split them: Dopamine keeps the
+  // bright, joyful, candy vocabulary; Maximalist is depth, pattern and
+  // collection. The anti-palace intent of this test is unchanged.
+  it('reads as layered and collected, not palatial', () => {
+    expect(brief).toMatch(/layered|collected|rich/);
+  });
+
+  // The word-bans above passed while the RENDERS came back as a Victorian
+  // drawing room — gilt-framed oil portraits, an antique glazed cabinet, stacked
+  // Persian rugs. Rulebook RD22 in miniature: banned words do not enforce, only
+  // looking at the output does. So the brief now has to SAY contemporary in the
+  // two sections that were pulling it period.
+  it('keeps the furniture and the art contemporary, not period', () => {
+    const furniture = brief.split('3. furniture character:')[1].split('4. lighting:')[0];
+    const decor = brief.split('6. decor & styling:')[1].split('7. overall mood:')[0];
+    expect(furniture).toMatch(/contemporary|modern|current/);
+    expect(decor).toMatch(/contemporary|modern/);
+  });
+
+  it('allows at most one genuinely vintage piece, so the room cannot become an antique shop', () => {
+    expect(brief).toMatch(/one piece may be genuinely vintage|exactly one/);
+  });
+
+  it('does not borrow the candy-bright vocabulary that belongs to Dopamine', () => {
+    for (const banned of ['bubblegum', 'candy', 'sunflower yellow', 'marshmallow', 'pastel']) {
+      expect(brief, `maximalist should leave "${banned}" to dopamine`).not.toContain(banned);
+    }
+  });
+});
+
+// The two styles were near-duplicates: both briefs said joyful, saturated,
+// contemporary and curved, and a visitor could not tell their rooms apart.
+describe('maximalist and dopamine are actually different styles', () => {
+  it('share no palette colour', () => {
+    const hex = (k: string) => new Set(STYLE_PALETTES[k].map((c) => c.hex));
+    const max = hex('maximalist');
+    const overlap = [...hex('dopamine')].filter((h) => max.has(h));
+    expect(overlap, `identical hexes in both palettes: ${overlap.join(', ')}`).toHaveLength(0);
+  });
+
+  it('dopamine keeps the bright register, maximalist keeps the deep one', () => {
+    expect(STYLE_BRIEFS.dopamine.toLowerCase()).toMatch(/bright|joyful/);
+    expect(STYLE_BRIEFS.maximalist.toLowerCase()).toMatch(/deep|jewel/);
   });
 });
 
@@ -115,5 +166,162 @@ describe('dopamine preset · joyful, saturated, curved (Dopamine Décor)', () =>
 
   it('names the saturated palette (Sunflower/Bubblegum/Coral)', () => {
     expect(STYLE_BRIEFS.dopamine).toMatch(/Sunflower|Bubblegum|Coral/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Wiring guards. A chip with no mapping does not throw — it silently generates
+// with no style, or with the wrong room. These are the only tests that catch it.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('chip lists are fully wired to presets', () => {
+  it('every VISION_STYLES_FULL chip maps to a preset that has a brief', () => {
+    for (const label of VISION_STYLES_FULL) {
+      const preset = STYLE_NAME_TO_PRESET[label];
+      expect(preset, `style chip "${label}" has no STYLE_NAME_TO_PRESET entry`).toBeTruthy();
+      expect(STYLE_BRIEFS[preset]?.trim(), `preset "${preset}" has an empty brief`).toBeTruthy();
+    }
+  });
+
+  it('every ROOM_TYPES_FULL chip maps to a room type with a label and a program', () => {
+    for (const label of ROOM_TYPES_FULL) {
+      const key = ROOM_NAME_TO_TYPE[label];
+      expect(key, `room chip "${label}" has no ROOM_NAME_TO_TYPE entry`).toBeTruthy();
+      expect(ROOM_TYPE_LABELS[key], `room type "${key}" has no display label`).toBeTruthy();
+      expect(ROOM_PROGRAM_RULES[key]?.trim(), `room type "${key}" has no program rule`).toBeTruthy();
+    }
+  });
+
+  it('every style brief is reachable from a chip — no orphans', () => {
+    const reachable = new Set(VISION_STYLES_FULL.map((l) => STYLE_NAME_TO_PRESET[l]));
+    for (const preset of Object.keys(STYLE_BRIEFS)) {
+      expect(reachable.has(preset as never), `preset "${preset}" has a brief but no chip`).toBe(true);
+    }
+  });
+
+  it('every room program is reachable from a chip — no orphans', () => {
+    const reachable = new Set(ROOM_TYPES_FULL.map((l) => ROOM_NAME_TO_TYPE[l]));
+    for (const key of Object.keys(ROOM_PROGRAM_RULES)) {
+      expect(reachable.has(key as never), `room type "${key}" has a program but no chip`).toBe(true);
+    }
+  });
+});
+
+describe('trend_2026 preset · the "I do not know my style" answer', () => {
+  const brief = STYLE_BRIEFS.trend_2026.toLowerCase();
+
+  it('maps the "Trend 2026" display label', () => {
+    expect(STYLE_NAME_TO_PRESET['Trend 2026']).toBe('trend_2026');
+  });
+
+  it('is a warm-neutral direction, explicitly not grey', () => {
+    expect(brief).toContain('warm');
+    expect(brief).toContain('greys are deliberately absent');
+  });
+
+  it('names the 2026 material vocabulary (fluted/slatted millwork, boucle, unlacquered brass)', () => {
+    expect(brief).toMatch(/fluted|slatted/);
+    expect(brief).toContain('boucle');
+    expect(brief).toContain('unlacquered brass');
+  });
+
+  it('respects RD16 — cladding is applied flat to the existing wall, never carved in', () => {
+    expect(brief).toContain('applied flat to the existing surface');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Palettes — one accent per generation is what stops fifteen styles producing
+// fifteen versions of the same room.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('style palettes · one accent per generation', () => {
+  it('every style has a palette with at least three accents', () => {
+    for (const label of VISION_STYLES_FULL) {
+      const preset = STYLE_NAME_TO_PRESET[label];
+      const palette = STYLE_PALETTES[preset];
+      expect(palette, `no palette for "${preset}"`).toBeTruthy();
+      const accents = palette.filter((c) => c.role === 'accent');
+      expect(accents.length, `"${preset}" has ${accents.length} accents — generations would repeat`)
+        .toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it('every colour is a real #RRGGBB hex', () => {
+    for (const palette of Object.values(STYLE_PALETTES)) {
+      for (const c of palette) expect(c.hex).toMatch(/^#[0-9A-F]{6}$/);
+    }
+  });
+
+  it('walks the accent pool as the variation seed increases, instead of repeating', () => {
+    const accents = STYLE_PALETTES.japandi.filter((c) => c.role === 'accent');
+    const picked = accents.map((_, i) => pickAccent('japandi', i)?.name);
+    expect(new Set(picked).size).toBe(accents.length);
+  });
+
+  it('is deterministic for a given seed', () => {
+    expect(pickAccent('coastal', 2)?.hex).toBe(pickAccent('coastal', 2)?.hex);
+  });
+
+  it('returns null when there is no preset — reference photos carry their own colour', () => {
+    expect(pickAccent(undefined, 0)).toBeNull();
+  });
+
+  it('renders an accent block that names the colour and protects the rest of the brief', () => {
+    const block = renderAccent(pickAccent('bohemian', 0));
+    expect(block).toContain('ACCENT COLOUR FOR THIS CONCEPT');
+    expect(block).toMatch(/#[0-9A-F]{6}/);
+    expect(block).toContain('Keep every other instruction in the style brief intact');
+  });
+});
+
+describe('2026 paint modifier · overrides the accent, never the style', () => {
+  it('exposes the three Colours of the Year', () => {
+    expect(PAINT_MODIFIERS.map((p) => p.id).sort())
+      .toEqual(['cloud_dancer', 'silhouette', 'universal_khaki']);
+  });
+
+  it('outranks the style palette when chosen', () => {
+    const withPaint = pickAccent('bohemian', 0, 'silhouette');
+    expect(withPaint?.name).toBe('Silhouette');
+    expect(withPaint?.brand).toContain('Benjamin Moore');
+  });
+
+  it('applies even with reference photos, where there is no preset at all', () => {
+    const accent = pickAccent(undefined, undefined, 'cloud_dancer');
+    expect(accent?.name).toBe('Cloud Dancer');
+  });
+
+  it('falls back to the style palette when the id is unknown', () => {
+    const accent = pickAccent('coastal', 0, 'not_a_real_colour');
+    expect(accent?.name).toBe(STYLE_PALETTES.coastal.filter((c) => c.role === 'accent')[0].name);
+  });
+
+  it('carries its own instruction into the prompt', () => {
+    expect(renderAccent(pickAccent('modern', 0, 'cloud_dancer'))).toContain('DOMINANT wall colour');
+  });
+});
+
+describe('living_dining program · one room, two zones, no new architecture', () => {
+  const program = ROOM_PROGRAM_RULES.living_dining.toLowerCase();
+
+  it('maps the "Living + Dining" chip', () => {
+    expect(ROOM_NAME_TO_TYPE['Living + Dining']).toBe('living_dining');
+    expect(ROOM_TYPE_LABELS.living_dining).toBe('OPEN-PLAN LIVING + DINING ROOM');
+  });
+
+  it('demands both zones', () => {
+    expect(program).toContain('sofa');
+    expect(program).toContain('dining table');
+  });
+
+  it('forbids every architectural zoning device (RD3 / RD6)', () => {
+    for (const banned of ['partition', 'screen', 'level change', 'step']) {
+      expect(program).toContain(banned);
+    }
+    expect(program).toContain('never');
+  });
+
+  it('keeps the two zones one room, not two', () => {
+    expect(program).toContain('single space');
+    expect(program).toContain('one material and colour vocabulary');
   });
 });

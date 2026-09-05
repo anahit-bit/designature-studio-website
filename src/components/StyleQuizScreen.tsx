@@ -4,7 +4,7 @@ import { useLanguage } from '../LanguageContext';
 import { useAuth } from '../AuthContext';
 import { accountApi } from '../lib/accountApi';
 import { fingerprint, isSaved, markSaved } from '../lib/savedMarks';
-import { QUIZ_IMAGE_WEIGHTS, TIER_POINTS } from '../data/quizImageWeights';
+import { TIER_POINTS, weightsForUrl } from '../data/quizImageWeights';
 import { cld, cldSrcSet } from '../lib/cld';
 import { trackQuizStart, trackQuizComplete } from '../lib/track';
 import StatusHdr from './studio/StatusHdr';
@@ -15,10 +15,22 @@ import SigninVeil from './studio/SigninVeil';
 import { ConsultationReviewBand } from './ConsultationCTA';
 import NextStepBand from './studio/NextStepBand';
 
-// ── The 9 quiz styles (must match quizImageWeights.ts) ──
+// ── The quiz styles ──
+// Every AI Vision style a visitor can be TOLD they are, so a verdict always names
+// something they can then generate. quizStyles.test asserts the match against
+// VISION_STYLES_FULL, allowing only the documented exclusion below.
+//
+// Trend 2026 is deliberately absent (owner, 2026-09-01). It is a dated editorial
+// position, not a personal taste: "your style is Trend 2026" says nothing about
+// the visitor, it goes stale in January, and the quiz would need renaming every
+// year. It stays a first-class AI Vision chip — it is only a quiz VERDICT that
+// makes no sense.
+export const QUIZ_EXCLUDED_STYLES = ['Trend 2026'] as const;
+
 const STYLES = [
   'Japandi', 'Modern', 'Mid-Century', 'Bohemian', 'Rustic', 'Art Deco',
   'Industrial', 'Coastal', 'Transitional',
+  'Biophilic', 'Minimalist', 'Maximalist', 'Dopamine', 'Warm Contemporary',
 ];
 
 const QUIZ_LENGTH = 18;
@@ -47,6 +59,12 @@ type QuizRoom = { url: string; credit: string };
 type QuizRooms = Record<string, QuizRoom[]>;
 
 // Minimal fallback so the deck/mosaic render before /api/images resolves.
+//
+// 2026-09-01: five entries here pointed at photographs that an upload run
+// destroyed on Cloudinary, so the live quiz was serving 404s from a hardcoded
+// list — Coastal had BOTH of its fallbacks dead. They now point at renders in
+// Quiz/<Style>/, which we generate and can therefore always replace.
+// A fallback URL is only as safe as our control over the asset behind it.
 // IMPORTANT: this Cloudinary account is in dynamic-folders mode — the public_ids
 // live at ROOT, so the canonical delivery URL is /upload/v<version>/<public_id>.<ext>
 // (the form /api/images returns). Folder-path URLs (/upload/.../Quiz/<Style>/<id>)
@@ -58,23 +76,23 @@ export const QUIZ_ROOMS_FALLBACK: QuizRooms = {
   ],
   'Industrial': [
     { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774954080/5_an8tny.jpg', credit: 'Industrial' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774938215/8_o9nuyt.jpg', credit: 'Industrial' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788243820/Quiz/Industrial/living.png', credit: 'Industrial' },
   ],
   'Bohemian': [
     { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774949652/8_r7zpqa.jpg', credit: 'Bohemian' },
     { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774949648/10_u56vvx.jpg', credit: 'Bohemian' },
   ],
   'Japandi': [
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774954453/14_valixc.png', credit: 'Japandi' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788243758/Quiz/Japandi/living.png', credit: 'Japandi' },
     { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774954428/13_logbtm.png', credit: 'Japandi' },
   ],
   'Coastal': [
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950277/14_mwuyw1.jpg', credit: 'Coastal' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950152/9_cbgmet.jpg', credit: 'Coastal' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788243768/Quiz/Coastal/living.png', credit: 'Coastal' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788243773/Quiz/Coastal/bedroom.png', credit: 'Coastal' },
   ],
   'Modern': [
     { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950446/3_1_vpngnt.jpg', credit: 'Modern' },
-    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774938203/10_y7bds9.jpg', credit: 'Modern' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788243783/Quiz/Modern/bedroom.png', credit: 'Modern' },
   ],
   'Art Deco': [
     { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1775713413/17_gmhspd.png', credit: 'Art Deco' },
@@ -87,6 +105,33 @@ export const QUIZ_ROOMS_FALLBACK: QuizRooms = {
   'Transitional': [
     { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774940232/10_tuag7j.jpg', credit: 'Transitional' },
     { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774938188/2_2_kdupyu.jpg', credit: 'Transitional' },
+  ],
+
+  // Added 2026-08-31. Unlike the nine above, these are folder-scoped uploads, so
+  // their URLs DO carry the Quiz/<Style>/ path and the weights table resolves on it.
+  'Biophilic': [
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120632/Quiz/Biophilic/bedroom.png', credit: 'Biophilic' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120630/Quiz/Biophilic/living.png', credit: 'Biophilic' },
+  ],
+  'Minimalist': [
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120606/Quiz/Minimalist/bedroom.png', credit: 'Minimalist' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120603/Quiz/Minimalist/living.png', credit: 'Minimalist' },
+  ],
+  'Maximalist': [
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120615/Quiz/Maximalist/bedroom.png', credit: 'Maximalist' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120613/Quiz/Maximalist/living.png', credit: 'Maximalist' },
+  ],
+  'Dopamine': [
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120624/Quiz/Dopamine/bedroom.png', credit: 'Dopamine' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120621/Quiz/Dopamine/living.png', credit: 'Dopamine' },
+  ],
+  'Trend 2026': [
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120585/Quiz/Trend-2026/bedroom.png', credit: 'Trend 2026' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120582/Quiz/Trend-2026/living.png', credit: 'Trend 2026' },
+  ],
+  'Warm Contemporary': [
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120597/Quiz/Warm-Contemporary/bedroom.png', credit: 'Warm Contemporary' },
+    { url: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788120594/Quiz/Warm-Contemporary/living.png', credit: 'Warm Contemporary' },
   ],
 };
 
@@ -387,11 +432,6 @@ const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignI
     if (readingTimerRef.current) clearTimeout(readingTimerRef.current);
   }, []);
 
-  const extractCloudinaryPath = (url: string): string => {
-    const match = url.match(/Quiz\/[^?]+/);
-    return match ? match[0] : '';
-  };
-
   const computeResult = useCallback((votes: Record<string, number>): QuizResult => {
     const total = Object.values(votes).reduce((a, b) => a + b, 0) || 1;
     const stylesWithVotes = STYLES.filter(s => (votes[s] || 0) > 0);
@@ -422,8 +462,7 @@ const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignI
     const newVotes = { ...quizVotes };
     const styleChanges: Record<string, number> = {};
     if (vote === 'love') {
-      const imagePath = extractCloudinaryPath(currentQuizImage.url);
-      const weights = QUIZ_IMAGE_WEIGHTS[imagePath];
+      const weights = weightsForUrl(currentQuizImage.url);
       if (weights) {
         styleChanges[weights.primary] = (styleChanges[weights.primary] || 0) + TIER_POINTS.primary;
         for (const s of weights.strong) styleChanges[s] = (styleChanges[s] || 0) + TIER_POINTS.strong;

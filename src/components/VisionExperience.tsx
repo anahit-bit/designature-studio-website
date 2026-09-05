@@ -31,13 +31,28 @@ const THUMB_AFTER_OPTS = { quality: 'best' as const, enhance: true, sharpen: 60 
 // AI-023 Variant D — full-bleed editorial gallery flow.
 // Spec: WEBSITE-PLAN-ai-vision-VARIANT-D.html.
 
+// Every entry MUST have a STYLE_NAME_TO_PRESET mapping and a STYLE_BRIEFS entry,
+// or the chip silently generates with no style at all. stylePresets.test asserts it.
 export const VISION_STYLES_FULL = [
-  'Warm Contemporary', 'Mid-Century', 'Japandi', 'Coastal', 'Modern', 'Bohemian', 'Rustic',
-  'Industrial', 'Art Deco', 'Minimalist', 'Maximalist', 'Dopamine', 'Biophilic',
+  'Trend 2026', 'Warm Contemporary', 'Mid-Century', 'Japandi', 'Coastal', 'Modern',
+  'Transitional', 'Bohemian', 'Rustic', 'Industrial', 'Art Deco', 'Minimalist',
+  'Maximalist', 'Dopamine', 'Biophilic',
 ] as const;
 
+// 2026 Colours of the Year. A MODIFIER, not a style: the chosen colour replaces
+// whichever accent the style's palette would have supplied, so it appears
+// whatever style — or reference photo — the concept is built from. Ids must match
+// the "Paint 2026" sheet of AI-Vision-Rulebook.xlsx; the server looks them up there.
+export const PAINT_2026 = [
+  { id: 'cloud_dancer',    label: 'Cloud Dancer',    hex: '#F0EEE9', brand: 'Pantone 11-4201' },
+  { id: 'silhouette',      label: 'Silhouette',      hex: '#6B4F3F', brand: 'Benjamin Moore AF-655' },
+  { id: 'universal_khaki', label: 'Universal Khaki', hex: '#C0B49A', brand: 'Sherwin-Williams SW 6150' },
+] as const;
+
+// Every entry MUST have a ROOM_NAME_TO_TYPE mapping, or the room silently falls
+// back to living_room and the user gets a sofa in their kitchen. Asserted too.
 export const ROOM_TYPES_FULL = [
-  'Living', 'Dining', 'Bedroom', 'Kitchen', 'Bathroom',
+  'Living', 'Dining', 'Living + Dining', 'Bedroom', 'Kitchen', 'Bathroom',
   'Home Office', 'Hallway', 'Kids Room', 'Outdoor',
 ] as const;
 
@@ -53,6 +68,9 @@ interface VisionExperienceProps {
   setSelectedStyle: (s: string) => void;
   selectedRoom: string;
   setSelectedRoom: (s: string) => void;
+  /** 2026 Colour of the Year id, or '' for off. A modifier, not a style. */
+  paintColor2026: string;
+  setPaintColor2026: (s: string) => void;
   isProcessing: boolean;
   results: string[];
   sessionConceptArchive: string[];
@@ -950,6 +968,54 @@ export default function VisionExperience(p: VisionExperienceProps) {
               );
             })}
           </div>
+        </div>
+
+        {/* Colour — the 2026 Colour of the Year modifier.
+            Deliberately its own row rather than a style chip: it does not replace
+            the style, it replaces the one accent colour the style's palette would
+            have chosen, so the colour is guaranteed to appear and the style
+            survives. Works with reference photos too, where no preset exists. */}
+        <div className="flex flex-col gap-3">
+          <div className="text-center font-display text-[18px] text-[#404040]">
+            Colour
+            <span className="ml-2 font-body text-[11px] tracking-[0.2em] uppercase font-bold text-[#6B6B6B]">optional</span>
+          </div>
+          <p className="text-center text-[11px] text-[#6B6B6B] leading-relaxed max-w-[54ch] mx-auto -mt-1">
+            The 2026 Colours of the Year. Not a style — it sits on top of whatever you picked above.
+          </p>
+          <div className="flex flex-wrap justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => p.setPaintColor2026('')}
+              className={`px-4 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-[0.16em] border transition-all ${p.paintColor2026 === '' ? 'bg-black text-white border-black' : 'bg-white text-[#404040] border-black/15 hover:border-black/55 hover:text-black'}`}
+            >
+              Off
+            </button>
+            {PAINT_2026.map((c) => {
+              const isActive = p.paintColor2026 === c.id;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  title={c.brand}
+                  onClick={() => p.setPaintColor2026(isActive ? '' : c.id)}
+                  className={`px-4 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-[0.16em] border transition-all inline-flex items-center gap-2 ${isActive ? 'bg-black text-white border-black' : 'bg-white text-[#404040] border-black/15 hover:border-black/55 hover:text-black'}`}
+                >
+                  <span
+                    aria-hidden
+                    className={`w-3.5 h-3.5 rounded-full border ${isActive ? 'border-white/50' : 'border-black/25'}`}
+                    style={{ backgroundColor: c.hex }}
+                  />
+                  {c.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-center font-display italic text-[15px] text-[#555]">
+            {p.paintColor2026
+              ? `${PAINT_2026.find(c => c.id === p.paintColor2026)?.label} will lead the palette. Everything else about your style stays.`
+              : 'Off — we use the colours that belong to your style.'}
+          </p>
         </div>
 
         {/* Which room */}

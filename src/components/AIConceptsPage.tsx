@@ -44,7 +44,12 @@ const ROUTER_KEY = 'ds_studio_router_v2';
 /** Free tier: max generated concepts in the UI row (paid tier can be raised later). */
 const FREE_TIER_MAX_CONCEPT_SLOTS = 3;
 
-// All styles available in AI Vision chip selector (superset of quiz styles)
+// SUPERSEDED. The live chips are VISION_STYLES_FULL / ROOM_TYPES_FULL in
+// VisionExperience.tsx; this pair only feeds the legacy sidebar below, which is
+// CSS-hidden whenever activeTool is 'vision'. Left at their old contents (and
+// old "Living Room"/"Dining Room" label convention, which ROOM_NAME_TO_TYPE
+// still resolves) rather than grown in parallel — add new chips to the FULL
+// lists only. Delete this block and both arrays when the legacy panel goes.
 const VISION_STYLES = [
   'Warm Contemporary', 'Japandi', 'Modern', 'Mid-Century', 'Bohemian', 'Rustic', 'Art Deco',
   'Industrial', 'Coastal', 'Minimalist', 'Maximalist', 'Dopamine', 'Biophilic'
@@ -130,6 +135,10 @@ const AIConceptsPage: React.FC = () => {
   const [apiAspectRatio, setApiAspectRatio] = useState<"1:1" | "3:4" | "4:3" | "9:16" | "16:9">("3:4");
   const [selectedStyle, setSelectedStyle] = useState<string>('');
   const [selectedRoom, setSelectedRoom] = useState<string>('');
+  // 2026 Colour of the Year — a MODIFIER, not a style. '' = off. Sent to the
+  // server, which uses it in place of the style palette's accent for this
+  // concept, so the colour appears whatever style or reference photos are used.
+  const [paintColor2026, setPaintColor2026] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingPhase, setProcessingPhase] = useState(0);
   /** 'extract' shows "Analyzing references…", 'generate' shows cycling phases. */
@@ -335,6 +344,7 @@ const AIConceptsPage: React.FC = () => {
     setRoomStructureWarning(false);
     setSelectedStyle('');
     setSelectedRoom('');
+    setPaintColor2026('');
     setResults([]);
     setSelectedConceptIndex(0);
     setSessionConceptArchive([]);
@@ -881,6 +891,7 @@ const AIConceptsPage: React.FC = () => {
           referenceImages: inspirationImages,
           stylePreset: selectedStyle || undefined,
           roomType: selectedRoom || undefined,
+          paintColor2026: paintColor2026 || undefined,
           variationSeed: isVariation ? variationSeedRef.current : undefined,
           isSampleRun: isSampleRun || undefined,
         }),
@@ -972,6 +983,7 @@ const AIConceptsPage: React.FC = () => {
     setRoomStructureWarning(false);
     setSelectedStyle('');
     setSelectedRoom('');
+    setPaintColor2026('');
     setError(null);
     setValidationError(null);
     setShoppingResults([]);
@@ -1262,6 +1274,8 @@ const AIConceptsPage: React.FC = () => {
           setSelectedStyle={setSelectedStyle}
           selectedRoom={selectedRoom}
           setSelectedRoom={setSelectedRoom}
+          paintColor2026={paintColor2026}
+          setPaintColor2026={setPaintColor2026}
           isProcessing={isProcessing}
           results={results}
           sessionConceptArchive={sessionConceptArchive}

@@ -16,6 +16,7 @@ import { GoogleGenAI } from "@google/genai";
 
 // ─── AI Vision pipeline services ──────────────────────────────────────────────
 import { extractStyleBrief } from "./services/aiVision/styleExtraction.js";
+import { pickAccent } from "./services/aiVision/promptTemplates.js";
 import { generateConcept } from "./services/aiVision/generateConcept.js";
 import { getCacheKey, getCachedBrief, setCachedBrief } from "./services/aiVision/styleCache.js";
 import { analyzeRoomStructure, renderSpatialConstraints, isSingleWallShot } from "./services/aiVision/spatialAnalysis.js";
@@ -2918,6 +2919,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
       stylePreset,
       roomType,
       variationSeed,
+      paintColor2026,
       isSampleRun = false,
     } = req.body ?? {};
 
@@ -3031,6 +3033,19 @@ Output ONLY valid JSON, no markdown fences, no commentary:
       // room and only adds furniture, so it never invents doorways/windows. Auto
       // Gemini fallback. `spatialConstraints`/`sourceStructure` are used only by
       // the Gemini fallback path.
+      // One accent colour per concept. Picked HERE, not inside the prompt
+      // builder, so the same colour survives a corrective retry and can be
+      // reported back to the client. A chosen 2026 paint outranks the palette.
+      //
+      // NOTE: this must stay OUT of the style-brief cache key. Briefs are cached
+      // by getCacheKey(); folding the colour in would cache it with them and the
+      // next generation would inherit a colour the user never asked for.
+      const accent = pickAccent(
+        hasRefs ? undefined : resolvedPreset,
+        typeof variationSeed === "number" ? variationSeed : undefined,
+        typeof paintColor2026 === "string" && paintColor2026 ? paintColor2026 : undefined,
+      );
+
       const { url: conceptDataUrl, engine } = await generateConcept({
         roomPhoto: parsedRoom,
         styleBrief,
@@ -3038,6 +3053,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
         variationSeed: typeof variationSeed === "number" ? variationSeed : undefined,
         spatialConstraints,
         sourceStructure: structure,
+        accent,
       });
       // I-010 — concept image generation. Attribute cost to the engine actually used.
       bumpApiCount(engine === "staging" ? "fal" : "gemini");
@@ -3047,6 +3063,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
       return res.json({
         success: true,
         conceptUrl: conceptDataUrl,
+        accent: accent ? { name: accent.name, hex: accent.hex, brand: accent.brand ?? null } : null,
         generationsLeft: user.generationsLeft,
       });
 
