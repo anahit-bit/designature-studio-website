@@ -311,9 +311,13 @@ const AMERIA_ORDER_ID_SEQUENCE = `
       (SELECT COALESCE(MAX(ameria_order_id), 0) FROM orders),
       (SELECT COALESCE(MAX(ameria_order_id), 0) FROM subscription_payments),
       (SELECT last_value FROM ameria_order_id_seq)
-    ) + 1000
+    ) + 1
   );
 `;
+// ⚠️ The gap here is deliberately +1, NOT a round safety margin. The bank's SANDBOX only
+// accepts OrderIDs in AMERIA_SANDBOX_ORDER_ID_MIN..MAX (4423001..4424000) — a window of
+// 1000 — and `orders` is already near the top of it. A larger gap overshoots the ceiling
+// and the bank rejects every sandbox payment. Production has no such window.
 
 // Point the existing streams at the shared sequence. Only affects NEW inserts —
 // existing rows keep the ids already sent to the bank.
