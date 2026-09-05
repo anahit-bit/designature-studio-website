@@ -406,6 +406,16 @@ export const STYLE_PALETTES: Record<string, PaletteColour[]> = {
   ],
 };
 
+/**
+ * The room chips the picker offers, in workbook order. Retiring a room is a
+ * "Live in UI?" cell, not a code edit — and stylePresets.test asserts
+ * VisionExperience's ROOM_TYPES_FULL matches this exactly, so the rulebook and
+ * the room picker cannot disagree about what the tool does. (They did: RD19 put
+ * outdoor out of scope on 2026-08-29 and the Outdoor chip stayed live until
+ * 2026-09-05.)
+ */
+export const LIVE_ROOM_CHIPS: string[] = ["Living", "Dining", "Bedroom", "Kitchen", "Bathroom", "Home Office", "Kids Room", "Hallway", "Living + Dining"];
+
 /** What furniture each room type must contain. */
 export const ROOM_PROGRAM_RULES: Record<string, string> = {
   living_room: `The room MUST be a fully realized LIVING ROOM. Include ONLY furniture appropriate to a living room - a sofa, one or two armchairs, a coffee table, side tables, floor or table lamps, a rug, wall art, plants, and appropriate styling, every piece sized to the floor area the photograph actually shows. In a small room, fewer and smaller pieces are the right answer; never widen the room to fit the furniture. Do NOT include dining tables, beds, kitchen cabinetry, desks, or bathroom fixtures.`,

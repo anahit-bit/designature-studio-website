@@ -49,9 +49,19 @@ export const PAINT_2026 = [
 
 // Every entry MUST have a ROOM_NAME_TO_TYPE mapping, or the room silently falls
 // back to living_room and the user gets a sofa in their kitchen. Asserted too.
+// Must match LIVE_ROOM_CHIPS in the compiled rulebook — the "Live in UI?" column
+// of the Room Programs sheet — which stylePresets.test asserts both ways.
+// Retiring a room is a workbook cell, not a code edit.
+//
+// Outdoor was retired 2026-09-05. RD19 put outdoor and open-air spaces out of
+// scope on 2026-08-29 (both open-air pilot cases came back as entirely new
+// structures) while the chip stayed live, so the rulebook and the product
+// disagreed about what the tool does. The room TYPE and its programme survive, so
+// an older saved concept — or an API caller passing "Outdoor" — still resolves to
+// the right programme instead of silently becoming a living room.
 export const ROOM_TYPES_FULL = [
   'Living', 'Dining', 'Living + Dining', 'Bedroom', 'Kitchen', 'Bathroom',
-  'Home Office', 'Hallway', 'Kids Room', 'Outdoor',
+  'Home Office', 'Hallway', 'Kids Room',
 ] as const;
 
 const SAMPLE_BEFORE = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776281427/photo_t1vo5h.png';

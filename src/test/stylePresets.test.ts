@@ -6,7 +6,7 @@ import {
   ROOM_TYPE_LABELS,
 } from '../../services/aiVision/stylePresets';
 import { ROOM_PROGRAM_RULES, pickAccent, renderAccent } from '../../services/aiVision/promptTemplates';
-import { STYLE_PALETTES, PAINT_MODIFIERS } from '../../services/aiVision/rulebook.generated';
+import { STYLE_PALETTES, PAINT_MODIFIERS, LIVE_ROOM_CHIPS } from '../../services/aiVision/rulebook.generated';
 import { VISION_STYLES_FULL, ROOM_TYPES_FULL } from '../components/VisionExperience';
 
 describe('mid_century preset · modern interpretation (not a literal 1950s-60s replica)', () => {
@@ -198,11 +198,30 @@ describe('chip lists are fully wired to presets', () => {
     }
   });
 
-  it('every room program is reachable from a chip — no orphans', () => {
-    const reachable = new Set(ROOM_TYPES_FULL.map((l) => ROOM_NAME_TO_TYPE[l]));
-    for (const key of Object.keys(ROOM_PROGRAM_RULES)) {
-      expect(reachable.has(key as never), `room type "${key}" has a program but no chip`).toBe(true);
+  // The room picker is the workbook's "Live in UI?" column, not a hand-kept
+  // array. RD19 put outdoor out of scope on 2026-08-29 and the Outdoor chip
+  // stayed live until 2026-09-05 — the rulebook and the product disagreed about
+  // what the tool does for five weeks, because nothing tied them together.
+  // Which rooms are offered is the workbook's call; the ORDER they appear in is
+  // the UI's (Living + Dining reads best beside Living and Dining, not at the
+  // end where its row happens to sit). So this compares the sets, not the lists.
+  it('the room picker offers exactly the rooms the workbook marks live', () => {
+    expect([...ROOM_TYPES_FULL].sort()).toEqual([...LIVE_ROOM_CHIPS].sort());
+  });
+
+  it('a retired room keeps its programme, so old requests still resolve', () => {
+    // Retiring a chip must not orphan the room type: a saved concept, or an API
+    // caller passing "Outdoor", has to reach the outdoor programme rather than
+    // silently falling through to living_room.
+    const live = new Set(ROOM_TYPES_FULL.map((l) => ROOM_NAME_TO_TYPE[l]));
+    const retired = Object.keys(ROOM_PROGRAM_RULES).filter((k) => !live.has(k as never));
+    for (const key of retired) {
+      expect(ROOM_PROGRAM_RULES[key]?.trim(), `retired room "${key}" lost its programme`).toBeTruthy();
+      expect(ROOM_TYPE_LABELS[key as never], `retired room "${key}" lost its label`).toBeTruthy();
+      const reachable = Object.entries(ROOM_NAME_TO_TYPE).some(([, v]) => v === key);
+      expect(reachable, `retired room "${key}" is unreachable even by name`).toBe(true);
     }
+    expect(retired, 'outdoor should be the only retired room').toEqual(['outdoor']);
   });
 });
 

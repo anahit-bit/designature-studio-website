@@ -180,8 +180,9 @@ def main() -> None:
     # ── Room programs ───────────────────────────────────────────────────────
     ws = wb["Room Programs"]
     col = cols_of(ws)
-    need(ws, col, "Room Programs", "Room key", "Programme rule handed to the model")
-    programs = {}
+    need(ws, col, "Room Programs", "Room key", "Programme rule handed to the model",
+         "Room (UI chip)", "Live in UI?")
+    programs, live_chips = {}, []
     for row in ws.iter_rows(min_row=2, values_only=True):
         if not row or not row[col["Room key"]]:
             continue
@@ -190,6 +191,19 @@ def main() -> None:
         if not text:
             sys.exit(f"Room '{key}' has no programme rule — it would generate a living room.")
         programs[key] = text
+        # "Live in UI?" decides which chips the room picker offers. A room can be
+        # retired from the UI (RD19 put Outdoor out of scope) while keeping its
+        # programme, so an old saved concept or an API caller passing that room
+        # still resolves to the right programme instead of silently becoming a
+        # living room.
+        if str(row[col["Live in UI?"]] or "").strip().lower() in ("yes", "true", "y", "1"):
+            chip = str(row[col["Room (UI chip)"]] or "").strip()
+            if not chip:
+                sys.exit(f"Room '{key}' is live in the UI but has no chip label.")
+            live_chips.append(chip)
+
+    if not live_chips:
+        sys.exit("No room is live in the UI — the room picker would be empty.")
 
     # ── Paint 2026 ──────────────────────────────────────────────────────────
     ws = wb["Paint 2026"]
@@ -223,6 +237,8 @@ def main() -> None:
     sections_ts = "\n".join(
         f'  {name}: `{esc(block(sections[name]))}`,' for name in PROMPT_SECTIONS
     )
+
+    live_chips_ts = ", ".join(f'"{esc(c)}"' for c in live_chips)
 
     briefs_ts = "\n".join(f'  {k}: `{esc(v)}`,' for k, v in briefs.items())
     programs_ts = "\n".join(f'  {k}: `{esc(v)}`,' for k, v in programs.items())
@@ -323,6 +339,16 @@ export const STYLE_BRIEFS: Record<string, string> = {{
 export const STYLE_PALETTES: Record<string, PaletteColour[]> = {{
 {palettes_ts}
 }};
+
+/**
+ * The room chips the picker offers, in workbook order. Retiring a room is a
+ * "Live in UI?" cell, not a code edit — and stylePresets.test asserts
+ * VisionExperience's ROOM_TYPES_FULL matches this exactly, so the rulebook and
+ * the room picker cannot disagree about what the tool does. (They did: RD19 put
+ * outdoor out of scope on 2026-08-29 and the Outdoor chip stayed live until
+ * 2026-09-05.)
+ */
+export const LIVE_ROOM_CHIPS: string[] = [{live_chips_ts}];
 
 /** What furniture each room type must contain. */
 export const ROOM_PROGRAM_RULES: Record<string, string> = {{

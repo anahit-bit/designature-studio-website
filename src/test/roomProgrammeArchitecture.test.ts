@@ -196,11 +196,16 @@ describe('RD25 · a windowless room is still measured', () => {
 });
 
 describe('room detection replaces the silent living-room fallback', () => {
-  it('every room type has a chip label the UI actually shows', () => {
+  it('every room type has a chip label, live or retired', () => {
+    // Every type needs a readable name even when it is no longer offered: the
+    // server reports the DETECTED room back to the UI, and a retired room (RD19
+    // put outdoor out of scope) must still come back as a word, not a key.
     for (const room of Object.keys(ROOM_TYPE_LABELS) as RoomType[]) {
-      const chip = ROOM_TYPE_TO_CHIP[room];
-      expect(chip, `${room} has no chip label`).toBeTruthy();
-      expect(ROOM_TYPES_FULL as readonly string[], `${chip} is not a live chip`).toContain(chip);
+      expect(ROOM_TYPE_TO_CHIP[room], `${room} has no chip label`).toBeTruthy();
+    }
+    const live = (ROOM_TYPES_FULL as readonly string[]);
+    for (const chip of live) {
+      expect(Object.values(ROOM_TYPE_TO_CHIP), `live chip ${chip} maps to no room type`).toContain(chip);
     }
   });
 });
