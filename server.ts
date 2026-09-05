@@ -34,6 +34,7 @@ import { SHOPPING_TAXONOMY, SHOPPING_TAXONOMY_IDS, categoryToTaxonomyId } from "
 // ─── Payments foundation (I-024 / B0): Postgres migration at boot ─────────────
 import { runMigrations } from "./db/migrate.js";
 import { getPool } from "./db/pgPool.js";
+import { meterSpend, meterRefund, CREDITS_ENABLED, InsufficientCreditsError } from "./services/credits/meter.js";
 import { loadState, saveState } from "./db/state.js";
 import { sendEmail } from "./lib/email.js";
 import { computeNextRenewal, type PlatformCadence } from "./services/platforms/renewal.js";
@@ -2294,7 +2295,21 @@ Output ONLY valid JSON, no markdown fences, no commentary:
         writeDB(dbShop);
       }
       console.log(`[SHOP] ${shopUser.email} | isPaid=${shopUser.isPaid} | shoppingListsLeft=${shopUser.shoppingListsLeft}`);
-      if (shopUser.shoppingListsLeft < 1) {
+      // Credit model (flagged). When CREDITS_ENABLED the ledger meters the run and the
+      // tier counters are bypassed; when off, none of this executes.
+      let shopCreditReceipt: Awaited<ReturnType<typeof meterSpend>> = null;
+      if (CREDITS_ENABLED) {
+        try {
+            shopCreditReceipt = await meterSpend(googleIdShopping, "shop", { unlimited: isUnlimitedAccountEmail(shopUser.email) });
+        } catch (err) {
+            if (err instanceof InsufficientCreditsError) {
+              return res.status(402).json({ error: "Not enough credits.", required: err.required, available: err.available });
+            }
+            throw err;
+        }
+      }
+
+      if (!CREDITS_ENABLED && shopUser.shoppingListsLeft < 1) {
         return res.status(403).json({
           error: "No shopping list runs left",
           shoppingListsLeft: shopUser.shoppingListsLeft,
@@ -3241,7 +3256,21 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     const user = db.users[googleId];
     if (!user) return res.status(404).json({ error: "User not found." });
 
-    if (user.generationsLeft <= 0 && !isSampleRun) {
+    // Credit model (flagged). When CREDITS_ENABLED the ledger meters the run and the
+    // tier counters are bypassed; when off, none of this executes.
+    let creditReceipt: Awaited<ReturnType<typeof meterSpend>> = null;
+    if (CREDITS_ENABLED && !isSampleRun) {
+      try {
+        creditReceipt = await meterSpend(googleId, "redesign", { unlimited: isUnlimitedAccountEmail(user.email) });
+      } catch (err) {
+        if (err instanceof InsufficientCreditsError) {
+          return res.status(402).json({ error: "Not enough credits.", required: err.required, available: err.available });
+        }
+        throw err;
+      }
+    }
+
+    if (!CREDITS_ENABLED && user.generationsLeft <= 0 && !isSampleRun) {
       return res
         .status(403)
         .json({ error: "No generations left.", generationsLeft: 0 });
@@ -3251,7 +3280,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     // the refund so sample/unlimited runs (which never decrement) never gain credit.
     const genBeforeDecrement = user.generationsLeft;
     let quotaDecremented = false;
-    if (!isSampleRun && user.generationsLeft < UNLIMITED_QUOTA) {
+    if (!CREDITS_ENABLED && !isSampleRun && user.generationsLeft < UNLIMITED_QUOTA) {
       user.generationsLeft -= 1;
       user.lastUsed = new Date().toISOString();
       db.users[googleId] = user;
@@ -3354,6 +3383,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
 
       // Server-authoritative refund: only if THIS request decremented, credit back
       // exactly the 1 it took — never above the pre-decrement balance (genBeforeDecrement).
+      await meterRefund(creditReceipt);   // credit path: bounded by the receipt
       if (quotaDecremented) {
         try {
           const dbRetry = readDB();
@@ -3832,7 +3862,24 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     const isMeteredAudit = !user.isPaid && !isConceptTestAccountEmail(user.email);
     const auditBeforeDecrement = user.generationsLeft;
     let auditQuotaDecremented = false;
-    if (isMeteredAudit) {
+
+    // Credit model (flagged). Room Audit is its own card with its own price — under the
+    // tier system it shared the concepts pool, which the credit model makes unnecessary.
+    let auditCreditReceipt: Awaited<ReturnType<typeof meterSpend>> = null;
+    if (CREDITS_ENABLED && isMeteredAudit) {
+      try {
+        auditCreditReceipt = await meterSpend(googleId, "score-room", {
+          unlimited: isUnlimitedAccountEmail(user.email),
+        });
+      } catch (err) {
+        if (err instanceof InsufficientCreditsError) {
+          return res.status(402).json({ error: "Not enough credits.", required: err.required, available: err.available });
+        }
+        throw err;
+      }
+    }
+
+    if (!CREDITS_ENABLED && isMeteredAudit) {
       if (user.generationsLeft <= 0) {
         return res.status(403).json({ error: "No generations left.", generationsLeft: 0 });
       }
@@ -3913,6 +3960,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
       // Server-authoritative refund: only if THIS request decremented, credit back
       // exactly the 1 it took — never above the pre-decrement balance.
+      await meterRefund(auditCreditReceipt);   // credit path: bounded by the receipt
       if (auditQuotaDecremented) {
         try {
           const dbRetry = readDB();
