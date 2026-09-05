@@ -9,6 +9,8 @@ import FeedbackBand from './FeedbackBand';
 import Marquee from './studio/Marquee';
 import { STYLES } from './AIVisionShowcase';
 import { ConsultationReviewBand } from './ConsultationCTA';
+import NextStepBand from './studio/NextStepBand';
+import DesignerCheck from './studio/DesignerCheck';
 
 // Responsive ladders matched to the surfaces they serve.
 // AI-030f: HERO_FULL + RESULT_AFTER ladders widened so high-DPR / 4K
@@ -113,6 +115,8 @@ interface VisionExperienceProps {
   setError: (e: string | null) => void;
   isLightboxOpen: boolean;
   setIsLightboxOpen: (b: boolean) => void;
+  /** AI-032 v2 seam — hand off to the next card in the workflow. */
+  onGoToTool?: (id: string) => void;
   translateStyle: (s: string) => string;
 }
 
@@ -125,6 +129,9 @@ export default function VisionExperience(p: VisionExperienceProps) {
   // Library (paid feature) so they can re-open/download/share it later. Free users
   // get an upsell instead of a fake "Saved". `signedIn` guards the preview no-op.
   const [savedMarks, setSavedMarks] = useState<Set<string>>(new Set());
+  // AI-038 — a Designer Check is written against ONE saved artifact, so the
+  // review needs the id the save returns, not just the "it saved" mark.
+  const [savedItemId, setSavedItemId] = useState<string | null>(null);
   const [savingConcept, setSavingConcept] = useState(false);
   const signedIn = !!getStoredToken();
   const canSaveLibrary = signedIn && p.isPaid; // saving to the Library is paid-only
@@ -138,11 +145,12 @@ export default function VisionExperience(p: VisionExperienceProps) {
     try {
       const style = p.selectedStyle ? p.translateStyle(p.selectedStyle) : 'Concept';
       const room = p.selectedRoom || 'Room';
-      await accountApi.saveLibraryItem({
+      const saved = await accountApi.saveLibraryItem({
         tool: 'ai_vision',
         title: `${room} — ${style}`,
         imageDataUrl: p.selectedConceptUrl,
       });
+      setSavedItemId(saved?.id ?? null);
       markSaved(conceptMark);
       setSavedMarks((prev) => new Set(prev).add(conceptMark));
     } catch {
@@ -751,6 +759,17 @@ export default function VisionExperience(p: VisionExperienceProps) {
       </section>
       {/* One conversion band per AI result — the contextual $99 review + a full-project
           rung (ConsultationReviewBand). Replaces the old "Get this designed → studio" band. */}
+      {canSaveLibrary && (
+        <div className="px-6 md:px-10 py-5 border-t border-black/8">
+          <DesignerCheck
+            itemId={savedItemId}
+            tool="redesign"
+            nextTool="shop"
+            onNeedsSave={handleSaveConcept}
+          />
+        </div>
+      )}
+      <NextStepBand toolId="redesign" onGo={p.onGoToTool} />
       <ConsultationReviewBand tool="vision" />
       </div>
     );
@@ -931,12 +950,21 @@ export default function VisionExperience(p: VisionExperienceProps) {
             {VISION_STYLES_FULL.map((style) => {
               const isPrimaryDna = p.quizDone && p.quizResult[0]?.style === style && p.selectedStyle === style;
               const isActive = p.selectedStyle === style;
+              // Trend 2026 is the one editorial, dated entry in a list of personal
+              // tastes, so it gets terracotta while unselected — the only accent
+              // free here, since cobalt already means "your quiz DNA match" and
+              // black means "selected". Selected still goes black like the rest:
+              // once it is chosen it is just your style, and two selected states
+              // would say there are two kinds of chosen.
+              const isTrend = style === 'Trend 2026';
               const base = 'px-4 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-[0.16em] border transition-all';
               const classes = isPrimaryDna
                 ? `${base} bg-[#0047AB] text-white border-[#0047AB]`
                 : isActive
                   ? `${base} bg-black text-white border-black`
-                  : `${base} bg-white text-[#404040] border-black/15 hover:border-black/55 hover:text-black`;
+                  : isTrend
+                    ? `${base} bg-[#9E5E41]/[0.07] text-[#9E5E41] border-[#9E5E41]/55 hover:bg-[#9E5E41]/[0.13] hover:border-[#9E5E41]`
+                    : `${base} bg-white text-[#404040] border-black/15 hover:border-black/55 hover:text-black`;
               return (
                 <button
                   key={style}
@@ -944,7 +972,9 @@ export default function VisionExperience(p: VisionExperienceProps) {
                   onClick={() => p.setSelectedStyle(style)}
                   className={classes}
                 >
-                  {isPrimaryDna && '✦ '}{p.translateStyle(style)}
+                  {isPrimaryDna && '✦ '}
+                  {isTrend && !isActive && <span aria-hidden="true">&#9670; </span>}
+                  {p.translateStyle(style)}
                 </button>
               );
             })}

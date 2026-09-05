@@ -20,6 +20,16 @@ import RetailerLogoStrip from './RetailerLogoStrip';
 import ExplorerRail from './studio/ExplorerRail';
 import { ExplorerPanelHeader, ComingSoonPanel } from './studio/ExplorerPanel';
 import { EXPLORER_TOOLS, toolById, DEFAULT_TOOL_ID, LIVE_HASH_TO_ID } from './studio/explorerRoster';
+import StartHerePanel from './studio/StartHerePanel';
+import {
+  EMPTY_ROUTER_STATE,
+  SCENARIOS,
+  hasWorkflow,
+  resultForState,
+  type QuestionId,
+  type RouterState,
+} from '../data/studioRouter';
+import StudioNudge from './studio/StudioNudge';
 import type { StudioTool } from './studio/StudioTabs';
 import { cld, cldSrcSet } from '../lib/cld';
 import { useShoppingStatus } from '../lib/shoppingStatus';
@@ -28,6 +38,8 @@ import { trackEvent } from '../lib/analytics';
 import { popSigninSource } from '../lib/signinSource';
 
 const CALENDLY_URL = 'https://calendly.com/hello-designature/quick-conversation';
+/** Where a guest's in-progress workflow is kept for the session. */
+const ROUTER_KEY = 'ds_studio_router_v2';
 
 /** Free tier: max generated concepts in the UI row (paid tier can be raised later). */
 const FREE_TIER_MAX_CONCEPT_SLOTS = 3;
@@ -562,10 +574,77 @@ const AIConceptsPage: React.FC = () => {
     setSelectedId(LIVE_HASH_TO_ID[lt]);
   }, []);
 
+  /**
+   * NOTE — there is deliberately no "you'll lose your work" prompt on tool
+   * switching, because switching does not lose it.
+   *
+   * `results`, `sessionConceptArchive`, `shoppingResults` and `auditComplete` are
+   * all page state; changing card only swaps which panel renders. The only things
+   * that clear them are `resetEphemeralState()` (logout / account switch, which
+   * fixes a cross-account leak) and the tool's own "start over".
+   *
+   * An earlier version of this file DID prompt, and it was simply wrong: it told
+   * people their concepts would be cleared and then kept them. A warning that
+   * cries wolf is worse than none, because it also devalues the `beforeunload`
+   * warning below, which guards the real risk — reloading or leaving the page.
+   */
+
+  /**
+   * AI-032 v2 — the "Start here" survey replaces the panel body when open. Kept as
+   * its own flag rather than a magic `selectedId`, so every existing code path that
+   * assumes selectedId is a real roster slug keeps working untouched.
+   */
+  const [showStartHere, setShowStartHere] = useState(false);
+
+  /**
+   * The router state lives HERE, not inside the panel, because the rail has to
+   * render the same workflow — "after the plan is generated the left pane must
+   * show the plan". One owner, two readers, no chance of them disagreeing.
+   */
+  const [routerState, setRouterState] = useState<RouterState>(() => {
+    try {
+      const raw = sessionStorage.getItem(ROUTER_KEY);
+      return raw ? (JSON.parse(raw) as RouterState) : EMPTY_ROUTER_STATE;
+    } catch {
+      return EMPTY_ROUTER_STATE; // private mode — the router just won't resume
+    }
+  });
+
+  useEffect(() => {
+    try { sessionStorage.setItem(ROUTER_KEY, JSON.stringify(routerState)); }
+    catch { /* storage blocked — everything still works, it just won't resume */ }
+  }, [routerState]);
+
+  const routerResult = useMemo(() => resultForState(routerState), [routerState]);
+  const workflowReady = hasWorkflow(routerState);
+
+  /** Picking an identity by name fills its answers AND locks the scenario. */
+  const pickScenario = useCallback((scenarioId: string) => {
+    const sc = SCENARIOS.find((x) => x.id === scenarioId);
+    if (!sc) return;
+    setRouterState({ pickedId: scenarioId, answers: { ...sc.prefill } });
+  }, []);
+
+  const answerQuestion = useCallback((id: QuestionId, value: string) => {
+    setRouterState((prev) => ({ ...prev, answers: { ...prev.answers, [id]: value } }));
+  }, []);
+
+  const resetRouter = useCallback(() => setRouterState(EMPTY_ROUTER_STATE), []);
+
+  const openStartHere = useCallback(() => {
+    setShowStartHere(true);
+    // No unsaved-work prompt here: the survey only swaps the panel body, and the
+    // tool's results live in page state, so coming back restores them intact.
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, []);
+
+
   /** Rail card click. Live cards drive activeTool; non-live cards just open the
-   *  Coming-Soon panel. Blocked mid-generation so we never drop a running job. */
+   *  Coming-Soon panel. Blocked mid-generation so we never drop a running job.
+   *  Finished results survive the switch — see the note above. */
   const handleSelectTool = useCallback((id: string) => {
     const tool = toolById(id);
+    // Still blocked mid-generation — that one IS real: a running job is lost.
     if (!tool || isProcessing) return;
     setSelectedId(id);
     if (tool.liveTool) setActiveTool(tool.liveTool);
@@ -1131,10 +1210,27 @@ const AIConceptsPage: React.FC = () => {
     <div className="min-h-screen bg-white flex flex-col font-body text-black">
       <Header />
 
+      {/* Someone still scrolling the rail after a while has told us, by that act,
+          that they have not found their card. Offered once, from the corner. */}
+      {!showStartHere && (
+        <StudioNudge onOpen={openStartHere} busy={isProcessing || auditProcessing} />
+      )}
+
       {/* ── AI-021 EXPLORER shell: dark card rail (left) + auth-aware panel (right) ── */}
       <div id="ai-concepts-tools" className="pt-24 scroll-mt-24 lg:flex lg:items-start">
-        <ExplorerRail selectedId={selectedId} onSelect={handleSelectTool} usedIds={usedTools} />
+        <ExplorerRail
+          selectedId={selectedId}
+          onSelect={(id) => { setShowStartHere(false); handleSelectTool(id); }}
+          usedIds={usedTools}
+          onStartHere={openStartHere}
+          startHereOn={showStartHere}
+          workflow={workflowReady ? routerResult : null}
+          onOpenStep={(id) => { setShowStartHere(false); handleSelectTool(id); }}
+          onChangeWorkflow={openStartHere}
+          onClearWorkflow={resetRouter}
+        />
         <div className="flex-1 min-w-0 flex flex-col bg-white lg:min-h-[calc(100vh-6rem)]">
+          {!showStartHere && (
           <ExplorerPanelHeader
             tool={selectedTool}
             user={user}
@@ -1145,10 +1241,20 @@ const AIConceptsPage: React.FC = () => {
             unlockAllLabel={t('ai.unlockAll')}
             noCardLabel={t('ai.noCard')}
           />
+          )}
 
           {/* ── LIVE tool experiences (unchanged) render for the 4 shipped tools;
                  the 12 not-yet-built tools fall through to <ComingSoonPanel/> below. ── */}
-          {isLiveSelected ? (
+          {showStartHere ? (
+            <StartHerePanel
+              state={routerState}
+              onPick={pickScenario}
+              onAnswer={answerQuestion}
+              onReset={resetRouter}
+              onOpenTool={(id) => { setShowStartHere(false); handleSelectTool(id); }}
+              onBookCall={() => window.open(CALENDLY_URL, '_blank', 'noopener')}
+            />
+          ) : isLiveSelected ? (
           <>
           {/* AI-021 — the old cobalt "active tool" stripe is now the ExplorerPanelHeader. */}
 
@@ -1160,6 +1266,7 @@ const AIConceptsPage: React.FC = () => {
       {/* ── AI VISION EXPERIENCE (logged-in, AI-023 Variant D) ── */}
       {!authLoading && user && activeTool === 'vision' && (
         <VisionExperience
+          onGoToTool={handleSelectTool}
           roomImage={roomImage}
           structureWarning={roomStructureWarning}
           inspirationImages={inspirationImages}
@@ -1242,6 +1349,7 @@ const AIConceptsPage: React.FC = () => {
            guardrails stay in this file and are passed in as handlers/state. */}
       {!authLoading && user && activeTool === 'shopping' && (
         <ShoppingExperience
+          onGoToTool={handleSelectTool}
           user={user}
           shoppingResults={shoppingResults}
           shoppingTeaser={shoppingTeaser}
@@ -2165,7 +2273,7 @@ const AIConceptsPage: React.FC = () => {
 
               {/* ══ STYLE QUIZ (self-contained screen — PHASE 1 redesign) ══ */}
               {activeTool === 'quiz' && (
-                <StyleQuizScreen onApplyStyle={handleApplyQuizStyle} onSignIn={triggerGoogleSignIn} />
+                <StyleQuizScreen onApplyStyle={handleApplyQuizStyle} onSignIn={triggerGoogleSignIn} onGoToTool={handleSelectTool} />
               )}
 
               {/* ══ SHOP THIS LOOK (legacy inline flow — superseded by <ShoppingExperience/>;

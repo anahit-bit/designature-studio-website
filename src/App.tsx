@@ -22,6 +22,7 @@ import AdminLoginPage from './components/AdminLoginPage';
 import AdminUsersPage from './components/AdminUsersPage';
 import AdminOrdersPage from './components/AdminOrdersPage';
 import AdminCommentsPage from './components/AdminCommentsPage';
+import AdminReviewsPage from './components/AdminReviewsPage';
 import AdminWaitlistPage from './components/AdminWaitlistPage';
 import AdminFeedbackPage from './components/AdminFeedbackPage';
 import AdminPlatformsPage from './components/AdminPlatformsPage';
@@ -192,6 +193,7 @@ const App: React.FC = () => (
             <Route path="/admin/users" element={<AdminUsersPage />} />
             <Route path="/admin/orders" element={<AdminOrdersPage />} />
             <Route path="/admin/comments" element={<AdminCommentsPage />} />
+            <Route path="/admin/reviews" element={<AdminReviewsPage />} />
             <Route path="/admin/waitlist" element={<AdminWaitlistPage />} />
             <Route path="/admin/feedback" element={<AdminFeedbackPage />} />
             <Route path="/admin/platforms" element={<AdminPlatformsPage />} />

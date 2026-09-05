@@ -42,6 +42,13 @@ export interface ExplorerTool {
   featured?: boolean;
   /** Copy-only chaining hint ("Best after: X · Next: Y"). Plain text; bold at render. */
   chain: string;
+  /**
+   * The card this one hands off to — a roster id, NOT display copy. Drives the
+   * next-step band at the end of a finished run, so the handoff is navigable
+   * instead of a sentence nobody reads. Absent where a card ends a workflow.
+   * A unit test keeps it in agreement with `chain`.
+   */
+  next?: string;
   /** Placeholder gradient thumbnail until real imagery lands (content task). */
   vis: string;
   /**
@@ -107,6 +114,9 @@ const V = {
   v13: 'linear-gradient(135deg,#3a4a5a,#161f2a)',
   v14: 'linear-gradient(135deg,#7a5a6a,#2a1f25)',
   v15: 'linear-gradient(135deg,#5a5a4a,#22221a)',
+  v16: 'linear-gradient(135deg,#4a6a7a,#1a2830)',
+  v17: 'linear-gradient(135deg,#8a5a4a,#2a1a15)',
+  v18: 'linear-gradient(135deg,#6a6a5a,#26261e)',
 } as const;
 
 export const EXPLORER_TOOLS: ExplorerTool[] = [
@@ -120,6 +130,7 @@ export const EXPLORER_TOOLS: ExplorerTool[] = [
     give: 'Pick the rooms you love — 8 quick taps.',
     get: 'Your named style profile + palette leaning.',
     chain: 'Next: Redesign My Room',
+    next: 'redesign',
   },
   {
     id: 'score-room', phase: 0, name: 'Score My Room', vis: V.v8,
@@ -130,6 +141,7 @@ export const EXPLORER_TOOLS: ExplorerTool[] = [
     give: 'A photo of your room.',
     get: 'A professional critique — what works, what to fix, where the wins are.',
     chain: 'Next: Redesign My Room',
+    next: 'redesign',
   },
   {
     id: 'localize', phase: 0, name: 'Localize My Style', vis: V.v2,
@@ -148,6 +160,7 @@ export const EXPLORER_TOOLS: ExplorerTool[] = [
     give: 'Room dimensions (or a sketch) + what the room must do.',
     get: 'A to-scale furniture layout with circulation mapped.',
     chain: 'Next: Light My Room',
+    next: 'light-room',
   },
   {
     id: 'plan-home', phase: 1, name: 'Plan My Home', vis: V.v4,
@@ -156,6 +169,7 @@ export const EXPLORER_TOOLS: ExplorerTool[] = [
     give: 'Whole-apartment dimensions or your plan + needs.',
     get: 'A full-floor layout with zoning & wall suggestions.',
     chain: 'Next: Wire My Room',
+    next: 'wire-room',
   },
   {
     id: 'light-room', phase: 1, name: 'Light My Room', vis: V.v5,
@@ -163,6 +177,23 @@ export const EXPLORER_TOOLS: ExplorerTool[] = [
     tagline: 'A layered lighting scheme — the warmth and atmosphere, not the wiring.',
     give: 'A room photo or floorplan + the mood you want.',
     get: 'Fixtures, placement & ambient/task/accent layers.',
+    chain: 'Best after: Plan My Room',
+  },
+  {
+    id: 'plumb-room', phase: 1, name: 'Plumb My Room', vis: V.v16,
+    tier: 'Design', lvl: 'design', status: 'soon',
+    tagline: 'Where the water goes — fixtures, falls and supply runs a plumber can build from.',
+    give: 'Your kitchen or bathroom plan + the fixtures you want.',
+    get: 'Fixture positions, drainage falls & supply runs.',
+    chain: 'Best after: Plan My Room · Next: Light My Room',
+    next: 'light-room',
+  },
+  {
+    id: 'heat-room', phase: 1, name: 'Heat My Room', vis: V.v17,
+    tier: 'Design', lvl: 'design', status: 'soon',
+    tagline: 'Radiators, AC and underfloor — where the warmth comes from, and how much you need.',
+    give: 'Your plan + your climate and glazing.',
+    get: 'Emitter positions and sizes, room by room.',
     chain: 'Best after: Plan My Room',
   },
   {
@@ -184,6 +215,7 @@ export const EXPLORER_TOOLS: ExplorerTool[] = [
     give: 'A photo of your room + a style + room type.',
     get: 'A photorealistic redesign — structure preserved.',
     chain: 'Best after: Find My Style · Next: Shop My Room',
+    next: 'shop',
   },
   {
     id: 'palette', phase: 2, name: 'Pick My Palette', vis: V.v8,
@@ -204,6 +236,15 @@ export const EXPLORER_TOOLS: ExplorerTool[] = [
 
   // ── Phase 4 · Specify ───────────────────────────────────────────────────
   {
+    id: 'finishes', phase: 3, name: 'Schedule My Finishes', vis: V.v18,
+    tier: 'Design', lvl: 'design', status: 'soon',
+    tagline: 'Your concept turned into quantities — the numbers a supplier can actually price.',
+    give: 'Your concept or plan + room dimensions.',
+    get: 'm² of tile and floor, litres of paint, linear metres of trim.',
+    chain: 'Best after: Redesign My Room · Next: Shop My Room',
+    next: 'shop',
+  },
+  {
     id: 'shop', phase: 3, name: 'Shop My Room', vis: V.v10,
     photo: CLD('v1773056804/1_obyrnh.jpg'), // portfolio: Boutique Hotel Lobby
 
@@ -212,6 +253,7 @@ export const EXPLORER_TOOLS: ExplorerTool[] = [
     give: 'A room photo (or your concept) + your country.',
     get: 'Real buyable products — links, prices, PDF.',
     chain: 'Best after: Redesign My Room · Next: Cost My Project',
+    next: 'cost',
   },
   {
     id: 'cost', phase: 3, name: 'Cost My Project', vis: V.v11,
@@ -230,6 +272,7 @@ export const EXPLORER_TOOLS: ExplorerTool[] = [
     give: 'Your scope — what you’re changing.',
     get: 'The correct order of works + a realistic timeline.',
     chain: 'Next: Guide My Install',
+    next: 'guide-install',
   },
   {
     id: 'guide-install', phase: 4, name: 'Guide My Install', vis: V.v13,
@@ -261,6 +304,12 @@ export const EXPLORER_TOOLS: ExplorerTool[] = [
 
 /** The default tool the panel opens on (owner-locked: Redesign My Room / AI Vision). */
 export const DEFAULT_TOOL_ID = 'redesign';
+
+/** The card this one hands off to, when it has one. */
+export const nextToolFor = (id: string): ExplorerTool | undefined => {
+  const n = EXPLORER_TOOLS.find((t) => t.id === id)?.next;
+  return n ? EXPLORER_TOOLS.find((t) => t.id === n) : undefined;
+};
 
 /** Lookup by slug. */
 export const toolById = (id: string): ExplorerTool | undefined =>

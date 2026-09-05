@@ -183,6 +183,52 @@ const SAVED_ITEMS_HASH_INDEX = `
  * Throws if the DB is unreachable — the caller (server boot) decides whether to
  * hard-fail or continue degraded.
  */
+
+// ─── AI-038 · Designer Check ────────────────────────────────────────────────
+// A written review of ONE artifact, requested at a join between two cards.
+// v1 is notes, not a call (owner decision 2026-08-30) — so there is no slot,
+// no calendar, and nothing here models a meeting. What the designer returns is
+// a verdict plus a short note, and that note is the deliverable.
+const REVIEW_REQUESTS_TABLE = `
+  CREATE TABLE IF NOT EXISTS review_requests (
+    id             uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id        text        NOT NULL,                      -- googleId
+    user_email     text,
+    item_id        uuid        REFERENCES saved_items(id) ON DELETE CASCADE,
+    tool           text        NOT NULL,   -- the card the artifact came from
+    next_tool      text,                   -- the card they are heading to (the join)
+    scenario       text,                   -- studioRouter scenario id, when they have one
+    ask            text,                   -- what the visitor wants looked at
+    status         text        NOT NULL DEFAULT 'requested',  -- requested | in_review | answered
+    assignee       text,                   -- present from day one so this is delegable
+    verdict        text,                   -- go | fix | wont_work
+    note           text,                   -- the deliverable
+    created_at     timestamptz NOT NULL DEFAULT now(),
+    answered_at    timestamptz
+  );
+`;
+
+// The visitor's own checks, newest first.
+const REVIEW_REQUESTS_USER_INDEX = `
+  CREATE INDEX IF NOT EXISTS idx_review_requests_user_created
+    ON review_requests (user_id, created_at DESC);
+`;
+
+// The studio queue: oldest-waiting first, so nothing rots at the bottom.
+const REVIEW_REQUESTS_QUEUE_INDEX = `
+  CREATE INDEX IF NOT EXISTS idx_review_requests_status_created
+    ON review_requests (status, created_at ASC);
+`;
+
+// One OPEN check per artifact. Re-requesting the same item while one is already
+// waiting is almost always a double-click, and each request costs a real person
+// real time. Answered ones are excluded, so a second opinion later is still fine.
+const REVIEW_REQUESTS_ONE_OPEN = `
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_review_requests_one_open
+    ON review_requests (item_id)
+    WHERE status <> 'answered' AND item_id IS NOT NULL;
+`;
+
 export async function runMigrations(): Promise<void> {
   const pool = getPool();
 
@@ -222,4 +268,10 @@ export async function runMigrations(): Promise<void> {
   await pool.query(SAVED_ITEMS_HASH_COLUMN);
   await pool.query(SAVED_ITEMS_HASH_INDEX);
   console.log("✅ saved_items table ready");
+
+  await pool.query(REVIEW_REQUESTS_TABLE);
+  await pool.query(REVIEW_REQUESTS_USER_INDEX);
+  await pool.query(REVIEW_REQUESTS_QUEUE_INDEX);
+  await pool.query(REVIEW_REQUESTS_ONE_OPEN);
+  console.log("✅ review_requests table ready");
 }
