@@ -111,8 +111,9 @@ footer{padding:22px 0 40px;color:var(--muted);font-size:12px}
 </div></section>
 
 <section><div class="wrap">
-  <h2 class="sh">Do this week <span class="n">5 things</span></h2>
+  <h2 class="sh">Do this week <span class="n">6 things</span></h2>
   <ul class="check">
+    <li><span class="box"></span><span class="who build">Build</span><span class="txt"><b>Say &quot;build the audit to redesign handoff&quot;</b> and I&rsquo;ll make Redesign My Room actually read what Score My Room found.<small>Right now it receives the photo and nothing else. Full detail in the next section.</small></span></li>
     <li><span class="box"></span><span class="who you">You</span><span class="txt"><b>Send the Journal message below</b> to your journal session — it publishes the 5 ready articles.<small>Copy-paste block #1 at the bottom.</small></span></li>
     <li><span class="box"></span><span class="who you">You</span><span class="txt"><b>Reuse your existing Payoneer</b> (from Upwork — it already has the US receiving account CJ needs), then apply to <b>Skimlinks</b>, <b>CJ</b> (Wayfair), <b>Impact</b>.<small>This unlocks furniture commission — the affiliate door that's open to Armenia. Details in block #2.</small></span></li>
     <li><span class="box"></span><span class="who you">You</span><span class="txt"><b>Create a Pinterest Business account</b> + 3 boards (Rental-Friendly, Before &amp; After, one per style).<small>Open lane — neither competitor uses Pinterest.</small></span></li>
@@ -122,8 +123,42 @@ footer{padding:22px 0 40px;color:var(--muted);font-size:12px}
 </div></section>
 
 <section><div class="wrap">
+  <h2 class="sh">The two live tools don&rsquo;t talk <span class="n">the gap we found</span></h2>
+  <p class="p">Score My Room reads the photo and returns an overall score, six dimension verdicts and a pinned Fix Now list. The Redesign button under that report then hands AI Vision exactly one thing: the photo. Every finding is dropped on the way. So the redesign restyles the whole room, answers none of what the score just raised, and the customer pays two credits for two tools that never met.</p>
+  <div class="lanes">
+    <div class="lane"><div class="own">Claude / dev</div><h3>1 &middot; Carry the findings</h3>
+      <ol>
+        <li>The whole audit result travels into Vision, not only the image.</li>
+        <li>Vision opens with it as an <b>editable brief</b>: the weak dimensions and the Fix Now items, each a checkbox, all on by default.</li>
+        <li>Whatever stays ticked is sent with the generate call and becomes a constraint on the render.</li>
+      </ol>
+      <div class="goal">Goal: the score is visible inside the redesign screen, and the user edits it before spending a credit.</div></div>
+    <div class="lane"><div class="own">Claude / dev</div><h3>2 &middot; Lock the room</h3>
+      <ol>
+        <li>The audit reads the room type from the same photo. Vision already does this and caches it by image, so the read is free.</li>
+        <li>Arriving from a score, Vision opens with that room preselected and <b>locked</b>.</li>
+        <li>If detection returns nothing, the chip stays open. There is nothing to lock to.</li>
+      </ol>
+      <div class="goal">Goal: no more sofa in a kitchen because the wrong chip was picked.</div></div>
+    <div class="lane"><div class="own">Claude / dev</div><h3>3 &middot; Fix, don&rsquo;t replace</h3>
+      <ol>
+        <li>The generate prompt gains a <b>fix mode</b>: keep the architecture, the layout, and the furniture the audit did not flag.</li>
+        <li>Change only what was flagged, plus the chosen style.</li>
+        <li>The result screen names which findings it answered.</li>
+      </ol>
+      <div class="goal">Goal: the user recognises their own room. That is the entire point of scoring it first.</div></div>
+  </div>
+  <div class="next" style="margin-top:14px">
+    <b>One decision flagged for you.</b> Locking the room chip means a wrong detection traps the user and costs them a credit. Vision&rsquo;s programme conflict tip catches some of that, not all. My recommendation: lock it by default but keep one quiet &ldquo;not this room?&rdquo; link. Say the word and I will lock it with no way out.
+  </div>
+  <div class="next" style="margin-top:10px;background:transparent;border-style:dashed">
+    <b>Build note, so the size is honest.</b> The generate endpoint today accepts photo, reference images, style, room, seed and paint colour. There is no field for a brief, so the server changes too, not just the button. Roughly a day of work, and every existing saved concept must keep loading.
+  </div>
+</div></section>
+
+<section><div class="wrap">
   <h2 class="sh">The three workstreams</h2>
-  <p class="p">Everything we found rolls into three tracks. Each has one clear owner.</p>
+  <p class="p">Everything we found rolls into three tracks. Each has one clear owner. The live tools handoff above runs alongside them and blocks nothing.</p>
   <div class="lanes">
     <div class="lane you"><div class="own">Mostly you + journal session</div><h3>1 · GEO &amp; Content</h3>
       <ol>
@@ -153,7 +188,7 @@ footer{padding:22px 0 40px;color:var(--muted);font-size:12px}
   <h2 class="sh">When</h2>
   <div class="tl">
     <div class="col"><div class="when">Now</div><ul>
-      <li>Publish the 5 articles</li><li>Apply: affiliate + Payoneer</li><li>Pinterest account + boards</li><li>Greenlight Staging V1</li></ul></div>
+      <li>Publish the 5 articles</li><li>Apply: affiliate + Payoneer</li><li>Pinterest account + boards</li><li>Greenlight Staging V1</li><li>Greenlight the audit &rarr; redesign handoff</li></ul></div>
     <div class="col"><div class="when">Next 2–4 weeks</div><ul>
       <li>Staging V1 live on the site</li><li>First "vs" + per-room posts</li><li>First affiliate approvals → links live</li><li>First agent/developer outreach</li></ul></div>
     <div class="col"><div class="when">Later</div><ul>
