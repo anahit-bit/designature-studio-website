@@ -1,10 +1,14 @@
-<title>Designature — Action Plan</title>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Designature Weekly Plan</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root{
   --paper:#F3F1EB; --surface:#FBFAF6; --surface2:#EEEBE3; --ink:#1C1A16; --ink2:#4B473F;
   --muted:#78736A; --line:#DED9CE; --line2:#CBC5B7; --accent:#0A3A82; --accent-soft:#0a3a8214;
-  --you:#A8422A; --build:#0A3A82; --done:#2f7a4d;
+  --you:#A8422A; --build:#0A3A82; --done:#2f7a4d; --app:#6B4E9E;
   --serif:"Cormorant Garamond","Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
   --sans:"Montserrat",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   --radius:4px;
@@ -12,12 +16,12 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --paper:#141310; --surface:#1D1B16; --surface2:#242118; --ink:#EDE9DF; --ink2:#C4BEB1;
   --muted:#928C7F; --line:#302C24; --line2:#3C382E; --accent:#8BB0EE; --accent-soft:#8bb0ee1f;
-  --you:#C25A3E; --build:#8BB0EE; --done:#6bbd8a;
+  --you:#C25A3E; --build:#8BB0EE; --done:#6bbd8a; --app:#A98CD8;
 }}
 :root[data-theme="dark"]{
   --paper:#141310; --surface:#1D1B16; --surface2:#242118; --ink:#EDE9DF; --ink2:#C4BEB1;
   --muted:#928C7F; --line:#302C24; --line2:#3C382E; --accent:#8BB0EE; --accent-soft:#8bb0ee1f;
-  --you:#C25A3E; --build:#8BB0EE; --done:#6bbd8a;
+  --you:#C25A3E; --build:#8BB0EE; --done:#6bbd8a; --app:#A98CD8;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
@@ -28,206 +32,395 @@ a{color:var(--accent)}
 header{border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--surface),var(--paper));padding:34px 0 26px}
 h1.title{font-family:var(--serif);font-size:clamp(30px,5vw,48px);line-height:1.03;letter-spacing:-.02em;margin-top:8px}
 h1.title em{font-style:italic;color:var(--accent)}
-.sub{max-width:60ch;color:var(--ink2);margin-top:10px}
+.sub{max-width:62ch;color:var(--ink2);margin-top:10px}
 .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px;font-size:12px}
 .legend span{display:inline-flex;align-items:center;gap:7px;color:var(--muted)}
 .dot{width:11px;height:11px;border-radius:50%;display:inline-block}
 section{padding:30px 0;border-bottom:1px solid var(--line)}
-h2.sh{font-family:var(--serif);font-size:27px;letter-spacing:-.01em;display:flex;align-items:baseline;gap:10px}
+h2.sh{font-family:var(--serif);font-size:27px;letter-spacing:-.01em;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 h2.sh .n{font-size:14px;color:var(--muted);font-family:var(--sans);font-weight:600}
 .p{color:var(--ink2);max-width:66ch}
+.toolbar{display:flex;gap:10px;align-items:center;margin-top:18px;flex-wrap:wrap}
+.btn{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--accent);color:var(--accent);background:transparent;border-radius:100px;padding:7px 14px;cursor:pointer}
+.btn:hover{background:var(--accent);color:var(--surface)}
 
-/* status chips */
-.status{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
-.scard{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--done);border-radius:var(--radius);padding:14px 16px}
-.scard h3{font-size:15px;display:flex;align-items:center;gap:8px}
-.tag{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:100px;background:var(--done);color:#fff}
-.scard p{margin:8px 0 0;font-size:13px;color:var(--ink2)}
+/* read this first */
+.notes{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:10px}
+.notes li{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--you);border-radius:var(--radius);padding:13px 15px;font-size:14px;color:var(--ink2)}
+.notes li b{color:var(--ink);font-weight:600}
 
-/* this week checklist */
-.check{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:10px}
-.check li{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:13px 15px;display:flex;gap:12px;align-items:flex-start}
-.check .box{width:20px;height:20px;border:2px solid var(--line2);border-radius:5px;flex-shrink:0;margin-top:1px}
-.check .who{font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding:2px 8px;border-radius:100px;flex-shrink:0;margin-top:1px}
+/* week board */
+.weeks{display:flex;flex-direction:column;gap:14px;margin-top:16px}
+.week{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;border-left:4px solid var(--line2)}
+.week.now{border-left-color:var(--accent);box-shadow:0 0 0 1px var(--accent-soft);background:linear-gradient(180deg,var(--accent-soft),var(--surface))}
+.week.mobile{border-left-color:var(--app)}
+.week.past{opacity:.55}
+.whead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.whead .wn{font-family:var(--sans);font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+.whead .wt{font-family:var(--serif);font-size:22px;letter-spacing:-.01em}
+.whead .wd{font-size:12px;color:var(--muted)}
+.badge{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:3px 9px;border-radius:100px;background:var(--accent);color:#fff}
+.badge.app{background:var(--app)}
+.tasks{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.tasks li{display:flex;gap:11px;align-items:flex-start;font-size:14px}
+.tasks input[type=checkbox]{appearance:none;-webkit-appearance:none;width:19px;height:19px;border:2px solid var(--line2);border-radius:5px;flex-shrink:0;margin:2px 0 0;cursor:pointer;background:transparent;position:relative}
+.tasks input[type=checkbox]:checked{background:var(--done);border-color:var(--done)}
+.tasks input[type=checkbox]:checked::after{content:"";position:absolute;left:5px;top:1px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.tasks input[type=checkbox]:checked + .who + .txt{text-decoration:line-through;color:var(--muted)}
+.who{font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding:2px 8px;border-radius:100px;flex-shrink:0;margin-top:2px;min-width:52px;text-align:center}
 .who.you{background:var(--you);color:#fff}.who.build{background:var(--build);color:#fff}
-.check .txt{font-size:14px}
-.check .txt b{font-weight:600}
-.check .txt small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.txt small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.hrs{color:var(--muted);font-weight:600}
 
-/* workstream lanes */
-.lanes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:6px}
-.lane{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;border-top:3px solid var(--accent)}
-.lane.you{border-top-color:var(--you)}
-.lane h3{font-family:var(--serif);font-size:20px;margin-bottom:2px}
-.lane .own{font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:var(--muted)}
-.lane ol{margin:10px 0 0;padding-left:18px;font-size:13px;color:var(--ink2);display:flex;flex-direction:column;gap:7px}
-.lane .goal{margin-top:10px;font-size:12px;color:var(--muted);border-top:1px dashed var(--line2);padding-top:9px}
-
-/* timeline */
-.tl{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:10px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
-.tl .col{padding:16px;background:var(--surface);border-right:1px solid var(--line)}
-.tl .col:last-child{border-right:0}
-.tl .when{font-family:var(--serif);font-size:19px;color:var(--accent)}
-.tl .col ul{margin:10px 0 0;padding-left:16px;font-size:12.5px;color:var(--ink2);display:flex;flex-direction:column;gap:6px}
+/* generic cards */
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;border-top:3px solid var(--accent)}
+.card.app{border-top-color:var(--app)}
+.card.warn{border-top-color:var(--you)}
+.card h3{font-family:var(--serif);font-size:20px;margin-bottom:6px}
+.card ul{margin:8px 0 0;padding-left:18px;font-size:13px;color:var(--ink2);display:flex;flex-direction:column;gap:6px}
+.card p{margin:6px 0 0;font-size:13px;color:var(--ink2)}
 
 /* copy blocks */
 .msg{background:var(--surface);border:1px solid var(--line2);border-radius:var(--radius);margin-top:14px;overflow:hidden}
-.msg .bar{display:flex;justify-content:space-between;align-items:center;padding:11px 15px;background:var(--surface2);border-bottom:1px solid var(--line)}
+.msg .bar{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 15px;background:var(--surface2);border-bottom:1px solid var(--line);flex-wrap:wrap}
 .msg .bar b{font-size:13px}
 .msg .bar .hint{font-size:11px;color:var(--muted)}
 .copy{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--accent);color:var(--accent);background:transparent;border-radius:100px;padding:6px 13px;cursor:pointer}
 .copy:hover{background:var(--accent);color:var(--surface)}
 .copy.ok{background:var(--done);border-color:var(--done);color:#fff}
-pre{margin:0;padding:15px;font-family:ui-monospace,"SF Mono","Cascadia Code",Menlo,monospace;font-size:12.5px;line-height:1.55;color:var(--ink);white-space:pre-wrap;word-break:break-word;max-height:340px;overflow:auto}
-.next{background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));border-radius:var(--radius);padding:16px 18px;margin-top:6px}
-.next b{color:var(--ink)}
-.themetoggle{position:fixed;top:14px;right:14px;z-index:50;border:1px solid var(--line2);background:var(--surface);color:var(--ink2);font-family:var(--sans);font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:7px 11px;border-radius:100px;cursor:pointer}
-footer{padding:22px 0 40px;color:var(--muted);font-size:12px}
-@media (max-width:820px){.lanes,.tl{grid-template-columns:1fr}.status{grid-template-columns:1fr}.tl .col{border-right:0;border-bottom:1px solid var(--line)}}
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+pre{margin:0;padding:15px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.6;color:var(--ink2);white-space:pre-wrap;overflow-x:auto}
+footer{padding:26px 0 46px;color:var(--muted);font-size:12.5px}
+@media (max-width:720px){.cards{grid-template-columns:1fr}}
 </style>
+</head>
+<body>
 
-<button class="themetoggle" id="tt" type="button">◐ Theme</button>
-
-<header><div class="wrap">
-  <div class="eyebrow">Designature Studio · What we're doing next</div>
-  <h1 class="title">Your plan, on <em>one page.</em></h1>
-  <p class="sub">Two competitors studied. Here's exactly what happens next, who does each part, and the messages to copy-paste. Ignore the docs — this is the whole plan.</p>
-  <div class="legend">
-    <span><i class="dot" style="background:var(--you)"></i> You do this</span>
-    <span><i class="dot" style="background:var(--build)"></i> Claude / dev builds this</span>
-    <span><i class="dot" style="background:var(--done)"></i> Done</span>
+<header>
+  <div class="wrap">
+    <div class="toolbar" style="justify-content:space-between;margin:0 0 6px">
+      <span class="eyebrow">Designature Studio · Week by week</span>
+      <button class="btn" id="tt">Theme</button>
+    </div>
+    <h1 class="title">Twelve weeks, <em>one week at a time</em>.</h1>
+    <p class="sub">Sept 7 through Nov 29, 2026. Open this on a Monday: the current week is highlighted at the top of the board. Your own load is planned at about 10 hours a week. Tick a box and it stays ticked on this device.</p>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--you)"></i> You do this</span>
+      <span><i class="dot" style="background:var(--build)"></i> Claude builds this</span>
+      <span><i class="dot" style="background:var(--app)"></i> Mobile app phase</span>
+    </div>
   </div>
-</div></header>
+</header>
 
-<section><div class="wrap">
-  <h2 class="sh">Where we are <span class="n">2 competitors done</span></h2>
-  <div class="status">
-    <div class="scard"><h3>MeltFlex AI <span class="tag">Done</span></h3>
-      <p>Bootstrapped, 2 people, no ad budget — grew on <b>SEO/GEO listicles + PR + shoppable furniture</b>. Weak quality, no human designer. <b>Lesson:</b> copy their GEO content play; your human + curation is the wedge.</p></div>
-    <div class="scard"><h3>REimagine Home <span class="tag">Done</span></h3>
-      <p>Real business is <b>virtual staging for US realtors</b>. Real moat = a deal putting them inside a 103k-agent MLS. Disliked billing. <b>Lesson:</b> staging is winnable; win it by distribution + honesty, not better renders.</p></div>
+<section>
+  <div class="wrap">
+    <h2 class="sh">Read this first <span class="n">what changed since the last plan</span></h2>
+    <ul class="notes">
+      <li><b>The affiliate task is already done.</b> Skimlinks is live in the site head and the honest disclosure copy replaced the old "no affiliate fees" line back in August. What is left is the direct programmes, CJ for Wayfair and Impact for West Elm, Pottery Barn, Crate and Barrel, CB2, Blu Dot, which pay better than Skimlinks. Those are in week 1.</li>
+      <li><b>Payments and credits shipped today.</b> Packs, the monthly plan, refunds, receipts and the admin credits view all merged. Money plumbing has stopped being the bottleneck. Traffic and outreach are the bottleneck now, which is why weeks 1 to 3 are content and selling, not building.</li>
+      <li><b>The mobile app will not bring you new users.</b> Nobody browses a store for an installable web app, and there is no store listing to be found in. It earns its place two other ways: it keeps the users you already have coming back, and it puts a notification on your own phone the second someone buys a pack or books a consultation. Judge it on retention and on your own response time, never on signups.</li>
+      <li><b>The iPhone catch, plainly.</b> Apple only delivers notifications after the user adds the site to their home screen. So the install prompt is the whole feature. Android and desktop Chrome ask normally. Plan for a lower opt in rate on iPhone and write the prompt copy carefully.</li>
+      <li><b>At 10 hours a week, one build track runs at a time.</b> Staging finishes before mobile starts. If you push them in parallel, both slip and the outreach stops, and outreach is the only thing here that makes money in November.</li>
+    </ul>
   </div>
-</div></section>
+</section>
 
-<section><div class="wrap">
-  <h2 class="sh">Do this week <span class="n">5 things</span></h2>
-  <ul class="check">
-    <li><span class="box"></span><span class="who you">You</span><span class="txt"><b>Send the Journal message below</b> to your journal session — it publishes the 5 ready articles.<small>Copy-paste block #1 at the bottom.</small></span></li>
-    <li><span class="box"></span><span class="who you">You</span><span class="txt"><b>Reuse your existing Payoneer</b> (from Upwork — it already has the US receiving account CJ needs), then apply to <b>Skimlinks</b>, <b>CJ</b> (Wayfair), <b>Impact</b>.<small>This unlocks furniture commission — the affiliate door that's open to Armenia. Details in block #2.</small></span></li>
-    <li><span class="box"></span><span class="who you">You</span><span class="txt"><b>Create a Pinterest Business account</b> + 3 boards (Rental-Friendly, Before &amp; After, one per style).<small>Open lane — neither competitor uses Pinterest.</small></span></li>
-    <li><span class="box"></span><span class="who build">Build</span><span class="txt"><b>Say "build virtual staging V1"</b> and I'll turn on the staging engine you already have + add the MLS label.<small>Mostly switching on parked code — not a big build.</small></span></li>
-    <li><span class="box"></span><span class="who you">You</span><span class="txt"><b>Finish the Matúš chat</b> — keep it exploratory, let him show intent first.</span></li>
-  </ul>
-</div></section>
+<section>
+  <div class="wrap">
+    <h2 class="sh">The board <span class="n">12 weeks</span></h2>
+    <p class="p">Each week has your tasks and the build tasks. The build side only moves when you say the word, so each build block starts with a message you can copy from the bottom of this page.</p>
+    <div class="toolbar"><button class="btn" id="reset">Clear all ticks</button></div>
 
-<section><div class="wrap">
-  <h2 class="sh">The three workstreams</h2>
-  <p class="p">Everything we found rolls into three tracks. Each has one clear owner.</p>
-  <div class="lanes">
-    <div class="lane you"><div class="own">Mostly you + journal session</div><h3>1 · GEO &amp; Content</h3>
-      <ol>
-        <li><b>Now:</b> publish the 5 written articles (message #1).</li>
-        <li><b>Then:</b> 2–4 posts/month from the content calendar (per-room, per-style, "vs" pages).</li>
-        <li>Refresh the "best tools" post each quarter.</li>
-      </ol>
-      <div class="goal">Goal: get found in Google <i>and</i> quoted by ChatGPT — how both rivals grow.</div></div>
-    <div class="lane"><div class="own">Claude / dev</div><h3>2 · Virtual Staging</h3>
-      <ol>
-        <li><b>V1:</b> switch on your staging engine + "Virtually staged" label + "shop this room".</li>
-        <li><b>V2:</b> remove-furniture, batch upload, agent packages.</li>
-        <li><b>V3 (the prize):</b> "free credits for your members" pitch to agents &amp; developers.</li>
-      </ol>
-      <div class="goal">Goal: enter the market REimagine owns — by distribution, not renders.</div></div>
-    <div class="lane you"><div class="own">You</div><h3>3 · Money &amp; Reach</h3>
-      <ol>
-        <li><b>Affiliate:</b> Skimlinks + CJ + Impact + Payoneer → earn on furniture.</li>
-        <li><b>Pinterest:</b> before/after boards linking back to the site.</li>
-        <li>Copy change on the Shopping List when links go live (I'll do it).</li>
-      </ol>
-      <div class="goal">Goal: turn the free shopping list into revenue + free traffic.</div></div>
+    <div class="weeks" id="board">
+
+      <div class="week" data-start="2026-09-07" data-end="2026-09-13">
+        <div class="whead"><span class="wn">Week 1</span><span class="wt">Publish what is already written</span><span class="wd">Sep 7 to Sep 13</span></div>
+        <ul class="tasks">
+          <li><input type="checkbox" id="w1a"><span class="who you">You</span><span class="txt">Check the four Journal drafts in Sanity. Publish any that are not live, add a strong before and after cover image to each, then submit every URL in Google Search Console. <small>The drafts are finished and sitting in docs/marketing/journal-drafts. <span class="hrs">3h</span></small></span></li>
+          <li><input type="checkbox" id="w1b"><span class="who you">You</span><span class="txt">Create the Pinterest Business account, verify designature.studio, open three boards: Rental Friendly, Before and After Rooms, Small Apartment Ideas. <small>Neither competitor uses Pinterest. It is the cheapest open lane you have. <span class="hrs">2h</span></small></span></li>
+          <li><input type="checkbox" id="w1c"><span class="who you">You</span><span class="txt">Log into Payoneer, confirm it is active, then apply to CJ Affiliate for the Wayfair programme. <small>Wayfair covers AllModern, Joss and Main, Birch Lane, Perigold. Payoneer is how they pay you. <span class="hrs">1.5h</span></small></span></li>
+          <li><input type="checkbox" id="w1d"><span class="who you">You</span><span class="txt">Apply to Impact for West Elm, Pottery Barn, Crate and Barrel, CB2, Blu Dot. <small>Direct programmes pay more than Skimlinks. Approvals take weeks, so applying now costs you nothing. <span class="hrs">1.5h</span></small></span></li>
+          <li><input type="checkbox" id="w1e"><span class="who build">Build</span><span class="txt">Virtual staging V1: the /virtual-staging page, the "Virtually staged" label on every output, credit pricing wired in, page indexed with structured data. <small>Say "build virtual staging V1" to start. Message 1 below. Mostly switching on an engine that already exists inside AI Vision.</small></span></li>
+        </ul>
+      </div>
+
+      <div class="week" data-start="2026-09-14" data-end="2026-09-20">
+        <div class="whead"><span class="wn">Week 2</span><span class="wt">Staging goes live</span><span class="wd">Sep 14 to Sep 20</span></div>
+        <ul class="tasks">
+          <li><input type="checkbox" id="w2a"><span class="who you">You</span><span class="txt">Cut ten vertical pins from real results, keyword rich titles, each one linking to the matching article. <small>Vertical 2:3. Pins are evergreen, they keep working months later. <span class="hrs">3h</span></small></span></li>
+          <li><input type="checkbox" id="w2b"><span class="who you">You</span><span class="txt">Build a list of 20 real estate agents and short stay hosts with names and real email addresses. <small>Not a scraped list. 20 people you can write to personally. <span class="hrs">3h</span></small></span></li>
+          <li><input type="checkbox" id="w2c"><span class="who you">You</span><span class="txt">Read the staging page copy and rewrite anything that does not sound like you. <small><span class="hrs">1h</span></small></span></li>
+          <li><input type="checkbox" id="w2d"><span class="who you">You</span><span class="txt">Ask five past clients for a Google review. <small>Both competitors are thin and negative on reviews. <span class="hrs">1h</span></small></span></li>
+          <li><input type="checkbox" id="w2e"><span class="who build">Build</span><span class="txt">Ship staging V1 and fix whatever the first real uses expose. Start the remove existing furniture mode.</span></li>
+        </ul>
+      </div>
+
+      <div class="week" data-start="2026-09-21" data-end="2026-09-27">
+        <div class="whead"><span class="wn">Week 3</span><span class="wt">First outreach</span><span class="wd">Sep 21 to Sep 27</span></div>
+        <ul class="tasks">
+          <li><input type="checkbox" id="w3a"><span class="who you">You</span><span class="txt">Write to all 20. Stage one photo of their own listing first and attach it. <small>A free staged shot of their actual property outperforms any pitch you could write. <span class="hrs">4h</span></small></span></li>
+          <li><input type="checkbox" id="w3b"><span class="who you">You</span><span class="txt">Submit the product to There's An AI For That, Toolify and Futurepedia. <small>Their listings are young. Getting in now builds the same search equity they used. <span class="hrs">2h</span></small></span></li>
+          <li><input type="checkbox" id="w3c"><span class="who you">You</span><span class="txt">Six more pins. <small><span class="hrs">1h</span></small></span></li>
+          <li><input type="checkbox" id="w3d"><span class="who build">Build</span><span class="txt">Staging V2 part one: remove existing furniture, and batch upload so an agent can drop a whole listing at once.</span></li>
+        </ul>
+      </div>
+
+      <div class="week mobile" data-start="2026-09-28" data-end="2026-10-04">
+        <div class="whead"><span class="wn">Week 4</span><span class="wt">Quarterly refresh, and the app starts</span><span class="wd">Sep 28 to Oct 4</span><span class="badge app">Mobile phase</span></div>
+        <ul class="tasks">
+          <li><input type="checkbox" id="w4a"><span class="who you">You</span><span class="txt">Refresh the best tools article with October dates and current prices. <small>Freshness is what keeps that page cited. Repeat every quarter. <span class="hrs">2h</span></small></span></li>
+          <li><input type="checkbox" id="w4b"><span class="who you">You</span><span class="txt">Answer the outreach replies and run any calls that came out of week 3. <small><span class="hrs">3h</span></small></span></li>
+          <li><input type="checkbox" id="w4c"><span class="who you">You</span><span class="txt">Read the draft notification list and cut it down to the ones you would genuinely want on your own phone. <small>Every notification you keep out of habit costs you an uninstall later. <span class="hrs">1h</span></small></span></li>
+          <li><input type="checkbox" id="w4d"><span class="who build">Build</span><span class="txt">Mobile phase one: audit every page on a real phone, then ship the app manifest, the icon set and the install prompt. <small>Say "build the installable app, phase 1". Message 2 below.</small></span></li>
+        </ul>
+      </div>
+
+      <div class="week mobile" data-start="2026-10-05" data-end="2026-10-11">
+        <div class="whead"><span class="wn">Week 5</span><span class="wt">The site becomes installable</span><span class="wd">Oct 5 to Oct 11</span><span class="badge app">Mobile phase</span></div>
+        <ul class="tasks">
+          <li><input type="checkbox" id="w5a"><span class="who you">You</span><span class="txt">Install it on your iPhone and on one Android, then use it as a real customer for the week and write down everything that feels wrong. <small>You are the only person who will catch the things that break the feel of the brand. <span class="hrs">2h</span></small></span></li>
+          <li><input type="checkbox" id="w5b"><span class="who you">You</span><span class="txt">Keep the pin cadence and answer outreach. <small><span class="hrs">3h</span></small></span></li>
+          <li><input type="checkbox" id="w5c"><span class="who build">Build</span><span class="txt">Offline shell so the app opens on a weak connection, the Add to Home Screen flow, and a short install page with iPhone instructions.</span></li>
+        </ul>
+      </div>
+
+      <div class="week mobile" data-start="2026-10-12" data-end="2026-10-18">
+        <div class="whead"><span class="wn">Week 6</span><span class="wt">Mobile fit and finish</span><span class="wd">Oct 12 to Oct 18</span><span class="badge app">Mobile phase</span></div>
+        <ul class="tasks">
+          <li><input type="checkbox" id="w6a"><span class="who you">You</span><span class="txt">Publish one per room article from the content calendar. Kitchen or small apartment first, they carry the most search volume. <small><span class="hrs">3h</span></small></span></li>
+          <li><input type="checkbox" id="w6b"><span class="who you">You</span><span class="txt">Outreach round two, 20 new names. <small><span class="hrs">4h</span></small></span></li>
+          <li><input type="checkbox" id="w6c"><span class="who build">Build</span><span class="txt">Fix everything on your week 5 list. Camera capture straight from the phone into AI Vision, and an upload path that survives mobile data.</span></li>
+        </ul>
+      </div>
+
+      <div class="week mobile" data-start="2026-10-19" data-end="2026-10-25">
+        <div class="whead"><span class="wn">Week 7</span><span class="wt">Notifications, your side first</span><span class="wd">Oct 19 to Oct 25</span><span class="badge app">Mobile phase</span></div>
+        <ul class="tasks">
+          <li><input type="checkbox" id="w7a"><span class="who you">You</span><span class="txt">Live with the admin alerts for a week and tell me which ones are noise. <small>Someone bought a pack, someone booked, new feedback, a payment failed. <span class="hrs">2h</span></small></span></li>
+          <li><input type="checkbox" id="w7b"><span class="who you">You</span><span class="txt">Write the customer notification copy in your own voice. <small>Nine words each. Generic notification copy is the fastest way to lose the permission you just won. <span class="hrs">2h</span></small></span></li>
+          <li><input type="checkbox" id="w7c"><span class="who build">Build</span><span class="txt">Push plumbing: signing keys, subscription storage in the database, a notification preferences panel in the account page, and the admin alerts going to your phone.</span></li>
+        </ul>
+      </div>
+
+      <div class="week mobile" data-start="2026-10-26" data-end="2026-11-01">
+        <div class="whead"><span class="wn">Week 8</span><span class="wt">Notifications, customer side</span><span class="wd">Oct 26 to Nov 1</span><span class="badge app">Mobile phase</span></div>
+        <ul class="tasks">
+          <li><input type="checkbox" id="w8a"><span class="who you">You</span><span class="txt">Approve the final copy and set the defaults you are comfortable with. <small>My recommendation: room ready and consultation reminder on by default, everything else off. <span class="hrs">2h</span></small></span></li>
+          <li><input type="checkbox" id="w8b"><span class="who you">You</span><span class="txt">Publish one per style article and pair it with a Pinterest board. <small><span class="hrs">3h</span></small></span></li>
+          <li><input type="checkbox" id="w8c"><span class="who build">Build</span><span class="txt">Customer notifications: your room is ready, credits running low, consultation tomorrow, receipt. Quiet hours, one tap off, preferences respected everywhere.</span></li>
+        </ul>
+      </div>
+
+      <div class="week mobile" data-start="2026-11-02" data-end="2026-11-08">
+        <div class="whead"><span class="wn">Week 9</span><span class="wt">App launch</span><span class="wd">Nov 2 to Nov 8</span><span class="badge app">Mobile phase</span></div>
+        <ul class="tasks">
+          <li><input type="checkbox" id="w9a"><span class="who you">You</span><span class="txt">Announce it to your email list, Instagram and Pinterest with a fifteen second screen recording of the install. <small>Show the icon landing on the home screen. That is the part that makes people do it. <span class="hrs">4h</span></small></span></li>
+          <li><input type="checkbox" id="w9b"><span class="who you">You</span><span class="txt">Add the install link to your email signature and your Instagram bio. <small><span class="hrs">30m</span></small></span></li>
+          <li><input type="checkbox" id="w9c"><span class="who build">Build</span><span class="txt">The install banner on the site, tracking on installs and on notification opt in, and launch week bug fixes.</span></li>
+        </ul>
+      </div>
+
+      <div class="week" data-start="2026-11-09" data-end="2026-11-15">
+        <div class="whead"><span class="wn">Week 10</span><span class="wt">The business to business leg</span><span class="wd">Nov 9 to Nov 15</span></div>
+        <ul class="tasks">
+          <li><input type="checkbox" id="w10a"><span class="who you">You</span><span class="txt">Pitch five developers in Yerevan on staged sales galleries for off plan apartments, and three agencies in the US. <small>This is the highest margin thing in the whole plan and the one your background actually sells. <span class="hrs">5h</span></small></span></li>
+          <li><input type="checkbox" id="w10b"><span class="who build">Build</span><span class="txt">Agent packages and batch pricing, a business intake form, and a simple per listing invoice path.</span></li>
+        </ul>
+      </div>
+
+      <div class="week" data-start="2026-11-16" data-end="2026-11-22">
+        <div class="whead"><span class="wn">Week 11</span><span class="wt">Look at the numbers and cut</span><span class="wd">Nov 16 to Nov 22</span></div>
+        <ul class="tasks">
+          <li><input type="checkbox" id="w11a"><span class="who you">You</span><span class="txt">Go through the numbers with me and decide what to stop doing. <small>Two months of data is enough to kill something. <span class="hrs">2h</span></small></span></li>
+          <li><input type="checkbox" id="w11b"><span class="who you">You</span><span class="txt">Publish one comparison article from batch A. <small><span class="hrs">3h</span></small></span></li>
+          <li><input type="checkbox" id="w11c"><span class="who build">Build</span><span class="txt">An admin view that shows signups by source, credits bought, notification open rate and staging usage in one place.</span></li>
+        </ul>
+      </div>
+
+      <div class="week" data-start="2026-11-23" data-end="2026-11-29">
+        <div class="whead"><span class="wn">Week 12</span><span class="wt">Close the quarter</span><span class="wd">Nov 23 to Nov 29</span></div>
+        <ul class="tasks">
+          <li><input type="checkbox" id="w12a"><span class="who you">You</span><span class="txt">Pick the first quarter focus: more staging for agents and developers, more consumer content, or a real store app. <small>One of the three. Not all three. <span class="hrs">2h</span></small></span></li>
+          <li><input type="checkbox" id="w12b"><span class="who you">You</span><span class="txt">Holiday content and pins, plus the January rental season warm up. <small>Rental and small space searches climb hard in January. <span class="hrs">3h</span></small></span></li>
+          <li><input type="checkbox" id="w12c"><span class="who build">Build</span><span class="txt">Whatever the week 11 numbers point at, plus a written plan for the next quarter.</span></li>
+        </ul>
+      </div>
+
+    </div>
   </div>
-</div></section>
+</section>
 
-<section><div class="wrap">
-  <h2 class="sh">When</h2>
-  <div class="tl">
-    <div class="col"><div class="when">Now</div><ul>
-      <li>Publish the 5 articles</li><li>Apply: affiliate + Payoneer</li><li>Pinterest account + boards</li><li>Greenlight Staging V1</li></ul></div>
-    <div class="col"><div class="when">Next 2–4 weeks</div><ul>
-      <li>Staging V1 live on the site</li><li>First "vs" + per-room posts</li><li>First affiliate approvals → links live</li><li>First agent/developer outreach</li></ul></div>
-    <div class="col"><div class="when">Later</div><ul>
-      <li>Staging V2 (remove furniture, batch) + agent pricing</li><li>"Free credits for members" partnership pitch</li><li>Teardown competitor #3</li><li>Quarterly refresh (auto, Oct 1)</li></ul></div>
+<section>
+  <div class="wrap">
+    <h2 class="sh">The mobile app, in detail <span class="n">weeks 4 to 9</span></h2>
+    <p class="p">You chose the installable web app. It is the same site, installed with an icon on the home screen, working on a weak connection and able to send notifications. Here is what that means honestly.</p>
+    <div class="cards">
+      <div class="card app">
+        <h3>Why this route</h3>
+        <ul>
+          <li>Feature parity is automatic. Everything on the desktop site is in the app the moment it ships, because it is the same site.</li>
+          <li>No Apple or Google developer accounts, no store review, no waiting on approvals.</li>
+          <li>No store commission on credit packs. A store app would hand Apple a cut of every purchase made inside it.</li>
+          <li>Roughly three weeks of build instead of three months, and one codebase to maintain instead of two.</li>
+        </ul>
+      </div>
+      <div class="card warn">
+        <h3>What it costs you</h3>
+        <ul>
+          <li>On iPhone, notifications only work after the person adds the site to their home screen. That extra step will lose you a share of them.</li>
+          <li>You are not in the App Store, so there is no store search traffic and no store credibility signal.</li>
+          <li>Camera and photo handling are good but not as good as a native app would give you for room capture.</li>
+        </ul>
+      </div>
+      <div class="card app">
+        <h3>Notifications for you</h3>
+        <ul>
+          <li>Someone bought a credit pack.</li>
+          <li>Someone booked a consultation.</li>
+          <li>New feedback arrived.</li>
+          <li>A payment failed.</li>
+        </ul>
+        <p>This is the part that pays for the whole phase. Right now you find out when you next open the admin page.</p>
+      </div>
+      <div class="card app">
+        <h3>Notifications for customers</h3>
+        <ul>
+          <li>Your room is ready.</li>
+          <li>Your credits are running low.</li>
+          <li>Your consultation is tomorrow.</li>
+          <li>Your receipt.</li>
+        </ul>
+        <p>No marketing blasts. The first promotional notification is the one that gets the app deleted.</p>
+      </div>
+    </div>
+    <p class="p" style="margin-top:16px">A real store app becomes worth building when two things are true: people are asking for it, and notification opt in among your active users is running above roughly half. Until then it is three months of work for an icon you already have.</p>
   </div>
-</div></section>
+</section>
 
-<section><div class="wrap">
-  <h2 class="sh">Copy-paste messages</h2>
-  <p class="p">Click <b>Copy</b>, paste where noted. (If a copy button doesn't work in preview, just select the text.)</p>
-
-  <div class="msg">
-    <div class="bar"><b>#1 → Send to your Journal session</b><span class="hint">publishes the 5 articles</span><button class="copy" data-t="m1">Copy</button></div>
-    <pre id="m1">Please publish 5 new Journal posts. The full drafts — each with title, seo.metaTitle, seo.metaDescription, excerpt, body, and FAQ already written — are in the repo at docs/marketing/journal-drafts/ on branch claude/ai-interior-design-competitors-zylz6w:
-
-1. best-ai-interior-design-tools-2026.md  → slug: best-ai-interior-design-tools-2026  (PRIORITY — highest intent)
-2. ai-virtual-staging-realtor-guide.md    → slug: ai-virtual-staging-guide            (PRIORITY — real-estate lane)
-3. rental-friendly-interior-design.md     → slug: rental-friendly-interior-design-ideas
-4. interior-design-yerevan-armenia.md     → slug: interior-design-yerevan  (also create AM + RU versions)
-5. (content-calendar.md is the roadmap for future posts, not a post itself)
-
-For each: map the fields onto the Sanity `post` schema — title, slug, excerpt, seo.metaTitle, seo.metaDescription, seo.faq[] as {question, answer}, and body as portable text. Set status = published, add a cover image (use a strong AI Vision before/after), and keep the internal links that are in the drafts. Once published they flow into the sitemap + JSON-LD automatically. Publish #1 and #2 first.</pre>
+<section>
+  <div class="wrap">
+    <h2 class="sh">Every week, regardless <span class="n">the background cadence</span></h2>
+    <div class="cards">
+      <div class="card"><h3>Content</h3><p>Two to four Journal posts a month, from the content calendar. Consistency beats volume. Submit every new URL in Search Console.</p></div>
+      <div class="card"><h3>Pinterest</h3><p>A few vertical pins a week, cut from real results, each linking back to an article. They compound quietly.</p></div>
+      <div class="card"><h3>Reviews</h3><p>Every happy client gets asked, once, for a Google or Trustpilot review. Both competitors are weak here.</p></div>
+      <div class="card"><h3>Search Console</h3><p>Ten minutes on a Friday. Which queries are climbing tells you what to write next.</p></div>
+    </div>
   </div>
+</section>
 
-  <div class="msg">
-    <div class="bar"><b>#2 → Your affiliate setup (do in order)</b><span class="hint">unlocks furniture commission</span><button class="copy" data-t="m2">Copy</button></div>
-    <pre id="m2">AFFILIATE SETUP — the "open to Armenia" path (trade discounts need a US company; affiliate does not).
+<section>
+  <div class="wrap">
+    <h2 class="sh">Copy and paste <span class="n">2 messages</span></h2>
 
-1. Payoneer — REUSE the account you already have (the one from Upwork). It already includes the US
-   "Global Payment Service" receiving account that CJ uses to pay non-US affiliates, so this step is
-   basically done — just log in and confirm it's active/in good standing. No new account needed.
-2. Skimlinks (skimlinks.com) — apply. One approval auto-adds commission to your existing shopping-list
-   links across West Elm, Pottery Barn, Crate & Barrel, CB2, Wayfair, Society6 + ~48,000 stores.
-   It's selective — apply with the live site once the new articles are published.
-3. CJ Affiliate (cj.com) — apply to the Wayfair program (covers AllModern too). Non-US = paid via Payoneer.
-4. Impact.com — apply to West Elm, Pottery Barn, Crate & Barrel/CB2, Society6, Blu Dot.
-5. Also easy + open: Kave Home (up to 30%), Society6 (worldwide). Skip Article + IKEA (no usable program).
-6. A US LLC is only worth it later, IF you start buying & reselling furniture for the 15-20% trade discounts.
+    <div class="msg">
+      <div class="bar"><b>Message 1 · start virtual staging V1</b><span class="hint">paste in week 1</span><button class="copy" data-t="m1">Copy</button></div>
+      <pre id="m1">Build virtual staging V1.
 
-Tax form: CJ / Impact will ask you to sign a W-8BEN (as an individual) so they don't withhold US tax —
-a quick online form. Commissions can land in your personal-name Payoneer; only upgrade to a Payoneer
-business account later if you want the money to arrive under "Designature Studio".
+Scope, from docs/product/virtual-staging-spec.md:
+1. A /virtual-staging landing page aimed at real estate agents, sellers and short stay hosts.
+2. Turn on the staging path that already exists in the AI Vision engine, as its own mode.
+3. Label every output "Virtually staged". This is required by US listing rules, so it is not optional.
+4. Wire it to the credit model that shipped on Sept 6. Per photo pricing.
+5. Add a "shop this room" link from a staged result into the shopping list.
+6. Put the page in the sitemap with the same structured data the other landing pages emit.
 
-Tell Claude once links are live and it will update the "No affiliate fees" line to an honest disclosure.</pre>
+Before you build, check the four Journal drafts in docs/marketing/journal-drafts are published,
+and tell me which are missing so I can publish them.</pre>
+    </div>
+
+    <div class="msg">
+      <div class="bar"><b>Message 2 · start the installable app</b><span class="hint">paste in week 4</span><button class="copy" data-t="m2">Copy</button></div>
+      <pre id="m2">Build the installable app, phase 1.
+
+Route decided: installable web app with push, not a store app and not a native rebuild.
+
+Phase 1, this week:
+1. Audit every page on a real phone screen and give me the list of what breaks.
+2. App manifest, name, theme colours from the site palette, and the full icon set.
+3. An install prompt, plus an install page with the iPhone Add to Home Screen steps.
+4. Give me a draft list of every notification you propose, split into mine and customers,
+   so I can cut it before you build any of them.
+
+Phase 2, the week after: service worker, offline shell, faster image upload on mobile data,
+and camera capture straight into AI Vision.
+
+Phase 3: push. Signing keys, subscription storage, a preferences panel in the account page,
+my admin alerts first (pack bought, consultation booked, feedback, failed payment),
+customer notifications second (room ready, credits low, consultation tomorrow, receipt),
+with quiet hours and one tap off. No marketing notifications, ever.</pre>
+    </div>
   </div>
-</div></section>
+</section>
 
-<section><div class="wrap">
-  <h2 class="sh">The one decision left</h2>
-  <div class="next">
-    <b>Competitor #3 — which do you want next?</b> Options: <b>MyRoomDesigner.ai</b> (the closest copy of your exact features — good for "what are we missing")·or·<b>Havenly</b> (the big hybrid player that owns The Expert &amp; Interior Define — good for "how do the leaders package + price"). Tell me which, or say "not yet — let me publish first." Everything above can start today without it.
+<section>
+  <div class="wrap">
+    <h2 class="sh">Still open <span class="n">1 decision</span></h2>
+    <p class="p">Competitor number three. MyRoomDesigner.ai is the closest copy of your exact feature set, so the teardown answers "what are we missing". Havenly is the large hybrid that owns The Expert and Interior Define, so it answers "how do the leaders package and price". Tell me which, or say not yet. Nothing on this board waits on it.</p>
   </div>
-</div></section>
+</section>
 
-<footer><div class="wrap">This page is the summary. The detailed write-ups live in the repo (docs/) if you ever want them — but you don't need to read them to act.</div></footer>
+<footer>
+  <div class="wrap">Ticks are stored in this browser only, so they will not follow you to another device. The long form write ups live in docs/ if you ever want them. You do not need to read them to work this board.</div>
+</footer>
 
 <script>
-document.querySelectorAll('.copy').forEach(b=>{
-  b.addEventListener('click',async()=>{
-    const t=document.getElementById(b.dataset.t).innerText;
-    try{await navigator.clipboard.writeText(t);}catch(e){
-      const r=document.createRange();r.selectNode(document.getElementById(b.dataset.t));
-      getSelection().removeAllRanges();getSelection().addRange(r);
-      try{document.execCommand('copy');}catch(_){}
-    }
-    const o=b.textContent;b.textContent='✓ Copied';b.classList.add('ok');
-    setTimeout(()=>{b.textContent=o;b.classList.remove('ok');},1600);
+(function(){
+  var KEY='dsg-weekly-v1';
+  function load(){try{return JSON.parse(localStorage.getItem(KEY))||{};}catch(e){return {};}}
+  function save(s){try{localStorage.setItem(KEY,JSON.stringify(s));}catch(e){}}
+  var state=load();
+  document.querySelectorAll('.tasks input[type=checkbox]').forEach(function(b){
+    if(state[b.id])b.checked=true;
+    b.addEventListener('change',function(){state[b.id]=b.checked;save(state);});
   });
-});
-const root=document.documentElement;
-document.getElementById('tt').onclick=()=>{
-  const cur=root.getAttribute('data-theme');
-  const sys=matchMedia('(prefers-color-scheme:dark)').matches;
-  const now=cur||(sys?'dark':'light');
-  root.setAttribute('data-theme',now==='dark'?'light':'dark');
-};
+  var reset=document.getElementById('reset');
+  if(reset)reset.addEventListener('click',function(){
+    state={};save(state);
+    document.querySelectorAll('.tasks input[type=checkbox]').forEach(function(b){b.checked=false;});
+  });
+
+  var today=new Date();today.setHours(12,0,0,0);
+  var weeks=[].slice.call(document.querySelectorAll('.week'));
+  var current=null,label='This week';
+  weeks.forEach(function(w){
+    var s=new Date(w.dataset.start+'T12:00:00'), e=new Date(w.dataset.end+'T12:00:00');
+    if(today>e)w.classList.add('past');
+    if(today>=s&&today<=e){current=w;}
+  });
+  if(!current){
+    var upcoming=weeks.filter(function(w){return new Date(w.dataset.start+'T12:00:00')>today;});
+    if(upcoming.length){current=upcoming[0];label='Starts Monday';}
+  }
+  if(current){
+    current.classList.add('now');
+    var b=document.createElement('span');b.className='badge';b.textContent=label;
+    current.querySelector('.whead').appendChild(b);
+    var board=document.getElementById('board');
+    board.insertBefore(current,board.firstChild);
+  }
+
+  document.querySelectorAll('.copy').forEach(function(btn){
+    btn.addEventListener('click',async function(){
+      var el=document.getElementById(btn.dataset.t);
+      try{await navigator.clipboard.writeText(el.innerText);}catch(e){
+        var r=document.createRange();r.selectNode(el);
+        getSelection().removeAllRanges();getSelection().addRange(r);
+        try{document.execCommand('copy');}catch(_){}
+      }
+      var o=btn.textContent;btn.textContent='Copied';btn.classList.add('ok');
+      setTimeout(function(){btn.textContent=o;btn.classList.remove('ok');},1600);
+    });
+  });
+
+  var root=document.documentElement;
+  document.getElementById('tt').onclick=function(){
+    var cur=root.getAttribute('data-theme');
+    var sys=matchMedia('(prefers-color-scheme:dark)').matches;
+    var now=cur||(sys?'dark':'light');
+    root.setAttribute('data-theme',now==='dark'?'light':'dark');
+  };
+})();
 </script>
+</body>
+</html>
