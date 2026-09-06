@@ -153,6 +153,61 @@ export async function grantCredits(
 }
 
 /**
+ * Admin clawback: remove up to `amount` credits from the PERMANENT bucket — the
+ * counterpart to refunding a one-time pack's money. Row-locked and floored at zero:
+ * if the buyer already spent some of the pack, we reclaim only what remains (the
+ * money refund still stands; the shortfall is the admin's discretion). Writes one
+ * negative `admin_adjust` audit row. Returns how many were actually removed.
+ */
+export async function clawbackCredits(
+  userId: string,
+  amount: number,
+  opts: { ref?: string } = {},
+): Promise<{ removed: number; balance: CreditBalance }> {
+  if (!Number.isInteger(amount) || amount <= 0) {
+    throw new Error(`clawbackCredits: amount must be a positive integer, got ${amount}`);
+  }
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      `SELECT monthly_credits, permanent_credits FROM credit_balances
+        WHERE user_id = $1 FOR UPDATE`,
+      [userId],
+    );
+    const monthly = rows.length ? Number(rows[0].monthly_credits) : 0;
+    const permanent = rows.length ? Number(rows[0].permanent_credits) : 0;
+    const removed = Math.min(amount, permanent);
+    if (removed === 0) {
+      await client.query('COMMIT');
+      return { removed: 0, balance: { monthly, permanent, total: monthly + permanent } };
+    }
+    const upd = await client.query(
+      `UPDATE credit_balances
+          SET permanent_credits = permanent_credits - $2, updated_at = now()
+        WHERE user_id = $1
+      RETURNING monthly_credits, permanent_credits`,
+      [userId, removed],
+    );
+    const m = Number(upd.rows[0].monthly_credits);
+    const p = Number(upd.rows[0].permanent_credits);
+    await client.query(
+      `INSERT INTO credit_transactions (user_id, delta, bucket, reason, ref, balance_after)
+         VALUES ($1, $2, 'permanent', 'admin_adjust', $3, $4)`,
+      [userId, -removed, opts.ref ?? null, m + p],
+    );
+    await client.query('COMMIT');
+    return { removed, balance: { monthly: m, permanent: p, total: m + p } };
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
  * Debit the price of one tool run, monthly bucket first.
  *
  * Call this BEFORE the provider call. Row-locked (`FOR UPDATE`) so two concurrent

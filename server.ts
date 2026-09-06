@@ -37,7 +37,7 @@ import { runMigrations } from "./db/migrate.js";
 import { getPool } from "./db/pgPool.js";
 import { meterSpend, meterRefund, creditsEnabled, FREE_GRANT_CREDITS, InsufficientCreditsError } from "./services/credits/meter.js";
 import { meterBalance } from "./services/credits/meter.js";
-import { grantCredits, listTransactions } from "./services/credits/ledger.js";
+import { grantCredits, listTransactions, clawbackCredits } from "./services/credits/ledger.js";
 import { CREDIT_PLANS } from "./src/data/creditPricing.js";
 
 /** Credits granted on every billing cycle of the monthly subscription (1,000). */
@@ -5856,6 +5856,70 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       return res.json({ ok: true, orderId: order.id, amount });
     } catch (err) {
       console.error("[ameria/refund] error:", err);
+      return res.status(502).json({ error: "Could not reach the bank to process the refund." });
+    }
+  });
+
+  // ── POST /api/admin/credits/refund — admin-only refund of a one-time credit pack ─
+  // Refunds the money via RefundPayment AND claws back the granted credits. Mirrors
+  // the consultation refund, but on `credit_purchases` + the credit ledger. The
+  // clawback floors at zero (see clawbackCredits) so refunding a buyer who already
+  // spent some credits still returns their money and reclaims whatever remains.
+  app.post("/api/admin/credits/refund", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const purchaseId = (req.body?.purchaseId ?? "").toString().trim();
+    if (!isUuid(purchaseId)) return res.status(400).json({ error: "A valid purchaseId is required." });
+
+    const pool = getPool();
+    let purchase: any;
+    try {
+      const r = await pool.query(`SELECT * FROM credit_purchases WHERE id=$1 LIMIT 1`, [purchaseId]);
+      purchase = r.rows[0];
+    } catch (err) {
+      console.error("[credits/refund] lookup failed:", err);
+      return res.status(500).json({ error: "Lookup failed." });
+    }
+    if (!purchase) return res.status(404).json({ error: "Purchase not found." });
+    if (!purchase.ameria_payment_id) return res.status(409).json({ error: "Purchase has no payment to refund." });
+    if (purchase.status !== "paid") {
+      return res.status(409).json({ error: `Purchase is '${purchase.status}', not 'paid' — cannot refund.` });
+    }
+
+    // Refund the amount actually charged (resolveChargeAmount → 10 AMD in sandbox,
+    // the real USD in production), never the display price, so it matches the capture.
+    const charged = resolveChargeAmount(Number(purchase.amount_usd));
+    const requested = req.body?.amount;
+    const amount =
+      requested != null && Number.isFinite(Number(requested)) && Number(requested) > 0
+        ? Number(requested)
+        : charged.amount;
+
+    try {
+      const refund = await refundPayment(purchase.ameria_payment_id, amount);
+      if (normalizeCode(refund.responseCode) !== "00") {
+        console.error("[credits/refund] bank declined:", refund.responseCode, refund.responseMessage);
+        return res.status(502).json({
+          error: "The refund was not accepted by the bank.",
+          responseCode: refund.responseCode,
+          responseMessage: refund.responseMessage,
+        });
+      }
+      await pool.query(`UPDATE credit_purchases SET status='refunded' WHERE id=$1`, [purchase.id]);
+      let clawedBack = 0;
+      try {
+        const cb = await clawbackCredits(purchase.user_id, purchase.credits, { ref: purchase.id });
+        clawedBack = cb.removed;
+      } catch (err) {
+        // Money refunded but clawback failed — loud, needs manual balance repair.
+        console.error("[credits/refund] CLAWBACK FAILED AFTER REFUND:", purchase.id, err);
+      }
+      recordActivity(purchase.client_email, "credits_refunded", {
+        user_id: purchase.user_id, purchase_id: purchase.id, amount,
+        credits_granted: purchase.credits, credits_clawed_back: clawedBack,
+      });
+      return res.json({ ok: true, purchaseId: purchase.id, amount, clawedBack });
+    } catch (err) {
+      console.error("[credits/refund] error:", err);
       return res.status(502).json({ error: "Could not reach the bank to process the refund." });
     }
   });
