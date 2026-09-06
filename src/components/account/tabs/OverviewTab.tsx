@@ -13,11 +13,13 @@ import {
 import { CreditBalanceCard } from '../CreditBalanceCard';
 import type { DashboardData, PlanTier, QuotaEntry, Booking } from '../../../lib/accountApi';
 
-const PLAN_NAME: Record<PlanTier, string> = { free: 'Free', design: 'Design', studio: 'Studio' };
+// Credit model: subscribers hold the monthly credit plan; everyone else is
+// pay-as-you-go (free grant + one-time packs). No Design/Studio tiers.
+const PLAN_NAME: Record<PlanTier, string> = { free: 'Pay-as-you-go', design: 'Monthly credits', studio: 'Monthly credits' };
 const PLAN_PRICE: Record<PlanTier, string> = {
-  free: 'No card on file.',
-  design: '$19 / month · billed monthly',
-  studio: '$49 / month · billed monthly',
+  free: 'You buy credits as you need them.',
+  design: '$49 / month · 1,000 credits',
+  studio: '$49 / month · 1,000 credits',
 };
 
 // ── usage card ───────────────────────────────────────────────────────────────
@@ -139,7 +141,7 @@ export const OverviewTab: React.FC<{
           <div className="flex gap-[10px] flex-wrap">
             {tier === 'free' && (
               <Button variant="primary" onClick={onUpgrade}>
-                Upgrade to Design →
+                Get credits →
               </Button>
             )}
             {paid && canceled && (
