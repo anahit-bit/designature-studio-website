@@ -1037,10 +1037,10 @@ const translations = {
     // Pricing Section (full)
     'pricing.backHome': 'Back to Home',
     'pricing.hero': 'Pricing',
-    'pricing.subtitle': 'Start free — no card needed. Paid plans launching soon.',
+    'pricing.subtitle': 'Start free — no card needed. Buy credits when you need them, or subscribe monthly.',
     'pricing.eyebrow': 'Pricing',
     'pricing.title': 'Simple, honest pricing.',
-    'pricing.subtitle2': "Start free. Upgrade when you're ready.\nPaid plans launching soon.",
+    'pricing.subtitle2': "Start free — 50 credits, no card.\nBuy more when you're ready.",
     'pricing.free.badge': 'Free',
     'pricing.free.forever': '/ forever',
     'pricing.free.desc': 'Try the full AI journey before spending anything. No credit card needed.',

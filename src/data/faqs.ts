@@ -106,15 +106,15 @@ export const FAQ_SECTIONS: FaqSection[] = [
     items: [
       {
         q: 'What\'s included in the free plan?',
-        a: 'The free plan includes unlimited Style Quiz, 3 AI Vision concepts, 3 shopping lists (each with PDF download), and access to the Room Audit in future. No credit card is ever required to sign up or use the free plan.',
+        a: 'Every new account gets 50 credits, once, with no card required — enough to try every tool on your own room. Find My Style is always free and never costs credits. Credits are the only limit; nothing is feature-locked. Free exports carry a small watermark.',
       },
       {
-        q: 'When will paid plans be available?',
-        a: 'Paid plans (Design at $19/mo and Studio at $49/mo) are launching soon. You can join the waitlist from the Pricing page and we\'ll notify you the moment they go live.',
+        q: 'How much do paid credits cost?',
+        a: 'You can buy a one-time credit pack that never expires — Starter (400 credits, $39), Project (3,000 credits, $129), or Project Plus (6,500 credits, $249) — or subscribe monthly for $49 and get 1,000 fresh credits each month. As a guide, one photoreal room render is about 10 credits.',
       },
       {
-        q: 'What does the Design plan add over free?',
-        a: 'The Design plan ($19/mo) adds 30 AI Vision credits per month, 20 shopping lists per month with budget filtering, 3 Room Audits, and 1 Design Brief.',
+        q: 'What\'s the difference between a pack and the monthly subscription?',
+        a: 'A one-time pack is a single payment and its credits never expire, so you move at your own pace — ideal for a single project. The $49/month subscription refills to 1,000 credits each month (they don\'t roll over) and carries a commercial-use licence, for continuous professional work. Every tool is available either way.',
       },
     ],
   },

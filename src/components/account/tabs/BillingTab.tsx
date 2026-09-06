@@ -10,7 +10,9 @@ import {
   type BillingRowStatus,
 } from '../../../lib/accountApi';
 
-const PLAN_NAME: Record<PlanTier, string> = { free: 'Free', design: 'Design', studio: 'Studio' };
+// Credit model: a subscriber holds the monthly credit plan; everyone else is
+// pay-as-you-go (free grant + one-time packs). There is no Design/Studio tier.
+const PLAN_NAME: Record<PlanTier, string> = { free: 'Pay-as-you-go', design: 'Monthly credits', studio: 'Monthly credits' };
 
 const STATUS_STYLE: Record<BillingRowStatus, string> = {
   paid: 'border-[#15803d] text-[#15803d]',
@@ -47,8 +49,8 @@ export const BillingTab: React.FC<{
           <AlertTriangle className="w-4 h-4 text-[#9E5E41] flex-shrink-0" />
           <span className="flex-1 font-body text-[13px]">
             Your recent charge failed. Update your card by{' '}
-            <b>{plan.gracePeriodEndsAt ? fmtDate(plan.gracePeriodEndsAt) : 'soon'}</b> to keep{' '}
-            {PLAN_NAME[tier]}.
+            <b>{plan.gracePeriodEndsAt ? fmtDate(plan.gracePeriodEndsAt) : 'soon'}</b> to keep your
+            monthly credits.
           </span>
           <Button size="sm" variant="danger" onClick={onUpdateCard}>
             Update card now
@@ -65,31 +67,18 @@ export const BillingTab: React.FC<{
               {PLAN_NAME[tier]}
             </div>
             <div className="text-[#6B6B6B] text-[12px] font-body">
-              {tier === 'free' && 'No active subscription.'}
-              {tier === 'design' &&
+              {!paid &&
+                'You buy credits as you need them — no subscription. Your balance is on the Overview tab.'}
+              {paid &&
                 (canceled && plan.periodEndAt
-                  ? `$19 / month · Cancels ${fmtDate(plan.periodEndAt)}`
-                  : `$19 / month · Renews ${fmtDate(plan.renewsAt)}`)}
-              {tier === 'studio' &&
-                (canceled && plan.periodEndAt
-                  ? `$49 / month · Cancels ${fmtDate(plan.periodEndAt)}`
-                  : `$49 / month · Renews ${fmtDate(plan.renewsAt)}`)}
+                  ? `$49 / month · 1,000 credits · Cancels ${fmtDate(plan.periodEndAt)}`
+                  : `$49 / month · 1,000 credits · Renews ${fmtDate(plan.renewsAt)}`)}
             </div>
           </div>
           <div className="flex gap-[10px] flex-wrap justify-end">
-            {tier === 'free' && (
-              <>
-                <Button size="sm" variant="primary" onClick={() => onUpgrade('design')}>
-                  Upgrade to Design ($19/mo)
-                </Button>
-                <Button size="sm" variant="secondary" onClick={() => onUpgrade('studio')}>
-                  Upgrade to Studio ($49/mo)
-                </Button>
-              </>
-            )}
-            {tier === 'design' && (
+            {!paid && (
               <Button size="sm" variant="primary" onClick={() => onUpgrade('studio')}>
-                Upgrade to Studio ($49/mo)
+                Get credits →
               </Button>
             )}
             {paid && !canceled && (
