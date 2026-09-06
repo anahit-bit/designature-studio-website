@@ -5804,6 +5804,31 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     }
   });
 
+  // ── GET /api/admin/credits/purchases — one-time credit-pack ledger (admin) ─────
+  // Feeds the /admin/credits page. Separate table from `orders`, so the consultation
+  // Orders tab never showed these; a 'paid' row here can be refunded via
+  // POST /api/admin/credits/refund (money back + credits clawed back).
+  app.get("/api/admin/credits/purchases", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 1000);
+    try {
+      const r = await getPool().query(
+        `SELECT id, ameria_order_id, pack_id, credits, amount_usd, status, client_email,
+                ameria_payment_id,
+                (ameria_payment_id IS NOT NULL) AS has_payment,
+                created_at, paid_at
+           FROM credit_purchases
+          ORDER BY created_at DESC
+          LIMIT $1`,
+        [limit],
+      );
+      res.json({ purchases: r.rows });
+    } catch (err) {
+      console.error("[admin/credits/purchases] list failed:", err);
+      res.status(500).json({ error: "Could not list credit purchases." });
+    }
+  });
+
   // ── POST /api/payments/ameria/refund — admin-only (reuse admin_session gate) ──
   app.post("/api/payments/ameria/refund", async (req, res) => {
     if (!requireAdmin(req, res)) return;
