@@ -42,7 +42,20 @@ one, so pushing a new copy to Drive is a manual upload.
 
 ## Diffs
 
-xlsx is a zip of XML, so `git diff` shows a binary blob rather than the changed cells. Version history
-still works: every commit is a full restorable copy, and the commit message carries the intent. If
-readable per cell diffs become useful, a small export script can write one CSV per sheet alongside the
-workbook, the same pattern `docs/competitor-intel/` already uses.
+xlsx is a zip of XML, so `git diff` on the workbook shows a binary blob rather than the changed cells.
+`export/` solves that: one CSV per sheet, regenerated from the workbook, so every commit shows which
+cells actually moved. The CSVs are an export and never the master. Editing one changes nothing.
+
+```
+pip install openpyxl                                  # once
+python3 docs/plan/scripts/export_plan.py              # rewrite the CSVs
+python3 docs/plan/scripts/export_plan.py --check      # exit 1 if they are stale
+```
+
+Run it after every workbook edit and commit the workbook and the CSVs together, or the diff lies about
+what changed. `--check` is there if you ever want it wired into a hook or a CI step.
+
+What the export does not carry: cell fills, so the green Done rule is invisible in CSV. The Status
+column already says Done in words, so nothing is lost that matters. Dates are normalised to
+YYYY-MM-DD, since some cells hold a real date and most hold a string, and without that the export
+would churn on every run.

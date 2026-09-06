@@ -1,0 +1,29 @@
+  Designature Studio — Website Plan,
+  Working planning doc · last seeded 2026-06-16,
+,
+How to use this workbook,
+1. Strategy & Positioning is the anchor — every backlog item should serve Option 3 today or Foundation/Option 2 readiness.,
+2. Backlog is the master list of work. Add new ideas as rows. Update Status as you make progress.,
+3. Roadmap groups Backlog items by phase (1–5 + Future) so you can see what's near vs far.,
+"4. Customer Feedback captures real-user notes verbatim — discuss, then create Backlog items from them.",
+"5. Visual & Feel is open canvas for design polish notes — mostly empty, fill in as ideas come.",
+6. Tier Matrix is reference for Free / Design / Studio plan boundaries.,
+7. Regression Tests is the manual test log — run before each meaningful release; add a row whenever you discover a new behavior worth re-checking.,
+"8. Current State is a snapshot of what's live, locked, or in progress today (refresh as the site changes).",
+Column meanings (Backlog tab),
+,
+ID,"Stable identifier. Format: PREFIX-NNN. Prefixes: S=Strategy, A=Architecture, AI=AI Studio, SL=Shopping List, I=Infra/CMS, AC=Account & Dashboard, F=Feedback, C=Content/Service, P=Performance/SEO, M=Mobile, VF=Visual/Feel, RT=Regression Test."
+Title,"Short imperative phrase, e.g. 'Add visible Sign Up CTA to header'."
+Bucket,"High-level area. Strategy, Architecture, AI Studio, Shopping List, Infra/CMS, Account & Dashboard, Customer Feedback, Content, Performance/SEO, Mobile, Visual/Feel."
+Strategy fit,Option 3 = supports designer-hero today. Option 2 = supports future AI-hero pivot. Both = needed under either. Foundation = architectural prep for the future swap.
+Priority,P0 = must have soon. P1 = should have. P2 = nice to have. P3 = someday/maybe.
+Status,Idea · Discussed · Approved · In Progress · Done · Dropped.
+Effort,S = under 1 day. M = 1–3 days. L = ~1 week. XL = more than a week.
+Phase,1 Free polish · 2 Deploy · 3 CMS · 4 Paid tiers · 5 Strategy swap · Future = concepts to refine.
+,
+Legend — Backlog sheet,
+"A DONE item has its WHOLE row filled green (C6EFCE). Green means Done and nothing else — Dropped, Folded, Partial and Idea rows are never green.",
+"Added 2026-08-21 at owner's request. Applies to every status beginning with 'Done' (Done, Done (in production), Done (architecture locked), ...).",
+,
+Weekly view,
+"The week by week schedule that turns this backlog into dated weeks lives in the repo at docs/action-plan.html (Sept 7 to Nov 29, 2026). It highlights the current week on open. This workbook stays the master list; that page is the calendar. Added 2026-09-06.",

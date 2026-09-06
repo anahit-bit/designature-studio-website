@@ -1,0 +1,30 @@
+  Strategy & Positioning,,,
+  Option 3 (Designer hero) NOW → Option 2 (AI hero) LATER. Build clean swap seams.,,,
+,,,
+Why this order,,,
+"We don't have enough AI content/engagement yet to credibly position as an AI-first platform. The designer story + portfolio earns trust today and converts the high-ticket consulting revenue. Meanwhile the AI Studio runs as a delightful, first-class tool that warms leads — and quietly accumulates the engagement data that will justify the future swap.",,,
+,,,
+The 5 swap surfaces,,,
+Surface,Today (Option 3),Future (Option 2),How we keep the seam clean
+Home hero,Portfolio image · 'Designature Studio' headline · primary CTA: Let's chat,AI Vision demo · 'Transform your room' headline · primary CTA: Try free,Single component (HomeHero). Swap = replace one file.
+Header nav order,Portfolio · Services · Studio · AI Studio · Pricing,AI Studio · Pricing · Portfolio · Services · Studio,"Order driven by config, not hardcoded JSX order."
+Header primary CTA,Let's chat (Calendly),Try AI free (sign-up),Component: HeaderPrimaryCTA. Logged-in state shows account chip in either world.
+Footer lead copy,Designer-first credentials and contact,"Platform-first: features, pricing, sign up",Component: FooterLead. Sanity-managed copy.
+SEO meta + schema,LocalBusiness / Designer schema; titles and descriptions emphasize design studio,SoftwareApplication / SaaS schema; titles emphasize AI tool,Component: SiteMeta with per-page overrides from Sanity.
+,,,
+,,,
+Build rules to preserve the swap path,,,
+"  • Isolate the 5 swap surfaces as their own small components. Don't inline hero, nav order, primary CTA, or footer copy into pages.",,,
+"  • Don't build Option 2 versions yet (YAGNI). Just keep the seams clean so the swap is a focused day, not a rebuild.",,,
+"  • AI Studio stays first-class even though it's secondary today — its own polished landing area, its own SEO indexing, a discoverable home-page CTA.",,,
+  • Prefer copy that survives both positions. 'Designed by us. Visualized by you.' beats 'Premium interior design studio'.,,,
+"  • Move marketing copy (hero headlines, CTA labels, meta tags) into Sanity. Editorial swap > code swap.",,,
+"  • Track AI Studio engagement: sign-ups, generations per visitor, conversion to consultation. The swap should be data-driven.",,,
+,,,
+Trigger criteria for the swap,,,
+Metric,Threshold,Current,
+Paid-tier MRR,$ ___ / month sustained for 2+ months,TBD,
+AI Studio sign-ups,___ sign-ups per month sustained,TBD,
+Conversion (visit → AI sign-up),___ %,TBD,
+Conversion (AI user → consultation),Already strong evidence,TBD,
+Owner readiness,Editorial + nav swap content prepared,TBD,

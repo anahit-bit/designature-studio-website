@@ -1,0 +1,22 @@
+"  AI Studio — the 19 cards, by phase",,,,,
+Card names are the owner-locked verb names (2026-07-25) used on the /ai-studio rail. ●  = live in production.  Route data: AI-032 v2.,,,,,
+,,,,,
+01  DISCOVER,02  PLAN,03  VISUALIZE,04  SPECIFY,05  REALIZE,·   ANYTIME
+,,,,,
+●  Find My Style,   Plan My Room,●  Redesign My Room,   Schedule My Finishes,   Phase My Reno,   Write My Brief
+     AI-022 · shipped,     AI-016 · spec locked,     AI-023/28/30 · shipped,     AI-036 · NEW 27 Aug,     AI-010 · idea,     AI-001 · idea
+●  Score My Room,   Plan My Home,   Pick My Palette,●  Shop My Room,   Guide My Install,
+     shipped,     AI-017 · idea,     AI-013 · idea,     shipped,     AI-019 · idea,
+   Localize My Style,   Plumb My Room,   Build My Moodboard,   Cost My Project,   Walk My Room,
+     AI-002 · idea,     AI-035 · NEW 27 Aug,     AI-014 · idea,     AI-012 · idea,     AI-020 · roadmap,
+,   Heat My Room,,,,
+,     AI-034 · idea,,,,
+,   Light My Room,,,,
+,     AI-011 · idea,,,,
+,   Wire My Room,,,,
+,     AI-018 · idea,,,,
+,,,,,
+"Not cards: AI-029 spatial recognition and AI-033 floorplan-as-input are improvements INSIDE Redesign My Room, not separate rail cards.",,,,,
+"The header, home page and Library still use the functional names (AI Vision, Shopping List, Room Audit, Style Quiz) — that is deliberate; do not rename those surfaces.",,,,,
+,,,,,
+Source of truth: src/components/studio/explorerRoster.ts · routes: _Plan/Website/AI-032v2-Scenario-Pipelines.md · sync when new AI cards ship.,,,,,

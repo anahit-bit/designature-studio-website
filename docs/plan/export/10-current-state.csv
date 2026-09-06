@@ -1,0 +1,42 @@
+  Current State — snapshot 2026-06-16,,
+  Refresh as the site changes. Source: code review of working tree on 2026-04-28.,,
+,,
+Routes (react-router-dom),,
+Route,Component,Purpose
+/,HomePage,Public marketing
+/portfolio,PortfolioPage,Public marketing — reads from Sanity
+/portfolio/:id,ProjectDetail,Public marketing
+/services,ServicesPage,Public marketing
+/studio,StudioPage,Public — content TBD (S-004)
+/ai-concepts,AIConceptsPage,Auth-gated — AI Studio core
+/ai-vision,AIVisionPage,Auth-gated
+/pricing,PricingPage,Public marketing
+/faq,FAQPage,Public marketing
+*,Navigate to /,Catch-all
+,,
+AI Studio cards,,
+Card,Status,Notes
+Style Quiz,LIVE · LOCKED,"8-style voting, top 3 results, history"
+AI Vision,LIVE · LOCKED,Room transformation; free 3 / paid unlimited
+Shopping List,LIVE · LOCKED layout (pipeline being iterated),4–6 mixed-category items via Gemini + Serper. MOCK_SERPER toggle for dev.
+Room Audit,"LIVE for paid users, SOON for free",Paid-only today; consider free-tier 3/month for Option 3 funnel
+Design Brief,PLACEHOLDER (SOON),Build in Phase 4 (AI-001)
+Cultural Advisor,PLACEHOLDER (SOON),Studio-tier-only; Phase 4 (AI-002)
+,,
+Backend,,
+Area,State,Notes
+Auth,Local to AIConceptsPage (no global context yet),Lift planned: A-001
+User store,users.json flat file,Migrate planned: I-002
+Sessions,In-memory on server + sessionStorage token,
+Sanity CMS,"Project ID 305mgeeu, dataset production",Only `project` content type wired
+Deploy,Railway auto-deploys main branch,Custom domain pending: I-001
+Sanity Studio repo,E:/Business/Claude/Portfolio/studio (separate),Independent deploy via sanity deploy
+,,
+Feature flags / env,,
+Flag,Purpose,Notes
+MOCK_SERPER,"Bypass Serper, use mocks/serper-shopping-mock.json",Dev only
+GOOGLE_CLIENT_ID,OAuth client ID,
+SERPER_API_KEY,Real shopping search,Required unless MOCK_SERPER=true
+GEMINI_API_KEY,Gemini for identify + room audit,Required
+NODE_ENV,Test mode alters QUIZ_VOTE_UNLOCK_MS,
+FREE_USERS_SPREADSHEET_ID,Google Sheets free-tier tracker,"Optional, has hardcoded fallback"

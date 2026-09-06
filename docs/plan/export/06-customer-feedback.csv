@@ -1,0 +1,6 @@
+Date,Source,Verbatim feedback,Theme,Status,Linked Backlog ID,Notes
+2026-04-19,External user,"Couldn't find where to sign up — only reachable from AI Studio page. Suggest visible 'sign up free' in the header, with logged-in state. 'Let's chat' should remain the consultation CTA.",Sign-up visibility / nav,Approved → in plan,S-003,Reinforces Option 3 too: free CTA secondary to 'Let's chat' primary.
+2026-04-28,Multiple users,UI is not the best — text/words are not readable. Same comment from multiple people.,Readability / accessibility,Approved → in plan,VF-001,Treat as P0 — multiple-user signal.
+2026-04-28,Owner,Images load very slowly when first opening app.designature.studio.,Performance / images,Approved → in plan,P-004,First-impression issue.
+,,,,,,
+↓ Add new feedback below as it comes in.,,,,,,

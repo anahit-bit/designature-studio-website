@@ -1,0 +1,44 @@
+  Tier Matrix — credit model (v4),,,,,,
+"  One credit currency. Plans differ by credit count only — never by which tools are unlocked, never by room scope. Supersedes the old Free / Design $19 / Studio $49 matrix. Mockup: _Mockups\Website\WEBSITE-PLAN-pricing-page-credits.html · set 2026-09-04.",,,,,,
+,,,,,,
+  1 · THE PLANS,,,,,,
+Plan,Price,Credits,Credits per $,≈ Renders,≈ Shopping lists,Who buys it
+Free,$0,50 (once),—,5,2,Prove it works on your own room. Every tool unlocked; quantity is the only limit.
+One-time payment › Starter,$39 once,400,10.3,40,16,"A first, low-risk purchase. Deliberately the worst value — it makes Project look reasonable."
+One-time payment › Project,$129 once,"3,000",23.3,300,120,"THE INTENDED CHOICE. A whole renovation, with room to change their mind."
+One-time payment › Project Plus,$249 once,"6,500",26.1,650,260,"A large job, or someone who re-runs everything twice."
+Monthly subscription,$49 / mo · $470 / yr,"1,000 / mo",20.4,100 / mo,40 / mo,"Stagers, Airbnb hosts, designers, agents. Commercial licence + clean exports + white-label PDF."
+"  THREE CARDS on the page: Free · One-time payment · Monthly subscription. Starter / Project / Project Plus are RUNGS INSIDE the one-time card, each opening its own inline ""that's about"" panel — not five flat tiers. Titles name the BILLING SHAPE; the audience belongs in the sub-line. Pay-once credits never expire and are creditable toward a design project; monthly refills, does not roll over ($470/yr — the rung that beats buying packs, since R2 forces a single month to be worse value than Project).",,,,,,
+,,,,,,
+  2 · WHAT EACH TOOL COSTS,,,,,,
+Tool,Journey phase,Credits,Est. cost / use,Our cost per credit,Status,Note
+Find My Style,Discover,Free,0.002,,Live,Free forever and unlimited on every plan — it is the door.
+Score My Room,Discover,5,0.01,0.002,Live,
+Localize My Style,Discover,5,0.008,0.0016,Soon,
+Plan My Room,Plan,15,0.03,0.002,Soon,
+Plan My Home,Plan,40,0.08,0.002,Soon,"Value-priced well above cost — bought rarely, worth a lot."
+Light My Room,Plan,15,0.025,0.00167,Soon,
+Plumb My Room,Plan,15,0.025,0.00167,Soon,
+Heat My Room,Plan,15,0.025,0.00167,Soon,
+Wire My Room,Plan,15,0.025,0.00167,Soon,
+Redesign My Room,Visualize,10,0.035,0.0035,Live,SETS THE CEILING at $0.0035/credit. Worst case = the flagship used as intended.
+Pick My Palette,Visualize,3,0.008,0.00267,Soon,The floor. At 2 credits it becomes the dearest card per credit and breaks R1.
+Build My Moodboard,Visualize,8,0.02,0.0025,Soon,
+Schedule My Finishes,Specify,15,0.03,0.002,Soon,
+Shop My Room,Specify,25,0.08,0.0032,Live,WAS 12 — repriced 2026-09-01. Only card spending hard cash (Serper). OFFLINE in prod.
+Cost My Project,Specify,5,0.01,0.002,Soon,Kept cheap so budget-led visitors reach it.
+Phase My Reno,Realize,20,0.03,0.0015,Soon,
+Guide My Install,Realize,8,0.015,0.00187,Soon,
+Walk My Room,Realize,250,0.75,0.003,Soon,WAS 150. Video — the only card costing dollars. Shakiest estimate here; measure before selling.
+Write My Brief,Anytime,10,0.02,0.002,Soon,
+"One space, start to finish",Yardstick,140,,,—,3 renders · palette · critique · layout · lighting · moodboard · finishes · 2 shopping lists. Used to size packs — never shown as an allowance.
+,,,,,,
+  3 · THE RULES THAT KEEP IT SAFE,,,,,,
+#,Rule,Why it exists,,,,
+R1,"Cost floor — no card may be priced below its own cost per credit, measured against the ceiling ($0.0035, set by Redesign My Room).","Breaking it makes the worst case unbounded. Shop My Room broke it at 12 credits ($0.0067/cr, nearly 2x a render); fixed at 25.",,,,
+R2,Arbitrage gate — one subscription month must be WORSE credits-per-dollar than Project. Currently 20.4 vs 23.3.,"If a single month were the cheapest credits on the page, pack buyers would subscribe, burn it and cancel. Re-check on EVERY price change.",,,,
+R3,Ladder — credits per dollar must rise with price: 10.3 → 23.3 → 26.1.,Starter is deliberately the worst value; if it were generous nobody would climb to Project.,,,,
+R4,"Guidance, not limits — the page may say what people typically do, never what they are allowed to do.",No 'up to N rooms'. Nothing counts rooms; credits are the only limit. A limit the code does not enforce is a false promise and a support ticket.,,,,
+R5,"'About', not 'included' — cards say 'that's about 300 redesigns'.",The moment it promises '300 included' it becomes a per-tool allowance: 19 tools x 4 plans = 76 numbers to maintain forever.,,,,
+R6,"Every cost on this sheet is MODELLED, not billed.",Confirm against one month of real Gemini + Serper billing before anything goes on sale. See I-032.,,,,
+R7,"Licence boundary is BUSINESS USE — never whose home it is. Pay-once packs grant personal, non-commercial use of ANY home (your own, a family member's, a friend's, a flat you're renovating). The subscription grants use in the course of business — client work, staging listings, rentals — and output made while subscribed stays usable after cancelling.","The obvious-looking rule ('your own home') is factually wrong: people buy a pack for a parent's flat or a place they are flipping. Owner caught this 2026-09-05. The licence is also UNENFORCEABLE — treat it as a term, not a fence; the real wall is the arithmetic plus the watermark. You can only grant rights you hold: Google's Gemini API terms cap what you may license, and third-party retailer content inside Shop My Room is not yours to license at all — the grant covers the GENERATED DESIGN only.",,,,
