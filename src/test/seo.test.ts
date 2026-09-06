@@ -4,16 +4,12 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 const SAMPLE_PROJECT = {
   id: '0022',
   titleEN: 'Feminine Apartment',
-  titleAM: 'Feminine Apartment',
   categoryEN: 'Residential' as const,
-  categoryAM: 'Բնակելի' as const,
   imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/feminine.jpg',
   descriptionEN: 'A soft, feminine apartment redesign in warm neutral tones.',
-  descriptionAM: '',
   area: '82 m²',
   date: '2026-03-01',
   locationEN: 'Yerevan',
-  locationAM: 'Երևան',
   gallery: [],
 };
 

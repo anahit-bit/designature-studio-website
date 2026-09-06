@@ -9,7 +9,7 @@
 import { GoogleGenAI } from "@google/genai";
 import sharp from "sharp";
 import type { RoomType } from "./stylePresets.js";
-import { buildGenerationPrompt } from "./promptTemplates.js";
+import { buildGenerationPrompt, type pickAccent } from "./promptTemplates.js";
 import {
   analyzeRoomStructure,
   spatialMetrics,
@@ -37,6 +37,12 @@ export interface ImageGenerationInput {
    * verification entirely.
    */
   sourceStructure?: RoomStructure | null;
+  /**
+   * The single palette colour (or 2026 paint) emphasised in this concept.
+   * Chosen once per request in server.ts so the same colour is reported back to
+   * the client and reused on a corrective retry.
+   */
+  accent?: ReturnType<typeof pickAccent>;
 }
 
 /**
@@ -58,6 +64,7 @@ export async function generateConceptImage(
     roomType: input.roomType,
     variationSeed: input.variationSeed,
     spatialConstraints: input.spatialConstraints,
+    accent: input.accent,
   });
 
   // ── Preprocess room photo: resize large images before sending to Gemini ──

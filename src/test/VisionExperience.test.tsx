@@ -18,6 +18,8 @@ const baseProps = {
   setSelectedStyle: () => {},
   selectedRoom: 'Living',
   setSelectedRoom: () => {},
+  paintColor2026: '',
+  setPaintColor2026: () => {},
   isProcessing: false,
   results: ['https://res.cloudinary.com/dys2k5muv/image/upload/v1/concept-1.png'],
   sessionConceptArchive: [],
@@ -62,6 +64,73 @@ const baseProps = {
   setIsLightboxOpen: () => {},
   translateStyle: (s: string) => s,
 };
+
+// The setup panel only renders when there is nothing to show yet, so the colour
+// row has to be tested from that state rather than from the results hero above.
+const setupProps = {
+  ...baseProps,
+  results: [] as string[],
+  allSessionConcepts: [] as string[],
+  selectedConceptUrl: null,
+};
+
+describe('VisionExperience · 2026 paint colour row', () => {
+  const renderSetup = (over: Record<string, unknown> = {}) => render(
+    <MemoryRouter><LanguageProvider>
+      <VisionExperience {...setupProps} {...over} />
+    </LanguageProvider></MemoryRouter>
+  );
+
+  it('offers Off plus the three Colours of the Year', () => {
+    renderSetup();
+    expect(screen.getByRole('button', { name: /^Off$/i })).toBeInTheDocument();
+    for (const label of ['Cloud Dancer', 'Silhouette', 'Universal Khaki']) {
+      expect(screen.getByRole('button', { name: new RegExp(label, 'i') })).toBeInTheDocument();
+    }
+  });
+
+  it('says the colour rides on top of the style rather than replacing it', () => {
+    renderSetup();
+    expect(screen.getByText(/Not a style — it sits on top of whatever you picked above/i)).toBeInTheDocument();
+  });
+
+  it('selecting a colour reports its id, not its label', () => {
+    const setPaintColor2026 = vi.fn();
+    renderSetup({ setPaintColor2026 });
+    fireEvent.click(screen.getByRole('button', { name: /Silhouette/i }));
+    expect(setPaintColor2026).toHaveBeenCalledWith('silhouette');
+  });
+
+  it('clicking the selected colour again turns it off', () => {
+    const setPaintColor2026 = vi.fn();
+    renderSetup({ paintColor2026: 'silhouette', setPaintColor2026 });
+    fireEvent.click(screen.getByRole('button', { name: /Silhouette/i }));
+    expect(setPaintColor2026).toHaveBeenCalledWith('');
+  });
+
+  it('explains what will happen once a colour is chosen', () => {
+    renderSetup({ paintColor2026: 'cloud_dancer' });
+    expect(screen.getByText(/Cloud Dancer will lead the palette/i)).toBeInTheDocument();
+  });
+
+  it('defaults to off, and says so', () => {
+    renderSetup();
+    expect(screen.getByText(/we use the colours that belong to your style/i)).toBeInTheDocument();
+  });
+});
+
+describe('VisionExperience · new chips', () => {
+  it('offers Trend 2026 and Transitional as styles, and Living + Dining as a room', () => {
+    render(
+      <MemoryRouter><LanguageProvider>
+        <VisionExperience {...setupProps} />
+      </LanguageProvider></MemoryRouter>
+    );
+    expect(screen.getByRole('button', { name: /Trend 2026/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Transitional/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Living \+ Dining/i })).toBeInTheDocument();
+  });
+});
 
 describe('VisionExperience · Shop-this-room handoff (#22)', () => {
   it('"Shop this room" CTA calls onShopThisRoom with the selected concept URL', () => {

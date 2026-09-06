@@ -44,17 +44,17 @@ import { Language } from './LanguageContext';
 
 export interface ProjectData {
   id: string;
+  // Field names still carry the `EN` suffix (rather than being renamed to `title`)
+  // so the 21 existing entries + Sanity mapper require zero rename churn. Armenian
+  // twins (titleAM/descriptionAM/categoryAM/locationAM) were removed 2026-08-27
+  // when the owner dropped Armenian sitewide — see feedback_no_armenian_translations.md.
   titleEN: string;
-  titleAM: string;
   categoryEN: 'Residential' | 'Commercial';
-  categoryAM: 'Բնակելի' | 'Կոմերցիոն';
   imageUrl: string;
   descriptionEN: string;
-  descriptionAM: string;
   area: string;
   date: string;
   locationEN: string;
-  locationAM: string;
   gallery: string[];
 }
 
@@ -72,21 +72,17 @@ export const PROJECTS_LIST: ProjectData[] = [
   {
     id: '32',
     titleEN:  'Two Story Living Room',
-    titleAM:  'Երկհարկանի Հյուրասենյակ',
 
     categoryEN: 'Residential',   // 'Residential' or 'Commercial'
-    categoryAM: 'Բնակելի',      // 'Բնակելի' or 'Կոմերցիոն'
 
     // ── Cover photo shown on portfolio grid card (ratio 4:5, e.g. 1200×1500px)
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1772532381/1_h9ofqr.jpg',
 
     descriptionEN: 'A clean, open-plan living space with high ceilings.',
-    descriptionAM: 'Բաց պլանավորմամբ հյուրասենյակ, ճաշասենյակ կրկնակի բարձր առաստաղներով:',
 
     area:       '70 m²',
     date:       '2022',
     locationEN: 'Yerevan, Armenia',
-    locationAM: 'Երևան, Հայաստան',
 
     gallery: [
       // gallery[0]  → Main Perspective (Full width)      | recommended: 1600 × 900  (16:9)
@@ -135,21 +131,17 @@ export const PROJECTS_LIST: ProjectData[] = [
   {
     id: '25',
     titleEN:  'Glass House',
-    titleAM:  'Հայելի Տունը',
 
     categoryEN: 'Residential',   // 'Residential' or 'Commercial'
-    categoryAM: 'Բնակելի',      // 'Բնակելի' or 'Կոմերցիոն'
 
     // ── Cover photo shown on portfolio grid card (ratio 4:5, e.g. 1200×1500px)
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1773054125/1_ecqvsk.jpg',
 
     descriptionEN: 'A glass mirror open space area with gorgeous columns',
-    descriptionAM: 'Բաց տարածք՝ ապակե հայելային մակերեսներով և շքեղ սյուներով',
 
     area:       '80 m²',
     date:       '2025',
     locationEN: 'Hamburg, Germany',
-    locationAM: 'Համբուրգ, Գերմանիա',
 
     gallery: [
       // gallery[0]  → Main Perspective (Full width)      | recommended: 1600 × 900  (16:9)
@@ -181,21 +173,17 @@ export const PROJECTS_LIST: ProjectData[] = [
   {
     id: '31',
     titleEN:  'Memphis House',
-    titleAM:  'Մեմֆիս Տունը',
 
     categoryEN: 'Residential',
-    categoryAM: 'Բնակելի',
 
     // ── Cover photo shown on portfolio grid card (ratio 4:5, e.g. 1200×1500px)
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1773055155/1_fbuajl.jpg',
 
     descriptionEN: 'Colorful Modern Kitchen & Dining Interior Design with Arched Open Space',
-    descriptionAM: 'Գունեղ ժամանակակից խոհանոց և ճաշասենյակ՝ կամարաձև բաց տարածքով ինտերիերի դիզայն',
 
     area:       '50 m²',
     date:       '2024',
     locationEN: 'Switzerland',
-    locationAM: 'Շվեյցարիա',
 
     gallery: [
       // gallery[0]  → Main Perspective (Full width)      | recommended: 1600 × 900  (16:9)
@@ -227,21 +215,17 @@ export const PROJECTS_LIST: ProjectData[] = [
   {
     id: '28',
     titleEN:  'Boutique Hotel Lobby',
-    titleAM:  'Բուտիկ հյուրանոցի լոբբի',
 
     categoryEN: 'Commercial',
-    categoryAM: 'Կոմերցիոն',
 
     // ── Cover photo shown on portfolio grid card (ratio 4:5, e.g. 1200×1500px)
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1773056804/1_obyrnh.jpg',
 
     descriptionEN: 'Elegant Modern Hotel Reception & Lobby Lounge Interior Design with Fireplace',
-    descriptionAM: 'Էլեգանտ ժամանակակից հյուրանոցի ընդունարան և լոբբի լաունջ՝ բուխարիով ինտերիերի դիզայն',
 
     area:       '48 m²',
     date:       '2023',
     locationEN: 'Yerevan, Armenia',
-    locationAM: 'Երևան, Հայաստան',
 
     gallery: [
       // gallery[0]  → Main Perspective (Full width)      | recommended: 1600 × 900  (16:9)
@@ -271,21 +255,17 @@ export const PROJECTS_LIST: ProjectData[] = [
   {
     id: '17',
     titleEN: 'A Living Room Refreshed',
-    titleAM: 'A Living Room Refreshed',
 
     categoryEN: 'Residential',
-    categoryAM: 'Բնակելի',
 
     // ── Cover photo (4:5)
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776750295/Portfolio/17/17-cover.jpg',
 
     descriptionEN: 'A gentle refresh of an everyday living room — lighter surfaces, a brighter palette, and more air through every corner.',
-    descriptionAM: 'A gentle refresh of an everyday living room — lighter surfaces, a brighter palette, and more air through every corner.',
 
     area:       '45 m²',
     date:       '2024',
     locationEN: 'Yerevan, Armenia',
-    locationAM: 'Երևան, Հայաստան',
 
     gallery: [
       // SLOT 1 — WIDE 16:9 — hero render
@@ -316,20 +296,16 @@ export const PROJECTS_LIST: ProjectData[] = [
   {
     id: '21',
     titleEN: 'Tacconelli',
-    titleAM: 'Tacconelli',
 
     categoryEN: 'Commercial',
-    categoryAM: 'Կոմերցիոն',
 
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776760986/Portfolio/21/21-cover.jpg',
 
     descriptionEN: 'A cocktail lounge tuned for dim evenings and live music — wallpaper, tile, bar architecture, lighting, and seating specified end-to-end.',
-    descriptionAM: 'A cocktail lounge tuned for dim evenings and live music — wallpaper, tile, bar architecture, lighting, and seating specified end-to-end.',
 
     area:       '115 m²',
     date:       '2025',
     locationEN: 'Yerevan, Armenia',
-    locationAM: 'Երևան, Հայաստան',
 
     gallery: [
       // SLOT 1 — WIDE 16:9 — hero render
@@ -360,20 +336,16 @@ export const PROJECTS_LIST: ProjectData[] = [
   {
     id: '33',
     titleEN: 'It Girl',
-    titleAM: 'It Girl',
 
     categoryEN: 'Residential',
-    categoryAM: 'Բնակելի',
 
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776764389/Portfolio/33/33-cover.jpg',
 
     descriptionEN: 'A 58 m² abode for an it girl — unafraid of color, texture, or the occasional risk.',
-    descriptionAM: 'A 58 m² abode for an it girl — unafraid of color, texture, or the occasional risk.',
 
     area:       '58 m²',
     date:       '2026',
     locationEN: 'Yerevan, Armenia',
-    locationAM: 'Երևան, Հայաստան',
 
     gallery: [
       // SLOT 1 — WIDE 16:9 — hero render
@@ -407,20 +379,16 @@ export const PROJECTS_LIST: ProjectData[] = [
   {
     id: '27',
     titleEN: 'Where It Starts',
-    titleAM: 'Where It Starts',
 
     categoryEN: 'Residential',
-    categoryAM: 'Բնակելի',
 
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776768539/Portfolio/27/27-cover.jpg',
 
     descriptionEN: 'A small apartment that earned its layout — thirteen floorplans in, every client detail in its place.',
-    descriptionAM: 'A small apartment that earned its layout — thirteen floorplans in, every client detail in its place.',
 
     area:       '61 m²',
     date:       '2025',
     locationEN: 'Yerevan, Armenia',
-    locationAM: 'Երևան, Հայաստան',
 
     gallery: [
       // SLOT 1 — WIDE 16:9 — hero render
@@ -446,20 +414,16 @@ export const PROJECTS_LIST: ProjectData[] = [
   {
     id: '26',
     titleEN: 'Favorite Color is Orange',
-    titleAM: 'Favorite Color is Orange',
 
     categoryEN: 'Residential',
-    categoryAM: 'Բնակելի',
 
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776778981/Portfolio/26/26-cover.jpg',
 
     descriptionEN: "A bedroom built around the client's favorite orange — warm and saturated without ever going loud.",
-    descriptionAM: "A bedroom built around the client's favorite orange — warm and saturated without ever going loud.",
 
     area:       '27 m²',
     date:       '2025',
     locationEN: 'Yerevan, Armenia',
-    locationAM: 'Երևան, Հայաստան',
 
     gallery: [
       // SLOT 1 — WIDE 16:9 — hero render
@@ -484,20 +448,16 @@ export const PROJECTS_LIST: ProjectData[] = [
   {
     id: '30',
     titleEN: 'Green Stripes',
-    titleAM: 'Green Stripes',
 
     categoryEN: 'Residential',
-    categoryAM: 'Բնակելի',
 
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776778989/Portfolio/30/30-cover.jpg',
 
     descriptionEN: 'The green-striped wallpaper set the tone — color, texture, and line followed where it led.',
-    descriptionAM: 'The green-striped wallpaper set the tone — color, texture, and line followed where it led.',
 
     area:       '45 m²',
     date:       '2025',
     locationEN: 'Yerevan, Armenia',
-    locationAM: 'Երևան, Հայաստան',
 
     gallery: [
       // SLOT 1 — WIDE 16:9 — hero render
@@ -522,20 +482,16 @@ export const PROJECTS_LIST: ProjectData[] = [
   {
     id: '34',
     titleEN: 'The Calm Abode',
-    titleAM: 'The Calm Abode',
 
     categoryEN: 'Residential',
-    categoryAM: 'Բնակելի',
 
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776778997/Portfolio/34/34-cover.jpg',
 
     descriptionEN: 'A small house for a mother and daughter — soft, warm, and unapologetically theirs.',
-    descriptionAM: 'A small house for a mother and daughter — soft, warm, and unapologetically theirs.',
 
     area:       '58 m²',
     date:       '2026',
     locationEN: 'Yerevan, Armenia',
-    locationAM: 'Երևան, Հայաստան',
 
     gallery: [
       // SLOT 1 — WIDE 16:9 — hero render (source ratio 1.62, slight top/bottom crop)
@@ -572,20 +528,16 @@ export const PROJECTS_LIST: ProjectData[] = [
   {
     id: '36',
     titleEN: 'Two Floors, One Mood',
-    titleAM: 'Two Floors, One Mood',
 
     categoryEN: 'Residential',
-    categoryAM: 'Բնակելի',
 
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776781095/Portfolio/36/36-cover.jpg',
 
     descriptionEN: 'A two-story house for a family of four — a calm, relaxed atmosphere carried cohesively from floor to floor.',
-    descriptionAM: 'A two-story house for a family of four — a calm, relaxed atmosphere carried cohesively from floor to floor.',
 
     area:       '140 m²',
     date:       '2026',
     locationEN: 'Yerevan, Armenia',
-    locationAM: 'Երևան, Հայաստան',
 
     gallery: [
       // SLOT 1 — WIDE 16:9 — hero render
@@ -624,20 +576,16 @@ export const PROJECTS_LIST: ProjectData[] = [
   {
     id: '29',
     titleEN: 'Arc Coworking',
-    titleAM: 'Arc Coworking',
 
     categoryEN: 'Commercial',
-    categoryAM: 'Կոմերցիոն',
 
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776917882/Portfolio/29/29-cover.jpg',
 
     descriptionEN: 'A coworking space all about shapes — arched entrances, rounded walls, and curved lights.',
-    descriptionAM: 'A coworking space all about shapes — arched entrances, rounded walls, and curved lights.',
 
     area:       '200 m²',
     date:       '2025',
     locationEN: 'Yerevan, Armenia',
-    locationAM: 'Երևան, Հայաստան',
 
     gallery: [
       // SLOT 1 — WIDE 16:9 — hero render (AI-enhanced photoreal)
@@ -671,20 +619,16 @@ export const PROJECTS_LIST: ProjectData[] = [
   {
     id: '37',
     titleEN: 'Compass',
-    titleAM: 'Compass',
 
     categoryEN: 'Residential',
-    categoryAM: 'Բնակելի',
 
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776960836/Portfolio/37/37-cover.jpg',
 
     descriptionEN: 'An apartment ordered by Vaastu — each room placed by direction, every choice in alignment.',
-    descriptionAM: 'An apartment ordered by Vaastu — each room placed by direction, every choice in alignment.',
 
     area:       '70 m²',
     date:       '2026',
     locationEN: 'Yerevan, Armenia',
-    locationAM: 'Երևան, Հայաստան',
 
     gallery: [
       // SLOT 1 — WIDE 16:9 — hero render
@@ -722,20 +666,16 @@ export const PROJECTS_LIST: ProjectData[] = [
   {
     id: '1',
     titleEN:  'Family Fun Center',
-    titleAM:  'Family Fun Center',
 
     categoryEN: 'Commercial',
-    categoryAM: 'Կոմերցիոն',
 
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1783863424/Portfolio/1/1-cover.jpg',
 
     descriptionEN: 'A Yerevan play café built for two paces at once — soft blue play rooms, cloud ceilings and jungle wallpapers for the children next door, and a deep-blue banquette lounge lit by brass and bubble glass for the parents beside them.',
-    descriptionAM: 'A Yerevan play café built for two paces at once — soft blue play rooms, cloud ceilings and jungle wallpapers for the children next door, and a deep-blue banquette lounge lit by brass and bubble glass for the parents beside them.',
 
     area:       '200 m²',
     date:       '2020',
     locationEN: 'Yerevan, Armenia',
-    locationAM: 'Yerevan, Armenia',
 
     gallery: [
       // SLOT 1 — WIDE 16:9 — hero (beanbag cinema)
@@ -772,20 +712,16 @@ export const PROJECTS_LIST: ProjectData[] = [
   {
     id: '19',
     titleEN:  'Blue Haven',
-    titleAM:  'Blue Haven',
 
     categoryEN: 'Residential',
-    categoryAM: 'Բնակելի',
 
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1785098120/Portfolio/19/19-cover.jpg',
 
     descriptionEN: 'A Singapore home reimagined in Japandi calm — glossy marble traded for warm parquet, the service yard softened into a plant-filled reading nook, and every bathroom brought to rest with black-matte fixtures against its original tile.',
-    descriptionAM: 'A Singapore home reimagined in Japandi calm — glossy marble traded for warm parquet, the service yard softened into a plant-filled reading nook, and every bathroom brought to rest with black-matte fixtures against its original tile.',
 
     area:       '80 m²',
     date:       '2024',
     locationEN: 'Singapore',
-    locationAM: 'Singapore',
 
     gallery: [
       // SLOT 1 — WIDE 16:9 — hero
@@ -825,20 +761,16 @@ export const PROJECTS_LIST: ProjectData[] = [
   {
     id: '43',
     titleEN:  'Still Waters',
-    titleAM:  'Still Waters',
 
     categoryEN: 'Residential',
-    categoryAM: 'Բնակելի',
 
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1785104932/Portfolio/43/43-cover.jpg',
 
     descriptionEN: 'Full-home interior design for a 94 m² apartment in Yerevan, Armenia — a warm, transitional scheme where white oak millwork, herringbone floors and classic cabinetry meet cream curved seating, marble and brushed brass, with a grisaille landscape mural anchoring the open living–dining–kitchen core.',
-    descriptionAM: 'Full-home interior design for a 94 m² apartment in Yerevan, Armenia — a warm, transitional scheme where white oak millwork, herringbone floors and classic cabinetry meet cream curved seating, marble and brushed brass, with a grisaille landscape mural anchoring the open living–dining–kitchen core.',
 
     area:       '94 m²',
     date:       '2026',
     locationEN: 'Yerevan, Armenia',
-    locationAM: 'Yerevan, Armenia',
 
     gallery: [
       // SLOT 1 — WIDE 16:9 — hero
@@ -878,20 +810,16 @@ export const PROJECTS_LIST: ProjectData[] = [
   {
     id: '38',
     titleEN:  'Featherlight',
-    titleAM:  'Featherlight',
 
     categoryEN: 'Residential',
-    categoryAM: 'Բնակելի',
 
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1787135202/Portfolio/38/38-cover.jpg',
 
     descriptionEN: 'A 100 m² family apartment near Komitas Park in Yerevan, Armenia, designed by Designature Studio — a luminous, transitional interior where an all-white living–dining core (crane murals, feather-glass chandeliers, herringbone floors and curved cream seating) opens onto jewel-box private rooms: a mauve-and-gold master bedroom, a magenta-and-gold entry hall, teal and travertine bathrooms, and a pastel sage-and-lavender children’s room.',
-    descriptionAM: 'A 100 m² family apartment near Komitas Park in Yerevan, Armenia, designed by Designature Studio — a luminous, transitional interior where an all-white living–dining core (crane murals, feather-glass chandeliers, herringbone floors and curved cream seating) opens onto jewel-box private rooms: a mauve-and-gold master bedroom, a magenta-and-gold entry hall, teal and travertine bathrooms, and a pastel sage-and-lavender children’s room.',
 
     area:       '100 m²',
     date:       '2025',
     locationEN: 'Yerevan, Armenia',
-    locationAM: 'Yerevan, Armenia',
 
     gallery: [
       // SLOT 1 — WIDE 16:9 — hero (Living)
@@ -934,21 +862,17 @@ export const PROJECTS_LIST: ProjectData[] = [
   // {
   //   id: '6',
   //   titleEN:  '',
-  //   titleAM:  '',
   //
   //   categoryEN: 'Residential',   // or 'Commercial'
-  //   categoryAM: 'Բնակելի',      // or 'Կոմերցիոն'
   //
   //   // ── Cover photo (4:5 ratio, e.g. 1200×1500px)
   //   imageUrl: '',
   //
   //   descriptionEN: '',
-  //   descriptionAM: '',
   //
   //   area:       '000 m²',
   //   date:       '2024',
   //   locationEN: 'Yerevan, Armenia',
-  //   locationAM: 'Երևան, Հայաստան',
   //
   //   gallery: [
   //     // SLOT 1 — WIDE 16:9 — full width hero render
@@ -980,29 +904,23 @@ export const PROJECTS_LIST: ProjectData[] = [
 export const getHeroSlides = (lang: Language): HeroSlide[] => [
   {
     id: 1,
-    title: lang === 'en' ? 'Spaces You Want to Be In' : 'Տարածքներ, որտեղ ցանկանում եք լինել',
+    title: 'Spaces You Want to Be In',
     subtitle:
-      lang === 'en'
-        ? "With clear guidance, smart planning, and attention to detail, we'll turn your ideas into a space that feels right — and functions beautifully."
-        : 'Հստակ ուղղորդմամբ և ուշադրությամբ մանրուքների նկատմամբ՝ մենք Ձեր գաղափարները կվերածենք գեղեցիկ և հարմարավետ տարածքի:',
+      "With clear guidance, smart planning, and attention to detail, we'll turn your ideas into a space that feels right — and functions beautifully.",
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1770985128/1_wsuf6e.jpg',
   },
   {
     id: 2,
-    title: lang === 'en' ? 'A Home that Reflects You' : 'Տուն, որը արտացոլում է Ձեզ',
+    title: 'A Home that Reflects You',
     subtitle:
-      lang === 'en'
-        ? "Whether you're just getting the keys or looking to give your home a fresh start, we help turn your space into something that fits — your rhythm, your needs, and your style."
-        : 'Անկախ նրանից, թե Դուք նոր եք ստացել բանալիները, թե ցանկանում եք թարմացնել Ձեր տունը, մենք կօգնենք ստեղծել Ձեր ոճին համապատասխան տարածք:',
+      "Whether you're just getting the keys or looking to give your home a fresh start, we help turn your space into something that fits — your rhythm, your needs, and your style.",
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1770985128/2_qy6vfg.jpg',
   },
   {
     id: 3,
-    title: lang === 'en' ? 'Design that Connects' : 'Դիզայն, որը միավորում է',
+    title: 'Design that Connects',
     subtitle:
-      lang === 'en'
-        ? "Whether it's a café, store, office, or a coworking space — we design environments that reflect your brand and support the way you work, serve, and connect."
-        : 'Լինի դա սրճարան, գրասենյակ թե խանութ՝ մենք նախագծում ենք միջավայրեր, որոնք արտացոլում են Ձեր բրենդը և ոգեշնչում աշխատանքին:',
+      "Whether it's a café, store, office, or a coworking space — we design environments that reflect your brand and support the way you work, serve, and connect.",
     imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1770984801/3_eigbly.jpg',
   },
 ];
@@ -1012,50 +930,50 @@ export const getHeroSlides = (lang: Language): HeroSlide[] => [
 export const getServices = (lang: Language): Service[] => [
   {
     id: 'floorplans',
-    title: lang === 'en' ? 'Floor Plans' : 'Հատակագծում',
-    description: lang === 'en' ? 'Optimized layouts that maximize your space.' : 'Տարածքի օպտիմալ պլանավորում',
+    title: 'Floor Plans',
+    description: 'Optimized layouts that maximize your space.',
     renderIcon: () => <Maximize className="w-16 h-16" strokeWidth={1.5} />,
   },
   {
     id: 'moodboards',
-    title: lang === 'en' ? 'Style Boards' : 'Ոճային կոնցեպտի մշակում',
-    description: lang === 'en' ? 'Visual guides with shoppable product links.' : 'Հասանելի ապրանքատեսականու վիզուալ ուղեցույց',
+    title: 'Style Boards',
+    description: 'Visual guides with shoppable product links.',
     renderIcon: () => <Palette className="w-16 h-16" strokeWidth={1.5} />,
   },
   {
     id: 'shopping',
-    title: lang === 'en' ? 'Shopping List' : 'Գնումների ցուցակ',
-    description: lang === 'en' ? 'Complete item lists with exact specifications.' : 'Ամբողջական ապրանքների ցանկ՝ տեխնիկական բնութագրերով:',
+    title: 'Shopping List',
+    description: 'Complete item lists with exact specifications.',
     renderIcon: () => <ShoppingBag className="w-16 h-16" strokeWidth={1.5} />,
   },
   {
     id: 'setup',
-    title: lang === 'en' ? 'Instructions' : 'Հրահանգներ',
-    description: lang === 'en' ? 'Step-by-step installation instructions.' : 'Կահույքի տեղադրման քայլ առ քայլ ուղեցույց',
+    title: 'Instructions',
+    description: 'Step-by-step installation instructions.',
     renderIcon: () => <Compass className="w-16 h-16" strokeWidth={1.5} />,
   },
   {
     id: 'rendering',
-    title: lang === 'en' ? '3D Rendering' : '3D Վիզուալիզացիա',
-    description: lang === 'en' ? 'Photorealistic previews of your finished space.' : 'Տարածքի ֆոտո-ռեալիստիկ եռաչափ վիզուալիզացիաներ',
+    title: '3D Rendering',
+    description: 'Photorealistic previews of your finished space.',
     renderIcon: () => <Layers className="w-16 h-16" strokeWidth={1.5} />,
   },
   {
     id: 'tour',
-    title: lang === 'en' ? 'Virtual Tour' : 'Վիրտուալ շրջայց',
-    description: lang === 'en' ? 'Interactive walkthroughs before construction.' : 'Ինտերակտիվ շրջայց ամբողջական նախագծով՝ նախքան իրականացումը',
+    title: 'Virtual Tour',
+    description: 'Interactive walkthroughs before construction.',
     renderIcon: () => <View className="w-16 h-16" strokeWidth={1.5} />,
   },
   {
     id: 'custom',
-    title: lang === 'en' ? 'Custom Designs' : 'Անհատական գծագրեր',
-    description: lang === 'en' ? 'Bespoke furniture drawings and exclusive designs.' : 'Պատվիրվող կահույքի էսքիզներ և բացառիկ կահույքի նախագծում',
+    title: 'Custom Designs',
+    description: 'Bespoke furniture drawings and exclusive designs.',
     renderIcon: () => <PenTool className="w-16 h-16" strokeWidth={1.5} />,
   },
   {
     id: 'technical',
-    title: lang === 'en' ? 'Technical Plans' : 'Ինժեներական գծագրեր',
-    description: lang === 'en' ? 'Electrical, lighting, and plumbing specifications.' : 'Հոսանքի, թաց կետերի, հատակի և առաստաղի աշխատանքային գծագրեր',
+    title: 'Technical Plans',
+    description: 'Electrical, lighting, and plumbing specifications.',
     renderIcon: () => <FileText className="w-16 h-16" strokeWidth={1.5} />,
   },
 ];
@@ -1065,13 +983,13 @@ export const getServices = (lang: Language): Service[] => [
 export const getProjects = (lang: Language): Project[] =>
   PROJECTS_LIST.map((p) => ({
     id: p.id,
-    title: lang === 'en' ? p.titleEN : p.titleAM,
-    category: lang === 'en' ? p.categoryEN : p.categoryAM,
+    title: p.titleEN,
+    category: p.categoryEN,
     imageUrl: p.imageUrl,
-    description: lang === 'en' ? p.descriptionEN : p.descriptionAM,
+    description: p.descriptionEN,
     area: p.area,
     date: p.date,
-    location: lang === 'en' ? p.locationEN : p.locationAM,
+    location: p.locationEN,
     gallery: p.gallery,
   }));
 

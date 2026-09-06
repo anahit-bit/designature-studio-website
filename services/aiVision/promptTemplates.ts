@@ -3,41 +3,93 @@
  *
  * Step 1 — STYLE_EXTRACTION_PROMPT: fed to the text model with reference images.
  * Step 2 — buildGenerationPrompt: fed to the image model with the room photo.
+ *
+ * The constraint text, the room programs and the palettes are NOT written here.
+ * They are compiled from _Plan\Website\AI-Vision-Rulebook.xlsx into
+ * rulebook.generated.ts. Edit the workbook, re-run
+ * scripts/aivision/compile-rulebook.py.
  */
 
 import type { RoomType } from "./stylePresets.js";
 import { ROOM_TYPE_LABELS } from "./stylePresets.js";
+import {
+  GEMINI_RULES_BLOCK,
+  STYLE_PALETTES,
+  PAINT_MODIFIERS,
+  ROOM_PROGRAM_RULES as COMPILED_PROGRAMS,
+  type PaletteColour,
+} from "./rulebook.generated.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ROOM PROGRAM RULES (room-appropriate furniture enforcement)
 //
-// Style briefs describe furniture through examples ("curved sofas", "egg
-// chairs") that are almost always framed as a living room. When a client picks
-// a non-living-room type, those examples overpower the "DINING ROOM" label and
-// Gemini renders the wrong room. This per-room-type block is prepended to the
-// generation/staging prompt as an AUTHORITATIVE override: it fixes the room's
-// furniture program up front, so the style brief only supplies the *look*, not
-// the room's function.
+// Style briefs describe furniture through examples that are almost always
+// framed as a living room. When a client picks a non-living-room type, those
+// examples overpower the "DINING ROOM" label and the model renders the wrong
+// room. This per-room-type block is prepended to the generation/staging prompt
+// as an AUTHORITATIVE override: it fixes the room's furniture program up front,
+// so the style brief only supplies the *look*, not the room's function.
+//
+// Owner-edited on the "Room Programs" sheet of the workbook.
 // ─────────────────────────────────────────────────────────────────────────────
-export const ROOM_PROGRAM_RULES: Record<RoomType, string> = {
-  living_room: `The room MUST be a fully realized LIVING ROOM. Include ONLY furniture appropriate to a living room — a sofa, one or two armchairs, a coffee table, side tables, floor or table lamps, a rug, wall art, plants, and appropriate styling. Do NOT include dining tables, beds, kitchen cabinetry, desks, or bathroom fixtures.`,
+export const ROOM_PROGRAM_RULES = COMPILED_PROGRAMS as Record<RoomType, string>;
 
-  dining_room: `The room MUST be a fully realized DINING ROOM. The visual anchor is a dining table with 4–8 matching dining chairs, positioned as the centerpiece under a hanging pendant or chandelier. Add a sideboard or credenza against one wall, wall art, and appropriate styling. Do NOT include lounge or living-room seating groups, lounge armchairs arranged around a low central table, media consoles, or televisions, even if the target style is often shown in a living room. Any style furniture examples below should be REINTERPRETED as dining-room equivalents — a dining chair in that style, a dining table in that style, a sideboard in that style.`,
+// ─────────────────────────────────────────────────────────────────────────────
+// ACCENT COLOUR — one per generation.
+//
+// Without this every generation of a style reached for the same two or three
+// colours, so fifteen styles produced rooms that felt related. Each style has a
+// nine-colour palette card on the "Palettes" sheet; the accent-role colours are
+// a pool, and exactly ONE is chosen per generation. The style stays
+// recognisable, individual concepts differ.
+//
+// Selection is deterministic in the seed so "Generate variation" walks the pool
+// instead of re-rolling onto the colour you just rejected. With no seed the
+// first pick is random, so two people choosing the same style do not get the
+// same room.
+// ─────────────────────────────────────────────────────────────────────────────
+export function pickAccent(
+  preset: string | undefined,
+  variationSeed?: number,
+  paintModifierId?: string,
+): (PaletteColour & { instruction?: string; brand?: string }) | null {
+  // A 2026 Colour of the Year outranks the palette: the whole point of choosing
+  // one is that it shows up whatever style is in play.
+  if (paintModifierId) {
+    const paint = PAINT_MODIFIERS.find((p) => p.id === paintModifierId);
+    if (paint) {
+      return {
+        name: paint.name,
+        hex: paint.hex,
+        role: paint.role as PaletteColour["role"],
+        instruction: paint.instruction,
+        brand: paint.brand,
+      };
+    }
+  }
+  if (!preset) return null;
+  const accents = (STYLE_PALETTES[preset] ?? []).filter((c) => c.role === "accent");
+  if (!accents.length) return null;
+  const i = typeof variationSeed === "number"
+    ? variationSeed % accents.length
+    : Math.floor(Math.random() * accents.length);
+  return accents[i];
+}
 
-  bedroom: `The room MUST be a fully realized BEDROOM. The visual anchor is a fully-made bed with nightstands on both sides and bedside lamps. Add a bench at the foot, dresser or wardrobe, a rug under the bed, art on the wall, and appropriate styling. Do NOT include living-room furniture (sofa as primary piece, TV area), dining tables, or kitchen cabinetry. A reading chair in the corner is fine if the room is large. BED PLACEMENT (critical): every existing window or balcony door must stay fully visible, unobstructed, and exactly where it is — never cover it with the headboard, and never remove, shrink, move, or replace a window to make room for the bed. If the only large wall in view holds a window or balcony door, place the bed against a side wall or offset to one side of the window so the glazing stays completely clear; do not build a new solid headboard wall over a window, and do not hang art over a window.`,
+/** The accent block appended to a prompt. Empty string when there is no accent. */
+export function renderAccent(accent: ReturnType<typeof pickAccent>): string {
+  if (!accent) return "";
+  const named = accent.brand ? `${accent.name} (${accent.brand})` : accent.name;
+  const how = accent.instruction
+    ? accent.instruction
+    : accent.role === "field"
+      ? "Use it across the walls or the largest surfaces, so the room clearly reads in this colour."
+      : "Use it as the single strongest colour note in the room — on one feature wall, the main upholstered piece, the joinery, or the largest textile. It should be the colour a viewer names first.";
+  return `
 
-  kitchen: `The room MUST be a fully realized KITCHEN. Include base and wall cabinetry, a countertop with backsplash, a range or cooktop, a sink with faucet, a range hood, appropriate appliances (fridge, oven), open shelving or a hutch, and a kitchen island with counter stools if the space allows. Do NOT include living-room furniture (sofa, armchair, coffee table), bedroom furniture, or dining tables (unless a small breakfast nook is clearly the intent).`,
-
-  bathroom: `The room MUST be a fully realized BATHROOM. Include a vanity with sink(s) and mirror, a toilet, a shower or bathtub (or both), towel bars/rings, sconces or vanity lighting, a rug, and appropriate styling. Do NOT include living-room furniture, bedroom furniture, or dining tables. Every fixture must be a real bathroom fixture.`,
-
-  home_office: `The room MUST be a fully realized HOME OFFICE. The visual anchor is a desk with a task chair. Add a task lamp, bookshelves or storage, monitor(s) or a laptop, wall art, and appropriate styling. Do NOT include living-room furniture as the primary piece, beds, or dining tables. A small accent chair for a reading corner is fine.`,
-
-  kids_room: `The room MUST be a fully realized KIDS' BEDROOM or PLAYROOM. Include a child-scale bed (or bunk beds), a small desk, storage bins or cubbies, a rug for floor play, playful wall art, and age-appropriate styling. Do NOT include adult living-room furniture, formal dining, or kitchen fixtures. BED PLACEMENT (critical): every existing window or balcony door must stay fully visible, unobstructed, and exactly where it is — never cover it with the headboard, and never remove, shrink, move, or replace a window to make room for the bed. If the only large wall in view holds a window or balcony door, place the bed against a side wall or offset to one side of the window so the glazing stays completely clear.`,
-
-  outdoor: `The room MUST be a fully realized OUTDOOR SPACE (patio, terrace, or balcony as appropriate to the original photo). Include outdoor-rated seating (sofa, chairs, or dining set as fits the space), an outdoor rug, planters with real outdoor plants, string lights or outdoor sconces, and appropriate styling. All materials must be weather-appropriate. Do NOT include indoor furniture that would not survive weather.`,
-
-  hallway: `The room MUST be a fully realized HALLWAY. Include a narrow console or hall table, wall art or a gallery arrangement, a runner rug, wall sconces or pendants, and appropriate styling. Do NOT include living-room furniture, beds, or dining tables. The space should read as a transit space.`,
-};
+ACCENT COLOUR FOR THIS CONCEPT — ${named}, approximately ${accent.hex}:
+${how} Keep every other instruction in the style brief intact — same materials, same furniture character, same lighting, same mood. Only this one colour is emphasised. Do NOT spread it over every surface, and do NOT introduce other saturated colours alongside it that the style brief does not name.`;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Step 1 — Style extraction prompt (verbatim from pipeline spec)
@@ -76,6 +128,8 @@ export function buildStagingPrompt(args: {
   styleBrief: string;
   roomType?: RoomType;
   variationSeed?: number;
+  /** The one palette colour (or 2026 paint) emphasised in this concept. */
+  accent?: ReturnType<typeof pickAccent>;
 }): string {
   const roomTypeKey: RoomType = args.roomType ?? "living_room";
   const roomLabel = ROOM_TYPE_LABELS[roomTypeKey].toLowerCase();
@@ -91,7 +145,7 @@ Photorealistic interior photograph of a fully furnished, fully styled ${roomLabe
 ROOM PROGRAM (this rule overrides any furniture examples in the style brief above):
 ${ROOM_PROGRAM_RULES[roomTypeKey]}
 
-Preserve the room's existing architecture exactly: keep every wall flat and in its current position, keep the ceiling as one flat plane, keep the floor, and keep every window as a real glazed window with daylight and the outdoor view coming through it. Do NOT add or remove walls, doorways, openings, beams, columns, soffits or partitions, and do NOT widen the room.${variationHint}`;
+Preserve the room's existing architecture exactly: keep every wall flat and in its current position, keep the ceiling as one flat plane, keep the floor, and keep every window as a real glazed window with daylight and the outdoor view coming through it. Do NOT add or remove walls, doorways, openings, beams, columns, soffits or partitions, and do NOT widen the room.${renderAccent(args.accent ?? null)}${variationHint}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -107,17 +161,23 @@ export function buildGenerationPrompt(args: {
    * constraints. Empty string when spatial analysis was unavailable.
    */
   spatialConstraints?: string;
+  /** The one palette colour (or 2026 paint) emphasised in this concept. */
+  accent?: ReturnType<typeof pickAccent>;
 }): string {
   const roomTypeKey: RoomType = args.roomType ?? "living_room"; // safe fallback when auto-detect is selected
   const roomTypeLabel = ROOM_TYPE_LABELS[roomTypeKey];
 
   const variationHint = args.variationSeed
-    ? `\n\nThis is variation #${args.variationSeed}. Use a different furniture arrangement, lighting fixture choice, and accent details than previous variations, while maintaining the same target style and the same architectural constraints.`
+    ? `
+
+This is variation #${args.variationSeed}. Use a different furniture arrangement, lighting fixture choice, and accent details than previous variations, while maintaining the same target style and the same architectural constraints.`
     : "";
 
   const spatialBlock =
     args.spatialConstraints && args.spatialConstraints.trim()
-      ? `\n\n${args.spatialConstraints.trim()}`
+      ? `
+
+${args.spatialConstraints.trim()}`
       : "";
 
   return `Edit this room photograph to show how the same exact room would look after a complete interior renovation. This is a photorealistic "after" visualization for an interior design client. The room will be renovated into a ${roomTypeLabel} in the style described below.${spatialBlock}
@@ -125,24 +185,13 @@ export function buildGenerationPrompt(args: {
 ROOM PROGRAM (this rule overrides any furniture examples in the style brief below):
 ${ROOM_PROGRAM_RULES[roomTypeKey]}
 
-CRITICAL ARCHITECTURAL CONSTRAINTS — these must be preserved EXACTLY as they appear in the original photo. This is a re-styling of the existing room, not a new room:
-- Keep every window in its exact current position, size, shape, and proportion
-- Keep every door in its exact current position
-- Preserve the exact spacing and distance between each window and the walls beside it. Do NOT widen, deepen, stretch, or enlarge the room. The gap between a window and any adjacent wall must look identical to the original — do not push the walls further from the window.
-- Keep the room's exact proportions, ceiling height, wall angles, and footprint. Every wall must stay in the same position relative to the windows, floor, and ceiling as in the original.
-- Keep the same camera angle, perspective, framing, and viewing direction — the photo must look like it was taken from the same spot with the same lens. Do NOT zoom out, pan, or reveal more of the room than the original photo shows.
-- Only restyle the surfaces that are actually visible in the original frame. If a side wall, corner, or room boundary is NOT visible in the original photo, do NOT invent one — leave it out of frame exactly as in the original. Never add side walls, corners, or enclosures that the original photo does not already show.
-- Do NOT place any furniture, cabinetry, console, plant, or large object in front of any window
-- Do NOT block, cover, or obstruct any window in any way — natural light must come through them
-- Do NOT add ANY new architectural elements. Specifically: no ceiling beams, bulkheads, soffits, coffers, or tray/dropped-ceiling sections; no columns, pilasters, or posts; no arches, archways, or doorways; no room dividers, partition walls, or glazed/Crittall/metal-framed partitions; no recessed wall niches or built-in boxes that break the flat wall plane. Keep the ceiling as ONE flat, continuous plane at the original height, and keep every wall a single flat plane.
-- Cabinets, shelving, and furniture must sit flush against the existing flat walls as freestanding or surface-mounted pieces. They must NOT be framed by new bulkheads, soffits, or recesses, and must NOT alter the wall or ceiling planes.
-- If the target style suggests screens, slatted panels, shoji, or dividers, render them ONLY as freestanding furniture — never as built-in architecture that changes the walls or ceiling.
-- Do NOT invent additional rooms, hallways, or openings that aren't visible in the original
+CRITICAL ARCHITECTURAL CONSTRAINTS — every one of these is non-negotiable. This is a re-styling of the room in the photograph, not a new room. Each rule carries its id from the studio rulebook:
+
+${GEMINI_RULES_BLOCK}
 
 WHAT TO TRANSFORM:
 - Repair and finish any damaged walls into smooth, finished walls in the target style's palette
 - Replace worn or damaged flooring with new flooring appropriate to the target style
-- Keep the ceiling as one flat, continuous plane at the original height — no beams, soffits, bulkheads, coffers, tray/dropped sections, or heavy crown moldings unless the original photo already has them
 - Remove or conceal radiators and utility fixtures (the windows themselves stay exactly where they are)
 - Furnish the room as a complete ${roomTypeLabel.toLowerCase()} with all appropriate furniture, lighting, cabinetry, and styling — all in the target style
 - Add appropriate decor, plants, and styling
@@ -150,7 +199,7 @@ WHAT TO TRANSFORM:
 
 TARGET STYLE:
 
-${args.styleBrief}${variationHint}
+${args.styleBrief}${renderAccent(args.accent ?? null)}${variationHint}
 
 Generate the edited photograph now. The result must look like the same room shown in the input photo, photographed from the same angle, after this renovation is complete. Every window and wall must stay in exactly the same position, and at the same distance from one another, as in the input photo — do not move the windows, widen the room, or add walls the original does not show. Photorealistic, high detail, professional interior photography quality.`;
 }

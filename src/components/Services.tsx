@@ -182,7 +182,7 @@ const Services: React.FC = () => {
   const handleExample = async (serviceId: string) => {
     const asset = SERVICE_ASSETS[serviceId];
     if (!asset) return;
-    const value = language === 'en' ? asset.en : asset.am;
+    const value = asset.en;
 
     if (asset.action === 'image-popup') {
       const urls = Array.isArray(value) ? value : [value];
@@ -193,9 +193,7 @@ const Services: React.FC = () => {
     } else if (asset.action === 'pdf-download') {
       const url = Array.isArray(value) ? value[0] : value;
       setDownloadingId(serviceId);
-      const filename = asset.filename
-        ? (language === 'en' ? asset.filename.en : asset.filename.am)
-        : `Designature_${serviceId}.pdf`;
+      const filename = asset.filename ? asset.filename.en : `Designature_${serviceId}.pdf`;
       await downloadPdf(url, filename);
       setDownloadingId(null);
     }
@@ -209,9 +207,7 @@ const Services: React.FC = () => {
             <h2 className="text-sm md:text-base font-bold uppercase tracking-[0.5em] lg:tracking-[1em] text-black/65 mb-8">{t('serv.title')}</h2>
             <h3 className="text-4xl md:text-6xl lg:text-7xl font-bold font-display tracking-architectural leading-[1] max-w-4xl mb-10">{t('serv.heading')}</h3>
             <p className="text-black/75 text-sm md:text-lg font-medium max-w-2xl leading-relaxed">
-              {language === 'en'
-                ? 'Our comprehensive suite of services ensures every aspect of your architectural journey is handled with precision and artistic integrity.'
-                : 'Մեր ծառայությունների ամբողջական փաթեթը'}
+              Our comprehensive suite of services ensures every aspect of your architectural journey is handled with precision and artistic integrity.
             </p>
           </div>
 

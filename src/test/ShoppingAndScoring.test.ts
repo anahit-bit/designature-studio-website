@@ -186,21 +186,42 @@ describe('Multi-attribute scoring', () => {
     expect(Object.keys(changes)).toHaveLength(1);
   });
 
-  it('QUIZ_IMAGE_WEIGHTS has entries for all 9 style folders', () => {
+  it('QUIZ_IMAGE_WEIGHTS has entries for all 15 style folders', () => {
     const folders = new Set(
       Object.keys(QUIZ_IMAGE_WEIGHTS).map(k => k.split('/')[1])
     );
-    const expected = ['Art-Deco', 'Bohemian', 'Coastal', 'Industrial', 'Japandi', 'Mid-Century', 'Modern', 'Rustic', 'Transitional'];
+    const expected = [
+      'Art-Deco', 'Bohemian', 'Coastal', 'Industrial', 'Japandi', 'Mid-Century',
+      'Modern', 'Rustic', 'Transitional',
+      // Added 2026-08-31 so the quiz can return every style AI Vision offers.
+      'Biophilic', 'Minimalist', 'Maximalist', 'Dopamine', 'Trend-2026', 'Warm-Contemporary',
+    ];
     for (const f of expected) expect(folders.has(f)).toBe(true);
+    expect(folders.size, 'a folder appeared that no style claims').toBe(expected.length);
   });
 
-  it('Coastal typo is fixed — ezelfi not ezeifi', () => {
-    expect(QUIZ_IMAGE_WEIGHTS['Quiz/Coastal/10_ezelfi.jpg']).toBeDefined();
+  // The correctly-spelled asset this used to assert was one of the 43 photographs
+  // destroyed on 2026-09-01, so it is no longer in the table. The half that still
+  // means something is the misspelling — it must never reappear.
+  it('the Coastal ezeifi typo never comes back', () => {
     expect(QUIZ_IMAGE_WEIGHTS['Quiz/Coastal/10_ezeifi.jpg']).toBeUndefined();
   });
 
-  it('total image count is 136', () => {
-    expect(Object.keys(QUIZ_IMAGE_WEIGHTS)).toHaveLength(136);
+  // 93 surviving photographs + 208 studio renders — a first take of every
+  // style x room, plus second takes (<room>-v2) generated to bring each quiz
+  // folder to exactly 20 images on Cloudinary.
+  //
+  // It was 136 photographs. On 2026-09-01 an upload run with overwrite:true
+  // destroyed 43 of them on Cloudinary — they had display names colliding with
+  // the room names we upload under, there was no backup on the account, and they
+  // are unrecoverable. Their weight entries were removed because they can never
+  // match anything again.
+  //
+  // Pinned exactly: a silent drop makes the quiz less accurate while nothing
+  // visibly breaks, and an image with no weights row still "works" — it just
+  // quietly scores primary-only.
+  it('total image count is 301', () => {
+    expect(Object.keys(QUIZ_IMAGE_WEIGHTS)).toHaveLength(301);
   });
 });
 

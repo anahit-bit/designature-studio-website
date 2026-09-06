@@ -90,7 +90,7 @@ const PortfolioPage: React.FC = () => {
               <div key={project.id} className="relative overflow-hidden bg-neutral-900">
                 <ResponsiveImage
                   src={project.imageUrl}
-                  alt={language === 'en' ? project.titleEN : project.titleAM}
+                  alt={project.titleEN}
                   aspectRatio="4/5"
                   crop="fill"
                   sizes="(min-width: 768px) 25vw, 50vw"
@@ -121,7 +121,7 @@ const PortfolioPage: React.FC = () => {
         {/* Centered overlay title */}
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center px-6 pointer-events-none">
           <span className="text-[11px] md:text-[12px] font-bold uppercase tracking-[0.34em] text-white/85 mb-4">
-            {language === 'en' ? 'Selected projects' : 'Ընտրված նախագծեր'}
+            Selected projects
           </span>
           <h1 className="text-3xl md:text-5xl lg:text-[5.5vw] font-bold font-display text-white tracking-architectural leading-[0.85] uppercase animate-in fade-in slide-in-from-bottom duration-1000">
             {t('portfolio.title')}
@@ -166,12 +166,12 @@ const PortfolioPage: React.FC = () => {
               type="button"
               key={project.id}
               onClick={() => navigateTo('project-detail', project.id)}
-              aria-label={language === 'en' ? project.titleEN : project.titleAM}
+              aria-label={project.titleEN}
               className="group relative aspect-[4/5] bg-neutral-100 overflow-hidden cursor-pointer text-left w-full appearance-none border-0 p-0"
             >
               <ResponsiveImage
                 src={project.imageUrl}
-                alt={language === 'en' ? project.titleEN : project.titleAM}
+                alt={project.titleEN}
                 aspectRatio="4/5"
                 crop="fill"
                 sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
@@ -185,10 +185,10 @@ const PortfolioPage: React.FC = () => {
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-700 flex flex-col justify-end p-10">
                 <div className="translate-y-4 group-hover:translate-y-0 transition-transform duration-700">
                   <p className="text-sm md:text-base font-bold uppercase tracking-[0.4em] text-white/80 mb-3">
-                    {language === 'en' ? project.categoryEN : project.categoryAM}
+                    {project.categoryEN}
                   </p>
                   <h4 className="text-2xl md:text-3xl font-bold font-display tracking-architectural uppercase text-white leading-none">
-                    {language === 'en' ? project.titleEN : project.titleAM}
+                    {project.titleEN}
                   </h4>
                 </div>
               </div>

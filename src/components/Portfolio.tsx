@@ -7,19 +7,7 @@ const Portfolio: React.FC = () => {
   const [filter, setFilter] = useState<'All' | 'Residential' | 'Commercial'>('All');
   const { language, t, navigateTo } = useLanguage();
   const projects = getProjects(language);
-
-  // Filter projects by matching the localized category string correctly across languages
-  const filteredProjects = projects.filter(p => {
-    if (filter === 'All') return true;
-    
-    // Mapping English filter keys to localized category values for robust comparison
-    const categoryMap: Record<string, Record<string, string>> = {
-      en: { Residential: 'Residential', Commercial: 'Commercial' },
-      am: { Residential: 'Բնակելի', Commercial: 'Կոմերցիոն' }
-    };
-    
-    return p.category === categoryMap[language][filter];
-  });
+  const filteredProjects = filter === 'All' ? projects : projects.filter(p => p.category === filter);
 
   return (
     <section id="projects" className="py-24 md:py-32 bg-white font-body">

@@ -16,7 +16,7 @@
 import { fal } from "@fal-ai/client";
 import sharp from "sharp";
 import type { RoomType } from "./stylePresets.js";
-import { buildStagingPrompt } from "./promptTemplates.js";
+import { buildStagingPrompt, type pickAccent } from "./promptTemplates.js";
 
 export interface StagingInput {
   /** Base64 data (without prefix) and MIME type of the room photo. */
@@ -25,6 +25,8 @@ export interface StagingInput {
   roomType?: RoomType;
   /** Increment per "Generate Variation" click — drives a different seed. */
   variationSeed?: number;
+  /** The single palette colour (or 2026 paint) emphasised in this concept. */
+  accent?: ReturnType<typeof pickAccent>;
 }
 
 const FAL_MODEL = "fal-ai/flux-2-lora-gallery/apartment-staging";
@@ -77,6 +79,7 @@ export async function generateConceptImageStaging(
     styleBrief: input.styleBrief,
     roomType: input.roomType,
     variationSeed: input.variationSeed,
+    accent: input.accent,
   });
 
   const src = await toInputImage(input.roomPhoto.data);
