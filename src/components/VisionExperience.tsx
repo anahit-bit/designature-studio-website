@@ -49,9 +49,19 @@ export const PAINT_2026 = [
 
 // Every entry MUST have a ROOM_NAME_TO_TYPE mapping, or the room silently falls
 // back to living_room and the user gets a sofa in their kitchen. Asserted too.
+// Must match LIVE_ROOM_CHIPS in the compiled rulebook — the "Live in UI?" column
+// of the Room Programs sheet — which stylePresets.test asserts both ways.
+// Retiring a room is a workbook cell, not a code edit.
+//
+// Outdoor was retired 2026-09-05. RD19 put outdoor and open-air spaces out of
+// scope on 2026-08-29 (both open-air pilot cases came back as entirely new
+// structures) while the chip stayed live, so the rulebook and the product
+// disagreed about what the tool does. The room TYPE and its programme survive, so
+// an older saved concept — or an API caller passing "Outdoor" — still resolves to
+// the right programme instead of silently becoming a living room.
 export const ROOM_TYPES_FULL = [
   'Living', 'Dining', 'Living + Dining', 'Bedroom', 'Kitchen', 'Bathroom',
-  'Home Office', 'Hallway', 'Kids Room', 'Outdoor',
+  'Home Office', 'Hallway', 'Kids Room',
 ] as const;
 
 const SAMPLE_BEFORE = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1776281427/photo_t1vo5h.png';
@@ -62,6 +72,10 @@ interface VisionExperienceProps {
   inspirationImages: string[];
   /** AI-029 — true when the uploaded photo shows only one wall (head-on). */
   structureWarning?: boolean;
+  /** Chip label the analysis read the photo as, shown under "Auto-detect". */
+  detectedRoom?: string | null;
+  /** RD26 — what the chosen room's programme will do on THIS photo. */
+  programmeTip?: string | null;
   selectedStyle: string;
   setSelectedStyle: (s: string) => void;
   selectedRoom: string;
@@ -1024,6 +1038,23 @@ export default function VisionExperience(p: VisionExperienceProps) {
               </button>
             ))}
           </div>
+
+          {/* Auto-detect is a real answer now, not a fallback to Living Room —
+              say what was read, so leaving the chips alone is an informed choice. */}
+          {!p.selectedRoom && p.detectedRoom && (
+            <p className="text-center text-[11px] text-black/55">
+              We read this photo as a <span className="font-bold text-black/75">{p.detectedRoom}</span>. Pick a room above to override.
+            </p>
+          )}
+
+          {/* RD26 — what the chosen room's programme will do with THIS photo,
+              said before a generation is spent rather than discovered after. */}
+          {p.programmeTip && (
+            <div className="mx-auto max-w-[440px] flex items-start gap-2.5 bg-[#FBF3EC] border-l-2 border-[#9E5E41] px-4 py-3">
+              <span aria-hidden className="text-[#9E5E41] text-[13px] leading-none mt-[1px]">⚠</span>
+              <p className="text-[11px] leading-relaxed text-[#7a4630]">{p.programmeTip}</p>
+            </div>
+          )}
         </div>
             </div>
           </div>

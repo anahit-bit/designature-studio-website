@@ -12,8 +12,9 @@
 
 import type { RoomType } from "./stylePresets.js";
 import { ROOM_TYPE_LABELS } from "./stylePresets.js";
+import type { RoomStructure } from "./spatialAnalysis.js";
 import {
-  GEMINI_RULES_BLOCK,
+  GEMINI_RULE_SECTIONS,
   STYLE_PALETTES,
   PAINT_MODIFIERS,
   ROOM_PROGRAM_RULES as COMPILED_PROGRAMS,
@@ -33,6 +34,111 @@ import {
 // Owner-edited on the "Room Programs" sheet of the workbook.
 // ─────────────────────────────────────────────────────────────────────────────
 export const ROOM_PROGRAM_RULES = COMPILED_PROGRAMS as Record<RoomType, string>;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RD26 — the programme is issued against the measured photograph.
+//
+// A room programme is generic by construction: it cannot know that THIS hallway
+// has no doorway, or that THIS bedroom's only wall carries the window. Left
+// generic, the model fills the gap from its own prior — on 2026-09-04 a Hallway
+// programme that asked for a through-view was handed a sealed dead-end alcove,
+// and the model cut an arch with a staircase into the back wall to comply.
+//
+// Naming the absence beats forbidding the invention: "this photograph shows no
+// doorway" is a fact about the input, which the model weighs far more heavily
+// than one more "do not add" among a list of them.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** A conflict between what a room programme assumes and what the photo shows. */
+export interface ProgrammeConflict {
+  /** Stable id for logging and tests. */
+  code: "hallway-dead-end" | "bed-wall-glazed" | "single-wall-kitchen" | "single-wall-room";
+  /** Sentence appended to the room programme in the prompt. */
+  note: string;
+  /** Plain-English version for the upload screen. Empty when not worth saying. */
+  userTip: string;
+}
+
+/** True for a head-on shot: a back wall, with neither side wall in frame. */
+function isHeadOn(s: RoomStructure): boolean {
+  return (
+    s.visibleWalls.includes("back") &&
+    !s.visibleWalls.includes("left") &&
+    !s.visibleWalls.includes("right")
+  );
+}
+
+/**
+ * Compare a room programme's assumptions against the measured room. Pure.
+ * Returns null when the photograph can carry the programme as written.
+ */
+export function detectProgrammeConflict(
+  roomType: RoomType | undefined,
+  structure: RoomStructure | null | undefined,
+): ProgrammeConflict | null {
+  if (!roomType || !structure) return null;
+
+  // The failure this whole change exists for. A hallway programme wants the eye
+  // to travel somewhere; a photo with no opening in it has nowhere to send it.
+  if (roomType === "hallway" && structure.doors.length === 0) {
+    return {
+      code: "hallway-dead-end",
+      note:
+        "THIS PHOTOGRAPH IN PARTICULAR: it shows no doorway, no opening, no turn and no staircase. " +
+        "This hallway ends at the wall you can see. Furnish it as a dead-end hallway and leave every " +
+        "wall solid — do not cut, imply, paint or light an opening anywhere in it.",
+      userTip:
+        "This photo doesn't show a doorway or opening, so the concept will treat the hallway as ending at the wall you can see.",
+    };
+  }
+
+  // RD15's hard case, stated as a fact about this room rather than a general rule.
+  const bedRoom = roomType === "bedroom" || roomType === "kids_room";
+  if (bedRoom && isHeadOn(structure) && structure.windows.some((w) => w.wall === "back")) {
+    return {
+      code: "bed-wall-glazed",
+      note:
+        "THIS PHOTOGRAPH IN PARTICULAR: the only wall in frame carries the glazing, and no side wall is " +
+        "visible. Offset the bed to one side so the window stays completely clear. Do not move, shrink or " +
+        "cover the window, and do not reveal a side wall to put the bed against.",
+      userTip:
+        "The only wall in this photo has the window in it, so the bed will sit to one side of the glazing.",
+    };
+  }
+
+  // A single-wall kitchen has no floor area for an island, and inventing one
+  // means inventing the floor to stand it on.
+  if (roomType === "kitchen" && isHeadOn(structure)) {
+    return {
+      code: "single-wall-kitchen",
+      note:
+        "THIS PHOTOGRAPH IN PARTICULAR: only one wall is in frame. Run the kitchen along that wall and " +
+        "leave the island out — there is no measured floor area to stand one in.",
+      userTip: "",
+    };
+  }
+
+  if (isHeadOn(structure)) {
+    return {
+      code: "single-wall-room",
+      note:
+        "THIS PHOTOGRAPH IN PARTICULAR: only one wall is in frame. Arrange the furniture against and in " +
+        "front of that wall. Do not open the view out, and do not bring side walls into frame to hold a piece.",
+      userTip: "",
+    };
+  }
+
+  return null;
+}
+
+/** The RD26 note as it appears in the prompt, or "" when there is nothing to add. */
+export function renderProgrammeNote(
+  roomType: RoomType | undefined,
+  structure: RoomStructure | null | undefined,
+): string {
+  const conflict = detectProgrammeConflict(roomType, structure);
+  return conflict ? `\n\n${conflict.note}` : "";
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ACCENT COLOUR — one per generation.
@@ -163,9 +269,16 @@ export function buildGenerationPrompt(args: {
   spatialConstraints?: string;
   /** The one palette colour (or 2026 paint) emphasised in this concept. */
   accent?: ReturnType<typeof pickAccent>;
+  /**
+   * RD26 — the measured room, used to append a photo-specific note to the room
+   * programme ("this photograph shows no doorway"). Optional: without it the
+   * programme is sent generic, exactly as before.
+   */
+  structure?: RoomStructure | null;
 }): string {
   const roomTypeKey: RoomType = args.roomType ?? "living_room"; // safe fallback when auto-detect is selected
   const roomTypeLabel = ROOM_TYPE_LABELS[roomTypeKey];
+  const programmeNote = renderProgrammeNote(args.roomType, args.structure);
 
   const variationHint = args.variationSeed
     ? `
@@ -180,20 +293,32 @@ This is variation #${args.variationSeed}. Use a different furniture arrangement,
 ${args.spatialConstraints.trim()}`
       : "";
 
-  return `Edit this room photograph to show how the same exact room would look after a complete interior renovation. This is a photorealistic "after" visualization for an interior design client. The room will be renovated into a ${roomTypeLabel} in the style described below.${spatialBlock}
+  return `Edit this room photograph to show how the same exact room would look after a complete interior renovation. This is a photorealistic "after" visualization for an interior design client. The room will be renovated into a ${roomTypeLabel} in the style described below.
 
-ROOM PROGRAM (this rule overrides any furniture examples in the style brief below):
-${ROOM_PROGRAM_RULES[roomTypeKey]}
+Work through it in four steps, in this order. Steps 1 and 2 decide what the room IS; steps 3 and 4 decide what it looks like. Each rule carries its id from the studio rulebook.${spatialBlock}
 
-CRITICAL ARCHITECTURAL CONSTRAINTS — every one of these is non-negotiable. This is a re-styling of the room in the photograph, not a new room. Each rule carries its id from the studio rulebook:
+STEP 1 — CLEAR THE ROOM. Before anything else, take out what is standing in it:
 
-${GEMINI_RULES_BLOCK}
+${GEMINI_RULE_SECTIONS.clear}
 
-WHAT TO TRANSFORM:
+STEP 2 — THE ARCHITECTURE IS FIXED. What is left after step 1 is the shell, and the shell does not change. Not one of these is negotiable:
+
+${GEMINI_RULE_SECTIONS.architecture}
+
+STEP 3 — FURNISH THE EMPTY SHELL as a ${roomTypeLabel}, from scratch, in the target style.
+
+${GEMINI_RULE_SECTIONS.programme}
+
+${ROOM_PROGRAM_RULES[roomTypeKey]}${programmeNote}
+
+${GEMINI_RULE_SECTIONS.furnish}
+
+STEP 4 — FINISHES AND LIGHTING:
+
+${GEMINI_RULE_SECTIONS.finishes}
 - Repair and finish any damaged walls into smooth, finished walls in the target style's palette
 - Replace worn or damaged flooring with new flooring appropriate to the target style
 - Remove or conceal radiators and utility fixtures (the windows themselves stay exactly where they are)
-- Furnish the room as a complete ${roomTypeLabel.toLowerCase()} with all appropriate furniture, lighting, cabinetry, and styling — all in the target style
 - Add appropriate decor, plants, and styling
 - Lighting in the final image should feel cohesive with the target style's mood, layered with natural daylight from the preserved windows
 
@@ -201,5 +326,5 @@ TARGET STYLE:
 
 ${args.styleBrief}${renderAccent(args.accent ?? null)}${variationHint}
 
-Generate the edited photograph now. The result must look like the same room shown in the input photo, photographed from the same angle, after this renovation is complete. Every window and wall must stay in exactly the same position, and at the same distance from one another, as in the input photo — do not move the windows, widen the room, or add walls the original does not show. Photorealistic, high detail, professional interior photography quality.`;
+Generate the edited photograph now. Two things decide whether this is usable. First: NONE of the original furniture, rugs, curtains or clutter survives — every loose object in the result is a new piece you placed, not one you restyled where it stood. Second: the shell is untouched — the same walls in the same places, the same ceiling, the same number of windows and the same number of doors as the input photo, at the same distances from one another. Count the openings in the input and put exactly that many in the output: no new doorway, arch, opening or window, and no wall the original does not show. Photographed from the same spot with the same lens. Photorealistic, high detail, professional interior photography quality.`;
 }

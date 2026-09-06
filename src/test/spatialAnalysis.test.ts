@@ -8,7 +8,7 @@ import {
 } from '../../services/aiVision/spatialAnalysis';
 
 const mkStructure = (visibleWalls: any[]): RoomStructure => ({
-  cameraView: 'x', visibleWalls, outOfFrameWalls: [], windows: [], doors: [], fixedFeatures: [], summary: '',
+  cameraView: 'x', visibleWalls, outOfFrameWalls: [], windows: [], doors: [], fixedFeatures: [], detectedRoom: null, summary: '',
 });
 import { buildGenerationPrompt } from '../../services/aiVision/promptTemplates';
 
@@ -48,7 +48,7 @@ describe('parseRoomStructure · AI-029 spatial grounding', () => {
       outOfFrameWalls: [],
       windows: [{ wall: 'back', shape: 'rectangular', box: [-0.2, 0.1, 1.4, 0.9] }],
       doors: [],
-      fixedFeatures: [],
+      fixedFeatures: [], detectedRoom: null,
       summary: 's',
     });
     const s = parseRoomStructure(raw);
@@ -64,7 +64,7 @@ describe('parseRoomStructure · AI-029 spatial grounding', () => {
         { wall: 'back', shape: 'rectangular', box: [0.1, 0.2, 0.3, 0.4] },
       ],
       doors: [],
-      fixedFeatures: [],
+      fixedFeatures: [], detectedRoom: null,
       summary: 's',
     });
     const s = parseRoomStructure(raw);
@@ -77,7 +77,7 @@ describe('parseRoomStructure · AI-029 spatial grounding', () => {
     // Valid JSON but no usable spatial signal → treated as a miss.
     expect(
       parseRoomStructure(
-        JSON.stringify({ visibleWalls: [], windows: [], doors: [], fixedFeatures: [], summary: '' })
+        JSON.stringify({ visibleWalls: [], windows: [], doors: [], fixedFeatures: [], detectedRoom: null, summary: '' })
       )
     ).toBeNull();
   });
@@ -91,6 +91,7 @@ describe('renderSpatialConstraints · AI-029 positive constraints', () => {
     windows: [{ wall: 'back', shape: 'arched', box: [0.34, 0.18, 0.58, 0.72] }],
     doors: [],
     fixedFeatures: [{ label: 'radiator', box: [0.36, 0.72, 0.56, 0.82] }],
+    detectedRoom: 'bedroom',
     summary: 'Only the back wall is visible; do not add side walls.',
   };
 
@@ -141,7 +142,7 @@ describe('spatialMetrics · AI-029 Phase 2 framing metrics', () => {
     const s: RoomStructure = {
       cameraView: 'head-on', visibleWalls: ['back'], outOfFrameWalls: ['left', 'right'],
       windows: [{ wall: 'back', shape: 'rectangular', box: [0.22, 0.25, 0.78, 0.6] }],
-      doors: [], fixedFeatures: [], summary: '',
+      doors: [], fixedFeatures: [], detectedRoom: null, summary: '',
     };
     const m = spatialMetrics(s)!;
     expect(m.windowWidthFrac).toBeCloseTo(0.56, 5);
@@ -157,13 +158,13 @@ describe('spatialMetrics · AI-029 Phase 2 framing metrics', () => {
         { wall: 'right', shape: 'rectangular', box: [0.9, 0.4, 0.95, 0.5] }, // tiny
         { wall: 'back', shape: 'rectangular', box: [0.3, 0.2, 0.7, 0.6] }, // largest
       ],
-      doors: [], fixedFeatures: [], summary: '',
+      doors: [], fixedFeatures: [], detectedRoom: null, summary: '',
     };
     expect(spatialMetrics(s)!.windowWidthFrac).toBeCloseTo(0.4, 5);
   });
 
   it('returns null when there is no window', () => {
-    expect(spatialMetrics({ cameraView: 'x', visibleWalls: ['back'], outOfFrameWalls: [], windows: [], doors: [], fixedFeatures: [], summary: '' })).toBeNull();
+    expect(spatialMetrics({ cameraView: 'x', visibleWalls: ['back'], outOfFrameWalls: [], windows: [], doors: [], fixedFeatures: [], detectedRoom: null, summary: '' })).toBeNull();
     expect(spatialMetrics(null)).toBeNull();
   });
 
@@ -171,7 +172,7 @@ describe('spatialMetrics · AI-029 Phase 2 framing metrics', () => {
     const s: RoomStructure = {
       cameraView: 'head-on', visibleWalls: ['back'], outOfFrameWalls: ['left', 'right'],
       windows: [{ wall: 'back', shape: 'rectangular', box: [0.22, 0.25, 0.78, 0.6] }],
-      doors: [], fixedFeatures: [], summary: '',
+      doors: [], fixedFeatures: [], detectedRoom: null, summary: '',
     };
     const out = renderSpatialConstraints(s);
     expect(out).toContain('FRAMING & SCALE');
@@ -185,13 +186,14 @@ describe('buildGenerationPrompt · AI-029 injection', () => {
     const constraints = 'MEASURED ARCHITECTURE OF THIS EXACT ROOM — keep the window at x:30%–60%.';
     const prompt = buildGenerationPrompt({ styleBrief: 'warm minimal', spatialConstraints: constraints });
     expect(prompt).toContain(constraints);
-    // Positioned before the existing critical constraints block.
-    expect(prompt.indexOf(constraints)).toBeLessThan(prompt.indexOf('CRITICAL ARCHITECTURAL CONSTRAINTS'));
+    // The measured room comes first, ahead of every generic rule: it is the
+    // only part of the prompt that describes THIS photograph.
+    expect(prompt.indexOf(constraints)).toBeLessThan(prompt.indexOf('STEP 1 — CLEAR THE ROOM'));
   });
 
   it('omits the block cleanly when no constraints are supplied', () => {
     const prompt = buildGenerationPrompt({ styleBrief: 'warm minimal' });
-    expect(prompt).toContain('CRITICAL ARCHITECTURAL CONSTRAINTS');
+    expect(prompt).toContain('STEP 2 — THE ARCHITECTURE IS FIXED');
     expect(prompt).not.toContain('MEASURED ARCHITECTURE');
   });
 

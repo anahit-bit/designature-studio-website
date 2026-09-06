@@ -89,6 +89,26 @@ export const STYLE_NAME_TO_PRESET: Record<string, StylePreset> = {
   "Dopamine":     "dopamine",
 };
 
+/**
+ * The reverse direction: a canonical RoomType back to the chip label the UI
+ * shows. Needed since the analysis started reporting a detected room — the
+ * server has a key, the user needs to read a word, and inventing that word at
+ * the call site is how "living_dining" reaches a customer's screen. Every value
+ * here must be a live chip in ROOM_TYPES_FULL; stylePresets.test asserts it.
+ */
+export const ROOM_TYPE_TO_CHIP: Record<RoomType, string> = {
+  living_room:   "Living",
+  dining_room:   "Dining",
+  living_dining: "Living + Dining",
+  bedroom:       "Bedroom",
+  kitchen:       "Kitchen",
+  bathroom:      "Bathroom",
+  home_office:   "Home Office",
+  kids_room:     "Kids Room",
+  outdoor:       "Outdoor",
+  hallway:       "Hallway",
+};
+
 // Maps every room-picker label the frontend can send to a canonical RoomType.
 // Two label conventions exist and BOTH must resolve, or the server silently
 // falls back to `living_room` (wrong-room bug):

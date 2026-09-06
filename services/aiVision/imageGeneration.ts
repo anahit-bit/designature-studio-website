@@ -13,6 +13,7 @@ import { buildGenerationPrompt, type pickAccent } from "./promptTemplates.js";
 import {
   analyzeRoomStructure,
   spatialMetrics,
+  countOpenings,
   type RoomStructure,
 } from "./spatialAnalysis.js";
 
@@ -65,6 +66,7 @@ export async function generateConceptImage(
     variationSeed: input.variationSeed,
     spatialConstraints: input.spatialConstraints,
     accent: input.accent,
+    structure: input.sourceStructure, // RD26 — the photo-specific programme note
   });
 
   // ── Preprocess room photo: resize large images before sending to Gemini ──
@@ -128,6 +130,7 @@ export async function generateConceptImage(
   // (i.e. the room was widened / camera pulled back), retry once with a
   // corrective instruction. Bounded to 1 retry to cap cost + latency.
   const expectedMetrics = spatialMetrics(input.sourceStructure ?? null);
+  const expectedOpenings = countOpenings(input.sourceStructure);
   const MAX_PROPORTION_RETRIES = 1;
   const PROPORTION_TOLERANCE = 0.12; // absolute drop in window width fraction
 
@@ -237,16 +240,47 @@ export async function generateConceptImage(
           );
         }
 
-        // AI-029 Phase 2b — proportion verification. Re-measure the output and,
-        // if the room was widened past tolerance, retry once with a correction.
-        // Only runs when a source structure was supplied and budget remains.
-        if (expectedMetrics && proportionRetryCount < MAX_PROPORTION_RETRIES) {
+        // AI-029 Phase 2b + RD25 — structural verification. Re-measure the
+        // output and retry once if the model either invented an opening or
+        // widened the room. Runs whenever a source structure was supplied:
+        // gating this on `expectedMetrics` (window-derived) is what left every
+        // windowless room — hallway, alcove, interior bathroom — with no
+        // post-generation check at all.
+        if (input.sourceStructure && proportionRetryCount < MAX_PROPORTION_RETRIES) {
           const outStructure = await analyzeRoomStructure({
             data: outputBuffer.toString("base64"),
             mimeType: mime,
           });
+
+          // RD25 — opening count. Checked first: an invented archway is a
+          // bigger failure than a few points of proportion drift, and it is the
+          // one check that works on a room with no window in it.
+          const outOpenings = countOpenings(outStructure);
+          const invented =
+            outStructure !== null &&
+            (outOpenings.windows > expectedOpenings.windows ||
+              outOpenings.doors > expectedOpenings.doors);
+          if (invented) {
+            const extraWindows = outOpenings.windows - expectedOpenings.windows;
+            const extraDoors = outOpenings.doors - expectedOpenings.doors;
+            const added = [
+              extraWindows > 0 ? `${extraWindows} window${extraWindows === 1 ? "" : "s"}` : "",
+              extraDoors > 0 ? `${extraDoors} doorway${extraDoors === 1 ? "" : "s"}` : "",
+            ]
+              .filter(Boolean)
+              .join(" and ");
+            const note = `\n\nCRITICAL STRUCTURAL CORRECTION: the previous attempt INVENTED ${added} that the original photograph does not contain. The real room has exactly ${expectedOpenings.windows} window${expectedOpenings.windows === 1 ? "" : "s"} and ${expectedOpenings.doors} doorway${expectedOpenings.doors === 1 ? "" : "s"}. Every other wall is solid, unbroken masonry from floor to ceiling. Do NOT cut, imply, paint or light an opening, arch, doorway, passage or window anywhere. If the room reads as a closed box or a dead end, that is correct — leave it closed.`;
+            console.warn(
+              `[ai-vision] RD25 opening-count violation: source ${expectedOpenings.windows}w/${expectedOpenings.doors}d -> output ${outOpenings.windows}w/${outOpenings.doors}d — retrying (attempt ${proportionRetryCount + 1}/${MAX_PROPORTION_RETRIES})`
+            );
+            return generateOne(retryCount, aspectRetryCount, proportionRetryCount + 1, note);
+          }
+          console.log(
+            `[ai-vision] Opening count: source ${expectedOpenings.windows}w/${expectedOpenings.doors}d, output ${outOpenings.windows}w/${outOpenings.doors}d`
+          );
+
           const outMetrics = spatialMetrics(outStructure);
-          if (outMetrics) {
+          if (expectedMetrics && outMetrics && outMetrics.anchor === expectedMetrics.anchor) {
             // Positive drift = window is a smaller share of the frame than the
             // source ⇒ the room was widened / the camera pulled back.
             const drift = expectedMetrics.windowWidthFrac - outMetrics.windowWidthFrac;

@@ -9,13 +9,19 @@ import {
 // "no sofa" can only be tripped by the ROOM PROGRAM block itself.
 const BRIEF = 'TEST STYLE BRIEF: neutral placeholder, no furniture words here.';
 
-// Isolate just the ROOM PROGRAM block from a generation prompt. It sits
-// between the "ROOM PROGRAM" label and the CRITICAL ARCHITECTURAL CONSTRAINTS
-// section, so the trailing TARGET STYLE brief can't leak into the assertions.
+// Isolate just the room programme from a generation prompt. Since 2026-09-04
+// the prompt is written as four ordered steps, and the programme is step 3 —
+// deliberately AFTER the architecture is declared fixed, so it reads as "what
+// goes into this shell" rather than as an instruction that outranks it.
+// Step 3 as a whole is too wide a slice: the generic placement rules under it
+// say "sofa back" and "bed", which would trip the negative assertions below no
+// matter what the programme says. So take just the programme paragraph — from
+// the end of RD24 (which introduces it) to the next rule bullet.
 function genProgramSection(prompt: string): string {
-  const start = prompt.indexOf('ROOM PROGRAM');
-  const end = prompt.indexOf('CRITICAL ARCHITECTURAL CONSTRAINTS');
-  expect(start).toBeGreaterThanOrEqual(0);
+  const rd24 = prompt.indexOf('[RD24]');
+  expect(rd24).toBeGreaterThanOrEqual(0);
+  const start = prompt.indexOf('\n', rd24);
+  const end = prompt.indexOf('\n- [RD', start);
   expect(end).toBeGreaterThan(start);
   return prompt.slice(start, end);
 }
@@ -71,12 +77,20 @@ describe('buildGenerationPrompt · ROOM PROGRAM enforcement', () => {
     expect(section).toContain('never cover it with the headboard');
   });
 
-  it('places the ROOM PROGRAM immediately before the architectural constraints, marked as authoritative', () => {
+  it('places the room programme AFTER the architecture, subordinated to it by RD24', () => {
+    // This assertion is the 2026-09-04 fix. The programme used to sit above the
+    // constraints introduced as an override, and on a Hallway it duly overrode
+    // them — the model cut an archway into a dead-end wall to satisfy it.
     const prompt = buildGenerationPrompt({ styleBrief: BRIEF, roomType: 'kitchen' });
-    expect(prompt.indexOf('ROOM PROGRAM')).toBeLessThan(
-      prompt.indexOf('CRITICAL ARCHITECTURAL CONSTRAINTS'),
+    expect(prompt.indexOf('STEP 2 — THE ARCHITECTURE IS FIXED')).toBeLessThan(
+      prompt.indexOf('STEP 3 — FURNISH THE EMPTY SHELL'),
     );
-    expect(prompt).toContain('overrides any furniture examples');
+    // RD24 must introduce the programme, not trail it: it says "the programme
+    // that follows", and rendering it afterwards made that sentence a lie.
+    const rd24 = prompt.indexOf('[RD24]');
+    expect(rd24).toBeGreaterThan(0);
+    expect(rd24).toBeLessThan(prompt.indexOf(ROOM_PROGRAM_RULES.kitchen.slice(0, 40)));
+    expect(prompt).toContain('It can never authorise building work');
   });
 
   it('falls back to the living_room program when roomType is omitted', () => {
