@@ -5301,6 +5301,17 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         // Payment captured but the grant failed — loud, because it needs manual repair.
         console.error("[credits-callback] GRANT FAILED AFTER CAPTURE:", purchase.id, err);
       }
+      // Receipt email — best-effort, in its own catch so an email failure never
+      // looks like a grant failure. The refund policy references "the receipt we
+      // emailed you", so a pack purchase must actually send one.
+      sendEmail({
+        to: purchase.client_email,
+        subject: "Your credits are in — Designature Studio",
+        html: subEmailHtml(
+          "Payment received",
+          `<p>Thank you for your purchase. <strong>${Number(purchase.credits).toLocaleString("en-US")} credits</strong> ($${purchase.amount_usd}) have been added to your account, and they never expire.</p><p>You can see your balance any time from your account page.</p>`,
+        ),
+      }).catch((err) => console.error("[credits-callback] receipt email failed:", err));
     }
     return res.redirect(302, "/credits/success?p=" + purchase.id);
   });

@@ -94,14 +94,16 @@ export const Card: React.FC<{ children: React.ReactNode; className?: string; sty
 export const PlanPill: React.FC<{ tier: 'free' | 'design' | 'studio' }> = ({ tier }) => {
   const styles: Record<string, string> = {
     free: 'border-[#6B6B6B] text-[#6B6B6B]',
-    design: 'border-[#0047AB] text-[#0047AB]',
+    design: 'bg-[#0047AB] border-[#0047AB] text-white',
     studio: 'bg-[#0047AB] border-[#0047AB] text-white',
   };
+  // Credit model: a subscriber is a "Member"; everyone else is on the free grant.
+  const label: Record<string, string> = { free: 'Free', design: 'Member', studio: 'Member' };
   return (
     <span
       className={`inline-block font-body text-[10px] font-bold tracking-[0.28em] uppercase px-[10px] py-[4px] border ${styles[tier]}`}
     >
-      {tier}
+      {label[tier] ?? tier}
     </span>
   );
 };

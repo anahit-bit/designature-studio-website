@@ -93,9 +93,9 @@ describe('AC-001 — Account dashboard', () => {
     expect(screen.queryByRole('button', { name: /Update card/i })).not.toBeInTheDocument();
   });
 
-  it('Free tier: Overview shows an upgrade CTA', async () => {
+  it('Free tier: Overview shows a Get credits CTA', async () => {
     renderAccount('/account', 'free');
-    expect(await screen.findByRole('button', { name: /Upgrade to Design/i })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Get credits/i })).toBeInTheDocument();
   });
 
   it('Studio tier: Overview shows the 4th Style Quiz usage card', async () => {
@@ -110,10 +110,10 @@ describe('AC-001 — Account dashboard', () => {
     expect(await screen.findByText(/Vardanyan Apartment/i)).toBeInTheDocument();
   });
 
-  it('Design tier: Overview shows "Manage plan", not an upgrade CTA', async () => {
+  it('Design tier: Overview shows "Manage plan", not a Get credits CTA', async () => {
     renderAccount('/account', 'design');
     expect(await screen.findByRole('button', { name: /Manage plan/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Upgrade to Design/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Get credits/i })).not.toBeInTheDocument();
   });
 
   // ── (c) modals open + close ──
