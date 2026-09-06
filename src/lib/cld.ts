@@ -22,8 +22,23 @@ export interface CldOpts {
   /**
    * 'limit' (default) — preserve aspect ratio, just cap width.
    * 'fill'  — server-side crop to the requested ratio (needs aspectRatio).
+   *           DISCARDS whatever falls outside the frame.
+   * 'pad'   — fit the WHOLE image inside the requested ratio and pad the
+   *           leftover margin (needs aspectRatio). Nothing is ever cut off.
+   *           Use this wherever the source library has mixed aspect ratios
+   *           and losing part of the subject is unacceptable.
    */
-  crop?: 'limit' | 'fill';
+  crop?: 'limit' | 'fill' | 'pad';
+  /**
+   * Padding colour for crop='pad', as a Cloudinary `b_` value without the
+   * prefix. Defaults to 'auto:predominant_gradient' — a gradient derived from
+   * the image's own dominant colours, so the pad reads as part of the picture
+   * rather than as a letterbox bar.
+   *
+   * NOTE: `blurred` (b_blurred:<i>:<b>) is NOT available on this account —
+   * Cloudinary rejects it as an invalid colour name. Stick to `auto:*` values.
+   */
+  background?: string;
   /**
    * Cloudinary quality. String presets ('eco' | 'good' | 'best') map to
    * `q_auto:<preset>`; a number 1-100 maps to a fixed `q_<n>` value.
@@ -83,8 +98,12 @@ export function cld(srcOrId: string, width: number, opts: CldOpts = {}): string 
   const qToken = typeof quality === 'number' ? `q_${quality}` : `q_auto:${quality}`;
   const tx: string[] = [`f_auto`, qToken];
 
-  if (crop === 'fill') {
-    tx.push('c_fill', 'g_auto', `w_${width}`);
+  if (crop === 'fill' || crop === 'pad') {
+    if (crop === 'fill') {
+      tx.push('c_fill', 'g_auto', `w_${width}`);
+    } else {
+      tx.push('c_pad', `b_${opts.background ?? 'auto:predominant_gradient'}`, `w_${width}`);
+    }
     if (opts.aspectRatio) {
       const [aw, ah] = opts.aspectRatio.split(/[:/]/).map(Number);
       if (aw > 0 && ah > 0) {

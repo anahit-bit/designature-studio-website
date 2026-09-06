@@ -54,6 +54,23 @@ const STYLE_DESCRIPTIONS: Record<string, { summary: string; elements: string[] }
   'Transitional':{ summary: 'A measured balance of classic and contemporary. Familiar shapes in a restrained palette — calm, timeless, never fussy.', elements: ['Soft neutrals', 'Balanced forms', 'Layered texture', 'Quiet contrast'] },
 };
 
+/**
+ * Deck frame ratio + delivery options for the swipe card.
+ *
+ * 37:27 is the EXACT native ratio of the 1184x864 room renders, which are 208
+ * of the 290 images in Quiz/* — those fill the card edge to edge with zero loss.
+ * The remaining 81 are legacy 1:1 squares.
+ *
+ * The deck used to be 16:11 delivered with c_fill, which discarded 31% of the
+ * height of every square: g_auto kept the bed and cropped the cove lighting,
+ * pendants and ceiling clean out of the shot. This is a style quiz — people
+ * vote on the room they can SEE, so a crop that removes the styling corrupts
+ * the answer it collects. We pad instead of crop: nothing is ever cut off, and
+ * the margin is a gradient sampled from the image's own dominant colours.
+ */
+export const QUIZ_DECK_RATIO = '37/27';
+export const QUIZ_DECK_IMAGE_OPTS = { crop: 'pad' as const, aspectRatio: QUIZ_DECK_RATIO };
+
 type QuizRoom = { url: string; credit: string };
 type QuizRooms = Record<string, QuizRoom[]>;
 
@@ -638,14 +655,14 @@ const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignI
         <div className="h-full bg-[#0047AB] transition-all duration-500" style={{ width: `${((quizStep + 1) / QUIZ_LENGTH) * 100}%` }} />
       </div>
 
-      <div className="deck" style={{ aspectRatio: '16/11' }}>
+      <div className="deck" style={{ aspectRatio: QUIZ_DECK_RATIO }}>
         <div className="peek p2" />
         <div className="peek p1" />
         <div key={`card-${quizStep}-${quizSeed}`} className="card-in relative w-full h-full overflow-hidden bg-[#0e0e0e]">
           {currentQuizImage.url && (
             <img
-              src={cld(currentQuizImage.url, 1200, { crop: 'fill', aspectRatio: '16/11' })}
-              srcSet={cldSrcSet(currentQuizImage.url, [768, 1200, 1600], { crop: 'fill', aspectRatio: '16/11' })}
+              src={cld(currentQuizImage.url, 1200, QUIZ_DECK_IMAGE_OPTS)}
+              srcSet={cldSrcSet(currentQuizImage.url, [768, 1200, 1600], QUIZ_DECK_IMAGE_OPTS)}
               sizes="(min-width: 1024px) 60vw, 100vw"
               alt={styleLabel(currentQuizStyle)}
               onLoad={() => setQuizImageReady(true)}

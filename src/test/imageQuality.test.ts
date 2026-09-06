@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { cld, cldSrcSet } from '../lib/cld';
-import { QUIZ_ROOMS_FALLBACK, DNA_HERO_FALLBACK, QUIZ_LANDING_HERO } from '../components/StyleQuizScreen';
+import { QUIZ_ROOMS_FALLBACK, DNA_HERO_FALLBACK, QUIZ_LANDING_HERO, QUIZ_DECK_RATIO, QUIZ_DECK_IMAGE_OPTS } from '../components/StyleQuizScreen';
 import { PAIRS as AI_VISION_PAIRS } from '../components/AIVisionShowcase';
 import { SHOPPING_ROOMS, SHOPPING_LOGOS } from '../components/ShoppingListShowcase';
 
@@ -37,7 +37,9 @@ const BUDGET = {
 };
 
 const HERO_OPTS = { crop: 'fill' as const, aspectRatio: '16/9' };
-const DECK_OPTS = { crop: 'fill' as const, aspectRatio: '16/11' };
+/** The real deck delivery options, imported so the smoke test can never drift from the screen. */
+const DECK_OPTS = QUIZ_DECK_IMAGE_OPTS;
+const FILL_OPTS = { crop: 'fill' as const, aspectRatio: '16/11' };
 const SQUARE_OPTS = { crop: 'fill' as const, aspectRatio: '1/1' };
 
 type Case = { label: string; src: string; width: number; opts?: any; budget: number; minBytes?: number };
@@ -77,11 +79,25 @@ describe('image delivery — cld() optimization invariants (unit)', () => {
   });
 
   it('fill crop adds c_fill + g_auto + derived height', () => {
-    const url = cld(sample, 1200, DECK_OPTS);
+    const url = cld(sample, 1200, FILL_OPTS);
     expect(url).toContain('c_fill');
     expect(url).toContain('g_auto');
     expect(url).toContain('w_1200');
     expect(url).toContain('h_825'); // 1200 * 11/16
+  });
+
+  it('pad crop fits the whole image and never crops', () => {
+    const url = cld(sample, 1200, { crop: 'pad', aspectRatio: '37/27' });
+    expect(url).toContain('c_pad');
+    expect(url).toContain('b_auto:predominant_gradient');
+    expect(url).toContain('h_876'); // 1200 * 27/37
+    // c_pad must never fall back to a cropping transform.
+    expect(url).not.toContain('c_fill');
+    expect(url).not.toContain('g_auto');
+  });
+
+  it('pad background is overridable', () => {
+    expect(cld(sample, 800, { crop: 'pad', aspectRatio: '1/1', background: 'auto:border' })).toContain('b_auto:border');
   });
 
   it('maps quality presets and numeric quality correctly', () => {
@@ -150,6 +166,32 @@ describe('Style-Quiz fallback dataset — delivery form (unit)', () => {
       const out = cld(url, 1200, DECK_OPTS);
       expect(out).toContain('f_auto');
       expect(out).toMatch(/q_auto/);
+    }
+  });
+});
+
+/**
+ * The deck used to deliver c_fill at 16:11. The Quiz library is 208 renders at
+ * 1184x864 plus 81 legacy 1:1 squares, so that setting threw away 31% of the
+ * height of every square — cove lighting, pendants and ceilings cropped out of
+ * the very rooms people are being asked to judge.
+ */
+describe('Style-Quiz deck — never crops the room (regression)', () => {
+  it('deck frame matches the native ratio of the 1184x864 render set', () => {
+    const [w, h] = QUIZ_DECK_RATIO.split('/').map(Number);
+    expect(w / h).toBeCloseTo(1184 / 864, 5);
+  });
+
+  it('deck delivery pads instead of cropping', () => {
+    expect(QUIZ_DECK_IMAGE_OPTS.crop).toBe('pad');
+    expect(QUIZ_DECK_IMAGE_OPTS.aspectRatio).toBe(QUIZ_DECK_RATIO);
+  });
+
+  it('no fallback room is cropped at deck size, whatever its native ratio', () => {
+    for (const { url } of Object.values(QUIZ_ROOMS_FALLBACK).flat()) {
+      const out = cld(url, 1200, QUIZ_DECK_IMAGE_OPTS);
+      expect(out, url).toContain('c_pad');
+      expect(out, url).not.toContain('c_fill');
     }
   });
 });
