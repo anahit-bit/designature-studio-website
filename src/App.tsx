@@ -123,10 +123,11 @@ const RetailRoute: React.FC = () => (
   </div>
 );
 
-// AC-001 — User Dashboard. PAID-ONLY: only signed-in paying users (isPaid; today
-// that's the owner/unlimited accounts until a subscription rail exists) may reach
-// it. Not signed in → login; signed in but free → /pricing to upgrade. In mock
-// mode (VITE_USE_MOCK_ACCOUNT default true) the gate is bypassed so all tiers can
+// AC-001 — User Dashboard. Open to ANY signed-in user under the credit model: a
+// free user, a pack buyer, and a subscriber all have a credit balance to see, so
+// there is no `isPaid` gate. Only a signed-out visitor is redirected — to the AI
+// Studio, where they can sign in (there is no standalone /login route). In mock
+// mode (VITE_USE_MOCK_ACCOUNT default true) the gate is bypassed so all states can
 // be previewed locally. The fixed site Header needs top padding on this plain page.
 const AccountRoute: React.FC = () => {
   const { user, isLoading } = useAuth();
@@ -146,8 +147,7 @@ const AccountRoute: React.FC = () => {
 
   if (!USE_MOCK_ACCOUNT) {
     if (isLoading) return null; // avoid a redirect flash while /api/auth/me resolves
-    if (!user) return <Navigate to="/login?next=/account" replace />;
-    if (!user.isPaid) return <Navigate to="/pricing" replace />;
+    if (!user) return <Navigate to="/ai-concepts" replace />;
   }
   return (
     <div className="min-h-screen bg-white font-body">
