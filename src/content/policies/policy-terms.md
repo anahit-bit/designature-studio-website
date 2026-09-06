@@ -54,7 +54,7 @@ If a renewal charge fails (for example, an expired or declined card), we will at
 
 ## 5. Cancellation and Refunds
 
-You may cancel your monthly subscription at any time from your account or by emailing us at hello@designature.studio. Refund eligibility is described in our [Refund Policy](https://www.designature.studio/refund), which forms part of these Terms by reference.
+You may cancel your monthly subscription at any time from your account or by emailing us at hello@designature.studio. **One-time credit packs can also be refunded** — the window and the step-by-step process for both packs and subscriptions are set out in our [Refund Policy](https://www.designature.studio/refund), which forms part of these Terms by reference.
 
 After you cancel a subscription, it remains active until the end of the current paid month; you keep your remaining monthly credits until then. At the end of that period the subscription stops, no further charges are made, and your account reverts to Free. **Credits you purchased in one-time packs are not affected by cancellation and remain in your account.**
 

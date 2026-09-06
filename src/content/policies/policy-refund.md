@@ -24,11 +24,21 @@ The sections below apply to **credits** — both one-time credit packs and the m
 
 ## 1. One-Time Credit Packs
 
-A credit pack (Starter, Project, or Project Plus) is a single payment that adds credits to your account immediately. Purchased credits do not expire.
+**Yes — you can request a refund on a one-time credit pack** (Starter, Project, or Project Plus). A pack is a single payment that adds credits to your account immediately, and purchased credits never expire.
 
-- **If you have not spent any of the credits** from a pack, you may request a full refund within **14 calendar days** of purchase, for any reason. The refunded credits are removed from your account.
-- **Once you have started spending the credits**, the pack is treated as delivered digital goods and is generally non-refundable, because the value has been used. We may still refund the unused portion at our discretion (see Section 3).
-- If a charge succeeds but credits are **not delivered to your account** because of a technical fault, we will either deliver the credits or refund you in full — your choice. Contact us and we will fix it.
+**Your refund right:**
+
+- **Within 14 calendar days of purchase, for any reason.** If you have not spent the credits, we refund the pack in full and remove the credits from your account.
+- **If you have already spent some of the credits**, we refund the value of the **unused** credits — pro-rated to what you paid — within that same 14-day window.
+- **Outside the 14-day window**, refunds are no longer automatic, but you can still ask. We consider genuine cases at our discretion (see Section 3).
+- **If a charge succeeds but the credits are not delivered** to your account because of a technical fault, we always make it right — we either deliver the credits or refund you in full, your choice, with no time limit.
+
+**How to request a pack refund:**
+
+1. Email **hello@designature.studio** from the email address on your account, with the subject line **"Credit refund"**.
+2. Tell us which purchase — the date and amount, or the receipt we emailed you.
+3. We reply within **3 business days**, confirm the amount, and process it.
+4. The refund is returned to your original card through Ameriabank, and any refunded credits are removed from your balance (see Section 4 for timing).
 
 ## 2. Monthly Subscription
 
