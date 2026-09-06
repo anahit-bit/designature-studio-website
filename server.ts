@@ -35,6 +35,14 @@ import { SHOPPING_TAXONOMY, SHOPPING_TAXONOMY_IDS, categoryToTaxonomyId } from "
 // ─── Payments foundation (I-024 / B0): Postgres migration at boot ─────────────
 import { runMigrations } from "./db/migrate.js";
 import { getPool } from "./db/pgPool.js";
+import { meterSpend, meterRefund, creditsEnabled, FREE_GRANT_CREDITS, InsufficientCreditsError } from "./services/credits/meter.js";
+import { meterBalance } from "./services/credits/meter.js";
+import { grantCredits, listTransactions, clawbackCredits } from "./services/credits/ledger.js";
+import { CREDIT_PLANS } from "./src/data/creditPricing.js";
+
+/** Credits granted on every billing cycle of the monthly subscription (1,000). */
+const CREDIT_SUBSCRIPTION_PLAN = CREDIT_PLANS.find((p) => p.recurring)!;
+const CREDIT_SUBSCRIPTION_CREDITS = CREDIT_SUBSCRIPTION_PLAN.credits;
 import { loadState, saveState } from "./db/state.js";
 import { sendEmail } from "./lib/email.js";
 import { computeNextRenewal, type PlatformCadence } from "./services/platforms/renewal.js";
@@ -48,7 +56,15 @@ import {
   cancelPayment,
   evaluatePaymentSuccess,
   normalizeCode,
+  resolveChargeAmount,
+  makeBindingPayment,
+  deactivateBinding,
 } from "./services/payments/ameria.js";
+// ─── Payments Rail A (subscriptions on Ameriabank bindings) ───────────────────
+import { fetchPricingPlans } from "./src/lib/sanity.js";
+import type { Plan } from "./src/data/pricingPlans.js";
+import { shouldExpireAfterFailure } from "./services/subscriptions/billing.js";
+import { randomUUID } from "node:crypto";
 // ─── Book-first consultation (I-025-v2): Calendly availability + Google Calendar ─
 import { filterAvailable, gmtLabelForTz } from "./services/consultation/slots.js";
 import {
@@ -168,6 +184,10 @@ interface User {
   shoppingListsLeft?: number;
   isPaid?: boolean;
   auditQuota?: number;
+  /** Cache of the user's current subscription tier (source of truth = the
+   *  `subscriptions` table). Restored from Postgres on each login; 'free' or
+   *  undefined = no active paid subscription. Set by the subscription callback. */
+  plan?: Plan;
   createdAt: string;
   lastUsed: string;
   /** True for records imported from the Google Sheet historical roster that have
@@ -180,6 +200,41 @@ interface User {
 // free-tier lifetime-cap logic is unit-tested. See that file for the rules:
 // missing/corrupt counters default to 0, existing counters only clamp DOWN, and
 // nothing here ever refills toward the cap.
+
+// ── Subscriptions (Rail A — Ameriabank card bindings) ─────────────────────────
+// The `subscriptions` table is the source of truth for a user's plan; `user.plan`
+// in the DB cache is restored from here on login (resilient to a users.json wipe).
+interface SubscriptionRow {
+  id: string;
+  user_id: string;
+  tier: "design" | "studio";
+  interval: "monthly" | "annual";
+  amount_usd: string | number;
+  status: string;
+  card_holder_id: string;
+  binding_id: string | null;
+  binding_card_pan: string | null;
+  binding_exp_date: string | null;
+  current_period_start: string;
+  current_period_end: string;
+  cancel_at_period_end: boolean;
+}
+
+/** The user's current live subscription (active or past_due), newest first. */
+async function activeSubscriptionFor(googleId: string): Promise<SubscriptionRow | null> {
+  const r = await getPool().query(
+    `SELECT * FROM subscriptions
+      WHERE user_id=$1 AND status IN ('active','past_due')
+      ORDER BY created_at DESC LIMIT 1`,
+    [googleId],
+  );
+  return (r.rows[0] as SubscriptionRow) ?? null;
+}
+
+/** Derive the plan tier from a subscription row (defaults to 'free'). */
+function planFromSubscription(sub: SubscriptionRow | null): Plan {
+  return sub && (sub.tier === "design" || sub.tier === "studio") ? sub.tier : "free";
+}
 
 interface SerperLogEntry {
   ts: string;
@@ -394,6 +449,267 @@ async function expireStalePendingOrders(): Promise<void> {
   } catch (err) {
     console.error("[expire] slot-hold expiry sweep failed:", err);
   }
+}
+
+// ═══ Subscription billing — the recurring engine (Rail A, S3) ════════════════
+// A daily sweep charges due subscriptions via MakeBindingPayment (server→server,
+// no customer). Success advances the period + refills the plan's quota. Failure
+// enters dunning (past_due → retry daily → expire after MAX_DUNNING_ATTEMPTS).
+// cancel_at_period_end subs are finalized at period end. All idempotent + advisory
+// -locked so no charge ever happens twice.
+
+/** Grant a paid plan's quota to the user record (server-authoritative — the ONLY
+ *  upward move for a paid user). Returns the user's email (for receipts) or "". */
+async function applyPlanToUser(googleId: string, tier: string): Promise<string> {
+  // Credit model: a subscription grants CREDITS, not a tier quota. `sub_refill`
+  // REPLACES the monthly bucket rather than adding to it — that is precisely what
+  // "credits refill each billing date and do not roll over" means, and it is why
+  // this can run on every renewal without compounding.
+  if (creditsEnabled()) {
+    const dbC = readDB();
+    const uC = dbC.users[googleId];
+    if (!uC) return "";
+    try {
+      await grantCredits(googleId, CREDIT_SUBSCRIPTION_CREDITS, "sub_refill");
+    } catch (err) {
+      console.error("[subscriptions] credit refill failed:", err);
+    }
+    uC.plan = "studio";        // keeps existing paid-user gating/UI working
+    uC.isPaid = true;
+    uC.lastUsed = new Date().toISOString();
+    dbC.users[googleId] = uC;
+    writeDB(dbC);
+    return uC.email;
+  }
+
+  let quotas: { generations: number; shopping: number } | null = null;
+  try {
+    const pd = (await fetchPricingPlans()).find((p) => p.key === tier);
+    if (pd) quotas = { generations: pd.quotas.generations, shopping: pd.quotas.shopping };
+  } catch (err) {
+    console.error("[subscriptions] pricing fetch failed (plan still applied):", err);
+  }
+  const db = readDB();
+  const u = db.users[googleId];
+  if (!u) return "";
+  u.plan = tier as typeof u.plan;
+  u.isPaid = true;
+  if (quotas) { u.generationsLeft = quotas.generations; u.shoppingListsLeft = quotas.shopping; }
+  u.lastUsed = new Date().toISOString();
+  db.users[googleId] = u;
+  writeDB(db);
+  return u.email;
+}
+
+/** Revert a user to the free tier (on cancel/expire), clamping quota to the free cap. */
+async function downgradeUserToFree(googleId: string): Promise<string> {
+  const db = readDB();
+  const u = db.users[googleId];
+  if (!u) return "";
+  u.plan = "free";
+  u.isPaid = false;
+  const { user } = normalizeUserForFreeTier({ ...u, plan: "free" });
+  u.generationsLeft = user.generationsLeft;
+  u.shoppingListsLeft = user.shoppingListsLeft;
+  u.lastUsed = new Date().toISOString();
+  db.users[googleId] = u;
+  writeDB(db);
+  return u.email;
+}
+
+const subEmailHtml = (heading: string, body: string): string => `
+  <div style="font-family:Montserrat,Arial,sans-serif;max-width:520px;margin:0 auto;color:#0B2240">
+    <h2 style="font-family:'Cormorant Garamond',Georgia,serif;color:#0B2240">${heading}</h2>
+    ${body}
+    <p style="font-size:13px;color:#9E5E41">— Designature Studio</p>
+  </div>`;
+
+/** Advance a renewed subscription to its next period + refill the plan's quota. */
+async function advancePeriodAndRefill(sub: SubscriptionRow): Promise<void> {
+  await getPool().query(
+    `UPDATE subscriptions
+        SET status='active',
+            current_period_start = current_period_end,
+            current_period_end = current_period_end +
+              (CASE WHEN "interval"='annual' THEN interval '1 year' ELSE interval '1 month' END),
+            updated_at=now()
+      WHERE id=$1`,
+    [sub.id],
+  );
+  await applyPlanToUser(sub.user_id, sub.tier);
+}
+
+/** Charge one due subscription. Idempotent: never double-charges a period. */
+async function processRenewal(sub: SubscriptionRow): Promise<"charged" | "failed" | "expired"> {
+  const pool = getPool();
+
+  // Idempotency / crash-recovery: if this period already has a PAID renewal
+  // (e.g. captured but the process died before advancing), advance without charging.
+  const already = await pool.query(
+    `SELECT 1 FROM subscription_payments
+      WHERE subscription_id=$1 AND kind='renewal' AND status='paid' AND created_at >= $2 LIMIT 1`,
+    [sub.id, sub.current_period_start],
+  );
+  if (already.rows.length) {
+    await advancePeriodAndRefill(sub);
+    return "charged";
+  }
+
+  // Record intent (gives us the integer OrderID) BEFORE charging.
+  const p = await pool.query(
+    `INSERT INTO subscription_payments (subscription_id, user_id, kind, amount_usd, status)
+     VALUES ($1,$2,'renewal',$3,'pending') RETURNING id, ameria_order_id`,
+    [sub.id, sub.user_id, sub.amount_usd],
+  );
+  const payId: string = p.rows[0].id;
+  const orderId: string | number = p.rows[0].ameria_order_id;
+
+  let charged = false;
+  let rc: unknown = "error";
+  let paymentId: string | null = null;
+  try {
+    const charge = resolveChargeAmount(Number(sub.amount_usd));
+    const res = await makeBindingPayment({
+      cardHolderId: sub.card_holder_id,
+      orderId,
+      description: `Designature Studio ${sub.tier} renewal`,
+      opaque: payId,
+      amount: charge.amount,
+      currency: charge.currency,
+    });
+    rc = res.responseCode;
+    paymentId = res.paymentId;
+    charged = normalizeCode(res.responseCode) === "00";
+  } catch (err) {
+    console.error("[billing] MakeBindingPayment threw:", err);
+  }
+
+  if (charged) {
+    await pool.query(
+      `UPDATE subscription_payments SET status='paid', ameria_payment_id=$2, paid_at=now() WHERE id=$1`,
+      [payId, paymentId],
+    );
+    await advancePeriodAndRefill(sub);
+    const email = readDB().users[sub.user_id]?.email;
+    recordActivity(email || sub.user_id, "subscription_renewed", {
+      user_id: sub.user_id, subscription_id: sub.id, tier: sub.tier, amount_usd: Number(sub.amount_usd),
+    });
+    if (email) {
+      sendEmail({
+        to: email,
+        subject: "Your Designature Studio subscription renewed",
+        html: subEmailHtml("Subscription renewed", `<p>Your <strong>${sub.tier}</strong> subscription renewed successfully ($${Number(sub.amount_usd)}). Thank you for staying with us.</p>`),
+      }).catch((err) => console.error("[billing] renewal receipt email failed:", err));
+    }
+    return "charged";
+  }
+
+  // Failure → dunning.
+  await pool.query(
+    `UPDATE subscription_payments SET status='failed', response_code=$2 WHERE id=$1`,
+    [payId, String(rc)],
+  );
+  const failed = await pool.query(
+    `SELECT count(*)::int AS n FROM subscription_payments
+      WHERE subscription_id=$1 AND kind='renewal' AND status='failed' AND created_at >= $2`,
+    [sub.id, sub.current_period_start],
+  );
+  const failCount: number = failed.rows[0].n;
+
+  if (shouldExpireAfterFailure(failCount)) {
+    await pool.query(`UPDATE subscriptions SET status='expired', updated_at=now() WHERE id=$1`, [sub.id]);
+    await deactivateBinding(sub.card_holder_id).catch(() => {});
+    const email = await downgradeUserToFree(sub.user_id);
+    recordActivity(email || sub.user_id, "subscription_expired", { user_id: sub.user_id, subscription_id: sub.id, attempts: failCount });
+    if (email) {
+      sendEmail({
+        to: email,
+        subject: "Your Designature Studio subscription has ended",
+        html: subEmailHtml("Subscription ended", `<p>We tried to renew your <strong>${sub.tier}</strong> subscription but the payment didn't go through after ${failCount} attempts, so it has ended. You can resubscribe anytime.</p>`),
+      }).catch((err) => console.error("[billing] ended email failed:", err));
+    }
+    return "expired";
+  }
+
+  await pool.query(`UPDATE subscriptions SET status='past_due', updated_at=now() WHERE id=$1`, [sub.id]);
+  const email = readDB().users[sub.user_id]?.email;
+  recordActivity(email || sub.user_id, "subscription_payment_failed", { user_id: sub.user_id, subscription_id: sub.id, attempt: failCount });
+  if (email) {
+    sendEmail({
+      to: email,
+      subject: "Action needed — your Designature Studio payment didn't go through",
+      html: subEmailHtml("Payment didn't go through", `<p>We couldn't renew your <strong>${sub.tier}</strong> subscription. Please update your card in your account — we'll try again over the next few days.</p>`),
+    }).catch((err) => console.error("[billing] dunning email failed:", err));
+  }
+  return "failed";
+}
+
+/** Finalize a subscription the user asked to cancel, once its paid period ends. */
+async function finalizeCancellation(sub: SubscriptionRow): Promise<void> {
+  await getPool().query(`UPDATE subscriptions SET status='cancelled', updated_at=now() WHERE id=$1`, [sub.id]);
+  await deactivateBinding(sub.card_holder_id).catch(() => {});
+  const email = await downgradeUserToFree(sub.user_id);
+  recordActivity(email || sub.user_id, "subscription_cancelled_final", { user_id: sub.user_id, subscription_id: sub.id });
+  if (email) {
+    sendEmail({
+      to: email,
+      subject: "Your Designature Studio subscription has ended",
+      html: subEmailHtml("Subscription ended", `<p>Your <strong>${sub.tier}</strong> subscription has ended as requested. Thank you for being with us — you're welcome back anytime.</p>`),
+    }).catch((err) => console.error("[billing] cancel email failed:", err));
+  }
+}
+
+/**
+ * The daily billing sweep. Advisory-locked so only one instance runs at a time.
+ * Returns a summary. Safe to run repeatedly (idempotent per period).
+ */
+async function runSubscriptionBilling(): Promise<{ charged: number; failed: number; expired: number; cancelled: number }> {
+  const pool = getPool();
+  const summary = { charged: 0, failed: 0, expired: 0, cancelled: 0 };
+  let locked = false;
+  try {
+    const lock = await pool.query(`SELECT pg_try_advisory_lock(hashtext('designature-subscription-billing')::bigint) AS ok`);
+    locked = lock.rows[0]?.ok === true;
+    if (!locked) {
+      console.log("[billing] another instance holds the lock — skipping this run");
+      return summary;
+    }
+
+    // 1) Finalize cancellations whose paid period has ended.
+    const cancels = await pool.query(
+      `SELECT * FROM subscriptions
+        WHERE status IN ('active','past_due') AND cancel_at_period_end = true AND current_period_end <= NOW()`,
+    );
+    for (const sub of cancels.rows as SubscriptionRow[]) {
+      try { await finalizeCancellation(sub); summary.cancelled++; }
+      catch (err) { console.error("[billing] finalizeCancellation failed:", sub.id, err); }
+    }
+
+    // 2) Charge due renewals.
+    const due = await pool.query(
+      `SELECT * FROM subscriptions
+        WHERE status IN ('active','past_due') AND cancel_at_period_end = false AND current_period_end <= NOW()`,
+    );
+    for (const sub of due.rows as SubscriptionRow[]) {
+      try {
+        const outcome = await processRenewal(sub);
+        summary[outcome === "charged" ? "charged" : outcome === "expired" ? "expired" : "failed"]++;
+      } catch (err) {
+        console.error("[billing] processRenewal failed:", sub.id, err);
+        summary.failed++;
+      }
+    }
+  } catch (err) {
+    console.error("[billing] sweep failed:", err);
+  } finally {
+    if (locked) {
+      await pool.query(`SELECT pg_advisory_unlock(hashtext('designature-subscription-billing')::bigint)`).catch(() => {});
+    }
+  }
+  if (summary.charged || summary.failed || summary.expired || summary.cancelled) {
+    console.log("[billing] sweep:", JSON.stringify(summary));
+  }
+  return summary;
 }
 
 // In-memory source of truth. Hydrated from Postgres at boot (hydrateDbFromPostgres),
@@ -1120,6 +1436,14 @@ async function startServer() {
   const geoSnapTimer = setInterval(() => void snapshotGeoPositions(), 24 * 60 * 60 * 1000);
   geoSnapTimer.unref();
 
+  // Subscription renewals (Rail A) — daily sweep charges due subscriptions via
+  // MakeBindingPayment. Runs shortly after boot (to catch anything due across a
+  // restart), then every 24h. Advisory-locked so only one instance ever sweeps.
+  // unref'd so it never keeps the process alive on its own.
+  setTimeout(() => void runSubscriptionBilling(), 90_000).unref();
+  const billingTimer = setInterval(() => void runSubscriptionBilling(), 24 * 60 * 60 * 1000);
+  billingTimer.unref();
+
   // ════════════════════════════════════════════════════════════════════════
   // I-021b · Per-provider cost estimates (USD per call).
   // ════════════════════════════════════════════════════════════════════════
@@ -1587,6 +1911,8 @@ async function startServer() {
       }).catch((err) => console.error("Free-tier Google Sheets upsert error:", err));
 
       const ownerLogin = isConceptTestAccountEmail(user.email);
+      // Restore the plan cache from Postgres (subscriptions = source of truth).
+      const plan = planFromSubscription(await activeSubscriptionFor(user.googleId).catch(() => null));
       res.json({
         token,
         // I-023 — lets the client fire a GA4 `signup` event for first-time accounts.
@@ -1598,8 +1924,9 @@ async function startServer() {
           picture: user.picture,
           generationsLeft: user.generationsLeft,
           shoppingListsLeft: user.shoppingListsLeft,
-          isPaid: ownerLogin ? true : false,
-          auditsLeft: ownerLogin ? 999 : 0,
+          isPaid: ownerLogin || plan !== "free",
+          auditsLeft: ownerLogin ? 999 : plan !== "free" ? user.generationsLeft : 0,
+          plan,
         },
       });
     } catch (err) {
@@ -1685,6 +2012,7 @@ async function startServer() {
       shoppingListsLeft: user.shoppingListsLeft,
       isPaid: isPaidUser,
       auditsLeft: isPaidUser ? 999 : 0,
+      plan: user.plan ?? "free",
     });
   });
 
@@ -1996,7 +2324,21 @@ Output ONLY valid JSON, no markdown fences, no commentary:
         writeDB(dbShop);
       }
       console.log(`[SHOP] ${shopUser.email} | isPaid=${shopUser.isPaid} | shoppingListsLeft=${shopUser.shoppingListsLeft}`);
-      if (shopUser.shoppingListsLeft < 1) {
+      // Credit model (flagged). When creditsEnabled() the ledger meters the run and the
+      // tier counters are bypassed; when off, none of this executes.
+      let shopCreditReceipt: Awaited<ReturnType<typeof meterSpend>> = null;
+      if (creditsEnabled()) {
+        try {
+            shopCreditReceipt = await meterSpend(googleIdShopping, "shop", { unlimited: isUnlimitedAccountEmail(shopUser.email) });
+        } catch (err) {
+            if (err instanceof InsufficientCreditsError) {
+              return res.status(402).json({ error: "Not enough credits.", required: err.required, available: err.available });
+            }
+            throw err;
+        }
+      }
+
+      if (!creditsEnabled() && shopUser.shoppingListsLeft < 1) {
         return res.status(403).json({
           error: "No shopping list runs left",
           shoppingListsLeft: shopUser.shoppingListsLeft,
@@ -2944,7 +3286,21 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     const user = db.users[googleId];
     if (!user) return res.status(404).json({ error: "User not found." });
 
-    if (user.generationsLeft <= 0 && !isSampleRun) {
+    // Credit model (flagged). When creditsEnabled() the ledger meters the run and the
+    // tier counters are bypassed; when off, none of this executes.
+    let creditReceipt: Awaited<ReturnType<typeof meterSpend>> = null;
+    if (creditsEnabled() && !isSampleRun) {
+      try {
+        creditReceipt = await meterSpend(googleId, "redesign", { unlimited: isUnlimitedAccountEmail(user.email) });
+      } catch (err) {
+        if (err instanceof InsufficientCreditsError) {
+          return res.status(402).json({ error: "Not enough credits.", required: err.required, available: err.available });
+        }
+        throw err;
+      }
+    }
+
+    if (!creditsEnabled() && user.generationsLeft <= 0 && !isSampleRun) {
       return res
         .status(403)
         .json({ error: "No generations left.", generationsLeft: 0 });
@@ -2954,7 +3310,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     // the refund so sample/unlimited runs (which never decrement) never gain credit.
     const genBeforeDecrement = user.generationsLeft;
     let quotaDecremented = false;
-    if (!isSampleRun && user.generationsLeft < UNLIMITED_QUOTA) {
+    if (!creditsEnabled() && !isSampleRun && user.generationsLeft < UNLIMITED_QUOTA) {
       user.generationsLeft -= 1;
       user.lastUsed = new Date().toISOString();
       db.users[googleId] = user;
@@ -3072,6 +3428,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
 
       // Server-authoritative refund: only if THIS request decremented, credit back
       // exactly the 1 it took — never above the pre-decrement balance (genBeforeDecrement).
+      await meterRefund(creditReceipt);   // credit path: bounded by the receipt
       if (quotaDecremented) {
         try {
           const dbRetry = readDB();
@@ -3354,7 +3711,14 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     if (!user) return res.status(404).json({ error: "User not found." });
 
     const unlimited = isConceptTestAccountEmail(user.email);
-    const tier: "free" | "studio" = unlimited ? "studio" : "free";
+    // Real subscription (Rail A) drives the plan tier, status, and paid quota caps.
+    const sub = unlimited ? null : await activeSubscriptionFor(googleId).catch(() => null);
+    const paidQuota = sub
+      ? (await fetchPricingPlans().catch(() => [])).find((p) => p.key === sub.tier)?.quotas ?? null
+      : null;
+    const tier: "free" | "design" | "studio" = unlimited ? "studio" : sub ? sub.tier : "free";
+    const genCap = unlimited ? null : paidQuota ? paidQuota.generations : FREE_TIER_MAX_CONCEPTS;
+    const shopCap = unlimited ? null : paidQuota ? paidQuota.shopping : FREE_TIER_MAX_SHOPPING_LISTS;
     const cap = (c: number) => (unlimited ? null : c);
 
     // Actual usage THIS CYCLE (calendar month) from the activity log — so even
@@ -3407,20 +3771,32 @@ Output ONLY valid JSON, no markdown fences, no commentary:
       },
       plan: {
         tier,
-        status: "active",
-        renewsAt: null,
-        periodEndAt: null,
-        latestChargeStatus: null,
+        status: sub
+          ? sub.cancel_at_period_end
+            ? "canceled"
+            : sub.status === "past_due"
+            ? "past_due"
+            : "active"
+          : "active",
+        renewsAt:
+          sub && !sub.cancel_at_period_end && sub.current_period_end
+            ? new Date(sub.current_period_end).toISOString()
+            : null,
+        periodEndAt:
+          sub && sub.cancel_at_period_end && sub.current_period_end
+            ? new Date(sub.current_period_end).toISOString()
+            : null,
+        latestChargeStatus: sub ? (sub.status === "past_due" ? "failed" : "paid") : null,
       },
       quota: {
         aiVision: {
-          used: unlimited ? usageCount.aiVision : capUsed(FREE_TIER_MAX_CONCEPTS, user.generationsLeft),
-          cap: cap(FREE_TIER_MAX_CONCEPTS),
+          used: unlimited ? usageCount.aiVision : Math.max(0, (genCap ?? 0) - (user.generationsLeft ?? 0)),
+          cap: genCap,
           resetsAt: null,
         },
         shopping: {
-          used: unlimited ? usageCount.shopping : capUsed(FREE_TIER_MAX_SHOPPING_LISTS, user.shoppingListsLeft ?? 0),
-          cap: cap(FREE_TIER_MAX_SHOPPING_LISTS),
+          used: unlimited ? usageCount.shopping : Math.max(0, (shopCap ?? 0) - (user.shoppingListsLeft ?? 0)),
+          cap: shopCap,
           resetsAt: null,
         },
         roomAudit: { used: unlimited ? usageCount.roomAudit : 0, cap: unlimited ? null : 1, resetsAt: null },
@@ -3531,7 +3907,24 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     const isMeteredAudit = !user.isPaid && !isConceptTestAccountEmail(user.email);
     const auditBeforeDecrement = user.generationsLeft;
     let auditQuotaDecremented = false;
-    if (isMeteredAudit) {
+
+    // Credit model (flagged). Room Audit is its own card with its own price — under the
+    // tier system it shared the concepts pool, which the credit model makes unnecessary.
+    let auditCreditReceipt: Awaited<ReturnType<typeof meterSpend>> = null;
+    if (creditsEnabled() && isMeteredAudit) {
+      try {
+        auditCreditReceipt = await meterSpend(googleId, "score-room", {
+          unlimited: isUnlimitedAccountEmail(user.email),
+        });
+      } catch (err) {
+        if (err instanceof InsufficientCreditsError) {
+          return res.status(402).json({ error: "Not enough credits.", required: err.required, available: err.available });
+        }
+        throw err;
+      }
+    }
+
+    if (!creditsEnabled() && isMeteredAudit) {
       if (user.generationsLeft <= 0) {
         return res.status(403).json({ error: "No generations left.", generationsLeft: 0 });
       }
@@ -3612,6 +4005,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
 
       // Server-authoritative refund: only if THIS request decremented, credit back
       // exactly the 1 it took — never above the pre-decrement balance.
+      await meterRefund(auditCreditReceipt);   // credit path: bounded by the receipt
       if (auditQuotaDecremented) {
         try {
           const dbRetry = readDB();
@@ -4739,6 +5133,192 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     }
   });
 
+  // ══ Credit packs — one-time purchase (I-033) ═══════════════════════════════
+  // Deliberately modelled on the $99 consultation, not on the subscription: a pack
+  // is a SINGLE charge, so it uses InitPayment WITHOUT a CardHolderID — no binding,
+  // no renewal, no dunning. That is why it is the one paid product billable today.
+  //
+  // In sandbox the gateway forces every charge to 10 AMD regardless of the pack
+  // price (resolveChargeAmount does the substitution), so a local test shows a
+  // 10 AMD charge for a $129 pack. That is the bank's sandbox, not a bug.
+
+  app.post("/api/credits/buy", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+
+    const packId = (req.body?.pack ?? "").toString().trim();
+    const pack = CREDIT_PLANS.find((pl) => pl.id === packId && !pl.recurring && pl.priceUsd > 0);
+    if (!pack) return res.status(400).json({ error: "Unknown credit pack." });
+
+    const cfg = getAmeriaConfig();
+    if (!cfg.baseUrl || !cfg.clientId || !cfg.username || !cfg.password) {
+      console.error("[credits/buy] Ameria config missing");
+      return res.status(503).json({ error: "Payments are not configured." });
+    }
+
+    const dbBuy = readDB();
+    const buyer = dbBuy.users[googleId];
+    if (!buyer) return res.status(404).json({ error: "User not found" });
+
+    const charge = resolveChargeAmount(pack.priceUsd);
+    const poolBuy = getPool();
+
+    let purchaseId = "";
+    let purchaseOrderId = "";
+    try {
+      const r = await poolBuy.query(
+        `INSERT INTO credit_purchases (user_id, pack_id, credits, amount_usd, client_email)
+           VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, ameria_order_id`,
+        [googleId, pack.id, pack.credits, pack.priceUsd, buyer.email],
+      );
+      purchaseId = r.rows[0].id;
+      purchaseOrderId = String(r.rows[0].ameria_order_id);
+    } catch (err) {
+      console.error("[credits/buy] insert failed:", err);
+      return res.status(500).json({ error: "Could not start the purchase." });
+    }
+
+    try {
+      // AMERIA_CALLBACK_URL is a single global pointing at the CONSULTATION callback,
+      // so every other payment stream must override it or the bank returns the browser
+      // to the wrong handler — which would look up `orders`, find nothing, and bounce
+      // the buyer to /booking/failed with the credits never granted. Same derivation
+      // the subscription flow uses.
+      const creditsCallbackUrl =
+        (process.env.AMERIA_CALLBACK_URL || "").replace(/\/callback$/, "/credits-callback");
+
+      const init = await initPayment({
+        orderId: purchaseOrderId,
+        description: pack.credits + " credits - " + (pack.rung ?? pack.card),
+        opaque: purchaseId,
+        amount: charge.amount,
+        currency: charge.currency,
+        backUrl: creditsCallbackUrl || undefined,
+      });
+      // InitPayment success is ResponseCode === 1 (not "00", which is for the
+      // later GetPaymentDetails / Refund calls).
+      if (Number(init.responseCode) !== 1 || !init.paymentId) {
+        console.error("[credits/buy] InitPayment rejected:", init.responseCode, init.responseMessage);
+        await poolBuy.query(
+          `UPDATE credit_purchases SET status='failed', failure_reason=$2 WHERE id=$1`,
+          [purchaseId, "init rejected: " + init.responseCode],
+        ).catch(() => {});
+        return res.status(502).json({ error: "The payment gateway rejected the request." });
+      }
+      await poolBuy.query(`UPDATE credit_purchases SET ameria_payment_id=$1 WHERE id=$2`, [init.paymentId, purchaseId]);
+      recordActivity(buyer.email, "credits_purchase_initiated", {
+        user_id: googleId, purchase_id: purchaseId, pack: pack.id, credits: pack.credits,
+      });
+      return res.json({ purchaseId, redirectUrl: buildGatewayRedirectUrl(cfg.baseUrl, init.paymentId) });
+    } catch (err) {
+      console.error("[credits/buy] InitPayment error:", err);
+      await poolBuy.query(
+        `UPDATE credit_purchases SET status='failed', failure_reason='init threw' WHERE id=$1`,
+        [purchaseId],
+      ).catch(() => {});
+      return res.status(502).json({ error: "Could not reach the payment gateway." });
+    }
+  });
+
+  // The gateway returns the BROWSER here (not a server webhook), which is why a
+  // localhost callback URL works for local testing — the bank never has to reach us.
+  app.get("/api/payments/ameria/credits-callback", async (req, res) => {
+    const qc: any = req.query;
+    const orderID = (qc.orderID ?? qc.OrderID ?? qc.orderId ?? "").toString().trim();
+    const opaque = (qc.opaque ?? qc.Opaque ?? "").toString().trim();
+    if (!orderID || !opaque || !isUuid(opaque)) return res.redirect(302, "/credits/failed");
+
+    const poolCb = getPool();
+    let purchase: any;
+    try {
+      const r = await poolCb.query(
+        `SELECT * FROM credit_purchases WHERE ameria_order_id=$1 AND id=$2 LIMIT 1`,
+        [orderID, opaque],
+      );
+      purchase = r.rows[0];
+    } catch (err) {
+      console.error("[credits-callback] lookup failed:", err);
+      return res.redirect(302, "/credits/failed");
+    }
+    if (!purchase) return res.redirect(302, "/credits/failed");
+
+    // Idempotent: a refreshed callback must never grant twice.
+    if (purchase.status === "paid") return res.redirect(302, "/credits/success?p=" + purchase.id);
+    if (purchase.status === "failed") return res.redirect(302, "/credits/failed");
+    if (!purchase.ameria_payment_id) return res.redirect(302, "/credits/failed");
+
+    const failPurchase = async (reason: string) => {
+      console.warn("[credits-callback] failed:", reason, purchase.id);
+      await poolCb.query(
+        `UPDATE credit_purchases SET status='failed', failure_reason=$2 WHERE id=$1`,
+        [purchase.id, reason.slice(0, 500)],
+      ).catch(() => {});
+    };
+
+    // Authoritative verification — never trust the redirect params alone.
+    let details;
+    try {
+      details = await getPaymentDetails(purchase.ameria_payment_id);
+    } catch {
+      await failPurchase("GetPaymentDetails threw");
+      return res.redirect(302, "/credits/failed");
+    }
+    if (details.Opaque && String(details.Opaque).trim() !== String(purchase.id).trim()) {
+      await failPurchase("opaque mismatch (" + details.Opaque + ")");
+      return res.redirect(302, "/credits/failed");
+    }
+    const chargeCb = resolveChargeAmount(Number(purchase.amount_usd));
+    const verdict = evaluatePaymentSuccess(details, chargeCb.amount, chargeCb.currency);
+    if (!verdict.ok) {
+      await failPurchase("verify failed: " + verdict.reasons.join("; "));
+      return res.redirect(302, "/credits/failed");
+    }
+
+    // Mark paid FIRST and grant only if THIS request flipped it — two concurrent
+    // callbacks then cannot both credit the account.
+    let flipped = false;
+    try {
+      const upd = await poolCb.query(
+        `UPDATE credit_purchases SET status='paid', paid_at=now()
+          WHERE id=$1 AND status <> 'paid' RETURNING id`,
+        [purchase.id],
+      );
+      flipped = upd.rowCount === 1;
+    } catch (err) {
+      console.error("[credits-callback] mark-paid failed (payment captured):", err);
+      return res.redirect(302, "/credits/failed");
+    }
+
+    if (flipped) {
+      try {
+        await grantCredits(purchase.user_id, purchase.credits, "pack_purchase", { ref: purchase.id });
+        recordActivity(purchase.client_email, "credits_purchased", {
+          user_id: purchase.user_id, purchase_id: purchase.id,
+          pack: purchase.pack_id, credits: purchase.credits,
+        });
+      } catch (err) {
+        // Payment captured but the grant failed — loud, because it needs manual repair.
+        console.error("[credits-callback] GRANT FAILED AFTER CAPTURE:", purchase.id, err);
+      }
+    }
+    return res.redirect(302, "/credits/success?p=" + purchase.id);
+  });
+
+  // Balance + ledger history for /account and the studio header.
+  app.get("/api/credits/balance", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    try {
+      const balance = await meterBalance(googleId);
+      const transactions = creditsEnabled() ? await listTransactions(googleId, 50) : [];
+      res.json({ enabled: creditsEnabled(), balance, transactions });
+    } catch (err) {
+      console.error("[credits/balance] failed:", err);
+      res.status(500).json({ error: "Could not load your credit balance." });
+    }
+  });
+
   // ── GET /api/payments/ameria/callback — gateway returns the browser here ─────
   app.get("/api/payments/ameria/callback", async (req, res) => {
     const q: any = req.query;
@@ -4859,6 +5439,344 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     }
   });
 
+  // ═══ Subscriptions (Rail A — Ameriabank card bindings) ═══════════════════════
+  // Mirrors the consultation flow: subscribe → InitPayment WITH a CardHolderID
+  // (binds the card) → hosted-page 3DS → subscription-callback verifies + activates.
+  // The recurring engine (scheduler + MakeBindingPayment) is a separate phase (S3).
+
+  const SUBSCRIPTION_CALLBACK_URL =
+    (process.env.AMERIA_CALLBACK_URL || "").replace(/\/callback$/, "/subscription-callback");
+
+  const buildSubscriptionReceiptEmailHtml = (
+    planName: string,
+    interval: string,
+    amountUsd: number,
+    periodEndIso: string | null,
+  ): string => {
+    const per = interval === "annual" ? "year" : "month";
+    const renew = periodEndIso ? new Date(periodEndIso).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "";
+    return `
+      <div style="font-family:Montserrat,Arial,sans-serif;max-width:520px;margin:0 auto;color:#0B2240">
+        <h2 style="font-family:'Cormorant Garamond',Georgia,serif;color:#0B2240">Your ${planName} subscription is active</h2>
+        <p>Thank you for subscribing to Designature Studio <strong>${planName}</strong>.</p>
+        <p style="font-size:15px">
+          <strong>$${amountUsd}/${per}</strong>${renew ? ` · renews ${renew}` : ""}
+        </p>
+        <p style="font-size:14px;color:#667085">
+          You can manage or cancel your subscription anytime from your account. Cancelling
+          keeps your access until the end of the period you've already paid for.
+        </p>
+        <p style="font-size:13px;color:#9E5E41">— Designature Studio</p>
+      </div>`;
+  };
+
+  /** Mark a pending subscription payment + its subscription as failed. */
+  const failSubscription = async (payId: string, subId: string, reason: string, responseCode?: unknown) => {
+    console.warn(`[subscription-callback] fail ${payId}: ${reason}`, responseCode ?? "");
+    const pool = getPool();
+    await pool.query(`UPDATE subscription_payments SET status='failed', response_code=$2 WHERE id=$1`, [payId, responseCode != null ? String(responseCode) : reason.slice(0, 60)]).catch(() => {});
+    await pool.query(`UPDATE subscriptions SET status='expired', updated_at=now() WHERE id=$1`, [subId]).catch(() => {});
+  };
+
+  // ── POST /api/subscriptions/subscribe — start a subscription checkout ─────────
+  app.post("/api/subscriptions/subscribe", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    const tier = (req.body?.tier ?? "").toString();
+    const interval = (req.body?.interval ?? "").toString();
+
+    // Under the credit model the only recurring product is the credit subscription,
+    // so `tier` carries its plan id instead of design/studio.
+    const isCreditSub = creditsEnabled() && tier === CREDIT_SUBSCRIPTION_PLAN.id;
+
+    if (isCreditSub) {
+      // ANNUAL IS DELIBERATELY REFUSED for now. Renewals fire at current_period_end
+      // (services/subscriptions/billing.ts isRenewalDue), which for an annual term is
+      // twelve months away — so an annual subscriber would receive one grant of
+      // 1,000 credits and nothing until the following year. Granting 12,000 up front
+      // instead would remove the monthly cap the model depends on. The refill cadence
+      // needs designing before annual can be sold.
+      if (interval !== "monthly") {
+        return res.status(400).json({
+          error: "Annual credit subscriptions aren't available yet — please choose monthly.",
+          code: "annual_not_supported",
+        });
+      }
+    } else if ((tier !== "design" && tier !== "studio") || (interval !== "monthly" && interval !== "annual")) {
+      return res.status(400).json({ error: "Invalid tier or interval." });
+    }
+    const db = readDB();
+    const user = db.users[googleId];
+    if (!user) return res.status(401).json({ error: "Unknown user." });
+
+    // One active subscription per user.
+    const existing = await activeSubscriptionFor(googleId).catch(() => null);
+    if (existing) return res.status(409).json({ error: "You already have an active subscription.", code: "already_subscribed" });
+
+    // Server-authoritative price — NEVER trust a client-supplied amount. The credit
+    // plan is priced from the model rather than Sanity, so the page, the ledger and the
+    // charge cannot drift apart.
+    let priceUsd: number;
+    let planLabel: string;
+    if (isCreditSub) {
+      priceUsd = CREDIT_SUBSCRIPTION_PLAN.priceUsd;
+      planLabel = `${CREDIT_SUBSCRIPTION_CREDITS} credits / month`;
+    } else {
+      const plans = await fetchPricingPlans();
+      const plan = plans.find((p) => p.key === tier);
+      if (!plan) return res.status(400).json({ error: "Plan unavailable." });
+      priceUsd = interval === "annual" ? plan.annualPriceUsd : plan.monthlyPriceUsd;
+      planLabel = `Designature Studio ${plan.name} (${interval})`;
+    }
+
+    const cardHolderId = `sub-${randomUUID()}`;
+    const pool = getPool();
+    let subId = "";
+    let payId = "";
+    let ameriaOrderId: string | number = "";
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const s = await client.query(
+        `INSERT INTO subscriptions (user_id, tier, "interval", amount_usd, status, card_holder_id,
+             current_period_start, current_period_end)
+         VALUES ($1,$2,$3,$4,'pending',$5, now(),
+             now() + (CASE WHEN $3='annual' THEN interval '1 year' ELSE interval '1 month' END))
+         RETURNING id`,
+        [googleId, tier, interval, priceUsd, cardHolderId],
+      );
+      subId = s.rows[0].id;
+      const p = await client.query(
+        `INSERT INTO subscription_payments (subscription_id, user_id, kind, amount_usd, status)
+         VALUES ($1,$2,'initial',$3,'pending') RETURNING id, ameria_order_id`,
+        [subId, googleId, priceUsd],
+      );
+      payId = p.rows[0].id;
+      ameriaOrderId = p.rows[0].ameria_order_id;
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => {});
+      client.release();
+      console.error("[subscriptions/subscribe] insert failed:", err);
+      return res.status(500).json({ error: "Could not start checkout." });
+    }
+    client.release();
+
+    // InitPayment WITH the binding + the subscription's OWN amount + callback.
+    try {
+      const cfg = getAmeriaConfig();
+      const charge = resolveChargeAmount(priceUsd);
+      const init = await initPayment({
+        orderId: ameriaOrderId,
+        description: planLabel,
+        opaque: payId,
+        cardHolderId,
+        amount: charge.amount,
+        currency: charge.currency,
+        backUrl: SUBSCRIPTION_CALLBACK_URL || undefined,
+      });
+      if (Number(init.responseCode) !== 1 || !init.paymentId) {
+        console.error("[subscriptions/subscribe] InitPayment rejected:", init.responseCode, init.responseMessage);
+        await failSubscription(payId, subId, "init-rejected", init.responseCode);
+        return res.status(502).json({ error: "Payment could not be started." });
+      }
+      await pool.query(`UPDATE subscription_payments SET ameria_payment_id=$2 WHERE id=$1`, [payId, init.paymentId]);
+      recordActivity(user.email, "subscription_initiated", { user_id: googleId, subscription_id: subId, tier, interval, amount_usd: priceUsd });
+      return res.json({ redirectUrl: buildGatewayRedirectUrl(cfg.baseUrl, init.paymentId) });
+    } catch (err) {
+      console.error("[subscriptions/subscribe] InitPayment error:", err);
+      await failSubscription(payId, subId, "init-threw");
+      return res.status(502).json({ error: "Payment could not be started." });
+    }
+  });
+
+  // ── GET /api/payments/ameria/subscription-callback — gateway returns here ─────
+  app.get("/api/payments/ameria/subscription-callback", async (req, res) => {
+    const q: any = req.query;
+    const orderID = (q.orderID ?? q.OrderID ?? q.orderId ?? "").toString().trim();
+    const opaque = (q.opaque ?? q.Opaque ?? "").toString().trim();
+    if (!orderID || !opaque || !isUuid(opaque)) return res.redirect(302, "/subscribe/failed");
+
+    const pool = getPool();
+    let pay: any;
+    let sub: SubscriptionRow | undefined;
+    try {
+      const r = await pool.query(`SELECT * FROM subscription_payments WHERE ameria_order_id=$1 AND id=$2 LIMIT 1`, [orderID, opaque]);
+      pay = r.rows[0];
+      if (pay) {
+        const s = await pool.query(`SELECT * FROM subscriptions WHERE id=$1 LIMIT 1`, [pay.subscription_id]);
+        sub = s.rows[0] as SubscriptionRow;
+      }
+    } catch (err) {
+      console.error("[subscription-callback] DB lookup failed:", err);
+      return res.redirect(302, "/subscribe/failed");
+    }
+    if (!pay || !sub) return res.redirect(302, "/subscribe/failed");
+
+    // Idempotency — a re-hit must not re-verify or re-activate.
+    if (pay.status === "paid") return res.redirect(302, `/subscribe/success?sub=${sub.id}`);
+    if (pay.status === "failed") return res.redirect(302, "/subscribe/failed");
+    if (!pay.ameria_payment_id) {
+      await failSubscription(pay.id, sub.id, "no payment id");
+      return res.redirect(302, "/subscribe/failed");
+    }
+
+    // Authoritative verification — never trust the redirect params alone.
+    let details;
+    try {
+      details = await getPaymentDetails(pay.ameria_payment_id);
+    } catch (err) {
+      await failSubscription(pay.id, sub.id, "GetPaymentDetails threw");
+      return res.redirect(302, "/subscribe/failed");
+    }
+    if (details.Opaque && String(details.Opaque).trim() !== String(pay.id).trim()) {
+      await failSubscription(pay.id, sub.id, `opaque mismatch (${details.Opaque})`);
+      return res.redirect(302, "/subscribe/failed");
+    }
+    const charge = resolveChargeAmount(Number(sub.amount_usd));
+    const verdict = evaluatePaymentSuccess(details, charge.amount, charge.currency);
+    if (!verdict.ok) {
+      await failSubscription(pay.id, sub.id, `verify failed: ${verdict.reasons.join("; ")}`, details.ResponseCode);
+      return res.redirect(302, "/subscribe/failed");
+    }
+
+    // Activate the subscription + persist the binding details for future charges.
+    const bindingId = (details as any).BindingID ?? (details as any).CardHolderID ?? null;
+    const cardPan = details.CardNumber ?? null;
+    const expDate = (details as any).ExpDate ?? null;
+    try {
+      await pool.query(`UPDATE subscription_payments SET status='paid', paid_at=now() WHERE id=$1`, [pay.id]);
+      await pool.query(
+        `UPDATE subscriptions
+            SET status='active', current_period_start=now(),
+                current_period_end = now() + (CASE WHEN "interval"='annual' THEN interval '1 year' ELSE interval '1 month' END),
+                binding_id=$2, binding_card_pan=$3, binding_exp_date=$4, updated_at=now()
+          WHERE id=$1`,
+        [sub.id, bindingId, cardPan, expDate],
+      );
+    } catch (err) {
+      console.error("[subscription-callback] activate write failed (payment captured):", err);
+    }
+
+    // Grant the plan's quota + mark the user paid (server-authoritative — the ONLY
+    // upward move for a paid user; never a client call, so the free-tier lockdown
+    // principle holds). Same path renewals use (applyPlanToUser). Concepts + room
+    // audits share generationsLeft; shopping uses shoppingListsLeft.
+    let userEmail = "";
+    try {
+      userEmail = await applyPlanToUser(sub.user_id, sub.tier);
+    } catch (err) {
+      console.error("[subscription-callback] plan grant failed:", err);
+    }
+
+    recordActivity(userEmail || sub.user_id, "subscription_activated", {
+      user_id: sub.user_id,
+      subscription_id: sub.id,
+      tier: sub.tier,
+      interval: sub.interval,
+      amount_usd: Number(sub.amount_usd),
+    });
+
+    if (userEmail) {
+      try {
+        await sendEmail({
+          to: userEmail,
+          subject: "Your Designature Studio subscription is active",
+          html: buildSubscriptionReceiptEmailHtml(sub.tier === "studio" ? "Studio" : "Design", sub.interval, Number(sub.amount_usd), sub.current_period_end),
+        });
+      } catch (err) {
+        console.error("[subscription-callback] receipt email failed (subscription still active):", err);
+      }
+    }
+    return res.redirect(302, `/subscribe/success?sub=${sub.id}`);
+  });
+
+  // ── GET /api/subscriptions/me — the caller's current subscription ────────────
+  app.get("/api/subscriptions/me", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    try {
+      const sub = await activeSubscriptionFor(googleId);
+      if (!sub) return res.json({ plan: "free" });
+      return res.json({
+        plan: sub.tier,
+        tier: sub.tier,
+        interval: sub.interval,
+        status: sub.status,
+        amountUsd: Number(sub.amount_usd),
+        currentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end).toISOString() : null,
+        cancelAtPeriodEnd: sub.cancel_at_period_end === true,
+        card: sub.binding_card_pan ?? null,
+      });
+    } catch (err) {
+      console.error("[subscriptions/me] error:", err);
+      return res.status(500).json({ error: "Could not load your subscription." });
+    }
+  });
+
+  // ── POST /api/subscriptions/cancel — cancel at period end (access kept) ───────
+  // Per the locked policy: cancel anytime, keep access until the end of the paid
+  // period, no partial refund. Sets cancel_at_period_end; the daily sweep
+  // (finalizeCancellation) downgrades to free once the period ends.
+  app.post("/api/subscriptions/cancel", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    try {
+      const sub = await activeSubscriptionFor(googleId);
+      if (!sub) return res.status(404).json({ error: "No active subscription to cancel." });
+      await getPool().query(
+        `UPDATE subscriptions SET cancel_at_period_end=true, cancelled_at=now(), updated_at=now() WHERE id=$1`,
+        [sub.id],
+      );
+      recordActivity(readDB().users[googleId]?.email || googleId, "subscription_cancel_requested", {
+        user_id: googleId, subscription_id: sub.id,
+      });
+      return res.json({
+        ok: true,
+        cancelAtPeriodEnd: true,
+        currentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end).toISOString() : null,
+      });
+    } catch (err) {
+      console.error("[subscriptions/cancel] error:", err);
+      return res.status(500).json({ error: "Could not cancel your subscription." });
+    }
+  });
+
+  // ── POST /api/subscriptions/reactivate — undo a pending cancellation ──────────
+  app.post("/api/subscriptions/reactivate", async (req, res) => {
+    const googleId = requireAuth(req, res);
+    if (!googleId) return;
+    try {
+      const sub = await activeSubscriptionFor(googleId);
+      if (!sub) return res.status(404).json({ error: "No active subscription." });
+      await getPool().query(
+        `UPDATE subscriptions SET cancel_at_period_end=false, cancelled_at=NULL, updated_at=now() WHERE id=$1`,
+        [sub.id],
+      );
+      recordActivity(readDB().users[googleId]?.email || googleId, "subscription_reactivated", {
+        user_id: googleId, subscription_id: sub.id,
+      });
+      return res.json({ ok: true, cancelAtPeriodEnd: false });
+    } catch (err) {
+      console.error("[subscriptions/reactivate] error:", err);
+      return res.status(500).json({ error: "Could not reactivate your subscription." });
+    }
+  });
+
+  // ── POST /api/admin/subscriptions/run-billing — manually run the daily sweep ──
+  // Admin-only. Lets the owner trigger the recurring-charge sweep on demand
+  // (testing, or a catch-up) instead of waiting for the 24h timer.
+  app.post("/api/admin/subscriptions/run-billing", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    try {
+      const summary = await runSubscriptionBilling();
+      return res.json({ ok: true, ...summary });
+    } catch (err) {
+      console.error("[admin/run-billing] failed:", err);
+      return res.status(500).json({ error: "Billing sweep failed." });
+    }
+  });
+
   // ── GET /api/payments/ameria/orders — admin: list recent consultation orders ─
   // Read-only listing so the owner can find order UUIDs to refund (and watch the
   // sandbox testing milestone progress) without querying Postgres directly.
@@ -4938,6 +5856,70 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       return res.json({ ok: true, orderId: order.id, amount });
     } catch (err) {
       console.error("[ameria/refund] error:", err);
+      return res.status(502).json({ error: "Could not reach the bank to process the refund." });
+    }
+  });
+
+  // ── POST /api/admin/credits/refund — admin-only refund of a one-time credit pack ─
+  // Refunds the money via RefundPayment AND claws back the granted credits. Mirrors
+  // the consultation refund, but on `credit_purchases` + the credit ledger. The
+  // clawback floors at zero (see clawbackCredits) so refunding a buyer who already
+  // spent some credits still returns their money and reclaims whatever remains.
+  app.post("/api/admin/credits/refund", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const purchaseId = (req.body?.purchaseId ?? "").toString().trim();
+    if (!isUuid(purchaseId)) return res.status(400).json({ error: "A valid purchaseId is required." });
+
+    const pool = getPool();
+    let purchase: any;
+    try {
+      const r = await pool.query(`SELECT * FROM credit_purchases WHERE id=$1 LIMIT 1`, [purchaseId]);
+      purchase = r.rows[0];
+    } catch (err) {
+      console.error("[credits/refund] lookup failed:", err);
+      return res.status(500).json({ error: "Lookup failed." });
+    }
+    if (!purchase) return res.status(404).json({ error: "Purchase not found." });
+    if (!purchase.ameria_payment_id) return res.status(409).json({ error: "Purchase has no payment to refund." });
+    if (purchase.status !== "paid") {
+      return res.status(409).json({ error: `Purchase is '${purchase.status}', not 'paid' — cannot refund.` });
+    }
+
+    // Refund the amount actually charged (resolveChargeAmount → 10 AMD in sandbox,
+    // the real USD in production), never the display price, so it matches the capture.
+    const charged = resolveChargeAmount(Number(purchase.amount_usd));
+    const requested = req.body?.amount;
+    const amount =
+      requested != null && Number.isFinite(Number(requested)) && Number(requested) > 0
+        ? Number(requested)
+        : charged.amount;
+
+    try {
+      const refund = await refundPayment(purchase.ameria_payment_id, amount);
+      if (normalizeCode(refund.responseCode) !== "00") {
+        console.error("[credits/refund] bank declined:", refund.responseCode, refund.responseMessage);
+        return res.status(502).json({
+          error: "The refund was not accepted by the bank.",
+          responseCode: refund.responseCode,
+          responseMessage: refund.responseMessage,
+        });
+      }
+      await pool.query(`UPDATE credit_purchases SET status='refunded' WHERE id=$1`, [purchase.id]);
+      let clawedBack = 0;
+      try {
+        const cb = await clawbackCredits(purchase.user_id, purchase.credits, { ref: purchase.id });
+        clawedBack = cb.removed;
+      } catch (err) {
+        // Money refunded but clawback failed — loud, needs manual balance repair.
+        console.error("[credits/refund] CLAWBACK FAILED AFTER REFUND:", purchase.id, err);
+      }
+      recordActivity(purchase.client_email, "credits_refunded", {
+        user_id: purchase.user_id, purchase_id: purchase.id, amount,
+        credits_granted: purchase.credits, credits_clawed_back: clawedBack,
+      });
+      return res.json({ ok: true, purchaseId: purchase.id, amount, clawedBack });
+    } catch (err) {
+      console.error("[credits/refund] error:", err);
       return res.status(502).json({ error: "Could not reach the bank to process the refund." });
     }
   });
@@ -5259,6 +6241,9 @@ ${bodyHtml}
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log(`✅ Shopping quota protection: ACTIVE (owner = ${CONCEPT_TEST_ACCOUNT_EMAIL})`);
+    console.log(creditsEnabled()
+      ? `✅ Credit model: ACTIVE (free grant ${FREE_GRANT_CREDITS} credits · ledger meters every run)`
+      : "ℹ️  Credit model: OFF — tier quotas are metering (set CREDITS_ENABLED=true to switch)");
   });
 }
 

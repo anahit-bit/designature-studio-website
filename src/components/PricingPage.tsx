@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import Header from './Header';
-import PricingSection from './PricingSection';
+import PricingCredits from './PricingCredits';   // S-031 — credit model. PricingSection kept for a one-line revert.
 import Footer from './Footer';
 import { useLanguage } from '../LanguageContext';
 import { ArrowLeft } from 'lucide-react';
@@ -89,7 +89,7 @@ const PricingPage: React.FC = () => {
           offer doesn't appear twice and sandwich the paid consultation on the one page
           where the visitor is in a paying mindset. CTABanner stays site-wide elsewhere;
           the Header "Let's talk" still preserves the free-chat path. */}
-      <PricingSection hideHeader />
+      <PricingCredits hideHeader />
       <Footer />
     </div>
   );

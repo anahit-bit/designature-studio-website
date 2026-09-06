@@ -36,6 +36,15 @@ export interface QuotaUser {
   /** Optional in older `users.json` — a MISSING field means the user already
    *  burned their lifetime quota (never a signal to refill). */
   shoppingListsLeft?: number;
+  /** Paid subscription tier, set server-side on subscription activation
+   *  (Rail A). 'design' | 'studio' = paid → NOT clamped to the free cap.
+   *  undefined / 'free' = free tier (the hard lifetime cap below). */
+  plan?: "free" | "design" | "studio";
+}
+
+/** True for a paid subscription tier (design/studio). */
+export function isPaidPlan(plan: QuotaUser["plan"]): boolean {
+  return plan === "design" || plan === "studio";
 }
 
 /**
@@ -61,6 +70,19 @@ export function normalizeUserForFreeTier<T extends QuotaUser>(
     // Unlimited accounts (owner/demo) — force UNLIMITED_QUOTA, never clamp
     if (u.generationsLeft !== UNLIMITED_QUOTA) { u.generationsLeft = UNLIMITED_QUOTA; changed = true; }
     if (u.shoppingListsLeft !== UNLIMITED_QUOTA) { u.shoppingListsLeft = UNLIMITED_QUOTA; changed = true; }
+  } else if (isPaidPlan(u.plan)) {
+    // Paid subscribers (Rail A) keep their server-granted quota — NEVER clamped
+    // to the free cap. Their quota is set at subscription activation and refilled
+    // at renewal, both server-authoritative; the client still can't move it up.
+    // A missing/NaN counter defaults to 0 (spent), same as free — never a refill.
+    if (typeof u.generationsLeft !== "number" || Number.isNaN(u.generationsLeft)) {
+      u.generationsLeft = 0;
+      changed = true;
+    }
+    if (typeof u.shoppingListsLeft !== "number" || Number.isNaN(u.shoppingListsLeft)) {
+      u.shoppingListsLeft = 0;
+      changed = true;
+    }
   } else {
     // Everyone else — enforce free-tier caps regardless of isPaid flag.
     // (No paid tier exists yet; isPaid on the user record is only used for

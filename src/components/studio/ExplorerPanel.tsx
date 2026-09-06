@@ -44,13 +44,20 @@ export const ExplorerPanelHeader: React.FC<{
           <h2 className="font-display text-[34px] md:text-[40px] leading-none text-black">
             {tool.name}
           </h2>
-          <span
-            className={`text-[10px] font-bold uppercase tracking-[0.2em] ${
-              paid ? 'text-[#9E5E41]' : 'text-black/55'
-            }`}
-          >
-            {tool.tier}
-          </span>
+          {(() => {
+            // Show the user's actual plan when they're subscribed; otherwise the
+            // tool's own tier descriptor (e.g. "Free · 3/mo").
+            const onPaidPlan = user?.plan === 'design' || user?.plan === 'studio';
+            return (
+              <span
+                className={`text-[10px] font-bold uppercase tracking-[0.2em] ${
+                  paid || onPaidPlan ? 'text-[#9E5E41]' : 'text-black/55'
+                }`}
+              >
+                {onPaidPlan ? `${user!.plan} plan` : tool.tier}
+              </span>
+            );
+          })()}
         </div>
         <p className="text-[13px] text-black/60 leading-[1.55] max-w-[46rem] mt-2.5">
           {tool.tagline}

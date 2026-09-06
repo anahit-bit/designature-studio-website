@@ -4,6 +4,7 @@ import {
   FREE_TIER_MAX_SHOPPING_LISTS,
   UNLIMITED_QUOTA,
   isUnlimitedAccountEmail,
+  isPaidPlan,
   normalizeUserForFreeTier,
   refundGenerations,
   type QuotaUser,
@@ -168,5 +169,46 @@ describe('owner / unlimited accounts are unaffected', () => {
     };
     const { user } = normalizeUserForFreeTier(ownerNoShop);
     expect(user.shoppingListsLeft).toBe(UNLIMITED_QUOTA);
+  });
+});
+
+describe('paid subscribers (Rail A) keep their server-granted quota — NOT clamped to free', () => {
+  it('isPaidPlan is true only for design/studio', () => {
+    expect(isPaidPlan('design')).toBe(true);
+    expect(isPaidPlan('studio')).toBe(true);
+    expect(isPaidPlan('free')).toBe(false);
+    expect(isPaidPlan(undefined)).toBe(false);
+  });
+
+  it('a Design user with 50 generations is NOT clamped to the free cap of 3', () => {
+    const { user, changed } = normalizeUserForFreeTier({
+      email: 'sub@example.com', plan: 'design', generationsLeft: 50, shoppingListsLeft: 50,
+    });
+    expect(user.generationsLeft).toBe(50);
+    expect(user.shoppingListsLeft).toBe(50);
+    expect(changed).toBe(false);
+  });
+
+  it('a Studio user with 500 is left untouched', () => {
+    const { user } = normalizeUserForFreeTier({
+      email: 'sub@example.com', plan: 'studio', generationsLeft: 500, shoppingListsLeft: 500,
+    });
+    expect(user.generationsLeft).toBe(500);
+    expect(user.shoppingListsLeft).toBe(500);
+  });
+
+  it('a paid user with missing/NaN counters still defaults to 0 — never a refill', () => {
+    const paidNaN: QuotaUser = { email: 'sub@example.com', plan: 'design', generationsLeft: NaN };
+    const { user } = normalizeUserForFreeTier(paidNaN);
+    expect(user.generationsLeft).toBe(0);
+    expect(user.shoppingListsLeft).toBe(0);
+  });
+
+  it('plan=free is still clamped to the free cap (regression guard)', () => {
+    const { user } = normalizeUserForFreeTier({
+      email: 'free@example.com', plan: 'free', generationsLeft: 99, shoppingListsLeft: 99,
+    });
+    expect(user.generationsLeft).toBe(FREE_TIER_MAX_CONCEPTS);
+    expect(user.shoppingListsLeft).toBe(FREE_TIER_MAX_SHOPPING_LISTS);
   });
 });

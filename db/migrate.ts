@@ -28,27 +28,103 @@ const ORDERS_TABLE = `
   );
 `;
 
+// Subscriptions — Rail A, rebuilt on Ameriabank vPOS card BINDINGS (the Lemon
+// Squeezy / Merchant-of-Record path was rejected and is obsolete; see
+// _Plan\Website\Website-Subscriptions-Plan.md). One row per subscriber. The
+// billing engine charges the bound card each period via MakeBindingPayment.
+//
 // NOTE: "interval" is a reserved SQL word — it MUST stay double-quoted in every
-// statement that references this column (here and in the Rail A / A1 queries).
+// statement that references this column.
+//
+// Grandfathering: `amount_usd` is LOCKED at signup and is what the scheduler
+// charges — NEVER the live Sanity price (raising Sanity's price must not silently
+// re-price existing subscribers).
 const SUBSCRIPTIONS_TABLE = `
   CREATE TABLE IF NOT EXISTS subscriptions (
-    id                            uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id                       text        NOT NULL,        -- googleId from users.json
-    lemonsqueezy_subscription_id  text        NOT NULL UNIQUE,
-    lemonsqueezy_customer_id      text        NOT NULL,
-    lemonsqueezy_variant_id       text        NOT NULL,        -- maps to tier + interval
-    tier                          text        NOT NULL,        -- 'design' | 'studio'
-    "interval"                    text        NOT NULL,        -- 'monthly' | 'annual'
-    status                        text        NOT NULL,        -- active | paused | cancelled | expired
-    current_period_start          timestamptz NOT NULL,
-    current_period_end            timestamptz NOT NULL,
-    created_at                    timestamptz NOT NULL DEFAULT now(),
-    updated_at                    timestamptz NOT NULL DEFAULT now()
+    id                    uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id               text        NOT NULL,        -- googleId from users.json
+    tier                  text        NOT NULL,        -- 'design' | 'studio'
+    "interval"            text        NOT NULL,        -- 'monthly' | 'annual'
+    amount_usd            numeric     NOT NULL,        -- LOCKED at signup (grandfathering)
+    status                text        NOT NULL,        -- pending | active | past_due | cancelled | expired
+    card_holder_id        text        NOT NULL,        -- the per-user binding id WE generate + reuse
+    binding_id            text,                        -- the bank's per-card binding id (reference)
+    binding_card_pan      text,                        -- masked PAN, for the "update card" prompt
+    binding_exp_date      text,                        -- card expiry (MMYY), for proactive warnings
+    current_period_start  timestamptz NOT NULL,
+    current_period_end    timestamptz NOT NULL,        -- = the next charge date
+    cancel_at_period_end  boolean     NOT NULL DEFAULT false,
+    cancelled_at          timestamptz,
+    pending_change        jsonb,                       -- scheduled downgrade: {tier, interval, amount_usd}
+    created_at            timestamptz NOT NULL DEFAULT now(),
+    updated_at            timestamptz NOT NULL DEFAULT now()
   );
+`;
+
+// Migrate an EXISTING (B0-era, Lemon-Squeezy-shaped) subscriptions table to the
+// binding shape. The table has never held a real subscription (Rail A never
+// shipped), so this is safe: add the binding columns, drop the LS columns. All
+// idempotent. On a fresh DB the CREATE above already has the right shape and
+// these ALTERs are effectively no-ops.
+const SUBSCRIPTIONS_MIGRATE_TO_BINDING = `
+  ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS amount_usd           numeric;
+  ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS card_holder_id       text;
+  ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS binding_id           text;
+  ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS binding_card_pan     text;
+  ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS binding_exp_date     text;
+  ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS cancel_at_period_end boolean NOT NULL DEFAULT false;
+  ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS cancelled_at         timestamptz;
+  ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS pending_change       jsonb;
+  ALTER TABLE subscriptions DROP COLUMN IF EXISTS lemonsqueezy_subscription_id;
+  ALTER TABLE subscriptions DROP COLUMN IF EXISTS lemonsqueezy_customer_id;
+  ALTER TABLE subscriptions DROP COLUMN IF EXISTS lemonsqueezy_variant_id;
 `;
 
 const SUBSCRIPTIONS_USER_INDEX = `
   CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions (user_id);
+`;
+
+// Active-subscription lookup for the renewal scheduler (find rows due to charge).
+const SUBSCRIPTIONS_DUE_INDEX = `
+  CREATE INDEX IF NOT EXISTS idx_subscriptions_status_period_end
+    ON subscriptions (status, current_period_end);
+`;
+
+// One row per charge ATTEMPT — the invoice/receipt source AND the idempotency +
+// dunning ledger. `ameria_order_id` is the integer OrderID we send the bank
+// (bigserial, its own sequence). `kind` distinguishes the first charge, renewals,
+// mid-cycle prorations, and refunds. Never delete rows — history is the audit trail.
+const SUBSCRIPTION_PAYMENTS_TABLE = `
+  CREATE TABLE IF NOT EXISTS subscription_payments (
+    id                uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    subscription_id   uuid        NOT NULL REFERENCES subscriptions(id),
+    user_id           text        NOT NULL,
+    ameria_order_id   bigserial   NOT NULL UNIQUE,     -- integer OrderID sent to the bank
+    ameria_payment_id text,                            -- PaymentID returned by the bank
+    kind              text        NOT NULL,            -- 'initial'|'renewal'|'proration'|'refund'
+    amount_usd        numeric     NOT NULL,
+    status            text        NOT NULL DEFAULT 'pending',  -- pending|paid|failed|refunded
+    response_code     text,                            -- bank RC, for diagnostics
+    attempt           integer     NOT NULL DEFAULT 1,  -- dunning attempt number
+    created_at        timestamptz NOT NULL DEFAULT now(),
+    paid_at           timestamptz
+  );
+`;
+
+// NOTE (sandbox testing, S3): like orders.ameria_order_id, in the sandbox the
+// OrderID must fall in 4423001..4424000. When binding charges are testable, the
+// dev DB's `subscription_payments_ameria_order_id_seq` will need a one-off
+// restart into a non-overlapping slice of that range (orders uses the low end).
+
+const SUBSCRIPTION_PAYMENTS_SUB_INDEX = `
+  CREATE INDEX IF NOT EXISTS idx_subscription_payments_subscription
+    ON subscription_payments (subscription_id, created_at);
+`;
+
+// Dunning queue: find the failed/pending charges that need a retry.
+const SUBSCRIPTION_PAYMENTS_STATUS_INDEX = `
+  CREATE INDEX IF NOT EXISTS idx_subscription_payments_status
+    ON subscription_payments (status);
 `;
 
 const USAGE_EVENTS_TABLE = `
@@ -183,6 +259,98 @@ const SAVED_ITEMS_HASH_INDEX = `
  * Throws if the DB is unreachable — the caller (server boot) decides whether to
  * hard-fail or continue degraded.
  */
+// ── Credit model (2026-09-05) ────────────────────────────────────────────────
+// Replaces the tier quotas (users.generationsLeft / shoppingListsLeft) with one
+// server-authoritative credit ledger. TWO BUCKETS, because the model needs both
+// "monthly credits do not roll over" and "pack credits never expire" — a single
+// balance cannot express that. Spend order is monthly-first (burn the expiring
+// ones before the permanent ones), which is the only order that does not quietly
+// destroy value the customer paid for.
+const CREDIT_BALANCES_TABLE = `
+  CREATE TABLE IF NOT EXISTS credit_balances (
+    user_id           text        PRIMARY KEY,
+    monthly_credits   integer     NOT NULL DEFAULT 0,   -- reset each billing cycle
+    permanent_credits integer     NOT NULL DEFAULT 0,   -- free grant + packs, never expire
+    updated_at        timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT credit_balances_non_negative
+      CHECK (monthly_credits >= 0 AND permanent_credits >= 0)
+  );
+`;
+
+// Append-only audit trail. Every grant, spend and refund writes a row — this is
+// both the ledger's proof and the metering data I-032 needs to validate prices.
+const CREDIT_TRANSACTIONS_TABLE = `
+  CREATE TABLE IF NOT EXISTS credit_transactions (
+    id             bigserial   PRIMARY KEY,
+    user_id        text        NOT NULL,
+    delta          integer     NOT NULL,          -- negative = spend
+    bucket         text        NOT NULL,          -- 'monthly' | 'permanent' | 'split'
+    reason         text        NOT NULL,          -- signup_grant|pack_purchase|sub_refill|spend|refund|admin_adjust
+    tool           text,                          -- explorerRoster id, for spend/refund
+    ref            text,                          -- credit_purchases.id | subscriptions.id | payment id
+    balance_after  integer     NOT NULL,          -- monthly+permanent after this row
+    created_at     timestamptz NOT NULL DEFAULT now()
+  );
+`;
+
+const CREDIT_TRANSACTIONS_USER_INDEX = `
+  CREATE INDEX IF NOT EXISTS idx_credit_transactions_user_time
+    ON credit_transactions (user_id, created_at DESC);
+`;
+
+// ⚠️ OrderID collision fix. `orders` and `subscription_payments` each own a
+// SEPARATE bigserial, both starting at 1 — so the two streams hand the bank the
+// same integer OrderID, which Ameria requires to be unique per merchant. One
+// shared sequence fixes it for all three streams. Bumped past the current max of
+// both existing sequences so it can never collide with a row already sent.
+const AMERIA_ORDER_ID_SEQUENCE = `
+  CREATE SEQUENCE IF NOT EXISTS ameria_order_id_seq AS bigint START 1;
+  SELECT setval(
+    'ameria_order_id_seq',
+    GREATEST(
+      (SELECT COALESCE(MAX(ameria_order_id), 0) FROM orders),
+      (SELECT COALESCE(MAX(ameria_order_id), 0) FROM subscription_payments),
+      (SELECT last_value FROM ameria_order_id_seq)
+    ) + 1
+  );
+`;
+// ⚠️ The gap here is deliberately +1, NOT a round safety margin. The bank's SANDBOX only
+// accepts OrderIDs in AMERIA_SANDBOX_ORDER_ID_MIN..MAX (4423001..4424000) — a window of
+// 1000 — and `orders` is already near the top of it. A larger gap overshoots the ceiling
+// and the bank rejects every sandbox payment. Production has no such window.
+
+// Point the existing streams at the shared sequence. Only affects NEW inserts —
+// existing rows keep the ids already sent to the bank.
+const AMERIA_ORDER_ID_ADOPT = `
+  ALTER TABLE orders               ALTER COLUMN ameria_order_id SET DEFAULT nextval('ameria_order_id_seq');
+  ALTER TABLE subscription_payments ALTER COLUMN ameria_order_id SET DEFAULT nextval('ameria_order_id_seq');
+`;
+
+// One-time credit packs. Mirrors `orders` (the proven $99 consultation shape)
+// but grants credits instead of booking a slot. No card binding — a pack is a
+// single charge, which is why it is the one paid product billable today.
+const CREDIT_PURCHASES_TABLE = `
+  CREATE TABLE IF NOT EXISTS credit_purchases (
+    id                uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id           text        NOT NULL,
+    pack_id           text        NOT NULL,      -- 'starter' | 'project' | 'project-plus'
+    credits           integer     NOT NULL,
+    amount_usd        numeric     NOT NULL,
+    ameria_order_id   bigint      NOT NULL UNIQUE DEFAULT nextval('ameria_order_id_seq'),
+    ameria_payment_id text,
+    status            text        NOT NULL DEFAULT 'pending',  -- pending|paid|failed|refunded
+    client_email      text,
+    failure_reason    text,
+    created_at        timestamptz NOT NULL DEFAULT now(),
+    paid_at           timestamptz
+  );
+`;
+
+const CREDIT_PURCHASES_USER_INDEX = `
+  CREATE INDEX IF NOT EXISTS idx_credit_purchases_user_time
+    ON credit_purchases (user_id, created_at DESC);
+`;
+
 export async function runMigrations(): Promise<void> {
   const pool = getPool();
 
@@ -194,8 +362,15 @@ export async function runMigrations(): Promise<void> {
   console.log("✅ orders table ready");
 
   await pool.query(SUBSCRIPTIONS_TABLE);
+  await pool.query(SUBSCRIPTIONS_MIGRATE_TO_BINDING);
   await pool.query(SUBSCRIPTIONS_USER_INDEX);
-  console.log("✅ subscriptions table ready");
+  await pool.query(SUBSCRIPTIONS_DUE_INDEX);
+  console.log("✅ subscriptions table ready (binding shape)");
+
+  await pool.query(SUBSCRIPTION_PAYMENTS_TABLE);
+  await pool.query(SUBSCRIPTION_PAYMENTS_SUB_INDEX);
+  await pool.query(SUBSCRIPTION_PAYMENTS_STATUS_INDEX);
+  console.log("✅ subscription_payments table ready");
 
   await pool.query(USAGE_EVENTS_TABLE);
   await pool.query(USAGE_EVENTS_USER_TIME_INDEX);
@@ -222,4 +397,17 @@ export async function runMigrations(): Promise<void> {
   await pool.query(SAVED_ITEMS_HASH_COLUMN);
   await pool.query(SAVED_ITEMS_HASH_INDEX);
   console.log("✅ saved_items table ready");
+
+  // Credit model. The shared OrderID sequence must exist BEFORE credit_purchases,
+  // whose default calls nextval() on it.
+  await pool.query(CREDIT_BALANCES_TABLE);
+  await pool.query(CREDIT_TRANSACTIONS_TABLE);
+  await pool.query(CREDIT_TRANSACTIONS_USER_INDEX);
+  console.log("✅ credit ledger tables ready");
+
+  await pool.query(AMERIA_ORDER_ID_SEQUENCE);
+  await pool.query(AMERIA_ORDER_ID_ADOPT);
+  await pool.query(CREDIT_PURCHASES_TABLE);
+  await pool.query(CREDIT_PURCHASES_USER_INDEX);
+  console.log("✅ credit purchases + shared Ameria OrderID sequence ready");
 }

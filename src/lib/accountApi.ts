@@ -351,19 +351,24 @@ export const accountApi = {
   },
 
   // mutations
+  // LIVE (Rail A): signed-in users hit the real endpoints, then re-read the real
+  // plan from the dashboard so the UI reflects server truth. Logged-out preview
+  // still uses mock.
   cancelSubscription(reason?: string): Promise<Plan> {
-    if (!BILLING_LIVE) return mock.cancelSubscription(reason);
-    // TODO(AC-001-backend): POST /api/subscriptions/cancel
-    return api<Plan>('/api/subscriptions/cancel', {
+    if (!signedIn()) return mock.cancelSubscription(reason);
+    return api<{ ok: boolean }>('/api/subscriptions/cancel', {
       method: 'POST',
-      body: JSON.stringify({ reason }),
-    });
+      body: JSON.stringify({ reason: reason ?? null }),
+    })
+      .then(() => accountApi.getDashboard())
+      .then((d) => d.plan);
   },
 
   resumeSubscription(): Promise<Plan> {
-    if (!BILLING_LIVE) return mock.resumeSubscription();
-    // TODO(AC-001-backend): POST /api/subscriptions/resume
-    return api<Plan>('/api/subscriptions/resume', { method: 'POST' });
+    if (!signedIn()) return mock.resumeSubscription();
+    return api<{ ok: boolean }>('/api/subscriptions/reactivate', { method: 'POST' })
+      .then(() => accountApi.getDashboard())
+      .then((d) => d.plan);
   },
 
   changePlan(toTier: Exclude<PlanTier, 'free'>): Promise<Plan> {

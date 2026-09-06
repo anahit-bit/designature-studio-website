@@ -11,6 +11,7 @@
 import { createClient } from '@sanity/client'
 import type { ProjectData } from '../constants'
 import type { BlogPost, Category } from '../types'
+import { PRICING_PLANS_FALLBACK, type PricingPlan, type PaidPlanKey } from '../data/pricingPlans'
 
 // ── Client ──────────────────────────────────────────────────────────────────
 // NOTE: reads the PUBLIC dataset anonymously (no token). Sanity only serves
@@ -479,4 +480,81 @@ const categoriesCached = ttlCached<Category[]>(async () => {
  */
 export async function fetchCategories(): Promise<Category[]> {
   return categoriesCached(ALL_KEY)
+}
+
+// ── Pricing plans (Rail A subscriptions) ─────────────────────────────────────
+// Storefront prices are owner-editable as `pricingPlan` docs in Studio. Short-TTL
+// cached (like the journal) so a price edit propagates within ~60s without a
+// restart. OFFLINE-SAFE: if Sanity returns nothing usable (no docs yet, or a
+// network error), we fall back to PRICING_PLANS_FALLBACK so the pricing page +
+// checkout always have correct numbers. Grandfathering still applies — this is
+// the storefront/new-subscriber price only; a subscriber's charged amount is
+// locked in their DB row.
+
+const PRICING_PLANS_QUERY = `*[_type == "pricingPlan" && active == true] | order(order asc) {
+  "key": key,
+  name,
+  monthlyPriceUsd,
+  annualPriceUsd,
+  features,
+  "quotas": quotas{generations, audits, shopping},
+  order
+}`
+
+interface SanityPricingPlan {
+  key?: string
+  name?: string
+  monthlyPriceUsd?: number
+  annualPriceUsd?: number
+  features?: Array<string | null> | null
+  quotas?: { generations?: number; audits?: number; shopping?: number } | null
+  order?: number
+}
+
+const VALID_PLAN_KEYS: PaidPlanKey[] = ['design', 'studio']
+
+/** Coerce + validate one Sanity doc → PricingPlan, or null if it's unusable. A
+ *  malformed doc must never crash the pricing page, so we validate defensively. */
+function toPricingPlan(doc: SanityPricingPlan): PricingPlan | null {
+  const key = doc.key as PaidPlanKey
+  if (!VALID_PLAN_KEYS.includes(key)) return null
+  const monthly = Number(doc.monthlyPriceUsd)
+  const annual = Number(doc.annualPriceUsd)
+  if (!Number.isFinite(monthly) || monthly <= 0 || !Number.isFinite(annual) || annual <= 0) return null
+  const features = (doc.features ?? []).filter((f): f is string => typeof f === 'string' && f.trim() !== '')
+  return {
+    key,
+    name: doc.name?.trim() || (key === 'studio' ? 'Studio' : 'Design'),
+    monthlyPriceUsd: monthly,
+    annualPriceUsd: annual,
+    currency: 'USD',
+    features,
+    quotas: {
+      generations: Number(doc.quotas?.generations) || 0,
+      audits: Number(doc.quotas?.audits) || 0,
+      shopping: Number(doc.quotas?.shopping) || 0,
+    },
+    active: true, // query already filters active == true
+    order: typeof doc.order === 'number' ? doc.order : 99,
+  }
+}
+
+const pricingPlansCached = ttlCached<PricingPlan[]>(async () => {
+  try {
+    const docs = await sanityClient.fetch<SanityPricingPlan[]>(PRICING_PLANS_QUERY)
+    const plans = (docs ?? []).map(toPricingPlan).filter((p): p is PricingPlan => p !== null)
+    // No usable Sanity plans → offline fallback (site must always show prices).
+    return plans.length ? plans.sort((a, b) => a.order - b.order) : PRICING_PLANS_FALLBACK
+  } catch {
+    return PRICING_PLANS_FALLBACK
+  }
+})
+
+/**
+ * Fetches the active paid plans (Design, Studio) for the storefront. Short-TTL
+ * cached + in-flight deduped; always resolves to correct numbers (Sanity, else
+ * the bundled fallback). Never throws.
+ */
+export async function fetchPricingPlans(): Promise<PricingPlan[]> {
+  return pricingPlansCached(ALL_KEY)
 }

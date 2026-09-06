@@ -1,5 +1,5 @@
 /** AC-001 — Overview tab. Welcome + plan status + usage grid + recent activity + next booking. */
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Button,
   Card,
@@ -10,6 +10,7 @@ import {
   fmtDateTime,
   timeAgo,
 } from '../ui';
+import { CreditBalanceCard } from '../CreditBalanceCard';
 import type { DashboardData, PlanTier, QuotaEntry, Booking } from '../../../lib/accountApi';
 
 const PLAN_NAME: Record<PlanTier, string> = { free: 'Free', design: 'Design', studio: 'Studio' };
@@ -103,6 +104,12 @@ export const OverviewTab: React.FC<{
   const canceled = plan.status === 'canceled';
   const firstName = user.name.split(' ')[0] || user.name;
 
+  // Credit model: once the balance endpoint confirms it is enabled, credits are the
+  // real allowance and the per-tool tier grid below would only contradict them, so we
+  // hide it. `null` = not yet resolved (keep the grid hidden to avoid a flash of the
+  // wrong model); `false` = tier system still live (show the grid).
+  const [creditsOn, setCreditsOn] = useState<boolean | null>(null);
+
   return (
     <section>
       <h1 className="font-display text-[44px] leading-[1.05] mb-1 text-[#0A0A0A]">
@@ -149,14 +156,21 @@ export const OverviewTab: React.FC<{
         </div>
       </Card>
 
-      {/* usage */}
-      <Eyebrow className="mt-[26px] mb-3">This cycle</Eyebrow>
-      <div className={`grid gap-4 ${tier === 'studio' ? 'md:grid-cols-4 grid-cols-2' : 'md:grid-cols-3 grid-cols-2'}`}>
-        <UsageCard eyebrow="AI Vision" entry={quota.aiVision} tier={tier} />
-        <UsageCard eyebrow="Shopping List" entry={quota.shopping} tier={tier} />
-        <UsageCard eyebrow="Room Audit" entry={quota.roomAudit} tier={tier} />
-        {tier === 'studio' && <UsageCard eyebrow="Style Quiz" entry={quota.styleQuiz} tier={tier} />}
-      </div>
+      {/* credit balance + history (credit model) — renders nothing when credits are off */}
+      <CreditBalanceCard onResolved={setCreditsOn} />
+
+      {/* usage — the legacy per-tool tier grid. Hidden once credits are the allowance. */}
+      {creditsOn === false && (
+        <>
+          <Eyebrow className="mt-[26px] mb-3">This cycle</Eyebrow>
+          <div className={`grid gap-4 ${tier === 'studio' ? 'md:grid-cols-4 grid-cols-2' : 'md:grid-cols-3 grid-cols-2'}`}>
+            <UsageCard eyebrow="AI Vision" entry={quota.aiVision} tier={tier} />
+            <UsageCard eyebrow="Shopping List" entry={quota.shopping} tier={tier} />
+            <UsageCard eyebrow="Room Audit" entry={quota.roomAudit} tier={tier} />
+            {tier === 'studio' && <UsageCard eyebrow="Style Quiz" entry={quota.styleQuiz} tier={tier} />}
+          </div>
+        </>
+      )}
 
       {/* recent activity */}
       <Eyebrow className="mt-[26px] mb-[6px]">Recent activity</Eyebrow>
