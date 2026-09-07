@@ -2,6 +2,8 @@
 
 *Designature Studio · Aug 2026 · owner idea, captured 27 Aug. Pairs with `designer-checkpoints-spec.md`.*
 
+**Ticket:** *(to be assigned in the plan spreadsheet — AI series)*
+
 ## Why
 
 Today AI Vision offers 13 **generic** styles (Japandi, Warm Contemporary, Mid-Century…). Every

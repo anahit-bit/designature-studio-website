@@ -2,6 +2,8 @@
 
 *Designature Studio · Aug 2026 · owner idea, captured 27 Aug. Pairs with `signature-styles-spec.md`.*
 
+**Ticket:** *(to be assigned in the plan spreadsheet — C series, successor to C-001)*
+
 ## Why
 
 Every real Designature project runs the same way: **Phase 1 → meeting → client confirms → Phase 2 →
