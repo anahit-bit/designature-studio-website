@@ -244,14 +244,53 @@ export function buildStagingPrompt(args: {
     ? " Vary the furniture arrangement, lighting choices, and accent styling from previous versions, keeping the same architecture and target style."
     : "";
 
-  return `${args.styleBrief}
+  // The palette accent (#94) still applies, but compressed to one line — the full
+  // renderAccent() block is ~90 words, and on this engine that length costs
+  // fidelity to the source photo. Same instruction, a fraction of the budget.
+  const accentLine = args.accent
+    ? ` Make ${args.accent.name} (about ${args.accent.hex}) the single strongest colour note, and introduce no other saturated colour the brief does not name.`
+    : "";
 
-Photorealistic interior photograph of a fully furnished, fully styled ${roomLabel} decorated in this exact style — professional real-estate photography, natural daylight, sharp focus, realistic materials and textures, high detail. The room is completely furnished and decorated: furniture, lighting, rugs, art, plants and styling appropriate to a ${roomLabel}.
+  // A staging model EDITS the photo it is handed — it must be told what to ADD,
+  // not given a description of a room to draw. This prompt used to open with the
+  // full style brief and "photorealistic interior photograph of a fully furnished
+  // <room>", which reads as a text-to-image instruction: Flux ignored the
+  // reference photo and generated a fresh room. Benchmarked over 16 real client
+  // rooms (pack 1, 2026-08-29), varying ONLY this prompt's length:
+  //
+  //   500w+ (full style brief)   0/16 preserved — outputs unrelated to the source
+  //   260w  (+4 rulebook rules)  6/16, 36 broken checks
+  //   170w  (+ room program)     6/16, 33
+  //   112w  (this)               8/16, 20
+  //
+  // Every addition made it worse. On this engine, words spent on anything but the
+  // edit instruction pull the model off the photograph. KEEP THIS SHORT — length
+  // here is not thoroughness, it is drift.
+  //
+  // The room type is still fixed by the opening sentence. What is given up is the
+  // wrong-room exclusion list that the Gemini path carries in ROOM_PROGRAM_RULES;
+  // that risk is real but not yet scored by the benchmark.
+  return `Furnish this exact room as a fully furnished, fully styled ${roomLabel}. Add furniture, rugs, lighting, art, plants and styling — ${condenseStyleBrief(args.styleBrief)}
 
-ROOM PROGRAM (this rule overrides any furniture examples in the style brief above):
-${ROOM_PROGRAM_RULES[roomTypeKey]}
+Keep the room itself exactly as photographed: the same walls in the same positions, the same windows and doors at the same size and place, the same flat ceiling, the same proportions and the same camera view. You are furnishing this room, not redesigning it.${accentLine}${variationHint}`;
+}
 
-Preserve the room's existing architecture exactly: keep every wall flat and in its current position, keep the ceiling as one flat plane, keep the floor, and keep every window as a real glazed window with daylight and the outdoor view coming through it. Do NOT add or remove walls, doorways, openings, beams, columns, soffits or partitions, and do NOT widen the room.${renderAccent(args.accent ?? null)}${variationHint}`;
+/**
+ * Compress a full style brief to a short cue for the staging engine. The brief is
+ * written for a generative model that draws a whole room; a staging model only
+ * needs to know what the new furniture should look like, and a long brief
+ * overwhelms the reference photo (see buildStagingPrompt).
+ */
+export function condenseStyleBrief(brief: string, maxWords = 45): string {
+  const flat = brief
+    // drop the numbered section headers ("1. COLOR PALETTE:", "MATERIALS & FINISHES:")
+    .replace(/^\s*\d+\.\s*[A-Z][A-Z &]+:/gm, " ")
+    .replace(/[A-Z][A-Z &]{3,}:/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const words = flat.split(" ");
+  const cut = words.slice(0, maxWords).join(" ");
+  return words.length > maxWords ? `${cut.replace(/[.,;:]$/, "")}.` : cut;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
