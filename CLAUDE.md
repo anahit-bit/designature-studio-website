@@ -2,40 +2,54 @@
 
 Instructions for any Claude session working in this repository.
 
-## The plan is not in this repository
+## The plan: one file, two views
 
-The single source of truth for planning is a file in Google Drive, and nothing else:
+The single source of truth for planning is **Website-plan.xlsx**. It exists in one place, reachable two
+ways, because the folder is synced by Google Drive for Desktop:
 
-**Website-plan.xlsx**
-https://docs.google.com/spreadsheets/d/1DsVUWdeq79PDgoPPuQT5EvJx57_lpjcV/edit
-Drive file id: `1DsVUWdeq79PDgoPPuQT5EvJx57_lpjcV`
+| View | Address |
+|---|---|
+| On the owner's machine | `E:\Business\Claude\_Plan\Website\Website-plan.xlsx` |
+| In Google Drive | https://docs.google.com/spreadsheets/d/1DsVUWdeq79PDgoPPuQT5EvJx57_lpjcV/edit · file id `1DsVUWdeq79PDgoPPuQT5EvJx57_lpjcV` |
 
-Owner rule, set 2026-09-07: **whenever the owner asks a session to read, review, or update the website
-plan, they mean this file.** Read it from Drive at the start of the task and write the updates back
-into it. There is deliberately no copy in this repository, none in `E:\Business\Claude\_Plan\Website`,
-and none anywhere else. If you find one, it is stale, and it is not the plan.
+The Drive folder chain is `Claude / _Plan / Website`, mirrored to that local folder. A save on the
+machine uploads itself; a change made in Drive comes down to the folder. Same file. No copies.
 
-### Reading it
+Owner rule, set 2026-09-07: **whenever the owner asks a session to read, review or update the website
+plan, they mean this file.** There is deliberately no copy in this repository and none anywhere else.
+If you find one, it is stale, and it is not the plan.
 
-Use the Google Drive connector: `download_file_content` with that file id, decode the base64, open the
-result with openpyxl. It is an `.xlsx` stored in Drive, not a native Google Sheet, so it round trips
-without losing formatting.
+### If you are running on the owner's machine
 
-### Writing to it
+Open, edit and save `E:\Business\Claude\_Plan\Website\Website-plan.xlsx` in place. Drive for Desktop
+uploads it. Nothing else is needed, and no copy is made anywhere.
 
-**The Drive connector cannot overwrite the contents of an existing file.** It can create, rename, copy
-and trash, and nothing else, and there is no Sheets connector. So a session cannot save into that file
-by itself. The loop that works:
+### If you are running in the cloud
 
-1. Download the current file and edit that exact copy. Never rebuild the workbook from scratch, and
-   never edit a copy that predates the download, or you will silently drop someone else's change.
+A remote session (claude.ai/code, a web session, a run triggered from GitHub) has no E: drive. Read the
+Drive file with the Google Drive connector: `download_file_content` with the file id above, decode the
+base64, open it with openpyxl. It is an `.xlsx` stored in Drive, not a native Google Sheet, so it round
+trips without losing formatting.
+
+**A remote session cannot write to it.** The connector can create, rename, copy and trash files, but it
+has no call that replaces the contents of an existing file, and there is no Sheets connector. So:
+
+1. Edit the copy you just downloaded, never an older one.
 2. Hand the edited `.xlsx` back to the owner and say plainly which rows and cells changed.
-3. The owner uploads it as a new version of the same file: open it in Drive, File information,
-   Manage versions, Upload new version. That keeps the file id, the link and the revision history.
+3. The owner saves it over `E:\Business\Claude\_Plan\Website\Website-plan.xlsx`, and the sync carries
+   it back up to the same Drive file.
 
-Do not create a second Drive file as a workaround, and do not commit the workbook here as a
-convenience mirror. Both were tried. A second copy means a new link, and within an hour two sessions
-were editing two different files.
+Do not create a second Drive file as a workaround, and do not commit the workbook to this repository as
+a convenience mirror. Both were tried on 2026-09-06. A second copy means a new link, and within an hour
+two sessions were editing two different files.
+
+### House rules for editing it
+
+- **One editor at a time.** Close Excel before asking a session to edit the file, and let the sync
+  finish before another session reads it, or Drive writes a conflict copy and the plan forks.
+- **One name.** `Website-plan.xlsx`, always. Never save a variant, a dated copy or a `Website_Plan`.
+- **Edit what you opened.** Never rebuild the workbook from scratch and never edit a download that
+  predates someone else's change, or you will silently drop their work.
 
 ## Where things are in the workbook
 
