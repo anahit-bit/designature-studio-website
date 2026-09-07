@@ -32,7 +32,7 @@ const base: RoomStructure = {
   windows: [{ wall: 'back', shape: 'rectangular', box: [0.38, 0.28, 0.62, 0.62] }],
   doors: [{ wall: 'back', box: [0.72, 0.22, 0.86, 0.78] }],
   fixedFeatures: [{ label: 'radiator', box: [0.4, 0.62, 0.62, 0.78] }],
-  plumbing: [],
+  plumbing: [], ceiling: { flat: true, features: [], cornice: false },
   detectedRoom: 'bathroom',
   summary: 'A bathroom with a vanity along the left wall.',
 };
@@ -44,7 +44,7 @@ const noDrainage: RoomStructure = {
 };
 
 /** The extreme case: not one plumbed thing in frame. */
-const bareRoom: RoomStructure = { ...base, plumbing: [] };
+const bareRoom: RoomStructure = { ...base, plumbing: [], ceiling: { flat: true, features: [], cornice: false }, };
 
 /** "before 2": wall-hung toilet on a tiled duct, corner bath, basin. */
 const fullyPlumbed: RoomStructure = {

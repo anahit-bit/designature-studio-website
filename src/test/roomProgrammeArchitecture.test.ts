@@ -39,14 +39,14 @@ const deadEndAlcove: RoomStructure = {
   windows: [],
   doors: [],
   fixedFeatures: [],
-  detectedRoom: 'bedroom', plumbing: [],
+  detectedRoom: 'bedroom', plumbing: [], ceiling: { flat: true, features: [], cornice: false },
   summary: 'A small alcove; only the back wall is visible.',
 };
 
 const hallwayWithDoor: RoomStructure = {
   ...deadEndAlcove,
   doors: [{ wall: 'back', box: [0.4, 0.2, 0.6, 0.9] }],
-  detectedRoom: 'hallway', plumbing: [],
+  detectedRoom: 'hallway', plumbing: [], ceiling: { flat: true, features: [], cornice: false },
 };
 
 describe('the room programme cannot authorise architecture', () => {
