@@ -14,6 +14,7 @@ import {
   analyzeRoomStructure,
   spatialMetrics,
   countOpenings,
+  inventedPlumbing,
   type RoomStructure,
 } from "./spatialAnalysis.js";
 
@@ -255,6 +256,22 @@ export async function generateConceptImage(
           // RD25 — opening count. Checked first: an invented archway is a
           // bigger failure than a few points of proportion drift, and it is the
           // one check that works on a room with no window in it.
+          // RD27 — plumbing count. Checked alongside the openings, on the same
+          // analysis call, so it costs nothing extra. Prompt text alone did not
+          // hold: the bathroom programme's "include a toilet" put one on a wall
+          // with no soil pipe even after the FRAMING and OPENING lines landed.
+          const added = inventedPlumbing(input.sourceStructure, outStructure);
+          if (outStructure !== null && added.length > 0) {
+            const what = added
+              .map((a) => `${a.fixture.replace("_", " ")} (${a.from} in the real room, ${a.to} in the output)`)
+              .join(", ");
+            const note = `\n\nCRITICAL PLUMBING CORRECTION: the previous attempt INVENTED plumbing the real room does not have — ${what}. A toilet, bidet, bath, shower, basin or heated towel rail needs a waste pipe, and this room shows no drainage on that wall. Render the room with ONLY the plumbed fixtures visible in the input photograph, in their existing positions. Do not add a toilet. Do not add a towel rail. Bare wall is the correct answer where the photograph shows bare wall.`;
+            console.warn(
+              `[ai-vision] RD27 plumbing violation: ${what} — retrying (attempt ${proportionRetryCount + 1}/${MAX_PROPORTION_RETRIES})`
+            );
+            return generateOne(retryCount, aspectRetryCount, proportionRetryCount + 1, note);
+          }
+
           const outOpenings = countOpenings(outStructure);
           const invented =
             outStructure !== null &&
@@ -276,7 +293,7 @@ export async function generateConceptImage(
             return generateOne(retryCount, aspectRetryCount, proportionRetryCount + 1, note);
           }
           console.log(
-            `[ai-vision] Opening count: source ${expectedOpenings.windows}w/${expectedOpenings.doors}d, output ${outOpenings.windows}w/${outOpenings.doors}d`
+            `[ai-vision] Opening count: source ${expectedOpenings.windows}w/${expectedOpenings.doors}d, output ${outOpenings.windows}w/${outOpenings.doors}d · plumbing preserved`
           );
 
           const outMetrics = spatialMetrics(outStructure);

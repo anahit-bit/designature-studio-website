@@ -28,15 +28,28 @@ import {
 import { STYLE_BRIEFS } from "../../services/aiVision/stylePresets.js";
 import { pickAccent } from "../../services/aiVision/promptTemplates.js";
 
-const PHOTO = String.raw`E:\Business\Claude\_Inputs\ai-vision\_VAG8650.jpg`;
-const STYLE = "trend_2026";
-const ROOM = "hallway" as const; // exactly what the owner had selected
+const PHOTO =
+  process.env.VERIFY_PHOTO ?? String.raw`E:\Business\Claude\_Inputs\ai-vision\_VAG8650.jpg`;
+const STYLE = (process.env.VERIFY_STYLE ?? "trend_2026") as keyof typeof STYLE_BRIEFS;
+const ROOM = (process.env.VERIFY_ROOM ?? "hallway") as any; // exactly what the owner had selected
 
 // `countOpenings` only exists after the fix; count inline so both sides agree.
 const openings = (s: RoomStructure | null) => ({
   windows: s?.windows?.length ?? 0,
   doors: s?.doors?.length ?? 0,
 });
+
+// Counted inline so the same script runs on both sides of a before/after.
+const plumb = (s: any) => {
+  const out: Record<string, number> = {};
+  for (const p of s?.plumbing ?? []) {
+    if (p.fixture === "soil_stack") continue;
+    out[p.fixture] = (out[p.fixture] ?? 0) + 1;
+  }
+  return out;
+};
+const fmtPlumb = (m: Record<string, number>) =>
+  Object.keys(m).length ? Object.entries(m).map(([k, v]) => `${k}x${v}`).join(",") : "none";
 
 async function main() {
   const [label, outDir, runsArg] = process.argv.slice(2);
@@ -55,9 +68,10 @@ async function main() {
 
   const source = await analyzeRoomStructure(roomPhoto);
   const src = openings(source);
+  const srcPlumb = plumb(source);
   console.log(
-    `SOURCE: walls=[${source?.visibleWalls.join(",")}] outOfFrame=[${source?.outOfFrameWalls.join(",")}] ` +
-      `windows=${src.windows} doors=${src.doors} detectedRoom=${(source as any)?.detectedRoom ?? "n/a"}`
+    `SOURCE: walls=[${source?.visibleWalls.join(",")}] windows=${src.windows} doors=${src.doors} ` +
+      `plumbing=[${fmtPlumb(srcPlumb)}] detectedRoom=${(source as any)?.detectedRoom ?? "n/a"}`
   );
 
   const results: any[] = [];
@@ -80,15 +94,18 @@ async function main() {
     // Grade it: re-measure the OUTPUT and diff against the source.
     const out = await analyzeRoomStructure({ data: b64, mimeType: "image/png" });
     const o = openings(out);
-    const invented = o.windows > src.windows || o.doors > src.doors;
+    const outPlumb = plumb(out);
+    const addedPlumb = Object.entries(outPlumb).filter(([k, v]) => v > (srcPlumb[k] ?? 0));
+    const invented =
+      o.windows > src.windows || o.doors > src.doors || addedPlumb.length > 0;
     const secs = ((Date.now() - t0) / 1000).toFixed(0);
 
     console.log(
-      `RUN ${i} (${secs}s): output windows=${o.windows} doors=${o.doors} | ` +
-        `INVENTED OPENING: ${invented ? "YES  <-- FAILURE" : "no"} | ${file}`
+      `RUN ${i} (${secs}s): windows=${o.windows} doors=${o.doors} plumbing=[${fmtPlumb(outPlumb)}] | ` +
+        `INVENTED: ${invented ? (addedPlumb.length ? "PLUMBING " + addedPlumb.map(([k]) => k).join("+") : "OPENING") + "  <-- FAILURE" : "no"} | ${file}`
     );
     if (out?.summary) console.log(`   output reads as: ${out.summary.slice(0, 220)}`);
-    results.push({ run: i, file, source: src, output: o, invented });
+    results.push({ run: i, file, source: src, output: o, srcPlumb, outPlumb, invented });
   }
 
   const failures = results.filter((r) => r.invented).length;

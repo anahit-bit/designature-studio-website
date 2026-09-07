@@ -52,7 +52,13 @@ export const ROOM_PROGRAM_RULES = COMPILED_PROGRAMS as Record<RoomType, string>;
 /** A conflict between what a room programme assumes and what the photo shows. */
 export interface ProgrammeConflict {
   /** Stable id for logging and tests. */
-  code: "hallway-dead-end" | "bed-wall-glazed" | "single-wall-kitchen" | "single-wall-room";
+  code:
+    | "hallway-dead-end"
+    | "bathroom-no-drainage"
+    | "bathroom-keep-fixtures"
+    | "bed-wall-glazed"
+    | "single-wall-kitchen"
+    | "single-wall-room";
   /** Sentence appended to the room programme in the prompt. */
   note: string;
   /** Plain-English version for the upload screen. Empty when not worth saying. */
@@ -90,6 +96,43 @@ export function detectProgrammeConflict(
       userTip:
         "This photo doesn't show a doorway or opening, so the concept will treat the hallway as ending at the wall you can see.",
     };
+  }
+
+  // RD27. A bathroom programme asks for a toilet; a photograph is the only thing
+  // that can say whether one may exist. Checked before the geometry cases below
+  // because an un-buildable fixture beats a framing nit.
+  if (roomType === "bathroom") {
+    const fixtures = structure.plumbing.filter((p) => p.fixture !== "soil_stack");
+    const hasStack = structure.plumbing.some((p) => p.fixture === "soil_stack");
+    const hasToilet = fixtures.some((p) => p.fixture === "toilet");
+
+    if (fixtures.length === 0 && !hasStack) {
+      return {
+        code: "bathroom-no-drainage",
+        note:
+          "THIS PHOTOGRAPH IN PARTICULAR: it shows no toilet, no bath, no shower, no basin and no soil " +
+          "stack or pipe boxing anywhere. There is no drainage evidence in this room, so the renovated " +
+          "image must contain NO plumbed fixture at all — no toilet, no bidet, no bath, no shower, no " +
+          "heated towel rail. Restyle the surfaces, the lighting and the loose contents only. An empty " +
+          "wall is the correct answer for an empty wall.",
+        userTip:
+          "This photo doesn't show a toilet, bath or shower, so the concept won't add one — there's no way to know where the drainage runs.",
+      };
+    }
+
+    if (!hasToilet) {
+      const present = [...new Set(fixtures.map((p) => p.fixture))].join(", ");
+      return {
+        code: "bathroom-keep-fixtures",
+        note:
+          `THIS PHOTOGRAPH IN PARTICULAR: the only plumbing in this room is ${present}${
+            hasStack ? ", plus boxed pipework" : ""
+          }. There is NO toilet in frame and no evidence of one, so do NOT add a toilet, bidet or heated ` +
+          "towel rail. Keep the fixtures that are here, exactly where they are, and change only how they look.",
+        userTip:
+          "This photo has no toilet in it, so the concept will restyle what's there rather than adding one.",
+      };
+    }
   }
 
   // RD15's hard case, stated as a fact about this room rather than a general rule.
