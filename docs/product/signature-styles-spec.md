@@ -2,7 +2,7 @@
 
 *Designature Studio · Aug 2026 · owner idea, captured 27 Aug. Pairs with `designer-checkpoints-spec.md`.*
 
-**Ticket:** *(to be assigned in the plan spreadsheet — AI series)*
+**Ticket: AI-044** (Backlog, Phase 5, P1, L — added 2026-09-07)
 
 ## Why
 

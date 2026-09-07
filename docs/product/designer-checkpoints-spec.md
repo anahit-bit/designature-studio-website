@@ -2,7 +2,28 @@
 
 *Designature Studio · Aug 2026 · owner idea, captured 27 Aug. Pairs with `signature-styles-spec.md`.*
 
-**Ticket:** *(to be assigned in the plan spreadsheet — C series, successor to C-001)*
+**Ticket: AI-038** — "Designer Check — written designer review at any step of a workflow"
+(Backlog, Phase 5, P2, L). Its dependency **AI-040** ("Apply-and-re-run") is the designer-corrected
+render described below. This spec was written before that row was found, so read the row first.
+
+> ### ⚠ Where this spec disagrees with AI-038, the row wins
+>
+> Two owner decisions on AI-038 predate this document and govern:
+>
+> - **v1 is written notes, not a call** (decision 2026-08-30). The designer looks at the artifact on
+>   their own time and returns one of three verdicts — *good to go · change this first · this won't
+>   work* — plus a short note attached to the Library item. The 45-minute booked call priced at $49
+>   below is **not** v1.
+> - **v1 is free or near-free, advice-only, rationed by a visible queue cap** (decision 2026-09-01),
+>   because the corrections cannot be acted on until AI-040 ships, and charging for advice a visitor
+>   cannot act on sells a problem rather than a solution. So the whole credit/metering/billing layer
+>   is out of v1, and the price ladder below describes a **later** state, not the first release.
+> - The join rules already ship as `checkFor()` in `src/data/studioRouter.ts`; a check rides the join
+>   between two cards and is never a stage of its own. The four-phase spine below is the studio's
+>   client-facing process, not the router's model — do not rebuild the router around it.
+>
+> What survives unchanged: the deliverables (notes, a designer-corrected render, an approval stamp),
+> the admin review queue, the capacity and SLA rules, and the free "continue on my own" exit.
 
 ## Why
 
