@@ -25,9 +25,6 @@ export interface CreditPrice {
  * Card → credits. Keyed by `ExplorerTool.id`, and the test asserts this map and the
  * roster stay in exact bijection: add a tool without pricing it (or price a tool that
  * does not exist) and CI fails rather than the gap reaching production.
- *
- * Not yet in the roster — these ship on the AI-032 v2 branch and must be priced when
- * they land: `heat-room` (15), `plumb-room` (15), `finishes` (15).
  */
 export const CREDIT_PRICES: Record<string, CreditPrice> = {
   // ── Discover ──────────────────────────────────────────────────────────────
@@ -48,6 +45,11 @@ export const CREDIT_PRICES: Record<string, CreditPrice> = {
   },
   'light-room': { credits: 15, estCostUsd: 0.025 },
   'wire-room': { credits: 15, estCostUsd: 0.025 },
+  // AI-035 / AI-034, landing with AI-032 v2. Priced at 15 as this file already
+  // anticipated, and costed off light/wire — same phase, same shape of output
+  // (positions and runs over the geometry model, no image generation).
+  'plumb-room': { credits: 15, estCostUsd: 0.025 },
+  'heat-room': { credits: 15, estCostUsd: 0.025 },
 
   // ── Visualize ─────────────────────────────────────────────────────────────
   redesign: {
@@ -69,6 +71,13 @@ export const CREDIT_PRICES: Record<string, CreditPrice> = {
     note: 'Was 12 — repriced 2026-09-04. The only card spending hard cash (Serper), and at 12 it was ~2x a render per credit.',
   },
   cost: { credits: 5, estCostUsd: 0.01, note: 'Kept cheap so budget-led visitors reach it.' },
+  // AI-036, landing with AI-032 v2. A quantities takeoff, so slightly more work
+  // than a layout — still far under the ceiling at 0.002/credit.
+  finishes: {
+    credits: 15,
+    estCostUsd: 0.03,
+    note: 'The card that makes Shop worth buying: without quantities, Shop can only ever buy furniture.',
+  },
 
   // ── Realize ───────────────────────────────────────────────────────────────
   'phase-reno': { credits: 20, estCostUsd: 0.03 },
