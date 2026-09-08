@@ -26,16 +26,6 @@ function genProgramSection(prompt: string): string {
   return prompt.slice(start, end);
 }
 
-// The staging prompt places the block just before the architecture-preservation
-// sentence (the style brief precedes it here), so slice up to that marker.
-function stagingProgramSection(prompt: string): string {
-  const start = prompt.indexOf('ROOM PROGRAM');
-  const end = prompt.indexOf("Preserve the room's existing architecture");
-  expect(start).toBeGreaterThanOrEqual(0);
-  expect(end).toBeGreaterThan(start);
-  return prompt.slice(start, end);
-}
-
 describe('buildGenerationPrompt · ROOM PROGRAM enforcement', () => {
   it('dining_room injects the dining program: dining table anchor, no living-room furniture', () => {
     const prompt = buildGenerationPrompt({ styleBrief: BRIEF, roomType: 'dining_room' });
@@ -101,19 +91,37 @@ describe('buildGenerationPrompt · ROOM PROGRAM enforcement', () => {
   });
 });
 
-describe('buildStagingPrompt · ROOM PROGRAM enforcement', () => {
-  it('applies the same dining program block', () => {
+describe('buildStagingPrompt · room type and length', () => {
+  // The staging engine EDITS the uploaded photo, and prompt length is what pulls
+  // it off that photo. Measured over 16 real rooms (pack 1), varying only this
+  // prompt's length: 500w+ scored 0/16 preserved with outputs unrelated to the
+  // source; 260w scored 6/16; 131w (the shipped prompt, accent included) scored
+  // 8/16. The full ~90-word ROOM PROGRAM block cannot be afforded here, so the
+  // room type is fixed by the opening sentence instead.
+  it('names the room type and excludes wrong-room furniture', () => {
     const prompt = buildStagingPrompt({ styleBrief: BRIEF, roomType: 'dining_room' });
-    const section = stagingProgramSection(prompt);
-    expect(section).toContain(ROOM_PROGRAM_RULES.dining_room);
-    expect(section.toLowerCase()).toContain('dining table');
-    expect(section.toLowerCase()).not.toContain('sofa');
-    expect(section.toLowerCase()).not.toContain('coffee table');
+    expect(prompt.toLowerCase()).toContain('dining room');
+    expect(prompt.toLowerCase()).not.toContain('sofa');
+    expect(prompt.toLowerCase()).not.toContain('coffee table');
   });
 
-  it('falls back to the living_room program when roomType is omitted', () => {
-    const prompt = buildStagingPrompt({ styleBrief: BRIEF });
-    const section = stagingProgramSection(prompt);
-    expect(section).toContain(ROOM_PROGRAM_RULES.living_room);
+  it('falls back to a living room when roomType is omitted', () => {
+    expect(buildStagingPrompt({ styleBrief: BRIEF }).toLowerCase()).toContain('living room');
+  });
+
+  it('stays short — this is the regression that scored 0/16', () => {
+    const prompt = buildStagingPrompt({ styleBrief: BRIEF, roomType: 'dining_room' });
+    expect(prompt).not.toContain(ROOM_PROGRAM_RULES.dining_room);
+    expect(prompt.split(/\s+/).length).toBeLessThan(180);
+  });
+
+  it('still carries the palette accent, compressed to one line', () => {
+    const accent = { name: 'Muted Sage', hex: '#9CA88D', role: 'accent' } as any;
+    const prompt = buildStagingPrompt({ styleBrief: BRIEF, roomType: 'bedroom', accent });
+    expect(prompt).toContain('Muted Sage');
+    expect(prompt).toContain('#9CA88D');
+    // The full renderAccent() block is ~90 words and would blow the budget.
+    expect(prompt).not.toContain('ACCENT COLOUR FOR THIS CONCEPT');
   });
 });
+
