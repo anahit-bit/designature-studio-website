@@ -1065,7 +1065,7 @@ const translations = {
     'pricing.inclCultural': 'incl. Cultural Advisor',
     'pricing.projectFolders': 'Project folders',
     'pricing.saveConcepts': 'save concepts & images per project',
-'pricing.notify': 'Notify me when live',
+    'pricing.notify': 'Notify me when live',
     'pricing.notify.sent': "✓ Got it — we'll notify you",
     'pricing.notify.btn': 'Notify me',
 
