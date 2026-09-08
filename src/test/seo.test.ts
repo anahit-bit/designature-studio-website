@@ -143,7 +143,7 @@ describe('route classification + metadata', () => {
   it('gives every public route a unique, non-empty title + description', () => {
     const keys = [
       '/', '/portfolio', '/services', '/studio', '/deliverables', '/ai-concepts',
-      '/ai-vision', '/pricing', '/faq', '/consultation', '/terms',
+      '/pricing', '/faq', '/consultation', '/terms',
       '/privacy', '/refund',
     ];
     const titles = new Set<string>();

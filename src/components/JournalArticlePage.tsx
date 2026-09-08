@@ -414,7 +414,7 @@ const JournalArticlePage: React.FC = () => {
                   <p className="mb-2 text-[11.5px] italic text-black/50">
                     Example matches — the live Shopping List builds an exact, shoppable list for your own room &amp; region.
                   </p>
-                  <Link to="/ai-vision" className="text-[14px] font-semibold text-[#0B2240]">
+                  <Link to="/ai-concepts" className="text-[14px] font-semibold text-[#0B2240]">
                     Want a list like this for your space?{' '}
                     <span className="border-b border-[#0047AB]/30 text-[#0047AB]">Generate your shopping list →</span>
                   </Link>
