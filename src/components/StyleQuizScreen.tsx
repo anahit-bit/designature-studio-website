@@ -105,6 +105,45 @@ export const QUIZ_HERO_SOURCES: { media?: string; ratio: string; widths: number[
 export const QUIZ_HERO_SIZES = '(min-width: 1024px) 75vw, 100vw';
 
 /**
+ * The DNA result hero is a DIFFERENT band and needs its own ladder.
+ *
+ * It overrides the 74vh rule with `height:auto; min-height:560`, and the
+ * content never exceeds the minimum — so its height is pinned at 560px while
+ * its width still tracks the container. Measured:
+ *
+ *   390 -> 0.70   768 -> 1.36   1024 -> 1.05   1280 -> 1.51
+ *   1440 -> 1.79  1920 -> 2.65
+ *
+ * That is far wider at the top end than the 74vh band (2.65 vs 1.86), so
+ * reusing QUIZ_HERO_SOURCES here delivered 3/2 into a 1.79 band and kept only
+ * 84% — worse than the flat 16:9 it replaced. Separate ladders, because these
+ * are separate shapes.
+ *
+ * Because the height is CONSTANT, this band is a pure function of viewport
+ * width — `(vw < 1024 ? vw : vw - 436) / 560`, the 436px being the studio rail
+ * that appears at 1024. That makes it verifiable at every width rather than
+ * only at sampled ones, which is why this ladder has more rungs than the 74vh
+ * one: the ratio sweeps 0.57 to 2.65 and no coarse ladder holds 80% across it.
+ * The test sweeps 320-1920px and also asserts no width is worse than the flat
+ * 16:9 this replaced.
+ *
+ * ROOT CAUSE worth revisiting: the pinned 560px height is what makes this band
+ * so unruly. Giving the result hero the same responsive height as the other
+ * heroes would let both share one short ladder.
+ */
+export const QUIZ_RESULT_HERO_SOURCES: { media?: string; ratio: string; widths: number[] }[] = [
+  { media: '(max-width: 479px)',  ratio: '7/10', widths: [360, 480, 720, 960] },
+  { media: '(max-width: 639px)',  ratio: '1/1',  widths: [480, 640, 960, 1280] },
+  { media: '(max-width: 799px)',  ratio: '5/4',  widths: [640, 800, 1120, 1600] },
+  { media: '(max-width: 1023px)', ratio: '16/9', widths: [800, 1024, 1440, 2048] },
+  { media: '(max-width: 1149px)', ratio: '9/8',  widths: [600, 780, 1200, 1560] },
+  { media: '(max-width: 1339px)', ratio: '3/2',  widths: [720, 900, 1440, 1800] },
+  { media: '(max-width: 1599px)', ratio: '16/9', widths: [900, 1024, 1600, 2048] },
+  { ratio: '7/3', widths: [1200, 1500, 1920, 2560] },
+];
+export const QUIZ_RESULT_HERO_SIZES = '(min-width: 1024px) 70vw, 100vw';
+
+/**
  * Mosaic tile ladder. Tiles are grid cells, never square: the grid is 6 columns
  * above 640px and 4 below, with `grid-auto-rows: 1fr`, so measured cell ratios
  * run 0.49 (768px) to 1.0 (640px). They were delivered at a flat 1:1 and a flat
@@ -874,7 +913,7 @@ const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignI
         {/* cinematic DNA hero */}
         <div className="hero" style={{ height: 'auto', minHeight: 560 }}>
           <div className="hero-media">
-            <ArtDirected src={rawHero} alt={styleLabel(top.style)} sources={QUIZ_HERO_SOURCES} sizes={QUIZ_HERO_SIZES} />
+            <ArtDirected src={rawHero} alt={styleLabel(top.style)} sources={QUIZ_RESULT_HERO_SOURCES} sizes={QUIZ_RESULT_HERO_SIZES} />
           </div>
           <div className="absolute inset-0" style={{ background: 'linear-gradient(105deg,rgba(0,0,0,.80) 0%,rgba(0,0,0,.52) 42%,rgba(0,0,0,.2) 100%)' }} />
           <div className="absolute inset-0 flex items-center py-12">

@@ -4,6 +4,7 @@ import {
   QUIZ_ROOMS_FALLBACK, DNA_HERO_FALLBACK, QUIZ_LANDING_HERO,
   QUIZ_DECK_RATIO, QUIZ_DECK_IMAGE_OPTS,
   QUIZ_HERO_SOURCES, QUIZ_HERO_SIZES, QUIZ_MOSAIC_SOURCES, QUIZ_MOSAIC_SIZES,
+  QUIZ_RESULT_HERO_SOURCES, QUIZ_RESULT_HERO_SIZES,
 } from '../components/StyleQuizScreen';
 import { PAIRS as AI_VISION_PAIRS } from '../components/AIVisionShowcase';
 import { SHOPPING_ROOMS, SHOPPING_LOGOS } from '../components/ShoppingListShowcase';
@@ -212,6 +213,56 @@ describe('Style-Quiz hero + mosaic — one informed crop, not two blind ones', (
     })!;
   /** Fraction of the delivered image still visible after object-fit: cover. */
   const kept = (delivered: number, band: number) => (delivered > band ? band / delivered : delivered / band);
+
+  /**
+   * The DNA result hero overrides the 74vh rule with height:auto/min-560, so
+   * its height is pinned at 560 and its band runs much wider. Measured.
+   */
+  const RESULT_BAND: [number, number][] = [
+    [390, 0.696], [768, 1.361], [1024, 1.050], [1280, 1.507], [1440, 1.793], [1920, 2.650],
+  ];
+
+  it('the result hero has its own ladder — the 74vh one regressed it', () => {
+    expect(QUIZ_RESULT_HERO_SOURCES).not.toEqual(QUIZ_HERO_SOURCES);
+    expect(QUIZ_RESULT_HERO_SIZES).toMatch(/vw/);
+    for (const [vw, band] of RESULT_BAND) {
+      const k = kept(ratioOf(pick(QUIZ_RESULT_HERO_SOURCES, vw).ratio), band);
+      expect(k, `result hero @${vw}px kept ${(k * 100).toFixed(1)}%`).toBeGreaterThan(0.8);
+    }
+  });
+
+  /**
+   * The result band's height is pinned at 560px, so its ratio is a pure
+   * function of viewport width and can be checked at EVERY width, not just
+   * sampled ones. 436px is the studio rail that appears at 1024.
+   */
+  const resultBand = (vw: number) => (vw < 1024 ? vw : vw - 436) / 560;
+
+  it('result-hero model matches what the page actually measured', () => {
+    for (const [vw, measured] of RESULT_BAND) {
+      expect(resultBand(vw), `@${vw}px`).toBeCloseTo(measured, 1);
+    }
+  });
+
+  it('result hero holds 80% at every width 320-1920, and never loses to the old 16:9', () => {
+    let worst = { vw: 0, k: 1 };
+    const regressions: number[] = [];
+    for (let vw = 320; vw <= 1920; vw++) {
+      const band = resultBand(vw);
+      const k = kept(ratioOf(pick(QUIZ_RESULT_HERO_SOURCES, vw).ratio), band);
+      if (k < worst.k) worst = { vw, k };
+      if (k < kept(16 / 9, band) - 1e-9) regressions.push(vw);
+    }
+    expect(regressions, `widths worse than the flat 16:9: ${regressions.slice(0, 5).join(',')}`).toHaveLength(0);
+    expect(worst.k, `worst ${(worst.k * 100).toFixed(1)}% @${worst.vw}px`).toBeGreaterThan(0.8);
+  });
+
+  it('the 74vh ladder never regresses against the flat 16:9 either', () => {
+    for (const [vw, band] of HERO_BAND) {
+      const now = kept(ratioOf(pick(QUIZ_HERO_SOURCES, vw).ratio), band);
+      expect(now, `hero @${vw}px`).toBeGreaterThanOrEqual(kept(16 / 9, band) - 0.001);
+    }
+  });
 
   it('every hero source is a valid ratio and only the last is unconditional', () => {
     QUIZ_HERO_SOURCES.forEach((s, i) => {
