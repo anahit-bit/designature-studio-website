@@ -272,7 +272,7 @@ export function buildStagingPrompt(args: {
   // that risk is real but not yet scored by the benchmark.
   return `Furnish this exact room as a fully furnished, fully styled ${roomLabel}. Add furniture, rugs, lighting, art, plants and styling — ${condenseStyleBrief(args.styleBrief)}
 
-Keep the room itself exactly as photographed: the same walls in the same positions, the same windows and doors at the same size and place, the same flat ceiling, the same proportions and the same camera view. You are furnishing this room, not redesigning it.${accentLine}${variationHint}`;
+Keep the room itself exactly as photographed: the same walls in the same positions, the same windows and doors at the same size and place, the same flat ceiling, the same proportions and the same camera view. You are furnishing this room, not redesigning it. If the room is unfinished, finish it: paint the walls, close and paint the ceiling flat at its existing height, lay a floor, and clear out every bag, board, tool and offcut left by the builders. Surfaces only — no new levels, coves, beams or openings.${accentLine}${variationHint}`;
 }
 
 /**
