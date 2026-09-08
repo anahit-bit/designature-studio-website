@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../LanguageContext';
 import { cld } from '../lib/cld';
+import { fileToResizedDataUrl } from '../lib/imageResize';
 import { AuthUser } from '../AuthContext';
 import { ConsultationReviewBand } from './ConsultationCTA';
 import { getStoredToken } from '../sessionClient';
@@ -161,13 +162,13 @@ const RoomAuditExperience: React.FC<Props> = (p) => {
   // ── Upload handler (ported from RoomAudit) ──
   const processFile = (file: File) => {
     if (file.size > 10 * 1024 * 1024) { setError(t('ai.uploadRoomImage')); return; }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setRoomImage(ev.target?.result as string);
+    // Downscale before encoding — the audit sends this photo to the server as a
+    // base64 data URL, and the analysis never uses more than ~1024px.
+    fileToResizedDataUrl(file).then((dataUrl) => {
+      setRoomImage(dataUrl);
       setError(null);
       setResult(null);
-    };
-    reader.readAsDataURL(file);
+    });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
