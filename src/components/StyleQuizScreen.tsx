@@ -71,6 +71,89 @@ const STYLE_DESCRIPTIONS: Record<string, { summary: string; elements: string[] }
 export const QUIZ_DECK_RATIO = '37/27';
 export const QUIZ_DECK_IMAGE_OPTS = { crop: 'pad' as const, aspectRatio: QUIZ_DECK_RATIO };
 
+/**
+ * Art-directed hero ladder.
+ *
+ * The hero band is `width:100%; height:74vh` (clamped 520-860px), painted with
+ * `object-fit: cover`. Its ratio therefore depends on BOTH viewport axes, and
+ * it is never 16:9. Measured on the real page:
+ *
+ *   390px -> 0.62   640px -> 0.96   768px -> 1.01   1024px -> 1.04
+ *   1280px -> 1.43  1440px -> 1.51  1680px -> 1.60  1920px -> 1.86
+ *
+ * Every hero used to be delivered at a flat 16:9 (1.78) with no srcSet, so the
+ * browser cover-cropped a SECOND time to reach the band — a blind centre crop
+ * that could discard exactly what Cloudinary's g_auto had chosen to keep. On a
+ * phone the two crops compounded to ~80% of the picture thrown away.
+ *
+ * One informed crop instead of two blind ones: each breakpoint is delivered at
+ * roughly the ratio that breakpoint actually paints, so cover has almost
+ * nothing left to remove. Ratios sit mid-range within each bucket because the
+ * band still moves with viewport HEIGHT, which a media query cannot see.
+ *
+ * Heroes fill a cinematic band behind a glass card, so they must COVER — this
+ * is deliberately not the deck's pad treatment ([[QUIZ_DECK_IMAGE_OPTS]]).
+ */
+export const QUIZ_HERO_SOURCES: { media?: string; ratio: string; widths: number[] }[] = [
+  { media: '(max-width: 639px)',  ratio: '3/4',  widths: [420, 640, 840, 1280] },
+  { media: '(max-width: 1023px)', ratio: '1/1',  widths: [640, 768, 1024, 1536] },
+  { media: '(max-width: 1439px)', ratio: '5/4',  widths: [780, 1024, 1560, 2048] },
+  { media: '(max-width: 1679px)', ratio: '3/2',  widths: [1024, 1200, 1600, 2048] },
+  { ratio: '16/9', widths: [1280, 1600, 1920, 2560] },
+];
+/** The band is inset by the studio rail on desktop (1004px of a 1440px viewport). */
+export const QUIZ_HERO_SIZES = '(min-width: 1024px) 75vw, 100vw';
+
+/**
+ * Mosaic tile ladder. Tiles are grid cells, never square: the grid is 6 columns
+ * above 640px and 4 below, with `grid-auto-rows: 1fr`, so measured cell ratios
+ * run 0.49 (768px) to 1.0 (640px). They were delivered at a flat 1:1 and a flat
+ * w_420 — half the width of every tile thrown away on a tablet, and a 420px
+ * asset fetched 18 times for cells as small as 93px.
+ *
+ * Three rungs, because the 6-column band squares up as the viewport widens.
+ * The wide rung trades a little fidelity at 1920 (92% -> 81% of the tile kept)
+ * to fix the tablet case (49% -> 99%); tiles are 74%-brightness, scrim-covered
+ * and drift-animated, so the trade is invisible and the tablet loss was not.
+ */
+export const QUIZ_MOSAIC_SOURCES: { media?: string; ratio: string; widths: number[] }[] = [
+  { media: '(max-width: 640px)',  ratio: '7/8', widths: [120, 180, 240, 360] },
+  { media: '(max-width: 1199px)', ratio: '1/2', widths: [140, 200, 280, 420] },
+  { ratio: '3/4', widths: [200, 280, 400, 560] },
+];
+export const QUIZ_MOSAIC_SIZES = '(max-width: 640px) 25vw, 17vw';
+
+/** `<picture>` over a Cloudinary source, one `<source>` per breakpoint ratio. */
+const ArtDirected: React.FC<{
+  src: string;
+  alt: string;
+  sources: { media?: string; ratio: string; widths: number[] }[];
+  sizes: string;
+  className?: string;
+  loading?: 'eager' | 'lazy';
+}> = ({ src, alt, sources, sizes, className, loading = 'eager' }) => {
+  const fallback = sources[sources.length - 1];
+  return (
+    <picture>
+      {sources.map((s, i) => (
+        <source
+          key={i}
+          {...(s.media ? { media: s.media } : {})}
+          srcSet={cldSrcSet(src, s.widths, { crop: 'fill', aspectRatio: s.ratio })}
+          sizes={sizes}
+        />
+      ))}
+      <img
+        src={cld(src, fallback.widths[fallback.widths.length - 2], { crop: 'fill', aspectRatio: fallback.ratio })}
+        alt={alt}
+        className={className}
+        loading={loading}
+        decoding="async"
+      />
+    </picture>
+  );
+};
+
 type QuizRoom = { url: string; credit: string };
 type QuizRooms = Record<string, QuizRoom[]>;
 
@@ -773,7 +856,6 @@ const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignI
     if (!top) return null;
     const desc = STYLE_DESCRIPTIONS[top.style];
     const rawHero = quizRooms[top.style]?.[0]?.url || DNA_HERO_FALLBACK;
-    const heroBg = cld(rawHero, 2000, { crop: 'fill', aspectRatio: '16/9' });
     const breakdown = quizResult.filter(r => r.pct > 0).slice(0, 5);
 
     return (
@@ -791,7 +873,9 @@ const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignI
 
         {/* cinematic DNA hero */}
         <div className="hero" style={{ height: 'auto', minHeight: 560 }}>
-          <div className="hero-media"><img src={heroBg} alt={styleLabel(top.style)} /></div>
+          <div className="hero-media">
+            <ArtDirected src={rawHero} alt={styleLabel(top.style)} sources={QUIZ_HERO_SOURCES} sizes={QUIZ_HERO_SIZES} />
+          </div>
           <div className="absolute inset-0" style={{ background: 'linear-gradient(105deg,rgba(0,0,0,.80) 0%,rgba(0,0,0,.52) 42%,rgba(0,0,0,.2) 100%)' }} />
           <div className="absolute inset-0 flex items-center py-12">
             <div className="w-full px-10 md:px-16 grid lg:grid-cols-[1fr_360px] gap-10 items-center">
@@ -910,7 +994,7 @@ const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignI
     const mosaic = (
       <div className="hero-mosaic">
         {mosaicTiles.map((url, i) => (
-          <img key={i} src={cld(url, 420, { crop: 'fill', aspectRatio: '1/1' })} alt="" loading="eager" />
+          <ArtDirected key={i} src={url} alt="" sources={QUIZ_MOSAIC_SOURCES} sizes={QUIZ_MOSAIC_SIZES} />
         ))}
       </div>
     );
@@ -963,7 +1047,7 @@ const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignI
           <StatusHdr tone="working" label={t('ai.quiz.readingTitle')} right={
             <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-black/60">{t('ai.quiz.readingQuota')}</span>
           } />
-          <StudioHero media={<div className="hero-media"><img src={cld(rawHero, 2000, { crop: 'fill', aspectRatio: '16/9' })} alt="" /></div>}
+          <StudioHero media={<div className="hero-media"><ArtDirected src={rawHero} alt="" sources={QUIZ_HERO_SOURCES} sizes={QUIZ_HERO_SIZES} /></div>}
             scrim={<div className="absolute inset-0 bg-black/[0.72]" />}>
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 text-center px-8">
               <div className="w-12 h-12 border-2 border-white/15 border-t-white rounded-full animate-spin" />
@@ -987,7 +1071,7 @@ const StyleQuizScreen: React.FC<StyleQuizScreenProps> = ({ onApplyStyle, onSignI
           <StatusHdr tone="ready" label={t('ai.quiz.statusReady')} right={
             <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-black/60">{t('ai.quiz.alwaysFree')}</span>
           } />
-          <StudioHero media={<div className="hero-media"><img src={cld(landingHero, 2000, { crop: 'fill', aspectRatio: '16/9' })} alt="" /></div>} scrim overlay>
+          <StudioHero media={<div className="hero-media"><ArtDirected src={landingHero} alt="" sources={QUIZ_HERO_SOURCES} sizes={QUIZ_HERO_SIZES} /></div>} scrim overlay>
             <span className="badge-cobalt absolute top-6 left-6 text-[10px] font-bold uppercase tracking-[0.22em] px-3 py-1.5 z-10">{t('ai.quiz.li.badge')}</span>
             <Glass className="px-10 py-10 md:px-12 md:py-12 text-center">
               <p className="text-[11px] font-bold uppercase tracking-[0.34em] text-white/70 mb-3">{t('ai.styleQuiz')}</p>

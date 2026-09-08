@@ -85,7 +85,10 @@
 /* hero band */
 .studio-frame .hero { position: relative; width: 100%; height: 74vh; min-height: 520px; max-height: 860px; overflow: hidden; background: #000; }
 .studio-frame .hero-media { position: absolute; inset: 0; }
-.studio-frame .hero-media > img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Heroes are art-directed via <picture>, so the img is a grandchild — match by
+   descendant, and let the wrapping <picture> fill the band. */
+.studio-frame .hero-media > picture { display: block; width: 100%; height: 100%; }
+.studio-frame .hero-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
 /* Style Quiz landing uses the slightly darker scrim per the readability audit (.42/.14/.66). */
 .studio-frame .hero-scrim { position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(180deg, rgba(0,0,0,.42) 0%, rgba(0,0,0,.14) 35%, rgba(0,0,0,.66) 100%); }
@@ -120,6 +123,9 @@
 /* logged-out-only drifting style MOSAIC hero (distinct from the single-image landing hero) */
 .studio-frame .hero-mosaic { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(6, 1fr); grid-auto-rows: 1fr; gap: 5px;
   transform: scale(1.08); animation: sxMosaicDrift 46s ease-in-out infinite alternate; }
+/* Tiles are art-directed too, so <picture> is the grid item; min-* 0 stops it
+   from being floored at its intrinsic size and overflowing the cell. */
+.studio-frame .hero-mosaic > picture { display: block; width: 100%; height: 100%; min-width: 0; min-height: 0; }
 .studio-frame .hero-mosaic img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.92) brightness(.74); }
 .studio-frame .hero-mosaic-scrim { position: absolute; inset: 0; pointer-events: none;
   background: radial-gradient(120% 90% at 50% 45%, rgba(0,0,0,.30) 0%, rgba(0,0,0,.58) 55%, rgba(0,0,0,.82) 100%); }

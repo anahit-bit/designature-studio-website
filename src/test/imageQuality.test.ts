@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { cld, cldSrcSet } from '../lib/cld';
-import { QUIZ_ROOMS_FALLBACK, DNA_HERO_FALLBACK, QUIZ_LANDING_HERO, QUIZ_DECK_RATIO, QUIZ_DECK_IMAGE_OPTS } from '../components/StyleQuizScreen';
+import {
+  QUIZ_ROOMS_FALLBACK, DNA_HERO_FALLBACK, QUIZ_LANDING_HERO,
+  QUIZ_DECK_RATIO, QUIZ_DECK_IMAGE_OPTS,
+  QUIZ_HERO_SOURCES, QUIZ_HERO_SIZES, QUIZ_MOSAIC_SOURCES, QUIZ_MOSAIC_SIZES,
+} from '../components/StyleQuizScreen';
 import { PAIRS as AI_VISION_PAIRS } from '../components/AIVisionShowcase';
 import { SHOPPING_ROOMS, SHOPPING_LOGOS } from '../components/ShoppingListShowcase';
 
@@ -36,7 +40,10 @@ const BUDGET = {
   tile: 70_000,  // mosaic / loved thumb, w_420
 };
 
-const HERO_OPTS = { crop: 'fill' as const, aspectRatio: '16/9' };
+/** Widest rung of the real hero ladder — the heaviest thing a visitor can pull. */
+const HERO_TOP = QUIZ_HERO_SOURCES[QUIZ_HERO_SOURCES.length - 1];
+const HERO_OPTS = { crop: 'fill' as const, aspectRatio: HERO_TOP.ratio };
+const HERO_WIDTH = HERO_TOP.widths[HERO_TOP.widths.length - 1];
 /** The real deck delivery options, imported so the smoke test can never drift from the screen. */
 const DECK_OPTS = QUIZ_DECK_IMAGE_OPTS;
 const FILL_OPTS = { crop: 'fill' as const, aspectRatio: '16/11' };
@@ -45,8 +52,8 @@ const SQUARE_OPTS = { crop: 'fill' as const, aspectRatio: '1/1' };
 type Case = { label: string; src: string; width: number; opts?: any; budget: number; minBytes?: number };
 
 const LIVE_MANIFEST: Case[] = [
-  { label: 'DNA result hero', src: DNA_HERO_FALLBACK, width: 2000, opts: HERO_OPTS, budget: BUDGET.hero },
-  { label: 'Logged-in landing hero', src: QUIZ_LANDING_HERO, width: 2000, opts: HERO_OPTS, budget: BUDGET.hero },
+  { label: 'DNA result hero', src: DNA_HERO_FALLBACK, width: HERO_WIDTH, opts: HERO_OPTS, budget: BUDGET.hero },
+  { label: 'Logged-in landing hero', src: QUIZ_LANDING_HERO, width: HERO_WIDTH, opts: HERO_OPTS, budget: BUDGET.hero },
   // Every Style-Quiz fallback room, at deck size — guards the exact 404 class that shipped once.
   ...Object.entries(QUIZ_ROOMS_FALLBACK).flatMap(([style, rooms]) =>
     rooms.map((r, i) => ({ label: `fallback ${style} #${i + 1}`, src: r.url, width: 1200, opts: DECK_OPTS, budget: BUDGET.deck }))
@@ -176,6 +183,93 @@ describe('Style-Quiz fallback dataset — delivery form (unit)', () => {
  * height of every square — cove lighting, pendants and ceilings cropped out of
  * the very rooms people are being asked to judge.
  */
+/**
+ * Hero + mosaic art direction (regression).
+ *
+ * Both used to be delivered at a single flat ratio with no srcSet, so the
+ * browser cover-cropped a SECOND time to reach the real band. Ratios below are
+ * MEASURED on the running page, not assumed — see QUIZ_HERO_SOURCES.
+ */
+describe('Style-Quiz hero + mosaic — one informed crop, not two blind ones', () => {
+  /** Band ratio actually painted at each viewport width. */
+  const HERO_BAND: [number, number][] = [
+    [390, 0.624], [640, 0.961], [768, 1.006], [1024, 1.035],
+    [1280, 1.426], [1440, 1.508], [1680, 1.601], [1920, 1.857],
+  ];
+  /** Mosaic cell ratio actually painted at each viewport width. */
+  const TILE_BAND: [number, number][] = [
+    [390, 0.775], [640, 1.000], [768, 0.493], [1024, 0.504],
+    [1280, 0.704], [1440, 0.746], [1680, 0.795], [1920, 0.924],
+  ];
+
+  const ratioOf = (r: string) => { const [a, b] = r.split('/').map(Number); return a / b; };
+  /** The rung a browser picks: first source whose media query matches. */
+  const pick = (sources: typeof QUIZ_HERO_SOURCES, vw: number) =>
+    sources.find(s => {
+      if (!s.media) return true;
+      const m = s.media.match(/max-width:\s*(\d+)px/);
+      return m ? vw <= Number(m[1]) : true;
+    })!;
+  /** Fraction of the delivered image still visible after object-fit: cover. */
+  const kept = (delivered: number, band: number) => (delivered > band ? band / delivered : delivered / band);
+
+  it('every hero source is a valid ratio and only the last is unconditional', () => {
+    QUIZ_HERO_SOURCES.forEach((s, i) => {
+      expect(ratioOf(s.ratio), s.ratio).toBeGreaterThan(0);
+      expect(s.widths.length, s.ratio).toBeGreaterThan(1);
+      if (i < QUIZ_HERO_SOURCES.length - 1) expect(s.media, `rung ${i}`).toBeTruthy();
+      else expect(s.media, 'last rung must be the unconditional fallback').toBeUndefined();
+    });
+  });
+
+  it('hero media queries ascend, so the first match is the narrowest rung', () => {
+    const caps = QUIZ_HERO_SOURCES.filter(s => s.media)
+      .map(s => Number(s.media!.match(/max-width:\s*(\d+)px/)![1]));
+    expect(caps).toEqual([...caps].sort((a, b) => a - b));
+  });
+
+  it('hero keeps at least 80% of the picture at every measured viewport', () => {
+    for (const [vw, band] of HERO_BAND) {
+      const k = kept(ratioOf(pick(QUIZ_HERO_SOURCES, vw).ratio), band);
+      expect(k, `hero @${vw}px kept ${(k * 100).toFixed(1)}%`).toBeGreaterThan(0.8);
+    }
+  });
+
+  it('mosaic tiles keep at least 80% at every measured viewport', () => {
+    for (const [vw, band] of TILE_BAND) {
+      const k = kept(ratioOf(pick(QUIZ_MOSAIC_SOURCES, vw).ratio), band);
+      expect(k, `tile @${vw}px kept ${(k * 100).toFixed(1)}%`).toBeGreaterThan(0.8);
+    }
+  });
+
+  it('beats the old flat 16:9 hero everywhere it used to hurt', () => {
+    for (const [vw, band] of HERO_BAND.filter(([w]) => w <= 1280)) {
+      const now = kept(ratioOf(pick(QUIZ_HERO_SOURCES, vw).ratio), band);
+      const before = kept(16 / 9, band);
+      expect(now, `hero @${vw}px`).toBeGreaterThan(before);
+    }
+  });
+
+  it('emits c_fill with the rung ratio and real width descriptors', () => {
+    const src = QUIZ_LANDING_HERO;
+    for (const s of QUIZ_HERO_SOURCES) {
+      const ss = cldSrcSet(src, s.widths, { crop: 'fill', aspectRatio: s.ratio });
+      expect(ss).toContain('c_fill');
+      expect(ss.match(/\b\d+w\b/g), s.ratio).toHaveLength(s.widths.length);
+      const [a, b] = s.ratio.split('/').map(Number);
+      expect(ss, s.ratio).toContain(`h_${Math.round((s.widths[0] * b) / a)}`);
+    }
+  });
+
+  it('ships sizes hints so a phone never pulls a desktop hero', () => {
+    expect(QUIZ_HERO_SIZES).toMatch(/vw/);
+    expect(QUIZ_MOSAIC_SIZES).toMatch(/vw/);
+    // The old code hard-requested w_2000 on every viewport.
+    const narrowest = QUIZ_HERO_SOURCES[0];
+    expect(Math.min(...narrowest.widths)).toBeLessThan(800);
+  });
+});
+
 describe('Style-Quiz deck — never crops the room (regression)', () => {
   it('deck frame matches the native ratio of the 1184x864 render set', () => {
     const [w, h] = QUIZ_DECK_RATIO.split('/').map(Number);
