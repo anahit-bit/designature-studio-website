@@ -290,9 +290,11 @@ export function buildStagingPrompt(args: {
   // edit instruction pull the model off the photograph. KEEP THIS SHORT — length
   // here is not thoroughness, it is drift.
   //
-  // The room type is still fixed by the opening sentence. What is given up is the
-  // wrong-room exclusion list that the Gemini path carries in ROOM_PROGRAM_RULES;
-  // that risk is real but not yet scored by the benchmark.
+  // The room type is fixed by the opening sentence plus ROOM_ANCHORS. The risk
+  // this comment used to log as "not yet scored" was scored the hard way: the
+  // prompt never contained the word "sofa", and produced a living room without
+  // one. What is still given up is the full wrong-room EXCLUSION list that the
+  // Gemini path carries in ROOM_PROGRAM_RULES, which does not fit the budget.
   return `Furnish this exact room as a fully furnished, fully styled ${roomLabel}. It must include ${ROOM_ANCHORS[roomTypeKey]}, plus rugs, lighting, art and plants — ${condenseStyleBrief(args.styleBrief)}
 
 Keep the room exactly as photographed: the same walls, windows and doors in the same places at the same sizes, the same flat ceiling, proportions and camera view. You are furnishing this room, not redesigning it. If the room is unfinished, finish it: paint the walls, paint the ceiling flat at its height, lay a floor, clear the builders' materials. Surfaces only — no new levels or openings. A raw opening is a doorway: frame it, hang a door at that size, keep it clear.${accentLine}${variationHint}`;

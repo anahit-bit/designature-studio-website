@@ -42,6 +42,11 @@ const PREFIX_REDIRECTS: ReadonlyArray<{ base: string; target: string }> = [
 
 /** Exact-path rules: one legacy URL → one canonical target. */
 const EXACT_REDIRECTS: Readonly<Record<string, string>> = {
+  // Retired 2026-09-08: the standalone AI Vision marketing page was superseded
+  // by the AI Studio, which carries the live tool. The URL was in the sitemap at
+  // priority 0.8 and linked from every journal article, so it redirects rather
+  // than 404s — bookmarks and any indexed result land on the working page.
+  "/ai-vision": "/ai-concepts",
   "/free-consultation": "/consultation",
   "/contact-us-arm": "/studio", // no /contact route exists; /studio carries brand + contact
   "/portfolio/family-fun-center": "/portfolio",

@@ -11,6 +11,7 @@ import FeedbackModal from './FeedbackModal';
 import AIVisionShowcase from './AIVisionShowcase';
 import VisionExperience from './VisionExperience';
 import { buildShoppingListPdf } from '../lib/shoppingPdf';
+import { fileToResizedDataUrl } from '../lib/imageResize';
 import FeedbackBand from './FeedbackBand';
 import ShoppingListShowcase from './ShoppingListShowcase';
 import ShoppingExperience from './ShoppingExperience';
@@ -611,12 +612,10 @@ const AIConceptsPage: React.FC = () => {
     if (!files || (files as FileList).length === 0) return;
     setValidationError(null);
 
-    const readFile = (file: File): Promise<string> =>
-      new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(file);
-      });
+    // Downscale before encoding. A phone photo is 4-8 MB and grows another
+    // ~33% as base64, and the room photo is sent more than once — while nothing
+    // downstream uses more than a 1216px long edge.
+    const readFile = (file: File): Promise<string> => fileToResizedDataUrl(file);
 
     if (type === 'inspiration') {
       const slots = 5 - inspirationImages.length;
@@ -675,9 +674,7 @@ const AIConceptsPage: React.FC = () => {
   };
 
   const processShoppingFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const dataUrl = ev.target?.result as string;
+    fileToResizedDataUrl(file).then((dataUrl) => {
       setStandaloneShoppingImage(dataUrl);
       const img = new Image();
       img.onload = () => {
@@ -688,8 +685,7 @@ const AIConceptsPage: React.FC = () => {
         else setStandaloneShoppingAspectRatio('3/4');
       };
       img.src = dataUrl;
-    };
-    reader.readAsDataURL(file);
+    });
   };
 
   const handleShopDrop = (e: React.DragEvent) => {
