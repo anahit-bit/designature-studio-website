@@ -197,6 +197,29 @@ ACCENT COLOUR FOR THIS CONCEPT — ${named}, approximately ${accent.hex}:
 ${how} Keep every other instruction in the style brief intact — same materials, same furniture character, same lighting, same mood. Only this one colour is emphasised. Do NOT spread it over every surface, and do NOT introduce other saturated colours alongside it that the style brief does not name.`;
 }
 
+/**
+ * The one or two pieces that MAKE each room what it is.
+ *
+ * The staging path cannot afford the full ROOM_PROGRAM_RULES block (~90 words,
+ * measured to cost fidelity to the source photo), so it previously said only
+ * "furnish this as a living room" and nothing about what a living room contains.
+ * The result was a living room with no sofa. This is the irreducible core of the
+ * programme: about ten words, naming the anchor the room is unrecognisable
+ * without.
+ */
+export const ROOM_ANCHORS: Record<RoomType, string> = {
+  living_room: "a sofa, armchairs and a coffee table",
+  dining_room: "a dining table with chairs and a sideboard",
+  living_dining: "a sofa and coffee table AND a dining table with chairs",
+  bedroom: "a made bed with a bedside table where the wall allows",
+  kitchen: "fitted cabinets, worktop, sink and cooker",
+  bathroom: "a vanity with basin and mirror, and a bath or shower",
+  home_office: "a desk, task chair and storage",
+  kids_room: "a child-scale bed, small desk and play storage",
+  outdoor: "weather-proof seating and planters",
+  hallway: "a narrow console, mirror and runner",
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Step 1 — Style extraction prompt (verbatim from pipeline spec)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -267,12 +290,14 @@ export function buildStagingPrompt(args: {
   // edit instruction pull the model off the photograph. KEEP THIS SHORT — length
   // here is not thoroughness, it is drift.
   //
-  // The room type is still fixed by the opening sentence. What is given up is the
-  // wrong-room exclusion list that the Gemini path carries in ROOM_PROGRAM_RULES;
-  // that risk is real but not yet scored by the benchmark.
-  return `Furnish this exact room as a fully furnished, fully styled ${roomLabel}. Add furniture, rugs, lighting, art, plants and styling — ${condenseStyleBrief(args.styleBrief)}
+  // The room type is fixed by the opening sentence plus ROOM_ANCHORS. The risk
+  // this comment used to log as "not yet scored" was scored the hard way: the
+  // prompt never contained the word "sofa", and produced a living room without
+  // one. What is still given up is the full wrong-room EXCLUSION list that the
+  // Gemini path carries in ROOM_PROGRAM_RULES, which does not fit the budget.
+  return `Furnish this exact room as a fully furnished, fully styled ${roomLabel}. It must include ${ROOM_ANCHORS[roomTypeKey]}, plus rugs, lighting, art and plants — ${condenseStyleBrief(args.styleBrief)}
 
-Keep the room itself exactly as photographed: the same walls in the same positions, the same windows and doors at the same size and place, the same flat ceiling, the same proportions and the same camera view. You are furnishing this room, not redesigning it. If the room is unfinished, finish it: paint the walls, close and paint the ceiling flat at its existing height, lay a floor, and clear out every bag, board, tool and offcut left by the builders. Surfaces only — no new levels, coves, beams or openings.${accentLine}${variationHint}`;
+Keep the room exactly as photographed: the same walls, windows and doors in the same places at the same sizes, the same flat ceiling, proportions and camera view. You are furnishing this room, not redesigning it. If the room is unfinished, finish it: paint the walls, paint the ceiling flat at its height, lay a floor, clear the builders' materials. Surfaces only — no new levels or openings. A raw opening is a doorway: frame it, hang a door at that size, keep it clear.${accentLine}${variationHint}`;
 }
 
 /**

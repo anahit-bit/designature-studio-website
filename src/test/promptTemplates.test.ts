@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  ROOM_ANCHORS,
   buildGenerationPrompt,
   buildStagingPrompt,
   ROOM_PROGRAM_RULES,
@@ -117,16 +118,45 @@ describe('buildStagingPrompt · room type and length', () => {
 
   it('tells an unfinished room to finish its surfaces, without changing them', () => {
     // A construction-stage room came back with bare plaster, a raw floor, wires
-    // still hanging and the builders' cement bag still in the corner — staging
+    // still hanging and the builders' cement bag still in the corner - staging
     // only ADDS furniture, so nothing was finishing the surfaces. The clause is
     // conditional and surface-only: paint and floor yes, new levels no.
     const prompt = buildStagingPrompt({ styleBrief: BRIEF, roomType: 'bedroom' });
     expect(prompt).toContain('If the room is unfinished');
     expect(prompt).toContain('paint the walls');
     expect(prompt).toContain('lay a floor');
-    expect(prompt.toLowerCase()).toContain('clear out every bag');
+    expect(prompt).toContain("clear the builders' materials");
     // Finishing must not become licence to redesign the ceiling.
-    expect(prompt).toContain('no new levels, coves, beams or openings');
+    expect(prompt).toContain('no new levels or openings');
+  });
+
+  it('turns a raw opening into a door and keeps it clear', () => {
+    // An unfinished room's door openings are raw holes, which the model read as
+    // wall rather than doorway - so it walled them over or stood furniture in
+    // front of them.
+    const prompt = buildStagingPrompt({ styleBrief: BRIEF, roomType: 'bedroom' });
+    expect(prompt).toContain('A raw opening is a doorway');
+    expect(prompt).toContain('keep it clear');
+  });
+
+  it('names the anchor furniture each room type is unrecognisable without', () => {
+    // The staging path cannot afford the full ~90-word room programme, so it used
+    // to say only "furnish this as a living room" - and produced a living room
+    // with no sofa. ROOM_ANCHORS is the irreducible core of the programme.
+    expect(buildStagingPrompt({ styleBrief: BRIEF, roomType: 'living_room' })).toContain('a sofa');
+    expect(buildStagingPrompt({ styleBrief: BRIEF, roomType: 'dining_room' })).toContain('a dining table');
+    expect(buildStagingPrompt({ styleBrief: BRIEF, roomType: 'bedroom' })).toContain('a made bed');
+  });
+
+  it('keeps every room type under the length that costs structure', () => {
+    // Measured on pack 1, same rules, only the wording length changing:
+    //   159w -> residential damage 3, 3
+    //   190w -> residential damage 9, 7
+    // Identical instructions. On this engine length itself is the cost.
+    for (const rt of Object.keys(ROOM_ANCHORS) as Array<keyof typeof ROOM_ANCHORS>) {
+      const words = buildStagingPrompt({ styleBrief: BRIEF, roomType: rt }).split(/\s+/).length;
+      expect(words).toBeLessThan(180);
+    }
   });
 
   it('still carries the palette accent, compressed to one line', () => {
