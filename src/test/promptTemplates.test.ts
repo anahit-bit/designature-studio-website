@@ -115,6 +115,20 @@ describe('buildStagingPrompt · room type and length', () => {
     expect(prompt.split(/\s+/).length).toBeLessThan(180);
   });
 
+  it('tells an unfinished room to finish its surfaces, without changing them', () => {
+    // A construction-stage room came back with bare plaster, a raw floor, wires
+    // still hanging and the builders' cement bag still in the corner — staging
+    // only ADDS furniture, so nothing was finishing the surfaces. The clause is
+    // conditional and surface-only: paint and floor yes, new levels no.
+    const prompt = buildStagingPrompt({ styleBrief: BRIEF, roomType: 'bedroom' });
+    expect(prompt).toContain('If the room is unfinished');
+    expect(prompt).toContain('paint the walls');
+    expect(prompt).toContain('lay a floor');
+    expect(prompt.toLowerCase()).toContain('clear out every bag');
+    // Finishing must not become licence to redesign the ceiling.
+    expect(prompt).toContain('no new levels, coves, beams or openings');
+  });
+
   it('still carries the palette accent, compressed to one line', () => {
     const accent = { name: 'Muted Sage', hex: '#9CA88D', role: 'accent' } as any;
     const prompt = buildStagingPrompt({ styleBrief: BRIEF, roomType: 'bedroom', accent });
