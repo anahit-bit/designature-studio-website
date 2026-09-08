@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   ROOM_ANCHORS,
+  pickAccent,
   buildGenerationPrompt,
   buildStagingPrompt,
   ROOM_PROGRAM_RULES,
@@ -150,12 +151,23 @@ describe('buildStagingPrompt · room type and length', () => {
 
   it('keeps every room type under the length that costs structure', () => {
     // Measured on pack 1, same rules, only the wording length changing:
-    //   159w -> residential damage 3, 3
-    //   190w -> residential damage 9, 7
+    //   the shipped wording  -> residential damage 3, 3
+    //   ~30 words longer     -> residential damage 9, 7
     // Identical instructions. On this engine length itself is the cost.
+    //
+    // The accent MUST be included here. Production always passes one
+    // (server.ts calls pickAccent before generateConcept), and it adds ~20
+    // words -- an earlier version of this guard omitted it and so policed a
+    // prompt that is never actually sent. Worst case today is living_dining at
+    // 186 words; the version measured as harmful was ~30 longer than that.
+    const accent = pickAccent('modern', 0);
     for (const rt of Object.keys(ROOM_ANCHORS) as Array<keyof typeof ROOM_ANCHORS>) {
-      const words = buildStagingPrompt({ styleBrief: BRIEF, roomType: rt }).split(/\s+/).length;
-      expect(words).toBeLessThan(180);
+      const words = buildStagingPrompt({
+        styleBrief: BRIEF,
+        roomType: rt,
+        accent,
+      }).split(/\s+/).length;
+      expect(words).toBeLessThan(200);
     }
   });
 
