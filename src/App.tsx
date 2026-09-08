@@ -6,7 +6,6 @@ import PortfolioPage from './components/PortfolioPage';
 import ProjectDetail from './components/ProjectDetail';
 import ServicesPage from './components/ServicesPage';
 import StudioPage from './components/StudioPage';
-import AIVisionPage from './components/AIVisionPage';
 import AIConceptsPage from './components/AIConceptsPage';
 import PricingPage from './components/PricingPage';
 import FAQPage from './components/FAQPage';
@@ -101,13 +100,6 @@ const PricingRoute: React.FC = () => (
   </div>
 );
 
-const AIVisionRoute: React.FC = () => (
-  <div className="min-h-screen bg-black font-body">
-    <Header />
-    <AIVisionPage />
-  </div>
-);
-
 const DeliverablesRoute: React.FC = () => (
   <div className="min-h-screen bg-white font-body">
     <Header />
@@ -176,7 +168,6 @@ const App: React.FC = () => (
             <Route path="/services" element={<ServicesPage />} />
             <Route path="/studio" element={<StudioPage />} />
             <Route path="/ai-concepts" element={<AIConceptsRoute />} />
-            <Route path="/ai-vision" element={<AIVisionRoute />} />
             <Route path="/pricing" element={<PricingRoute />} />
             <Route path="/faq" element={<FAQPage />} />
             <Route path="/retail" element={<RetailRoute />} />

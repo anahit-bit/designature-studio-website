@@ -40,7 +40,6 @@ export type RouteKey =
   | "studio"
   | "deliverables"
   | "aiConcepts"
-  | "aiVision"
   | "pricing"
   | "faq"
   | "journalIndex"
@@ -109,8 +108,6 @@ export function classifyRoute(pathname: string): RouteInfo {
       return { key: "deliverables" };
     case "/ai-concepts":
       return { key: "aiConcepts" };
-    case "/ai-vision":
-      return { key: "aiVision" };
     case "/pricing":
       return { key: "pricing" };
     case "/faq":
@@ -200,16 +197,6 @@ const STATIC_META: Record<
     ogTitle: "AI Design Studio — Free Interior Design Tools",
     ogDescription:
       "Style Quiz, AI Vision, and Shopping List — explore your style and visualize your space with AI.",
-    ogImage: DEFAULT_OG_IMAGE,
-  },
-  aiVision: {
-    path: "/ai-vision",
-    title: "AI Vision — Photorealistic Room Redesign" + SUFFIX,
-    description:
-      "Upload a photo of your room and let AI Vision generate a photorealistic redesign in the style you choose. See your space transformed before you commit — free to try.",
-    ogTitle: "AI Vision — See Your Room Transformed",
-    ogDescription:
-      "Upload a room photo and get a photorealistic AI redesign in your chosen interior style.",
     ogImage: DEFAULT_OG_IMAGE,
   },
   pricing: {

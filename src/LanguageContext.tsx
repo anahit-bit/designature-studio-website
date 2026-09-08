@@ -6,7 +6,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 // so future contributors know the toggle deliberately doesn't exist — this is
 // not an oversight. See memory: feedback_no_armenian_translations.md.
 export type Language = 'en';
-export type Page = 'home' | 'portfolio' | 'project-detail' | 'services' | 'studio' | 'deliverables' | 'ai-concepts' | 'ai-vision' | 'pricing' | 'faq' | 'journal' | 'journal-detail' | 'journal-category' | 'terms' | 'privacy' | 'refund' | 'consultation' | 'booking-confirmed' | 'booking-failed';
+export type Page = 'home' | 'portfolio' | 'project-detail' | 'services' | 'studio' | 'deliverables' | 'ai-concepts' | 'pricing' | 'faq' | 'journal' | 'journal-detail' | 'journal-category' | 'terms' | 'privacy' | 'refund' | 'consultation' | 'booking-confirmed' | 'booking-failed';
 export type PortfolioFilter = 'All' | 'Residential' | 'Commercial';
 
 // URL ⇄ page-state mapping. URL is the source of truth; localStorage persistence
@@ -20,7 +20,6 @@ function pathToPageState(pathname: string): { page: Page; projectId: string | nu
   if (pathname === '/studio') return { page: 'studio', projectId: null };
   if (pathname === '/deliverables') return { page: 'deliverables', projectId: null };
   if (pathname === '/ai-concepts') return { page: 'ai-concepts', projectId: null };
-  if (pathname === '/ai-vision') return { page: 'ai-vision', projectId: null };
   if (pathname === '/pricing') return { page: 'pricing', projectId: null };
   if (pathname === '/faq') return { page: 'faq', projectId: null };
   if (pathname === '/journal') return { page: 'journal', projectId: null };
@@ -51,8 +50,6 @@ function pageToPath(page: Page, projectId?: string | null, filter?: PortfolioFil
       return '/deliverables';
     case 'ai-concepts':
       return '/ai-concepts';
-    case 'ai-vision':
-      return '/ai-vision';
     case 'pricing':
       return '/pricing';
     case 'faq':

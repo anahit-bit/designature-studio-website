@@ -34,6 +34,21 @@ function runMiddleware(path: string) {
   return { redirectedTo, redirectStatus, sentStatus, sentBody, nextCalled };
 }
 
+describe('retired routes', () => {
+  // /ai-vision was a standalone marketing page superseded by the AI Studio,
+  // which carries the live tool. It sat in the sitemap at priority 0.8 and was
+  // linked from every journal article, so it must REDIRECT rather than 404 --
+  // bookmarks and already-indexed results have to land somewhere that works.
+  it('/ai-vision permanently redirects to /ai-concepts', () => {
+    expect(matchLegacyRedirect('/ai-vision')).toEqual({ status: 301, target: '/ai-concepts' });
+  });
+
+  it('tolerates a trailing slash and casing, like every other rule', () => {
+    expect(matchLegacyRedirect('/ai-vision/')).toEqual({ status: 301, target: '/ai-concepts' });
+    expect(matchLegacyRedirect('/AI-Vision')).toEqual({ status: 301, target: '/ai-concepts' });
+  });
+});
+
 describe('legacy redirect map — 301 exact rules', () => {
   const cases: Array<[string, string]> = [
     ['/free-consultation', '/consultation'],
@@ -113,7 +128,6 @@ describe('legacy redirect map — live routes pass through untouched', () => {
     '/services',
     '/studio',
     '/ai-concepts',
-    '/ai-vision',
     '/pricing',
     '/faq',
     '/journal',
