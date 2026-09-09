@@ -854,6 +854,39 @@ export const PROJECTS_LIST: ProjectData[] = [
   },
 
   // ════════════════════════════════════════════════
+  // PROJECT — Quiet Hours (#15)
+  // ════════════════════════════════════════════════
+  {
+    id: '15',
+    titleEN:  'Quiet Hours',
+
+    categoryEN: 'Residential',
+
+    imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1788941432/Portfolio/15/15-cover.jpg',
+
+    descriptionEN: 'A 45 m² master-bedroom suite in Georgia, United States, designed by Designature Studio — a Japandi-calm retreat in warm white oak: a floating wood-ledge bed under paper-lantern and Akari lighting, a microcement fireplace framed by built-in window seats, an indoor planter garden and a crescent-moon mirror, with garden windows wrapping the room in quiet.',
+
+    area:       '45 m²',
+    date:       '2023',
+    locationEN: 'Georgia, United States',
+
+    gallery: [
+      // SLOT 1 — WIDE 16:9 — bedroom hero
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1788941434/Portfolio/15/15-g0.jpg',
+      // SLOT 2 — TALL 4:5 — arrival view
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1788941435/Portfolio/15/15-g1.jpg',
+      // SLOT 3 — TALL 4:5 — crescent-moon mirror
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1788941437/Portfolio/15/15-g2.jpg',
+      // SLOT 4 — WIDE 16:9 — (skipped; 6-render suite)
+      '',
+      // SLOT 5 — MID 4:3 — fireplace + window seats
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1788941438/Portfolio/15/15-g4.jpg',
+      // SLOT 6 — MID 4:3 — statement art
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1788941440/Portfolio/15/15-g5.jpg',
+    ],
+  },
+
+  // ════════════════════════════════════════════════
   // ADD YOUR NEXT PROJECT HERE
   // Copy the block below, paste it above this comment,
   // increment the id, and fill in your details.
