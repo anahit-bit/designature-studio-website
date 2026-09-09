@@ -28,6 +28,60 @@ export type Surface = "back" | "left" | "right" | "ceiling" | "floor";
 /** Normalized bounding box [x0, y0, x1, y1], each in 0..1 (top-left origin). */
 export type Box = [number, number, number, number];
 
+/**
+ * A fixture that needs a water feed, a waste, or both — plus `soil_stack`, the
+ * boxed duct or pipe casing that shows where drainage already runs even when no
+ * fixture is in frame.
+ */
+export type PlumbingFixture =
+  | "toilet"
+  | "bidet"
+  | "basin"
+  | "bath"
+  | "shower"
+  | "towel_rail"
+  | "soil_stack";
+
+/**
+ * Relief in the ceiling PLANE. Deliberately excludes light fittings and cornice
+ * — a pendant is furnishing (RD18) and a cornice is a finish, both of which may
+ * change. These are the things that mean the ceiling was rebuilt.
+ */
+export type CeilingFeature =
+  | "cove"
+  | "dropped_section"
+  | "coffer"
+  | "beam"
+  | "recessed_downlights";
+
+export const CEILING_FEATURES: readonly CeilingFeature[] = [
+  "cove",
+  "dropped_section",
+  "coffer",
+  "beam",
+  "recessed_downlights",
+];
+
+/** What the ceiling actually is, so the renovated one can be compared to it. */
+export interface CeilingSurvey {
+  /** True when the ceiling is one flat plane at one height, with no relief. */
+  flat: boolean;
+  /** Relief genuinely present in the photograph. Empty for a flat ceiling. */
+  features: CeilingFeature[];
+  /** Cornice / crown moulding at the wall junction. A finish — it must survive. */
+  cornice: boolean;
+}
+
+export const PLUMBING_FIXTURES: readonly PlumbingFixture[] = [
+  "toilet",
+  "bidet",
+  "basin",
+  "bath",
+  "shower",
+  "towel_rail",
+  "soil_stack",
+];
+
 export interface RoomStructure {
   /** Short phrase, e.g. "head-on, facing the back wall". */
   cameraView: string;
@@ -45,6 +99,24 @@ export interface RoomStructure {
   doors: Array<{ wall: Surface; box: Box; note?: string }>;
   /** Fixed non-wall architecture: radiators, columns, niches, fireplaces, beams. */
   fixedFeatures: Array<{ label: string; box: Box }>;
+  /**
+   * Plumbed fixtures, and the boxing/duct/stack that betrays where drainage
+   * runs. Everything here is EVIDENCE OF DRAINAGE, which is why it is measured
+   * separately from `fixedFeatures`: a toilet cannot be placed on a wall just
+   * because there is floor space against it. Without this the bathroom
+   * programme's "include a toilet" had nothing to check itself against, and a
+   * room photographed with no toilet came back with one plumbed into a wall
+   * that has no soil pipe (2026-09-07).
+   */
+  plumbing: Array<{ fixture: PlumbingFixture; box: Box; note?: string }>;
+  /**
+   * RD5's measurement. Written out in full in the prompt since 2026-07-13 and
+   * broken anyway — a lit perimeter cove appeared in every one of six graded
+   * bathroom generations. RD22 says a rule that keeps failing after being stated
+   * explicitly gets escalated from prompt text to verify-and-retry, and this is
+   * the number that lets it be.
+   */
+  ceiling: CeilingSurvey;
   /**
    * What the photograph appears to be a room OF. The analysis is already looking
    * at the pixels, so this rides along for free — and without it, leaving the
@@ -74,6 +146,8 @@ Return STRICT JSON only (no prose, no markdown fences) matching exactly this sha
   "windows": [{ "wall": "back|left|right", "shape": "rectangular|arched|floor-to-ceiling|...", "box": [x0,y0,x1,y1], "note": "optional" }],
   "doors": [{ "wall": "back|left|right", "box": [x0,y0,x1,y1], "note": "optional" }],
   "fixedFeatures": [{ "label": "radiator|column|niche|fireplace|beam|...", "box": [x0,y0,x1,y1] }],
+  "plumbing": [{ "fixture": "toilet|bidet|basin|bath|shower|towel_rail|soil_stack", "box": [x0,y0,x1,y1], "note": "optional" }],
+  "ceiling": { "flat": true, "features": ["any of: cove, dropped_section, coffer, beam, recessed_downlights"], "cornice": false },
   "detectedRoom": "exactly one of: living_room, dining_room, living_dining, bedroom, kitchen, bathroom, home_office, kids_room, outdoor, hallway — or null if genuinely unclear",
   "summary": "one paragraph telling the editor which walls, windows and proportions to preserve and which surfaces are out of frame and must not be invented"
 }
@@ -81,10 +155,12 @@ Return STRICT JSON only (no prose, no markdown fences) matching exactly this sha
 Critical rules:
 - If only one wall is visible (a head-on shot), put just that wall in visibleWalls and list "left" and "right" in outOfFrameWalls. A head-on photo of a single wall must NOT be turned into an enclosed box with side walls.
 - A doorway, archway, cased opening or open passage counts as a DOOR whether or not a door leaf is hanging in it. An empty room with no opening in frame must report an empty doors array — do not infer a doorway you cannot see.
+- "plumbing" is a survey of DRAINAGE EVIDENCE, and it decides whether a fixture may exist in the renovated room at all. Report every toilet, bidet, basin, bath, shower and heated towel rail you can actually see. Also report "soil_stack" for any boxed-in duct, tiled pipe casing, half-height boxing behind a toilet, or exposed pipe run — these show where drainage already runs even when no fixture is in frame. Report NOTHING you cannot see: an empty stretch of wall is not evidence of a stack, and floor space is not evidence of drainage. If the room has no plumbing in frame, return an empty array — that is a meaningful answer, not a failure.
+- "ceiling" describes the ceiling PLANE only. "flat" is true when it is one continuous surface at one height. Put relief in "features" ONLY when you can genuinely see it: a "cove" is a recessed perimeter channel (usually holding hidden lighting), a "dropped_section" is a bulkhead or tray that steps below the main plane, "recessed_downlights" means fittings sunk INTO the plane — a surface-mounted spot or a hanging pendant is NOT recessed and does not belong here. A cornice or crown moulding is a FINISH at the wall junction, not relief: record it in "cornice" and leave "features" empty. Most ordinary ceilings are flat with an empty features array; say so rather than inventing detail.
 - Judge detectedRoom from what the room is EQUIPPED for, not from what it could become. An empty or half-empty room with a bed frame in it is a bedroom; a corridor-shaped space with no fixtures is a hallway. Use null rather than guessing.
 - Measure each window and door box as precisely as you can from the pixels.
 - Preserve the real spacing between windows and the wall edges beside them — note it in the summary if a window sits close to or far from a corner.
-- Include only fixed architecture. Do NOT include furniture, rugs, or decor.
+- In "fixedFeatures", include only fixed architecture — do NOT include furniture, rugs, or decor. Plumbed fixtures are the exception to that: they are fixed, and they belong in "plumbing", never in "fixedFeatures".
 - If a field has nothing to report, use an empty array. Output ONLY the JSON object.`;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -128,6 +204,91 @@ function coerceRoomType(v: unknown): RoomType | null {
   if (typeof v !== "string") return null;
   const s = v.toLowerCase().trim().replace(/[\s-]+/g, "_");
   return s in ROOM_TYPE_LABELS ? (s as RoomType) : null;
+}
+
+/** Map the model's fixture word onto the closed set, or drop it. */
+function coercePlumbingFixture(v: unknown): PlumbingFixture | null {
+  if (typeof v !== "string") return null;
+  const s = v.toLowerCase().trim().replace(/[\s-]+/g, "_");
+  if ((PLUMBING_FIXTURES as readonly string[]).includes(s)) return s as PlumbingFixture;
+  // The model reaches for synonyms constantly; these are the ones seen in
+  // practice. Anything else is dropped rather than guessed at, because a
+  // mis-typed fixture becomes false evidence that drainage exists.
+  const synonyms: Record<string, PlumbingFixture> = {
+    wc: "toilet",
+    lavatory: "toilet",
+    water_closet: "toilet",
+    sink: "basin",
+    washbasin: "basin",
+    wash_basin: "basin",
+    vanity_basin: "basin",
+    bathtub: "bath",
+    tub: "bath",
+    shower_enclosure: "shower",
+    shower_tray: "shower",
+    heated_towel_rail: "towel_rail",
+    towel_radiator: "towel_rail",
+    soil_pipe: "soil_stack",
+    stack: "soil_stack",
+    duct: "soil_stack",
+    boxing: "soil_stack",
+    pipe_boxing: "soil_stack",
+  };
+  return synonyms[s] ?? null;
+}
+
+/**
+ * Read the ceiling survey. Defaults to FLAT with no relief when the field is
+ * missing or unreadable: the overwhelmingly common case, and the safe one —
+ * assuming relief the photo may not have would licence the model to build it.
+ */
+function coerceCeiling(v: unknown): CeilingSurvey {
+  const fallback: CeilingSurvey = { flat: true, features: [], cornice: false };
+  if (!v || typeof v !== "object") return fallback;
+  const o = v as any;
+
+  const synonyms: Record<string, CeilingFeature> = {
+    cove: "cove",
+    coving: "cove",
+    perimeter_cove: "cove",
+    shadow_gap: "cove",
+    led_channel: "cove",
+    tray: "dropped_section",
+    tray_ceiling: "dropped_section",
+    dropped: "dropped_section",
+    dropped_ceiling: "dropped_section",
+    dropped_section: "dropped_section",
+    bulkhead: "dropped_section",
+    soffit: "dropped_section",
+    coffer: "coffer",
+    coffered: "coffer",
+    beam: "beam",
+    beams: "beam",
+    recessed_downlights: "recessed_downlights",
+    downlights: "recessed_downlights",
+    recessed_lights: "recessed_downlights",
+    spotlights: "recessed_downlights",
+  };
+
+  const features: CeilingFeature[] = [];
+  if (Array.isArray(o.features)) {
+    for (const raw of o.features) {
+      if (typeof raw !== "string") continue;
+      const key = raw.toLowerCase().trim().replace(/[\s-]+/g, "_");
+      const f = (CEILING_FEATURES as readonly string[]).includes(key)
+        ? (key as CeilingFeature)
+        : synonyms[key];
+      if (f && !features.includes(f)) features.push(f);
+    }
+  }
+
+  // "flat" and "features" must agree; the measured list wins, since a model that
+  // troubled itself to name a cove has seen one.
+  return {
+    flat: features.length === 0 && o.flat !== false,
+    features,
+    cornice: o.cornice === true,
+  };
 }
 
 function coerceBox(v: unknown): Box | null {
@@ -206,6 +367,21 @@ export function parseRoomStructure(raw: string): RoomStructure | null {
         .filter(Boolean)
     : [];
 
+  const plumbing = Array.isArray(obj.plumbing)
+    ? obj.plumbing
+        .map((p: any) => {
+          const box = coerceBox(p?.box);
+          const fixture = coercePlumbingFixture(p?.fixture ?? p?.label ?? p?.type);
+          if (!box || !fixture) return null;
+          return {
+            fixture,
+            box,
+            note: typeof p?.note === "string" ? p.note : undefined,
+          };
+        })
+        .filter(Boolean)
+    : [];
+
   const structure: RoomStructure = {
     cameraView:
       typeof obj.cameraView === "string" && obj.cameraView.trim()
@@ -216,6 +392,8 @@ export function parseRoomStructure(raw: string): RoomStructure | null {
     windows: windows as RoomStructure["windows"],
     doors: doors as RoomStructure["doors"],
     fixedFeatures: fixedFeatures as RoomStructure["fixedFeatures"],
+    plumbing: plumbing as RoomStructure["plumbing"],
+    ceiling: coerceCeiling(obj.ceiling),
     detectedRoom: coerceRoomType(obj.detectedRoom),
     summary: typeof obj.summary === "string" ? obj.summary.trim() : "",
   };
@@ -292,7 +470,7 @@ export async function analyzeRoomStructure(roomPhoto: {
       return null;
     }
     console.log(
-      `[ai-vision] Spatial analysis: view="${structure.cameraView}", visible=[${structure.visibleWalls.join(",")}], outOfFrame=[${structure.outOfFrameWalls.join(",")}], windows=${structure.windows.length}, doors=${structure.doors.length}, room=${structure.detectedRoom ?? "unknown"}`
+      `[ai-vision] Spatial analysis: view="${structure.cameraView}", visible=[${structure.visibleWalls.join(",")}], outOfFrame=[${structure.outOfFrameWalls.join(",")}], windows=${structure.windows.length}, doors=${structure.doors.length}, plumbing=[${structure.plumbing.map((p) => p.fixture).join(",") || "none"}], ceiling=${structure.ceiling.flat ? "flat" : structure.ceiling.features.join("+")}, room=${structure.detectedRoom ?? "unknown"}`
     );
     return structure;
   } catch (err: any) {
@@ -349,6 +527,60 @@ export function isSingleWallShot(s: RoomStructure | null): boolean {
   if (!s || !Array.isArray(s.visibleWalls)) return false;
   const visible = new Set(s.visibleWalls);
   return visible.has("back") && !visible.has("left") && !visible.has("right");
+}
+
+/**
+ * Plumbed fixtures by type, ignoring `soil_stack` (which is evidence, not a
+ * fixture, and may legitimately be concealed by the renovation). RD27's
+ * post-generation check compares this map against the source: any type whose
+ * count went UP was invented onto a wall with no drainage.
+ */
+export function countPlumbing(
+  s: RoomStructure | null | undefined,
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const p of s?.plumbing ?? []) {
+    if (p.fixture === "soil_stack") continue;
+    out[p.fixture] = (out[p.fixture] ?? 0) + 1;
+  }
+  return out;
+}
+
+/** Fixture types present in `b` in greater number than in `a`. Pure. */
+export function inventedPlumbing(
+  source: RoomStructure | null | undefined,
+  output: RoomStructure | null | undefined,
+): Array<{ fixture: string; from: number; to: number }> {
+  const a = countPlumbing(source);
+  const b = countPlumbing(output);
+  const added: Array<{ fixture: string; from: number; to: number }> = [];
+  for (const [fixture, to] of Object.entries(b)) {
+    const from = a[fixture] ?? 0;
+    if (to > from) added.push({ fixture, from, to });
+  }
+  return added;
+}
+
+const CEILING_LABEL: Record<CeilingFeature, string> = {
+  cove: "a recessed perimeter cove",
+  dropped_section: "a dropped section or bulkhead",
+  coffer: "a coffered panel",
+  beam: "an exposed beam",
+  recessed_downlights: "downlights recessed into the plane",
+};
+
+/**
+ * Ceiling relief present in the output that the source does not have. Pure.
+ * RD5's escalation: the rule has been written out in full since 2026-07-13 and
+ * a lit cove still appeared in every graded generation, so it is now counted.
+ */
+export function inventedCeiling(
+  source: RoomStructure | null | undefined,
+  output: RoomStructure | null | undefined,
+): CeilingFeature[] {
+  if (!source || !output) return [];
+  const had = new Set(source.ceiling?.features ?? []);
+  return (output.ceiling?.features ?? []).filter((f) => !had.has(f));
 }
 
 /** Windows + doors: everything whose count must survive generation (RD1/RD2/RD7). */
@@ -446,6 +678,57 @@ export function renderSpatialConstraints(
       `- Door on the ${SURFACE_LABEL[d.wall]} at ${fmtBox(
         d.box
       )}. Keep it at this exact position.${noteStr}`
+    );
+  }
+
+  // RD5 — the ceiling, stated as what it IS. The prohibition alone has never
+  // held; naming the plane positively is what worked for openings and plumbing.
+  const c = structure.ceiling;
+  if (c.flat) {
+    lines.push(
+      `- CEILING SURVEY (critical): this ceiling is ONE FLAT PLANE at a single height${
+        c.cornice ? ", finished with a cornice at the wall junction" : ", with no cornice"
+      }. It must come back as exactly that — flat, unbroken, at the same height. You may repaint it and you may change the light FITTING that hangs on or sits against it, but you may NOT add a perimeter cove, a shadow gap, a concealed LED channel, a dropped or tray section, a bulkhead, a coffer, a beam, or downlights sunk into the plane. A plain flat ceiling is the correct result for a plain flat ceiling.${
+        c.cornice ? " Keep the cornice." : ""
+      }`
+    );
+  } else if (c.features.length > 0) {
+    lines.push(
+      `- CEILING SURVEY (critical): this ceiling already has ${c.features
+        .map((f) => CEILING_LABEL[f])
+        .join(" and ")}. Keep exactly that, at the same height and depth — no more and no less. Do not add any further relief, and do not deepen or extend what is there.`
+    );
+  } else {
+    // Reported as not-flat, but nothing we can name. Claiming it is flat would
+    // licence flattening a real cove; describing relief we cannot identify would
+    // licence inventing it. So say only the part that is true either way.
+    lines.push(
+      `- CEILING SURVEY (critical): reproduce the ceiling exactly as the photograph shows it, at the same height. Whatever relief it does or does not have, do not add any: no new perimeter cove, shadow gap, concealed LED channel, dropped or tray section, bulkhead, coffer, beam, or downlights sunk into the plane.`
+    );
+  }
+
+  // RD27 — the drainage survey. Stated as a positive inventory (and explicitly
+  // as "none" when empty), because "there is no toilet here" is a fact the model
+  // weighs, where "do not add a toilet" is one more prohibition among dozens.
+  const PLUMBING_LABEL: Record<string, string> = {
+    toilet: "toilet",
+    bidet: "bidet",
+    basin: "basin",
+    bath: "bath",
+    shower: "shower",
+    towel_rail: "heated towel rail",
+    soil_stack: "boxed soil stack / pipe duct",
+  };
+  if (structure.plumbing.length > 0) {
+    const inventory = structure.plumbing
+      .map((p) => `${PLUMBING_LABEL[p.fixture] ?? p.fixture} at ${fmtBox(p.box)}`)
+      .join("; ");
+    lines.push(
+      `- PLUMBING SURVEY (critical): the only drainage in this room is ${inventory}. Keep every one of these, in the same place at the same size — you may replace or refinish the fixture itself in the target style, but never move it to another wall and never delete it. Do NOT add any plumbed fixture beyond this list.`
+    );
+  } else {
+    lines.push(
+      `- PLUMBING SURVEY (critical): this photograph shows NO plumbed fixture and NO soil stack, duct or pipe boxing anywhere in frame. There is no drainage evidence, so the renovated image must contain NO toilet, NO bidet, NO bath, NO shower, NO basin and NO heated towel rail. Floor space against a wall is not drainage. A room shown without these is rendered without them.`
     );
   }
 
