@@ -38,6 +38,7 @@ interface SanityProject {
   date?: string
   location?: string
   gallery?: Array<{ url: string; alt?: string; slot?: string }>
+  videoUrl?: string
 }
 
 // ── Mapper: Sanity doc → ProjectData ───────────────────────────────────────
@@ -54,6 +55,7 @@ function toProjectData(doc: SanityProject): ProjectData {
     date: doc.date ?? '',
     locationEN: doc.location ?? '',
     gallery: (doc.gallery ?? []).map((g) => g.url),
+    ...(doc.videoUrl ? { videoUrl: doc.videoUrl } : {}),
   }
 }
 
@@ -70,6 +72,7 @@ const PROJECTS_QUERY = `*[_type == "project"] | order(order asc, _id) {
   area,
   date,
   location,
+  videoUrl,
   gallery[]{url, alt, slot}
 }`
 

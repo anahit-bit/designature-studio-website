@@ -56,6 +56,8 @@ export interface ProjectData {
   date: string;
   locationEN: string;
   gallery: string[];
+  /** Optional Cloudinary MP4 (e.g. a 3D walkthrough). Rendered under the hero when present. */
+  videoUrl?: string;
 }
 
 export const PROJECTS_LIST: ProjectData[] = [
@@ -883,6 +885,42 @@ export const PROJECTS_LIST: ProjectData[] = [
       'https://res.cloudinary.com/dys2k5muv/image/upload/v1788941438/Portfolio/15/15-g4.jpg',
       // SLOT 6 — MID 4:3 — statement art
       'https://res.cloudinary.com/dys2k5muv/image/upload/v1788941440/Portfolio/15/15-g5.jpg',
+    ],
+  },
+
+  // ════════════════════════════════════════════════
+  // PROJECT — Evergreen (#14)
+  // ════════════════════════════════════════════════
+  {
+    id: '14',
+    titleEN:  'Evergreen',
+
+    categoryEN: 'Residential',
+
+    imageUrl: 'https://res.cloudinary.com/dys2k5muv/image/upload/v1789034198/Portfolio/14/14-cover.jpg',
+
+    descriptionEN: 'A 120 m² two-level living space in Bordeaux, France, designed by Designature Studio — double-height ceilings and a floating wood staircase connecting living, family and dining zones, anchored by a two-tier home wine cellar behind a full-height green living wall, with a three-sided fireplace, floor-to-ceiling garden windows and warm wood tones throughout.',
+
+    area:       '120 m²',
+    date:       '2022',
+    locationEN: 'Bordeaux, France',
+
+    // 3D walkthrough (rendered under the hero on the project page)
+    videoUrl: 'https://res.cloudinary.com/dys2k5muv/video/upload/v1789034228/Portfolio/14/14-walkthrough.mp4',
+
+    gallery: [
+      // SLOT 1 — WIDE 16:9 — double-height living hero
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1789034200/Portfolio/14/14-g0.jpg',
+      // SLOT 2 — TALL 4:5 — floating staircase
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1789034200/Portfolio/14/14-g1.jpg',
+      // SLOT 3 — TALL 4:5 — two facing sofas
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1789034201/Portfolio/14/14-g2.jpg',
+      // SLOT 4 — WIDE 16:9 — open-plan overhead
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1789034202/Portfolio/14/14-g3.jpg',
+      // SLOT 5 — MID 4:3 — family room
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1789034203/Portfolio/14/14-g4.jpg',
+      // SLOT 6 — MID 4:3 — dining + green wall
+      'https://res.cloudinary.com/dys2k5muv/image/upload/v1789034204/Portfolio/14/14-g5.jpg',
     ],
   },
 
