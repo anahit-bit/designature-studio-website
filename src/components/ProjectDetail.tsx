@@ -136,6 +136,20 @@ const ProjectDetail: React.FC = () => {
             </div>
           </div>
 
+          {/* Optional 3D walkthrough video (rendered only when the project has one) */}
+          {project.videoUrl && (
+            <div className="w-full bg-black">
+              <video
+                src={project.videoUrl}
+                poster={project.gallery[0] || project.imageUrl}
+                controls
+                preload="metadata"
+                playsInline
+                className="w-full h-auto block max-h-[85vh] mx-auto"
+              />
+            </div>
+          )}
+
           {/* Photos 2+3 — Portrait pair (4:5) */}
           <div className="grid grid-cols-2 gap-5">
             <ImageOrPlaceholder 
