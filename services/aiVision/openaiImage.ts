@@ -49,6 +49,8 @@ export interface OpenAIImageInput {
   sourceStructure?: RoomStructure | null;
   /** The single palette colour (or 2026 paint) emphasised in this concept. */
   accent?: ReturnType<typeof pickAccent>;
+  /** Overrides OPENAI_IMAGE_PROMPT for this call (benchmarks run both side by side). */
+  promptMode?: "staging" | "full";
 }
 
 const EDIT_URL = "https://api.openai.com/v1/images/edits";
@@ -132,7 +134,7 @@ async function prepareInput(
  * which is exactly why both are exposed.
  */
 export function buildOpenAIPrompt(input: OpenAIImageInput): string {
-  const mode = (process.env.OPENAI_IMAGE_PROMPT || "staging").trim().toLowerCase();
+  const mode = (input.promptMode || process.env.OPENAI_IMAGE_PROMPT || "staging").trim().toLowerCase();
   if (mode === "full") {
     return buildGenerationPrompt({
       styleBrief: input.styleBrief,
@@ -186,7 +188,7 @@ export async function generateConceptImageOpenAI(
   let usedPreset = false;
 
   console.log(
-    `[ai-vision] OpenAI (${model}, ${quality}) size=${size} prompt=${process.env.OPENAI_IMAGE_PROMPT || "staging"} (${prompt.split(/\s+/).length}w)`
+    `[ai-vision] OpenAI (${model}, ${quality}) size=${size} prompt=${input.promptMode || process.env.OPENAI_IMAGE_PROMPT || "staging"} (${prompt.split(/\s+/).length}w)`
   );
 
   const call = async (): Promise<EditResponse> => {
