@@ -124,7 +124,7 @@ async function main(): Promise<void> {
   const imgDir = ensureDir(path.join(runDir, "images"));
 
   console.log(`[run] ${RUN_ID} — ${selected.length} case(s), styles=${STYLES.join("/")}, concurrency=${CONCURRENCY}`);
-  console.log(`[run] engine=${process.env.AI_VISION_ENGINE || "gemini (default)"} → ${runDir}`);
+  console.log(`[run] engine=${process.env.AI_VISION_ENGINE || "staging (default)"} → ${runDir}`);
 
   const started = Date.now();
   const outcomes = await mapLimit(selected, CONCURRENCY, async (entry, index) => {
@@ -209,7 +209,7 @@ async function main(): Promise<void> {
         runId: RUN_ID,
         startedAt: new Date(started).toISOString(),
         finishedAt: new Date().toISOString(),
-        engine: process.env.AI_VISION_ENGINE || "gemini",
+        engine: process.env.AI_VISION_ENGINE || "staging",
         styles: STYLES,
         cases,
       },

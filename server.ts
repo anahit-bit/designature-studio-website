@@ -1460,6 +1460,8 @@ async function startServer() {
   const CALL_COSTS: Record<string, number> = {
     gemini:     0.0001,
     fal:        0.02,   // AI-029 Phase 3 — Flux apartment-staging ≈ $0.021/megapixel
+    openai:     0.17,   // GPT Image edit @ high quality, ~1536×1024 — token-billed; the
+                        // engine logs the measured $ per call, adjust once we have data
     cloudinary: 0,
     serper:     0.02,
     sheets:     0,
@@ -1470,6 +1472,7 @@ async function startServer() {
   const PROVIDER_FREE_CAPS: Record<string, { window: 'daily' | 'monthly'; limit: number; label: string }> = {
     gemini:     { window: 'daily',   limit: 1500, label: '1,500 / day' },
     fal:        { window: 'monthly', limit:    0, label: 'pay-as-you-go' },
+    openai:     { window: 'monthly', limit:    0, label: 'pay-as-you-go' },
     cloudinary: { window: 'monthly', limit:   25, label: '25 credits / mo' },
     serper:     { window: 'daily',   limit:  200, label: '200 / day' },
     sheets:     { window: 'monthly', limit:    0, label: 'no fixed cap' },
@@ -3435,7 +3438,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
         accent,
       });
       // I-010 — concept image generation. Attribute cost to the engine actually used.
-      bumpApiCount(engine === "staging" ? "fal" : "gemini");
+      bumpApiCount(engine === "staging" ? "fal" : engine === "openai" ? "openai" : "gemini");
       console.log(`[AI Vision] concept generated via ${engine}`);
       recordActivity(user.email, "generate_vision"); // I-016
 

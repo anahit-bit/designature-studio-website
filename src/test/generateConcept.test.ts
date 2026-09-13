@@ -8,6 +8,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 const stagingMock = vi.fn();
 const geminiMock = vi.fn();
 const availableMock = vi.fn();
+const openaiMock = vi.fn();
+const openaiAvailableMock = vi.fn();
 
 vi.mock('../../services/aiVision/virtualStaging.js', () => ({
   generateConceptImageStaging: (...a: unknown[]) => stagingMock(...a),
@@ -15,6 +17,10 @@ vi.mock('../../services/aiVision/virtualStaging.js', () => ({
 }));
 vi.mock('../../services/aiVision/imageGeneration.js', () => ({
   generateConceptImage: (...a: unknown[]) => geminiMock(...a),
+}));
+vi.mock('../../services/aiVision/openaiImage.js', () => ({
+  generateConceptImageOpenAI: (...a: unknown[]) => openaiMock(...a),
+  isOpenAIImageAvailable: () => openaiAvailableMock(),
 }));
 
 const { generateConcept } = await import('../../services/aiVision/generateConcept');
@@ -31,7 +37,41 @@ describe('generateConcept · engine routing', () => {
     stagingMock.mockReset().mockResolvedValue('data:image/png;base64,STAGED');
     geminiMock.mockReset().mockResolvedValue('data:image/png;base64,GEMINI');
     availableMock.mockReset().mockReturnValue(true);
+    openaiMock.mockReset().mockResolvedValue('data:image/png;base64,OPENAI');
+    openaiAvailableMock.mockReset().mockReturnValue(true);
     delete process.env.AI_VISION_ENGINE;
+  });
+
+  it('never touches OpenAI unless explicitly forced — it is under evaluation, not a default', async () => {
+    await generateConcept(INPUT);
+    process.env.AI_VISION_ENGINE = 'gemini';
+    await generateConcept(INPUT);
+    expect(openaiMock).not.toHaveBeenCalled();
+  });
+
+  it('AI_VISION_ENGINE=openai routes to GPT Image and reports it, so cost lands on the openai bucket', async () => {
+    process.env.AI_VISION_ENGINE = 'openai';
+    const r = await generateConcept(INPUT);
+    expect(r.engine).toBe('openai');
+    expect(r.url).toContain('OPENAI');
+    expect(stagingMock).not.toHaveBeenCalled();
+    expect(geminiMock).not.toHaveBeenCalled();
+  });
+
+  it('AI_VISION_ENGINE=openai without a key falls through to the default chain', async () => {
+    process.env.AI_VISION_ENGINE = 'openai';
+    openaiAvailableMock.mockReturnValue(false);
+    const r = await generateConcept(INPUT);
+    expect(openaiMock).not.toHaveBeenCalled();
+    expect(r.engine).toBe('staging');
+  });
+
+  it('AI_VISION_ENGINE=openai falls back to staging, then Gemini, when GPT Image throws', async () => {
+    process.env.AI_VISION_ENGINE = 'openai';
+    openaiMock.mockRejectedValue(new Error('openai exploded'));
+    expect((await generateConcept(INPUT)).engine).toBe('staging');
+    stagingMock.mockRejectedValue(new Error('fal exploded'));
+    expect((await generateConcept(INPUT)).engine).toBe('gemini');
   });
   afterEach(() => {
     if (originalEnv === undefined) delete process.env.AI_VISION_ENGINE;

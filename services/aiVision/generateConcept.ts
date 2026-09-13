@@ -34,8 +34,9 @@
 
 import { generateConceptImage, type ImageGenerationInput } from "./imageGeneration.js";
 import { generateConceptImageStaging, isStagingAvailable } from "./virtualStaging.js";
+import { generateConceptImageOpenAI, isOpenAIImageAvailable } from "./openaiImage.js";
 
-export type ConceptEngine = "staging" | "gemini";
+export type ConceptEngine = "staging" | "gemini" | "openai";
 export interface GenerateConceptResult {
   url: string;
   engine: ConceptEngine;
@@ -46,9 +47,39 @@ export async function generateConcept(
 ): Promise<GenerateConceptResult> {
   // Unset (the normal case) = staging. `AI_VISION_ENGINE=gemini` forces the old
   // engine, which is the escape hatch if staging ever regresses in production.
+  // `AI_VISION_ENGINE=openai` tries GPT Image first (opt-in, under evaluation —
+  // see openaiImage.ts); if it throws or the key is missing, the request
+  // continues down the normal staging → Gemini chain so nothing 500s.
   const forcedEngine = (process.env.AI_VISION_ENGINE || "").trim().toLowerCase();
   const geminiForced = forcedEngine === "gemini";
+  const openaiForced = forcedEngine === "openai";
   const stagingAvailable = isStagingAvailable();
+
+  if (openaiForced) {
+    if (!isOpenAIImageAvailable()) {
+      console.warn(
+        "[ai-vision] AI_VISION_ENGINE=openai but OPENAI_API_KEY is not set — " +
+          "falling through to the default engine chain."
+      );
+    } else {
+      try {
+        const url = await generateConceptImageOpenAI({
+          roomPhoto: input.roomPhoto,
+          styleBrief: input.styleBrief,
+          roomType: input.roomType,
+          variationSeed: input.variationSeed,
+          spatialConstraints: input.spatialConstraints,
+          sourceStructure: input.sourceStructure,
+          accent: input.accent,
+        });
+        return { url, engine: "openai" };
+      } catch (err: any) {
+        console.warn(
+          `[ai-vision] OpenAI engine failed — falling back to the default chain: ${err?.message ?? err}`
+        );
+      }
+    }
+  }
 
   if (!geminiForced && !stagingAvailable) {
     // Loud on purpose: without FAL_KEY every request silently falls back to the
