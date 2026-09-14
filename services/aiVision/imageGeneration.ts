@@ -46,10 +46,22 @@ export interface ImageGenerationInput {
    * the client and reused on a corrective retry.
    */
   accent?: ReturnType<typeof pickAccent>;
+  /**
+   * Gemini image model id. Defaults to GEMINI_IMAGE_MODEL, then the original
+   * gemini-2.5-flash-image (Nano Banana 1 — Google now lists it as legacy).
+   * Newer: gemini-3.1-flash-image (Nano Banana 2), gemini-3-pro-image (Pro).
+   * Benchmarks pass it per call so several models can run side by side.
+   */
+  model?: string;
+}
+
+export const DEFAULT_GEMINI_IMAGE_MODEL = "gemini-2.5-flash-image";
+export function geminiImageModel(override?: string): string {
+  return (override || process.env.GEMINI_IMAGE_MODEL || "").trim() || DEFAULT_GEMINI_IMAGE_MODEL;
 }
 
 /**
- * Calls gemini-2.5-flash-image with the room photo and style brief.
+ * Calls the Gemini image model with the room photo and style brief.
  * Returns the generated concept as a data URL string.
  *
  * Retries up to 2 times on quota errors with exponential back-off.
@@ -61,6 +73,7 @@ export async function generateConceptImage(
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set.");
 
   const ai = new GoogleGenAI({ apiKey, httpOptions: { timeout: 120000 } });
+  const model = geminiImageModel(input.model);
 
   const prompt = buildGenerationPrompt({
     styleBrief: input.styleBrief,
@@ -163,7 +176,7 @@ export async function generateConceptImage(
         config.imageConfig = { aspectRatio: chosenAspect };
       }
       response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-image",
+        model,
         contents: {
           parts: [
             {
@@ -363,9 +376,7 @@ export async function generateConceptImage(
       return generateOne(retryCount + 1, aspectRetryCount, proportionRetryCount, proportionNote);
     }
 
-    throw new Error(
-      "gemini-2.5-flash-image returned no image data after retries."
-    );
+    throw new Error(`${model} returned no image data after retries.`);
   };
 
   try {

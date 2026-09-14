@@ -27,6 +27,11 @@ export interface StagingInput {
   variationSeed?: number;
   /** The single palette colour (or 2026 paint) emphasised in this concept. */
   accent?: ReturnType<typeof pickAccent>;
+  /**
+   * Benchmark-only: send this prompt verbatim instead of buildStagingPrompt.
+   * Production never sets it — see the prompt-length note in buildStagingPrompt.
+   */
+  promptOverride?: string;
 }
 
 const FAL_MODEL = "fal-ai/flux-2-lora-gallery/apartment-staging";
@@ -75,12 +80,14 @@ export async function generateConceptImageStaging(
 ): Promise<string> {
   ensureConfigured();
 
-  const prompt = buildStagingPrompt({
-    styleBrief: input.styleBrief,
-    roomType: input.roomType,
-    variationSeed: input.variationSeed,
-    accent: input.accent,
-  });
+  const prompt =
+    input.promptOverride ??
+    buildStagingPrompt({
+      styleBrief: input.styleBrief,
+      roomType: input.roomType,
+      variationSeed: input.variationSeed,
+      accent: input.accent,
+    });
 
   const src = await toInputImage(input.roomPhoto.data);
 

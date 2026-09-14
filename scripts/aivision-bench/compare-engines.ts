@@ -8,10 +8,17 @@
  * Engines are called DIRECTLY (not through generateConcept) so a failure shows
  * up as an empty cell instead of being silently replaced by a fallback engine.
  *
- *   gemini       gemini-2.5-flash-image, production prompt + verify→retry
- *   staging      fal FLUX apartment-staging, its short edit prompt
- *   openai       GPT Image, the same short edit prompt as staging
- *   openai-full  GPT Image, the full Gemini prompt (spatial constraints + rulebook)
+ *   gemini        gemini-2.5-flash-image (prod), full prompt + verify→retry
+ *   gemini-nb2    gemini-3.1-flash-image (Nano Banana 2), same
+ *   gemini-pro    gemini-3-pro-image (Nano Banana Pro), same
+ *   staging       fal FLUX apartment-staging, its short edit prompt (prod)
+ *   staging-full  fal with the FULL prompt — expected to drift off the photo
+ *   openai        GPT Image, the same short edit prompt as staging
+ *   openai-full   GPT Image, the full Gemini prompt (spatial constraints + rulebook)
+ *
+ * "Full prompt" = buildGenerationPrompt: measured architecture at coordinates,
+ * ceiling/plumbing surveys, framing & scale, opening count, every RD rule,
+ * room programme, the 7-section style brief and the accent — ~2,300 words.
  *
  * Outputs are cached per case+engine, so the run can be completed in pieces
  * (e.g. Gemini + staging today, OpenAI once the key exists) and the page is
@@ -68,14 +75,25 @@ const ENGINES = (flag("engines", "gemini,staging,openai,openai-full") ?? "")
   .split(",").map((s) => s.trim()).filter(Boolean) as EngineId[];
 const ONLY = (flag("only") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 
-type EngineId = "gemini" | "staging" | "openai" | "openai-full";
+type EngineId =
+  | "gemini" | "gemini-nb2" | "gemini-pro"
+  | "staging" | "staging-full"
+  | "openai" | "openai-full";
 const ENGINE_LABEL: Record<EngineId, string> = {
-  gemini: "Gemini 2.5 Flash Image",
-  staging: "fal · FLUX apartment-staging",
-  openai: `GPT Image · short edit prompt`,
-  "openai-full": `GPT Image · full Gemini prompt`,
+  gemini: "Gemini 2.5 Flash Image (Nano Banana 1, prod) · full prompt",
+  "gemini-nb2": "Gemini 3.1 Flash Image (Nano Banana 2) · full prompt",
+  "gemini-pro": "Gemini 3 Pro Image (Nano Banana Pro) · full prompt",
+  staging: "fal · FLUX apartment-staging · short prompt (prod)",
+  "staging-full": "fal · FLUX apartment-staging · full prompt",
+  openai: "GPT Image · short prompt",
+  "openai-full": "GPT Image · full prompt",
 };
-const ALL_ENGINES: EngineId[] = ["gemini", "staging", "openai", "openai-full"];
+const GEMINI_MODEL: Partial<Record<EngineId, string>> = {
+  gemini: "gemini-2.5-flash-image",
+  "gemini-nb2": "gemini-3.1-flash-image",
+  "gemini-pro": "gemini-3-pro-image",
+};
+const ALL_ENGINES: EngineId[] = ["gemini", "gemini-nb2", "gemini-pro", "staging", "staging-full", "openai", "openai-full"];
 
 /**
  * The ten rooms. Picked from _Inputs\source-rooms for difficulty: four bathrooms
@@ -142,12 +160,14 @@ async function runCase(c: Case, index: number): Promise<void> {
     const meta: CellMeta = { engine, ok: false, ms: 0, at: new Date().toISOString() };
     try {
       let url: string;
-      if (engine === "gemini") {
-        url = await generateConceptImage({ roomPhoto: room, styleBrief, roomType: c.roomType, spatialConstraints, sourceStructure: structure, accent });
-        meta.model = "gemini-2.5-flash-image"; meta.promptWords = fullPrompt.split(/\s+/).length;
-      } else if (engine === "staging") {
-        url = await generateConceptImageStaging({ roomPhoto: room, styleBrief, roomType: c.roomType, accent });
-        meta.model = "fal-ai/flux-2-lora-gallery/apartment-staging"; meta.promptWords = shortPrompt.split(/\s+/).length;
+      if (engine in GEMINI_MODEL) {
+        const model = GEMINI_MODEL[engine]!;
+        url = await generateConceptImage({ roomPhoto: room, styleBrief, roomType: c.roomType, spatialConstraints, sourceStructure: structure, accent, model });
+        meta.model = model; meta.promptWords = fullPrompt.split(/\s+/).length;
+      } else if (engine === "staging" || engine === "staging-full") {
+        const promptOverride = engine === "staging-full" ? fullPrompt : undefined;
+        url = await generateConceptImageStaging({ roomPhoto: room, styleBrief, roomType: c.roomType, accent, promptOverride });
+        meta.model = "fal-ai/flux-2-lora-gallery/apartment-staging"; meta.promptWords = (promptOverride ?? shortPrompt).split(/\s+/).length;
       } else {
         const promptMode = engine === "openai-full" ? "full" : "staging";
         url = await generateConceptImageOpenAI({ roomPhoto: room, styleBrief, roomType: c.roomType, spatialConstraints, sourceStructure: structure, accent, promptMode });
@@ -204,13 +224,14 @@ function buildHtml(embed: boolean): string {
   const head = cols.map((e) => `<th>${ENGINE_LABEL[e]}</th>`).join("");
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Engine comparison · ${esc(RUN_ID)}</title>
 <style>
-body{margin:0;padding:24px;font:14px/1.4 system-ui,sans-serif;background:#fafafa;color:#0B2240}
+body{margin:0;padding:24px;font:14px/1.4 system-ui,sans-serif;background:#fafafa;color:#0B2240;overflow-x:auto}
 h1{font-size:20px;margin:0 0 4px}p.sub{margin:0 0 18px;color:#555}
 table{border-collapse:separate;border-spacing:8px;width:100%}
 th{background:#fff;border:1px solid #e5e5e5;border-radius:6px;padding:10px;text-align:left;vertical-align:top;font-weight:600}
 thead th{position:sticky;top:0;z-index:1;font-size:13px}
 td{background:#fff;border:1px solid #e5e5e5;border-radius:6px;padding:6px;vertical-align:top;width:${Math.floor(80 / cols.length)}%}
-th[scope=row]{width:16%;font-weight:400}
+th[scope=row]{width:14%;font-weight:400;min-width:180px}
+table{min-width:${Math.max(1200, 260 * (cols.length + 1))}px}
 img{width:100%;height:auto;display:block;border-radius:4px}
 .id{font-weight:700}.rt{color:#9E5E41;text-transform:capitalize;font-size:12px}.note{font-size:12px;color:#555;margin:2px 0 8px}
 .cap{font-size:11px;color:#666;margin-top:4px}.err{color:#b00020}.pending{color:#999}
