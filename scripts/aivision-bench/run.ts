@@ -6,7 +6,7 @@
  *
  *   Step 1    extractStyleBrief  (preset path — no reference image)
  *   Step 1.5  analyzeRoomStructure + renderSpatialConstraints   (AI-029)
- *   Step 2    generateConcept    (improved Gemini by default)
+ *   Step 2    generateConcept    (GPT Image by default, Gemini fallback)
  *
  * Deliberately NOT going through HTTP: no auth, no quota decrement, and no risk
  * of another worktree's dev server answering on port 3000.
@@ -124,7 +124,7 @@ async function main(): Promise<void> {
   const imgDir = ensureDir(path.join(runDir, "images"));
 
   console.log(`[run] ${RUN_ID} — ${selected.length} case(s), styles=${STYLES.join("/")}, concurrency=${CONCURRENCY}`);
-  console.log(`[run] engine=${process.env.AI_VISION_ENGINE || "gemini (default)"} → ${runDir}`);
+  console.log(`[run] engine=${process.env.AI_VISION_ENGINE || "openai (default)"} → ${runDir}`);
 
   const started = Date.now();
   const outcomes = await mapLimit(selected, CONCURRENCY, async (entry, index) => {
@@ -209,7 +209,7 @@ async function main(): Promise<void> {
         runId: RUN_ID,
         startedAt: new Date(started).toISOString(),
         finishedAt: new Date().toISOString(),
-        engine: process.env.AI_VISION_ENGINE || "gemini",
+        engine: process.env.AI_VISION_ENGINE || "openai",
         styles: STYLES,
         cases,
       },

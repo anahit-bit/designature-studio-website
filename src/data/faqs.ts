@@ -34,7 +34,7 @@ export const FAQ_SECTIONS: FaqSection[] = [
       },
       {
         q: 'Is my data private? Who sees my uploaded photos?',
-        a: 'Your photos are sent directly to Google\'s Gemini AI model to generate your concept — they are not stored on our servers or shared with third parties. Generated concepts are session-only on the free plan and are not retained after you close the tab.',
+        a: 'Your photos are sent directly to the AI models that generate your concept (OpenAI\'s GPT Image, with Google\'s Gemini for room analysis) — they are not stored on our servers or shared with anyone else. Generated concepts are session-only on the free plan and are not retained after you close the tab.',
       },
     ],
   },
