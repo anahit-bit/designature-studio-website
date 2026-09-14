@@ -8,24 +8,22 @@
  * Engines are called DIRECTLY (not through generateConcept) so a failure shows
  * up as an empty cell instead of being silently replaced by a fallback engine.
  *
- *   gemini        gemini-2.5-flash-image (prod), full prompt + verify→retry
+ *   gemini        gemini-2.5-flash-image (retired 2026-10-02), full prompt
  *   gemini-nb2    gemini-3.1-flash-image (Nano Banana 2), same
  *   gemini-pro    gemini-3-pro-image (Nano Banana Pro), same
- *   staging       fal FLUX apartment-staging, its short edit prompt (prod)
- *   staging-full  fal with the FULL prompt — expected to drift off the photo
- *   openai        GPT Image, the same short edit prompt as staging
- *   openai-full   GPT Image, the full Gemini prompt (spatial constraints + rulebook)
+ *   openai        GPT Image, the short ~110-word edit prompt
+ *   openai-full   GPT Image, the full prompt (spatial constraints + rulebook) — PROD DEFAULT
  *
  * "Full prompt" = buildGenerationPrompt: measured architecture at coordinates,
  * ceiling/plumbing surveys, framing & scale, opening count, every RD rule,
  * room programme, the 7-section style brief and the accent — ~2,300 words.
  *
  * Outputs are cached per case+engine, so the run can be completed in pieces
- * (e.g. Gemini + staging today, OpenAI once the key exists) and the page is
+ * (e.g. Gemini today, OpenAI once the key exists) and the page is
  * rebuilt from whatever exists.
  *
  * Usage:
- *   npx tsx scripts/aivision-bench/compare-engines.ts --engines gemini,staging
+ *   npx tsx scripts/aivision-bench/compare-engines.ts --engines gemini-nb2,gemini-pro
  *   npx tsx scripts/aivision-bench/compare-engines.ts --engines openai,openai-full
  *   npx tsx scripts/aivision-bench/compare-engines.ts --html-only
  *   flags: --run-id engines-01  --style warm_contemporary  --concurrency 3  --only bath-tub,base-room
@@ -58,7 +56,6 @@ import {
   type RoomStructure,
 } from "../../services/aiVision/spatialAnalysis.js";
 import { generateConceptImage } from "../../services/aiVision/imageGeneration.js";
-import { generateConceptImageStaging } from "../../services/aiVision/virtualStaging.js";
 import { generateConceptImageOpenAI, openAIImageModel } from "../../services/aiVision/openaiImage.js";
 import type { RoomType, StylePreset } from "../../services/aiVision/stylePresets.js";
 
@@ -71,29 +68,28 @@ const RUN_ID = flag("run-id", "engines-01")!;
 const STYLE = flag("style", "warm_contemporary") as StylePreset;
 const CONCURRENCY = Number(flag("concurrency", "3"));
 const HTML_ONLY = args.includes("--html-only");
-const ENGINES = (flag("engines", "gemini,staging,openai,openai-full") ?? "")
+const ENGINES = (flag("engines", "gemini-nb2,openai-full") ?? "")
   .split(",").map((s) => s.trim()).filter(Boolean) as EngineId[];
 const ONLY = (flag("only") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 
 type EngineId =
   | "gemini" | "gemini-nb2" | "gemini-pro"
-  | "staging" | "staging-full"
   | "openai" | "openai-full";
 const ENGINE_LABEL: Record<EngineId, string> = {
-  gemini: "Gemini 2.5 Flash Image (Nano Banana 1, prod) · full prompt",
-  "gemini-nb2": "Gemini 3.1 Flash Image (Nano Banana 2) · full prompt",
+  gemini: "Gemini 2.5 Flash Image (Nano Banana 1, retired 2026-10-02) · full prompt",
+  "gemini-nb2": "Gemini 3.1 Flash Image (Nano Banana 2, fallback) · full prompt",
   "gemini-pro": "Gemini 3 Pro Image (Nano Banana Pro) · full prompt",
-  staging: "fal · FLUX apartment-staging · short prompt (prod)",
-  "staging-full": "fal · FLUX apartment-staging · full prompt",
   openai: "GPT Image · short prompt",
-  "openai-full": "GPT Image · full prompt",
+  "openai-full": "GPT Image · full prompt (prod default)",
 };
 const GEMINI_MODEL: Partial<Record<EngineId, string>> = {
   gemini: "gemini-2.5-flash-image",
   "gemini-nb2": "gemini-3.1-flash-image",
   "gemini-pro": "gemini-3-pro-image",
 };
-const ALL_ENGINES: EngineId[] = ["gemini", "gemini-nb2", "gemini-pro", "staging", "staging-full", "openai", "openai-full"];
+const ALL_ENGINES: EngineId[] = ["gemini", "gemini-nb2", "gemini-pro", "openai", "openai-full"];
+// fal virtual-staging columns (staging / staging-full) were removed with the
+// engine on 2026-09-14; the engines-01 run keeps their images for the record.
 
 /**
  * The ten rooms. Picked from _Inputs\source-rooms for difficulty: four bathrooms
@@ -117,6 +113,8 @@ const CASES: Case[] = [
 ];
 
 const OUT = path.join(BENCH_ROOT, "engine-compare", RUN_ID);
+// Every column here is a single shot: the engines' verify→retry loop runs in
+// production for both, but the page compares raw engine behaviour.
 const IMG = ensureDir(path.join(OUT, "images"));
 const META = ensureDir(path.join(OUT, "meta"));
 
@@ -162,15 +160,11 @@ async function runCase(c: Case, index: number): Promise<void> {
       let url: string;
       if (engine in GEMINI_MODEL) {
         const model = GEMINI_MODEL[engine]!;
-        url = await generateConceptImage({ roomPhoto: room, styleBrief, roomType: c.roomType, spatialConstraints, sourceStructure: structure, accent, model });
+        url = await generateConceptImage({ roomPhoto: room, styleBrief, roomType: c.roomType, spatialConstraints, sourceStructure: structure, accent, model, skipVerify: true });
         meta.model = model; meta.promptWords = fullPrompt.split(/\s+/).length;
-      } else if (engine === "staging" || engine === "staging-full") {
-        const promptOverride = engine === "staging-full" ? fullPrompt : undefined;
-        url = await generateConceptImageStaging({ roomPhoto: room, styleBrief, roomType: c.roomType, accent, promptOverride });
-        meta.model = "fal-ai/flux-2-lora-gallery/apartment-staging"; meta.promptWords = (promptOverride ?? shortPrompt).split(/\s+/).length;
       } else {
-        const promptMode = engine === "openai-full" ? "full" : "staging";
-        url = await generateConceptImageOpenAI({ roomPhoto: room, styleBrief, roomType: c.roomType, spatialConstraints, sourceStructure: structure, accent, promptMode });
+        const promptMode = engine === "openai-full" ? "full" : "short";
+        url = await generateConceptImageOpenAI({ roomPhoto: room, styleBrief, roomType: c.roomType, spatialConstraints, sourceStructure: structure, accent, promptMode, skipVerify: true });
         meta.model = openAIImageModel(); meta.promptWords = (promptMode === "full" ? fullPrompt : shortPrompt).split(/\s+/).length;
       }
       const buf = Buffer.from(stripDataUrl(url).data, "base64");
@@ -198,7 +192,8 @@ function buildHtml(embed: boolean): string {
     return embed ? `data:image/jpeg;base64,${readFileSync(p).toString("base64")}` : `images/${file}`;
   };
   const esc = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]!));
-  const present = ALL_ENGINES.filter((e) => CASES.some((c) => existsSync(path.join(IMG, `${c.id}__${e}__thumb.jpg`)) || readMeta(c.id, e)));
+  const legacy = ["staging", "staging-full"] as unknown as EngineId[]; // kept for old runs
+  const present = [...ALL_ENGINES, ...legacy].filter((e) => CASES.some((c) => existsSync(path.join(IMG, `${c.id}__${e}__thumb.jpg`)) || readMeta(c.id, e)));
   const cols = present.length ? present : ALL_ENGINES;
 
   const rows = CASES.map((c) => {
@@ -221,7 +216,8 @@ function buildHtml(embed: boolean): string {
     return `<tr><th scope="row"><div class="id">${esc(c.id)}</div><div class="rt">${esc(c.roomType.replace("_", " "))}</div><div class="note">${esc(c.note)}</div>${before ? `<img src="${before}" alt="source">` : ""}<details><summary>prompts</summary><pre>${esc(prompts)}</pre></details></th>${cells}</tr>`;
   }).join("\n");
 
-  const head = cols.map((e) => `<th>${ENGINE_LABEL[e]}</th>`).join("");
+  const label = (e: EngineId) => ENGINE_LABEL[e] ?? (e === ("staging" as EngineId) ? "fal · FLUX apartment-staging · short prompt (removed)" : "fal · FLUX apartment-staging · full prompt (removed)");
+  const head = cols.map((e) => `<th>${label(e)}</th>`).join("");
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Engine comparison · ${esc(RUN_ID)}</title>
 <style>
 body{margin:0;padding:24px;font:14px/1.4 system-ui,sans-serif;background:#fafafa;color:#0B2240;overflow-x:auto}
@@ -239,7 +235,7 @@ img{width:100%;height:auto;display:block;border-radius:4px}
 details{margin-top:8px;font-size:11px}pre{white-space:pre-wrap;font-size:10px;max-height:320px;overflow:auto;background:#f6f6f6;padding:6px}
 </style></head><body>
 <h1>Redesign My Room — engine comparison</h1>
-<p class="sub">Run <b>${esc(RUN_ID)}</b> · style <b>${esc(STYLE)}</b> · same photo, style brief, measured structure and accent colour on every engine. Gemini runs the production verify→retry loop; the others are single shots. Click an image for full resolution.</p>
+<p class="sub">Run <b>${esc(RUN_ID)}</b> · style <b>${esc(STYLE)}</b> · same photo, style brief, measured structure and accent colour on every engine. Every column is a single shot (no verify→retry). Click an image for full resolution.</p>
 <table><thead><tr><th>Source</th>${head}</tr></thead><tbody>
 ${rows}
 </tbody></table></body></html>`;

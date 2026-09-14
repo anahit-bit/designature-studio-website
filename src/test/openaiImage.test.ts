@@ -72,19 +72,21 @@ describe('buildOpenAIPrompt · prompt shape is switchable per run', () => {
     spatialConstraints: 'SPATIAL CONSTRAINTS: window at x:30%–60%',
   };
 
-  it('defaults to the short edit instruction', () => {
+  it('defaults to the FULL production prompt with the coordinate constraints — the owner-chosen shape', () => {
     delete process.env.OPENAI_IMAGE_PROMPT;
+    const p = buildOpenAIPrompt(input);
+    expect(p).toContain('SPATIAL CONSTRAINTS');
+    expect(p.split(/\s+/).length).toBeGreaterThan(200);
+  });
+
+  it('OPENAI_IMAGE_PROMPT=short (or promptMode) sends the ~110-word edit instruction', () => {
+    process.env.OPENAI_IMAGE_PROMPT = 'short';
     const p = buildOpenAIPrompt(input);
     expect(p).toMatch(/Furnish this exact room/);
     expect(p).not.toContain('SPATIAL CONSTRAINTS');
     expect(p.split(/\s+/).length).toBeLessThan(200);
-  });
-
-  it('OPENAI_IMAGE_PROMPT=full sends the Gemini prompt with the coordinate constraints', () => {
-    process.env.OPENAI_IMAGE_PROMPT = 'full';
-    const p = buildOpenAIPrompt(input);
-    expect(p).toContain('SPATIAL CONSTRAINTS');
-    expect(p.split(/\s+/).length).toBeGreaterThan(200);
+    delete process.env.OPENAI_IMAGE_PROMPT;
+    expect(buildOpenAIPrompt({ ...input, promptMode: 'short' })).toMatch(/Furnish this exact room/);
   });
 });
 

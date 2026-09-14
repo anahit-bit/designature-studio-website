@@ -91,7 +91,7 @@ AI outputs may occasionally reflect biases or errors present in the underlying m
 
 ## 9. Third-Party Services
 
-The Service relies on third-party providers (including Google for authentication, Google's Gemini for AI generation, Cloudinary for image delivery, Resend for transactional email, and **Ameriabank for payment processing**). Our use of those providers is described in our [Privacy Policy](https://www.designature.studio/privacy).
+The Service relies on third-party providers (including Google for authentication, OpenAI and Google's Gemini for AI generation, Cloudinary for image delivery, Resend for transactional email, and **Ameriabank for payment processing**). Our use of those providers is described in our [Privacy Policy](https://www.designature.studio/privacy).
 
 Shopping List results include links to third-party retailers. We do not operate those retailers and are not responsible for their availability, pricing, fulfilment, or returns.
 

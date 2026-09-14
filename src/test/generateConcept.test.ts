@@ -2,25 +2,20 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // The engine router decides which model sees a customer's photo, and the wrong
 // branch is invisible in the response — a Gemini fallback returns an image just
-// like a staging success does. These tests pin the routing so a silent
-// regression to the weaker engine can't ship.
+// like a GPT Image success does. These tests pin the routing so a silent
+// regression to the fallback engine can't ship, and so cost lands in the right
+// bucket (server.ts bills openai vs gemini off the returned `engine`).
 
-const stagingMock = vi.fn();
-const geminiMock = vi.fn();
-const availableMock = vi.fn();
 const openaiMock = vi.fn();
 const openaiAvailableMock = vi.fn();
+const geminiMock = vi.fn();
 
-vi.mock('../../services/aiVision/virtualStaging.js', () => ({
-  generateConceptImageStaging: (...a: unknown[]) => stagingMock(...a),
-  isStagingAvailable: () => availableMock(),
-}));
-vi.mock('../../services/aiVision/imageGeneration.js', () => ({
-  generateConceptImage: (...a: unknown[]) => geminiMock(...a),
-}));
 vi.mock('../../services/aiVision/openaiImage.js', () => ({
   generateConceptImageOpenAI: (...a: unknown[]) => openaiMock(...a),
   isOpenAIImageAvailable: () => openaiAvailableMock(),
+}));
+vi.mock('../../services/aiVision/imageGeneration.js', () => ({
+  generateConceptImage: (...a: unknown[]) => geminiMock(...a),
 }));
 
 const { generateConcept } = await import('../../services/aiVision/generateConcept');
@@ -28,89 +23,72 @@ const { generateConcept } = await import('../../services/aiVision/generateConcep
 const INPUT = {
   roomPhoto: { data: 'x', mimeType: 'image/jpeg' },
   styleBrief: 'brief',
+  spatialConstraints: 'SPATIAL',
+  sourceStructure: { summary: 's' },
+  accent: { name: 'Brushed Brass', hex: '#B08D57', role: 'accent' },
 } as any;
 
 describe('generateConcept · engine routing', () => {
   const originalEnv = process.env.AI_VISION_ENGINE;
 
   beforeEach(() => {
-    stagingMock.mockReset().mockResolvedValue('data:image/png;base64,STAGED');
-    geminiMock.mockReset().mockResolvedValue('data:image/png;base64,GEMINI');
-    availableMock.mockReset().mockReturnValue(true);
     openaiMock.mockReset().mockResolvedValue('data:image/png;base64,OPENAI');
     openaiAvailableMock.mockReset().mockReturnValue(true);
+    geminiMock.mockReset().mockResolvedValue('data:image/png;base64,GEMINI');
     delete process.env.AI_VISION_ENGINE;
-  });
-
-  it('never touches OpenAI unless explicitly forced — it is under evaluation, not a default', async () => {
-    await generateConcept(INPUT);
-    process.env.AI_VISION_ENGINE = 'gemini';
-    await generateConcept(INPUT);
-    expect(openaiMock).not.toHaveBeenCalled();
-  });
-
-  it('AI_VISION_ENGINE=openai routes to GPT Image and reports it, so cost lands on the openai bucket', async () => {
-    process.env.AI_VISION_ENGINE = 'openai';
-    const r = await generateConcept(INPUT);
-    expect(r.engine).toBe('openai');
-    expect(r.url).toContain('OPENAI');
-    expect(stagingMock).not.toHaveBeenCalled();
-    expect(geminiMock).not.toHaveBeenCalled();
-  });
-
-  it('AI_VISION_ENGINE=openai without a key falls through to the default chain', async () => {
-    process.env.AI_VISION_ENGINE = 'openai';
-    openaiAvailableMock.mockReturnValue(false);
-    const r = await generateConcept(INPUT);
-    expect(openaiMock).not.toHaveBeenCalled();
-    expect(r.engine).toBe('staging');
-  });
-
-  it('AI_VISION_ENGINE=openai falls back to staging, then Gemini, when GPT Image throws', async () => {
-    process.env.AI_VISION_ENGINE = 'openai';
-    openaiMock.mockRejectedValue(new Error('openai exploded'));
-    expect((await generateConcept(INPUT)).engine).toBe('staging');
-    stagingMock.mockRejectedValue(new Error('fal exploded'));
-    expect((await generateConcept(INPUT)).engine).toBe('gemini');
   });
   afterEach(() => {
     if (originalEnv === undefined) delete process.env.AI_VISION_ENGINE;
     else process.env.AI_VISION_ENGINE = originalEnv;
   });
 
-  it('defaults to staging — it does roughly half the architectural damage on real rooms', async () => {
+  it('defaults to GPT Image — the owner-reviewed winner of the ten-room comparison', async () => {
     const r = await generateConcept(INPUT);
-    expect(r.engine).toBe('staging');
-    expect(r.url).toContain('STAGED');
+    expect(r.engine).toBe('openai');
+    expect(r.url).toContain('OPENAI');
     expect(geminiMock).not.toHaveBeenCalled();
   });
 
-  it('AI_VISION_ENGINE=gemini forces the old engine — the production escape hatch', async () => {
+  it('hands GPT Image the full production inputs — constraints, structure and accent', async () => {
+    await generateConcept(INPUT);
+    const arg = openaiMock.mock.calls[0][0];
+    expect(arg.spatialConstraints).toBe('SPATIAL');
+    expect(arg.sourceStructure).toEqual({ summary: 's' });
+    expect(arg.accent.name).toBe('Brushed Brass');
+  });
+
+  it('AI_VISION_ENGINE=gemini forces the fallback engine — the production escape hatch', async () => {
     process.env.AI_VISION_ENGINE = 'gemini';
     const r = await generateConcept(INPUT);
     expect(r.engine).toBe('gemini');
-    expect(stagingMock).not.toHaveBeenCalled();
+    expect(openaiMock).not.toHaveBeenCalled();
   });
 
-  it('falls back to Gemini when FAL_KEY is missing, rather than failing the request', async () => {
-    availableMock.mockReturnValue(false);
+  it('falls back to Gemini when OPENAI_API_KEY is missing, rather than failing the request', async () => {
+    openaiAvailableMock.mockReturnValue(false);
     const r = await generateConcept(INPUT);
     expect(r.engine).toBe('gemini');
-    expect(stagingMock).not.toHaveBeenCalled();
+    expect(openaiMock).not.toHaveBeenCalled();
   });
 
-  it('falls back to Gemini when staging throws', async () => {
-    stagingMock.mockRejectedValue(new Error('fal exploded'));
+  it('falls back to Gemini when GPT Image throws', async () => {
+    openaiMock.mockRejectedValue(new Error('openai exploded'));
     const r = await generateConcept(INPUT);
     expect(r.engine).toBe('gemini');
     expect(geminiMock).toHaveBeenCalledOnce();
   });
 
   it('reports the engine that actually ran, so cost is attributed correctly', async () => {
-    // server.ts bills fal vs gemini off this field; a wrong value mis-bills silently.
-    stagingMock.mockRejectedValue(new Error('down'));
+    openaiMock.mockRejectedValue(new Error('down'));
     expect((await generateConcept(INPUT)).engine).toBe('gemini');
-    stagingMock.mockReset().mockResolvedValue('data:image/png;base64,STAGED');
-    expect((await generateConcept(INPUT)).engine).toBe('staging');
+    openaiMock.mockReset().mockResolvedValue('data:image/png;base64,OPENAI');
+    expect((await generateConcept(INPUT)).engine).toBe('openai');
+  });
+
+  it('no engine value other than openai/gemini can come back — fal staging is gone', async () => {
+    process.env.AI_VISION_ENGINE = 'staging';
+    const r = await generateConcept(INPUT);
+    expect(['openai', 'gemini']).toContain(r.engine);
+    expect(r.engine).toBe('openai');
   });
 });

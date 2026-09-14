@@ -1,42 +1,40 @@
 /**
- * AI-029 — concept generation orchestrator.
+ * AI Vision — concept generation orchestrator.
  *
- * DEFAULT is the fal virtual-staging engine. It EDITS the uploaded photograph and
- * only adds furniture, so it cannot invent a window or a wall the way a
- * regenerative model can. Gemini remains as the automatic fallback (and can be
- * forced with AI_VISION_ENGINE=gemini). Returns which engine actually ran.
+ * DEFAULT is GPT Image (OpenAI, full production prompt). Gemini is the automatic
+ * fallback and can be forced with AI_VISION_ENGINE=gemini. Returns which engine
+ * actually ran so the cost lands in the right bucket.
  *
- * Why this changed (2026-09-08). Benchmarked over 16 real client rooms — pack 1,
- * three runs per engine, same rooms and same styles each time — counting the six
- * architectural checks (windows, doors, walls, proportions, ceiling, invented
- * architecture):
+ * Why (2026-09-14). Seven engines were run on the same ten hard rooms — four
+ * bathrooms including one where only the tub is visible, a raw-plaster shell,
+ * a bare hallway, a head-on window, a brick fireplace, a dated kitchen and an
+ * already-furnished living room — with identical style brief, measured
+ * structure and accent colour:
  *
- *                      rooms clean /16      architectural damage
- *                                            all 16      residential only
- *     gemini            1, 5, 5              21.0 avg      9.7 avg  (9, 9, 11)
- *     staging           5, 6, 8              20.0 avg      4.0 avg  (6, 5, 1)
+ *   _Plan\Website\aivision-bench\engine-compare\engines-01\compare-embedded.html
  *
- * Across all 16 it is a tie. On RESIDENTIAL rooms — the product's actual scope —
- * the ranges do not overlap: staging's worst run beats Gemini's best. The overall
- * tie is entirely explained by staging doing WORSE on the commercial and outdoor
- * cases (cafés, offices, open-air kiosks), which are out of scope and which the
- * app does not yet gate. If commercial support is ever built, re-run the
- * benchmark before assuming this default still holds.
+ * GPT Image 2.5 with the full prompt was the most faithful of the seven: it kept
+ * the exact tub, shower and rail; the hallway's door and switch; the brick
+ * fireplace, both windows and the wall colour; the shell's dropped ceiling and
+ * radiator. The owner reviewed every image and chose it. Measured cost $0.078
+ * per image at quality=high, within a cent of Nano Banana 2 ($0.067), the only
+ * Gemini image model that survives the October 2, 2026 shutdown of
+ * gemini-2.5-flash-image.
  *
- * Note the earlier verdict (2026-07-14) that parked staging as "not working" was
- * made against a broken prompt: buildStagingPrompt led with the full style brief
- * and a scene description, which made the model ignore the reference photo
- * entirely (0/16 preserved). That is fixed; see the note in buildStagingPrompt,
- * and do not lengthen that prompt without re-running the benchmark.
+ * The fal virtual-staging engine (default from PR #102 to this change) was
+ * removed: on the same rooms it pulled the camera back and invented a wall of
+ * backlit glass cabinetry on six of ten, and it cannot take the full prompt at
+ * all (given it, it returns the source photo untouched). The 16-room grader
+ * that had favoured it scores openings and walls only, so invented joinery and
+ * camera drift never registered. Grader ≠ eye.
  *
- * Harness: scripts/aivision-bench/{ingest,run,grade}.ts
+ * Harness: scripts/aivision-bench/{ingest,run,grade,compare-engines}.ts
  */
 
 import { generateConceptImage, type ImageGenerationInput } from "./imageGeneration.js";
-import { generateConceptImageStaging, isStagingAvailable } from "./virtualStaging.js";
 import { generateConceptImageOpenAI, isOpenAIImageAvailable } from "./openaiImage.js";
 
-export type ConceptEngine = "staging" | "gemini" | "openai";
+export type ConceptEngine = "openai" | "gemini";
 export interface GenerateConceptResult {
   url: string;
   engine: ConceptEngine;
@@ -45,66 +43,35 @@ export interface GenerateConceptResult {
 export async function generateConcept(
   input: ImageGenerationInput
 ): Promise<GenerateConceptResult> {
-  // Unset (the normal case) = staging. `AI_VISION_ENGINE=gemini` forces the old
-  // engine, which is the escape hatch if staging ever regresses in production.
-  // `AI_VISION_ENGINE=openai` tries GPT Image first (opt-in, under evaluation —
-  // see openaiImage.ts); if it throws or the key is missing, the request
-  // continues down the normal staging → Gemini chain so nothing 500s.
   const forcedEngine = (process.env.AI_VISION_ENGINE || "").trim().toLowerCase();
   const geminiForced = forcedEngine === "gemini";
-  const openaiForced = forcedEngine === "openai";
-  const stagingAvailable = isStagingAvailable();
+  const openaiAvailable = isOpenAIImageAvailable();
 
-  if (openaiForced) {
-    if (!isOpenAIImageAvailable()) {
-      console.warn(
-        "[ai-vision] AI_VISION_ENGINE=openai but OPENAI_API_KEY is not set — " +
-          "falling through to the default engine chain."
-      );
-    } else {
-      try {
-        const url = await generateConceptImageOpenAI({
-          roomPhoto: input.roomPhoto,
-          styleBrief: input.styleBrief,
-          roomType: input.roomType,
-          variationSeed: input.variationSeed,
-          spatialConstraints: input.spatialConstraints,
-          sourceStructure: input.sourceStructure,
-          accent: input.accent,
-        });
-        return { url, engine: "openai" };
-      } catch (err: any) {
-        console.warn(
-          `[ai-vision] OpenAI engine failed — falling back to the default chain: ${err?.message ?? err}`
-        );
-      }
-    }
-  }
-
-  if (!geminiForced && !stagingAvailable) {
-    // Loud on purpose: without FAL_KEY every request silently falls back to the
-    // engine that does roughly twice the architectural damage on real rooms, and
-    // nothing in the response would tell anyone that happened.
+  if (!geminiForced && !openaiAvailable) {
+    // Loud on purpose: without OPENAI_API_KEY every request silently runs on
+    // the fallback engine and nothing in the response would say so.
     console.warn(
-      "[ai-vision] FAL_KEY is not set — the staging engine is unavailable and " +
-        "every generation is falling back to Gemini. Set FAL_KEY to restore the " +
-        "default engine."
+      "[ai-vision] OPENAI_API_KEY is not set — GPT Image is unavailable and " +
+        "every generation is falling back to Gemini. Set OPENAI_API_KEY to " +
+        "restore the default engine."
     );
   }
 
-  if (!geminiForced && stagingAvailable) {
+  if (!geminiForced && openaiAvailable) {
     try {
-      const url = await generateConceptImageStaging({
+      const url = await generateConceptImageOpenAI({
         roomPhoto: input.roomPhoto,
         styleBrief: input.styleBrief,
         roomType: input.roomType,
         variationSeed: input.variationSeed,
+        spatialConstraints: input.spatialConstraints,
+        sourceStructure: input.sourceStructure,
         accent: input.accent,
       });
-      return { url, engine: "staging" };
+      return { url, engine: "openai" };
     } catch (err: any) {
       console.warn(
-        `[ai-vision] Staging failed — falling back to Gemini: ${err?.message ?? err}`
+        `[ai-vision] GPT Image failed — falling back to Gemini: ${err?.message ?? err}`
       );
     }
   }

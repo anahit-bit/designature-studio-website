@@ -56,7 +56,8 @@ We do **not** sell your personal information.
 To run the Service we rely on a small set of trusted providers. Each receives only the data needed to do its job:
 
 - **Google (OAuth)** — verifies your Google identity when you sign in
-- **Google Gemini API** — receives the image or text prompt you submit, returns the AI-generated output
+- **OpenAI API (GPT Image)** — receives the room photo and prompt you submit to Redesign My Room, returns the generated concept
+- **Google Gemini API** — receives the image or text prompt you submit (room analysis, audits, shopping identification, and the fallback concept engine), returns the AI-generated output
 - **Cloudinary** — stores and delivers images, including AI-generated outputs and uploaded photos
 - **Paddle.com Market Limited** — processes payments, manages subscriptions, handles invoices and tax compliance (Merchant of Record)
 - **Resend** — sends transactional emails (account confirmations, payment receipts, support replies)
@@ -69,7 +70,7 @@ Each provider is bound by its own privacy and security commitments. We share onl
 
 ## 5. AI Generation and Your Uploads
 
-When you submit a prompt or image to one of our AI tools, the content is transmitted to the underlying AI provider (currently Google's Gemini API) for processing. AI providers may temporarily retain inputs and outputs to monitor for abuse or improve their service, in accordance with their own policies.
+When you submit a prompt or image to one of our AI tools, the content is transmitted to the underlying AI provider (currently OpenAI's GPT Image API for room concepts and Google's Gemini API for analysis and text) for processing. AI providers may temporarily retain inputs and outputs to monitor for abuse or improve their service, in accordance with their own policies.
 
 We do not use your uploads to train any AI model. We retain your generated outputs in your account so you can revisit them; you can delete them from your account at any time.
 

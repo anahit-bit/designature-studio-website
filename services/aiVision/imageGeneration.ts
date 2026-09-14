@@ -2,7 +2,8 @@
  * Step 2 of the AI Vision pipeline — concept image generation.
  *
  * Takes the room photo and the style brief from Step 1 (or from a preset),
- * calls gemini-2.5-flash-image, and returns the generated image as a base64
+ * calls the Gemini image model (fallback engine since 2026-09-14; GPT Image is
+ * the default — see generateConcept.ts), and returns the generated image as a base64
  * data URL string (data:image/png;base64,…).
  */
 
@@ -10,14 +11,8 @@ import { GoogleGenAI } from "@google/genai";
 import sharp from "sharp";
 import type { RoomType } from "./stylePresets.js";
 import { buildGenerationPrompt, type pickAccent } from "./promptTemplates.js";
-import {
-  analyzeRoomStructure,
-  spatialMetrics,
-  countOpenings,
-  inventedPlumbing,
-  inventedCeiling,
-  type RoomStructure,
-} from "./spatialAnalysis.js";
+import type { RoomStructure } from "./spatialAnalysis.js";
+import { verifyStructure } from "./structureVerify.js";
 
 export interface ImageGenerationInput {
   /** Base64 data (without prefix) and MIME type of the room photo. */
@@ -47,15 +42,17 @@ export interface ImageGenerationInput {
    */
   accent?: ReturnType<typeof pickAccent>;
   /**
-   * Gemini image model id. Defaults to GEMINI_IMAGE_MODEL, then the original
-   * gemini-2.5-flash-image (Nano Banana 1 — Google now lists it as legacy).
-   * Newer: gemini-3.1-flash-image (Nano Banana 2), gemini-3-pro-image (Pro).
+   * Gemini image model id. Defaults to GEMINI_IMAGE_MODEL, then
+   * gemini-3.1-flash-image (Nano Banana 2). The original gemini-2.5-flash-image
+   * shuts down on 2026-10-02; gemini-3-pro-image is the dearer Pro tier.
    * Benchmarks pass it per call so several models can run side by side.
    */
   model?: string;
+  /** Benchmark-only: skip the post-generation structure check. */
+  skipVerify?: boolean;
 }
 
-export const DEFAULT_GEMINI_IMAGE_MODEL = "gemini-2.5-flash-image";
+export const DEFAULT_GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image";
 export function geminiImageModel(override?: string): string {
   return (override || process.env.GEMINI_IMAGE_MODEL || "").trim() || DEFAULT_GEMINI_IMAGE_MODEL;
 }
@@ -140,14 +137,10 @@ export async function generateConceptImage(
   // on the longest edge so the hero stays crisp on high-DPR displays.
   const TARGET_LONG_EDGE = 1800;
 
-  // AI-029 Phase 2b — proportion verification. Compare the generated window's
-  // share of the frame to the source; if it shrank by more than the tolerance
-  // (i.e. the room was widened / camera pulled back), retry once with a
-  // corrective instruction. Bounded to 1 retry to cap cost + latency.
-  const expectedMetrics = spatialMetrics(input.sourceStructure ?? null);
-  const expectedOpenings = countOpenings(input.sourceStructure);
+  // Structure verification (RD25 / RD27 / RD5 / AI-029 proportion) — shared
+  // with the OpenAI engine in structureVerify.ts. ONE corrective retry, to cap
+  // cost and latency.
   const MAX_PROPORTION_RETRIES = 1;
-  const PROPORTION_TOLERANCE = 0.12; // absolute drop in window width fraction
 
   const generateOne = async (
     retryCount = 0,
@@ -255,90 +248,21 @@ export async function generateConceptImage(
           );
         }
 
-        // AI-029 Phase 2b + RD25 — structural verification. Re-measure the
-        // output and retry once if the model either invented an opening or
-        // widened the room. Runs whenever a source structure was supplied:
-        // gating this on `expectedMetrics` (window-derived) is what left every
-        // windowless room — hallway, alcove, interior bathroom — with no
-        // post-generation check at all.
-        if (input.sourceStructure && proportionRetryCount < MAX_PROPORTION_RETRIES) {
-          const outStructure = await analyzeRoomStructure({
-            data: outputBuffer.toString("base64"),
-            mimeType: mime,
-          });
-
-          // RD25 — opening count. Checked first: an invented archway is a
-          // bigger failure than a few points of proportion drift, and it is the
-          // one check that works on a room with no window in it.
-          // RD27 — plumbing count. Checked alongside the openings, on the same
-          // analysis call, so it costs nothing extra. Prompt text alone did not
-          // hold: the bathroom programme's "include a toilet" put one on a wall
-          // with no soil pipe even after the FRAMING and OPENING lines landed.
-          const added = inventedPlumbing(input.sourceStructure, outStructure);
-          if (outStructure !== null && added.length > 0) {
-            const what = added
-              .map((a) => `${a.fixture.replace("_", " ")} (${a.from} in the real room, ${a.to} in the output)`)
-              .join(", ");
-            const note = `\n\nCRITICAL PLUMBING CORRECTION: the previous attempt INVENTED plumbing the real room does not have — ${what}. A toilet, bidet, bath, shower, basin or heated towel rail needs a waste pipe, and this room shows no drainage on that wall. Render the room with ONLY the plumbed fixtures visible in the input photograph, in their existing positions. Do not add a toilet. Do not add a towel rail. Bare wall is the correct answer where the photograph shows bare wall.`;
-            console.warn(
-              `[ai-vision] RD27 plumbing violation: ${what} — retrying (attempt ${proportionRetryCount + 1}/${MAX_PROPORTION_RETRIES})`
-            );
-            return generateOne(retryCount, aspectRetryCount, proportionRetryCount + 1, note);
-          }
-
-          // RD5 via RD22 — the ceiling. Stated in full in the prompt since
-          // 2026-07-13 and broken anyway: a lit perimeter cove appeared in every
-          // one of six graded bathroom generations. Prompt text does not enforce;
-          // a count does.
-          const ceilingAdded = inventedCeiling(input.sourceStructure, outStructure);
-          if (ceilingAdded.length > 0) {
-            const named = ceilingAdded.map((f) => f.replace(/_/g, " ")).join(", ");
-            const note = `\n\nCRITICAL CEILING CORRECTION: the previous attempt rebuilt the ceiling — it added ${named}, which the real room does not have. The ceiling in this room is ONE FLAT PLANE at a single height. Render it flat and unbroken: no perimeter cove, no shadow gap, no concealed LED strip, no dropped or tray section, no bulkhead, no coffer, and no downlights sunk into it. Light the room with the fitting that hangs from or sits on that flat surface, and with wall lights. A plain ceiling is the correct answer.`;
-            console.warn(
-              `[ai-vision] RD5 ceiling violation: invented ${named} — retrying (attempt ${proportionRetryCount + 1}/${MAX_PROPORTION_RETRIES})`
-            );
-            return generateOne(retryCount, aspectRetryCount, proportionRetryCount + 1, note);
-          }
-
-          const outOpenings = countOpenings(outStructure);
-          const invented =
-            outStructure !== null &&
-            (outOpenings.windows > expectedOpenings.windows ||
-              outOpenings.doors > expectedOpenings.doors);
-          if (invented) {
-            const extraWindows = outOpenings.windows - expectedOpenings.windows;
-            const extraDoors = outOpenings.doors - expectedOpenings.doors;
-            const added = [
-              extraWindows > 0 ? `${extraWindows} window${extraWindows === 1 ? "" : "s"}` : "",
-              extraDoors > 0 ? `${extraDoors} doorway${extraDoors === 1 ? "" : "s"}` : "",
-            ]
-              .filter(Boolean)
-              .join(" and ");
-            const note = `\n\nCRITICAL STRUCTURAL CORRECTION: the previous attempt INVENTED ${added} that the original photograph does not contain. The real room has exactly ${expectedOpenings.windows} window${expectedOpenings.windows === 1 ? "" : "s"} and ${expectedOpenings.doors} doorway${expectedOpenings.doors === 1 ? "" : "s"}. Every other wall is solid, unbroken masonry from floor to ceiling. Do NOT cut, imply, paint or light an opening, arch, doorway, passage or window anywhere. If the room reads as a closed box or a dead end, that is correct — leave it closed.`;
-            console.warn(
-              `[ai-vision] RD25 opening-count violation: source ${expectedOpenings.windows}w/${expectedOpenings.doors}d -> output ${outOpenings.windows}w/${outOpenings.doors}d — retrying (attempt ${proportionRetryCount + 1}/${MAX_PROPORTION_RETRIES})`
-            );
-            return generateOne(retryCount, aspectRetryCount, proportionRetryCount + 1, note);
-          }
-          console.log(
-            `[ai-vision] Opening count: source ${expectedOpenings.windows}w/${expectedOpenings.doors}d, output ${outOpenings.windows}w/${outOpenings.doors}d · plumbing preserved`
+        // Structure verification — re-measure the output and retry once on an
+        // invented fixture / rebuilt ceiling / invented opening / widened room.
+        // Runs whenever a source structure was supplied, so windowless rooms
+        // (hallway, alcove, interior bathroom) are checked too.
+        if (!input.skipVerify && input.sourceStructure && proportionRetryCount < MAX_PROPORTION_RETRIES) {
+          const verdict = await verifyStructure(
+            { data: outputBuffer.toString("base64"), mimeType: mime },
+            input.sourceStructure,
+            "ai-vision/gemini"
           );
-
-          const outMetrics = spatialMetrics(outStructure);
-          if (expectedMetrics && outMetrics && outMetrics.anchor === expectedMetrics.anchor) {
-            // Positive drift = window is a smaller share of the frame than the
-            // source ⇒ the room was widened / the camera pulled back.
-            const drift = expectedMetrics.windowWidthFrac - outMetrics.windowWidthFrac;
-            console.log(
-              `[ai-vision] Proportion check: source window=${(expectedMetrics.windowWidthFrac * 100).toFixed(0)}% output=${(outMetrics.windowWidthFrac * 100).toFixed(0)}% drift=${(drift * 100).toFixed(0)}pt`
+          if (verdict) {
+            console.warn(
+              `[ai-vision] ${verdict.violation} violation — retrying (attempt ${proportionRetryCount + 1}/${MAX_PROPORTION_RETRIES})`
             );
-            if (drift > PROPORTION_TOLERANCE) {
-              const note = `\n\nCRITICAL PROPORTION CORRECTION: the previous attempt widened the room — the main window filled only ${(outMetrics.windowWidthFrac * 100).toFixed(0)}% of the image width, but in the real room it fills about ${(expectedMetrics.windowWidthFrac * 100).toFixed(0)}%. Do NOT widen the room, add extra wall beside the window, zoom out, or pull the camera back. Frame it tighter so the window fills ~${(expectedMetrics.windowWidthFrac * 100).toFixed(0)}% of the width, exactly as in the original photo.`;
-              console.warn(
-                `[ai-vision] Proportion drift ${(drift * 100).toFixed(0)}pt > tol ${(PROPORTION_TOLERANCE * 100).toFixed(0)}pt — retrying (attempt ${proportionRetryCount + 1}/${MAX_PROPORTION_RETRIES})`
-              );
-              return generateOne(retryCount, aspectRetryCount, proportionRetryCount + 1, note);
-            }
+            return generateOne(retryCount, aspectRetryCount, proportionRetryCount + 1, verdict.note);
           }
         }
 

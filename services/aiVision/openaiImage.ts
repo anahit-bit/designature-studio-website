@@ -1,17 +1,22 @@
 /**
- * AI Vision — OpenAI GPT Image concept engine (the "ChatGPT image" model).
+ * AI Vision — OpenAI GPT Image concept engine. THE DEFAULT since 2026-09-14.
  *
- * Third engine beside fal virtual-staging (default) and Gemini (fallback).
- * Opt-in only: `AI_VISION_ENGINE=openai` + `OPENAI_API_KEY`. It is here so the
- * same 16-room benchmark that picked staging over Gemini can score GPT Image on
- * identical rooms and prompts before anyone decides whether it should be the
- * default. Do not promote it on the strength of a few pretty outputs — run
- * `scripts/aivision-bench/run.ts` with `AI_VISION_ENGINE=openai` and grade it.
+ * Chosen over Gemini (Nano Banana 1/2/Pro) and fal virtual-staging on a
+ * ten-room side-by-side the owner reviewed image by image — see the note in
+ * generateConcept.ts and _Plan/Website/aivision-bench/engine-compare/.
+ * Measured cost at quality=high, ~1536 px long edge: $0.078/image with the
+ * full prompt (20-image average). Gemini remains the fallback.
  *
  * Endpoint: POST https://api.openai.com/v1/images/edits (multipart). The room
- * photo goes in as the reference image, the prompt is an EDIT instruction, and
- * the model returns base64 PNG. Native fetch + FormData (Node ≥ 20) — no SDK
- * dependency for one call.
+ * photo goes in as the reference image, the prompt is the same full production
+ * prompt Gemini gets (measured architecture, RD rules, programme, style brief,
+ * accent), and the model returns base64 PNG. Native fetch + FormData (Node ≥ 20)
+ * — no SDK dependency for one call.
+ *
+ * After generation the output is re-measured and, on an invented fixture /
+ * rebuilt ceiling / invented opening / widened room, ONE corrective retry is
+ * made with the shared correction note (structureVerify.ts) — the same guard
+ * the Gemini path has.
  *
  * Knobs (env, all optional):
  *   OPENAI_IMAGE_MODEL            default gpt-image-2.5-sunburst ("editing
@@ -20,10 +25,10 @@
  *   OPENAI_IMAGE_INPUT_FIDELITY   "high" to send input_fidelity=high (gpt-image-1.x
  *                                 accepts it; newer models may reject it — the
  *                                 call retries without it automatically)
- *   OPENAI_IMAGE_PROMPT           staging (default) | full — which of our two
- *                                 prompt shapes to send (see buildPrompt below)
+ *   OPENAI_IMAGE_PROMPT           full (default) | short — the ~110-word edit
+ *                                 instruction; slightly more literal, less styled
  *
- * Drop-in with the other engines: same input shape, returns a data URL, throws
+ * Drop-in with the Gemini engine: same input shape, returns a data URL, throws
  * on any failure so the orchestrator can fall back.
  */
 
@@ -35,6 +40,7 @@ import {
   type pickAccent,
 } from "./promptTemplates.js";
 import type { RoomStructure } from "./spatialAnalysis.js";
+import { verifyStructure } from "./structureVerify.js";
 
 export interface OpenAIImageInput {
   /** Base64 data (without prefix) and MIME type of the room photo. */
@@ -50,14 +56,19 @@ export interface OpenAIImageInput {
   /** The single palette colour (or 2026 paint) emphasised in this concept. */
   accent?: ReturnType<typeof pickAccent>;
   /** Overrides OPENAI_IMAGE_PROMPT for this call (benchmarks run both side by side). */
-  promptMode?: "staging" | "full";
+  promptMode?: "short" | "full";
+  /**
+   * Benchmark-only: skip the post-generation structure check so the page shows
+   * raw engine behaviour. Production never sets it.
+   */
+  skipVerify?: boolean;
 }
 
 const EDIT_URL = "https://api.openai.com/v1/images/edits";
 const DEFAULT_MODEL = "gpt-image-2.5-sunburst";
 const MAX_INPUT_LONG_EDGE = 1536; // what we upload; the API accepts far larger
 const OUTPUT_LONG_EDGE = 1536; // what we ask for; upscaled to TARGET below
-const TARGET_LONG_EDGE = 1800; // matches the Gemini + staging paths
+const TARGET_LONG_EDGE = 1800; // matches the Gemini path
 const REQUEST_TIMEOUT_MS = 180_000; // docs: complex prompts may take ~2 min
 
 // Published token rates (gpt-image-2.5, per 1M tokens) — used only to log an
@@ -122,20 +133,16 @@ async function prepareInput(
 }
 
 /**
- * Two prompt shapes, selectable per run so the benchmark can tell us which one
- * GPT Image prefers:
- *   staging — the short edit instruction tuned for the fal staging LoRA
- *             ("furnish this exact room…"). Edit-shaped, ~110 words.
- *   full    — the Gemini generation prompt: full style brief + coordinate
- *             constraints + rulebook + room programme. ~600+ words.
- * Staging is the default: GPT Image is an editor, and the fal benchmark showed
- * that on an editor, words spent on anything but the edit instruction pull the
- * model off the photograph. That finding is model-specific and unproven here —
- * which is exactly why both are exposed.
+ * Two prompt shapes, selectable per run:
+ *   full  — the production generation prompt: full style brief + coordinate
+ *           constraints + rulebook + room programme. ~2,300 words. DEFAULT —
+ *           the owner picked its output on every one of the ten rooms.
+ *   short — the ~110-word edit instruction ("furnish this exact room…").
+ *           Slightly more literal to the photo, noticeably less styled.
  */
 export function buildOpenAIPrompt(input: OpenAIImageInput): string {
-  const mode = (input.promptMode || process.env.OPENAI_IMAGE_PROMPT || "staging").trim().toLowerCase();
-  if (mode === "full") {
+  const mode = (input.promptMode || process.env.OPENAI_IMAGE_PROMPT || "full").trim().toLowerCase();
+  if (mode !== "short" && mode !== "staging") {
     return buildGenerationPrompt({
       styleBrief: input.styleBrief,
       roomType: input.roomType,
@@ -188,13 +195,13 @@ export async function generateConceptImageOpenAI(
   let usedPreset = false;
 
   console.log(
-    `[ai-vision] OpenAI (${model}, ${quality}) size=${size} prompt=${input.promptMode || process.env.OPENAI_IMAGE_PROMPT || "staging"} (${prompt.split(/\s+/).length}w)`
+    `[ai-vision] OpenAI (${model}, ${quality}) size=${size} prompt=${input.promptMode || process.env.OPENAI_IMAGE_PROMPT || "full"} (${prompt.split(/\s+/).length}w)`
   );
 
-  const call = async (): Promise<EditResponse> => {
+  const call = async (correctionNote = ""): Promise<EditResponse> => {
     const form = new FormData();
     form.append("model", model);
-    form.append("prompt", prompt);
+    form.append("prompt", prompt + correctionNote);
     form.append("size", size);
     form.append("quality", quality);
     form.append("output_format", "png");
@@ -219,42 +226,63 @@ export async function generateConceptImageOpenAI(
     return json;
   };
 
-  let json: EditResponse;
-  try {
-    json = await call();
-  } catch (err: any) {
-    const msg = String(err?.message ?? "").toLowerCase();
-    const param = String(err?.param ?? "").toLowerCase();
-    // Parameter-shape rejections get ONE adaptive retry each; anything else
-    // (auth, quota, moderation, timeout) propagates so the orchestrator can fall
-    // back to the default engine.
-    if (inputFidelity && (param === "input_fidelity" || msg.includes("input_fidelity"))) {
-      console.warn(`[ai-vision] OpenAI rejected input_fidelity for ${model} — retrying without it`);
-      inputFidelity = "";
-      json = await call();
-    } else if (!usedPreset && (param === "size" || msg.includes("size"))) {
-      const preset = pickOpenAISize(src.aspect, true);
-      console.warn(`[ai-vision] OpenAI rejected custom size ${size} — retrying with preset ${preset}`);
-      size = preset;
-      usedPreset = true;
-      json = await call();
-    } else {
+  const MAX_STRUCTURE_RETRIES = 1;
+
+  const generateOnce = async (correctionNote: string): Promise<EditResponse> => {
+    try {
+      return await call(correctionNote);
+    } catch (err: any) {
+      const msg = String(err?.message ?? "").toLowerCase();
+      const param = String(err?.param ?? "").toLowerCase();
+      // Parameter-shape rejections get ONE adaptive retry each; anything else
+      // (auth, quota, moderation, timeout) propagates so the orchestrator can
+      // fall back to Gemini.
+      if (inputFidelity && (param === "input_fidelity" || msg.includes("input_fidelity"))) {
+        console.warn(`[ai-vision] OpenAI rejected input_fidelity for ${model} — retrying without it`);
+        inputFidelity = "";
+        return call(correctionNote);
+      }
+      if (!usedPreset && (param === "size" || msg.includes("size"))) {
+        const preset = pickOpenAISize(src.aspect, true);
+        console.warn(`[ai-vision] OpenAI rejected custom size ${size} — retrying with preset ${preset}`);
+        size = preset;
+        usedPreset = true;
+        return call(correctionNote);
+      }
       throw err;
     }
-  }
+  };
 
-  const b64 = json?.data?.[0]?.b64_json;
-  if (!b64) {
-    throw new Error(
-      `OpenAI image edit returned no image: ${JSON.stringify(json).slice(0, 300)}`
-    );
-  }
+  let b64 = "";
+  let correctionNote = "";
+  for (let attempt = 0; attempt <= MAX_STRUCTURE_RETRIES; attempt++) {
+    const json = await generateOnce(correctionNote);
+    const got = json?.data?.[0]?.b64_json;
+    if (!got) {
+      throw new Error(
+        `OpenAI image edit returned no image: ${JSON.stringify(json).slice(0, 300)}`
+      );
+    }
+    b64 = got;
+    const cost = estimateCostUsd(json.usage);
+    if (json.usage) {
+      console.log(
+        `[ai-vision] OpenAI usage: in=${json.usage.input_tokens ?? "?"} (img ${json.usage.input_tokens_details?.image_tokens ?? "?"}) out=${json.usage.output_tokens ?? "?"} ≈ $${cost?.toFixed(3) ?? "?"}`
+      );
+    }
 
-  const cost = estimateCostUsd(json.usage);
-  if (json.usage) {
-    console.log(
-      `[ai-vision] OpenAI usage: in=${json.usage.input_tokens ?? "?"} (img ${json.usage.input_tokens_details?.image_tokens ?? "?"}) out=${json.usage.output_tokens ?? "?"} ≈ $${cost?.toFixed(3) ?? "?"}`
+    // Structure check — same guard as the Gemini path, one corrective retry.
+    if (input.skipVerify || !input.sourceStructure || attempt >= MAX_STRUCTURE_RETRIES) break;
+    const verdict = await verifyStructure(
+      { data: b64, mimeType: "image/png" },
+      input.sourceStructure,
+      "ai-vision/openai"
     );
+    if (!verdict) break;
+    console.warn(
+      `[ai-vision] OpenAI ${verdict.violation} violation — retrying (attempt ${attempt + 1}/${MAX_STRUCTURE_RETRIES})`
+    );
+    correctionNote = verdict.note;
   }
 
   const outBuf = Buffer.from(b64, "base64");
