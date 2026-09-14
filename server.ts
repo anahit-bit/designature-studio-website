@@ -1460,8 +1460,8 @@ async function startServer() {
   const CALL_COSTS: Record<string, number> = {
     gemini:     0.0001,
     fal:        0.02,   // AI-029 Phase 3 — Flux apartment-staging ≈ $0.021/megapixel
-    openai:     0.17,   // GPT Image edit @ high quality, ~1536×1024 — token-billed; the
-                        // engine logs the measured $ per call, adjust once we have data
+    openai:     0.07,   // GPT Image 2.5 edit @ high, ~1536×1152 — measured 2026-09-14: $0.062 short
+                        // prompt / $0.078 full prompt per image (usage logged per call)
     cloudinary: 0,
     serper:     0.02,
     sheets:     0,
