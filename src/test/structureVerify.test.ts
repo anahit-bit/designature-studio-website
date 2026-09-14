@@ -36,8 +36,32 @@ describe('compareStructures', () => {
     });
     const v = compareStructures(base, out);
     expect(v?.violation).toBe('plumbing');
-    expect(v?.note).toMatch(/CRITICAL PLUMBING CORRECTION/);
-    expect(v?.note).toMatch(/toilet/);
+    expect(v?.note).toMatch(/PLUMBING CORRECTION/);
+    expect(v?.note).toMatch(/added a toilet/);
+    // The note must not undo the redesign — that is what flattened the tub bathroom.
+    expect(v?.note).toMatch(/Keep everything else from the previous attempt/);
+    expect(v?.note).not.toMatch(/bare wall/i);
+  });
+
+  it('passes the tub-only bathroom the analyser double-counts (shower head + valve, curtain rod as towel rail)', () => {
+    const src = clone({
+      plumbing: [
+        { fixture: 'shower', wall: 'back', box: [0.5, 0.1, 0.7, 0.4] },
+        { fixture: 'bath', wall: 'back', box: [0.2, 0.6, 0.9, 0.95] },
+        { fixture: 'soil_stack', wall: 'back', box: [0.85, 0.8, 0.9, 0.9] },
+      ] as any,
+    });
+    const out = clone({
+      plumbing: [
+        { fixture: 'shower', wall: 'back', box: [0.5, 0.1, 0.7, 0.4] },
+        { fixture: 'shower', wall: 'back', box: [0.5, 0.5, 0.6, 0.6] },
+        { fixture: 'bath', wall: 'back', box: [0.2, 0.6, 0.9, 0.95] },
+        { fixture: 'bath', wall: 'back', box: [0.2, 0.6, 0.9, 0.95] },
+        { fixture: 'towel_rail', wall: 'back', box: [0.1, 0.05, 0.9, 0.08] },
+        { fixture: 'soil_stack', wall: 'back', box: [0.85, 0.8, 0.9, 0.9] },
+      ] as any,
+    });
+    expect(compareStructures(src, out)).toBeNull();
   });
 
   it('flags a rebuilt ceiling (RD5)', () => {

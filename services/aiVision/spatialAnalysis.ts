@@ -532,8 +532,8 @@ export function isSingleWallShot(s: RoomStructure | null): boolean {
 /**
  * Plumbed fixtures by type, ignoring `soil_stack` (which is evidence, not a
  * fixture, and may legitimately be concealed by the renovation). RD27's
- * post-generation check compares this map against the source: any type whose
- * count went UP was invented onto a wall with no drainage.
+ * post-generation check compares this map against the source — see
+ * inventedPlumbing for what counts as "invented".
  */
 export function countPlumbing(
   s: RoomStructure | null | undefined,
@@ -546,7 +546,19 @@ export function countPlumbing(
   return out;
 }
 
-/** Fixture types present in `b` in greater number than in `a`. Pure. */
+/**
+ * Fixtures that need a drain and are ABSENT from the source but present in the
+ * output. A towel rail is not drainage, so it never counts.
+ *
+ * Deliberately a presence test, not a count. It was a count until 2026-09-14,
+ * and on the tub-only bathroom the analyser read the shower head and the
+ * shower valve as two showers and the curtain rod as a towel rail, so every
+ * generation "invented" plumbing, fired the corrective retry, and the owner saw
+ * the flattened second attempt instead of the redesign (both live runs that
+ * day). The failure RD27 exists for is a toilet appearing on a wall with no
+ * soil pipe — a fixture TYPE the photograph does not have. Duplicates of a type
+ * the room already has are analyser noise, not a new drain. Pure.
+ */
 export function inventedPlumbing(
   source: RoomStructure | null | undefined,
   output: RoomStructure | null | undefined,
@@ -555,8 +567,9 @@ export function inventedPlumbing(
   const b = countPlumbing(output);
   const added: Array<{ fixture: string; from: number; to: number }> = [];
   for (const [fixture, to] of Object.entries(b)) {
+    if (fixture === "towel_rail") continue;
     const from = a[fixture] ?? 0;
-    if (to > from) added.push({ fixture, from, to });
+    if (from === 0 && to > 0) added.push({ fixture, from, to });
   }
   return added;
 }

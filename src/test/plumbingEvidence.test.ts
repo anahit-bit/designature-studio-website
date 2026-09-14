@@ -153,8 +153,45 @@ describe('RD25 · post-generation plumbing count', () => {
       ],
     };
     const added = inventedPlumbing(noDrainage, output);
-    expect(added.map((a) => a.fixture).sort()).toEqual(['toilet', 'towel_rail']);
-    expect(added.find((a) => a.fixture === 'toilet')).toMatchObject({ from: 0, to: 1 });
+    expect(added.map((a) => a.fixture)).toEqual(['toilet']);
+    expect(added[0]).toMatchObject({ from: 0, to: 1 });
+  });
+
+  it('never flags a towel rail — it is not drainage', () => {
+    const output: RoomStructure = {
+      ...noDrainage,
+      plumbing: [
+        { fixture: 'basin', box: [0.05, 0.55, 0.3, 0.68] },
+        { fixture: 'towel_rail', box: [0.9, 0.35, 0.97, 0.6] },
+      ],
+    };
+    expect(inventedPlumbing(noDrainage, output)).toEqual([]);
+  });
+
+  it('does not flag a second count of a type the room already has — the tub-only bathroom, 2026-09-14', () => {
+    // The analyser read the shower head + valve as two showers and the curtain
+    // rod as a towel rail on every generation of this photo, so the retry fired
+    // and the owner saw the flattened second attempt instead of the redesign.
+    const source: RoomStructure = {
+      ...noDrainage,
+      plumbing: [
+        { fixture: 'shower', box: [0.5, 0.1, 0.7, 0.4] },
+        { fixture: 'bath', box: [0.2, 0.6, 0.9, 0.95] },
+        { fixture: 'soil_stack', box: [0.85, 0.8, 0.9, 0.9] },
+      ],
+    };
+    const output: RoomStructure = {
+      ...source,
+      plumbing: [
+        { fixture: 'shower', box: [0.5, 0.1, 0.7, 0.4] },
+        { fixture: 'shower', box: [0.5, 0.5, 0.6, 0.6] },
+        { fixture: 'bath', box: [0.2, 0.6, 0.9, 0.95] },
+        { fixture: 'bath', box: [0.2, 0.6, 0.9, 0.95] },
+        { fixture: 'towel_rail', box: [0.1, 0.05, 0.9, 0.08] },
+        { fixture: 'soil_stack', box: [0.85, 0.8, 0.9, 0.9] },
+      ],
+    };
+    expect(inventedPlumbing(source, output)).toEqual([]);
   });
 
   it('does not flag a room that merely restyled what it had', () => {
