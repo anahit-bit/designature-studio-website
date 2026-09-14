@@ -45,17 +45,21 @@ export function compareStructures(
 ): StructureVerdict | null {
   if (output === null) return null; // unmeasurable output — do not block on noise
 
-  // RD27 — plumbing count. Checked first: a toilet on a wall with no soil pipe
-  // is a bigger failure than a few points of proportion drift.
+  // RD27 — a plumbed fixture TYPE the photograph does not have. Checked first:
+  // a toilet on a wall with no soil pipe is a bigger failure than a few points
+  // of proportion drift. The note names ONLY the invented fixture and leaves
+  // the rest of the design alone — the earlier wording ("render ONLY the
+  // fixtures in the photo… bare wall is the correct answer") made the retry
+  // flatten the whole redesign, which is what the owner saw on 2026-09-14.
   const added = inventedPlumbing(source, output);
   if (added.length > 0) {
-    const what = added
-      .map((a) => `${a.fixture.replace("_", " ")} (${a.from} in the real room, ${a.to} in the output)`)
-      .join(", ");
+    const names = added.map((a) => a.fixture.replace("_", " "));
+    const what = names.join(" and ");
+    const article = (n: string) => (/^[aeiou]/.test(n) ? `an ${n}` : `a ${n}`);
     return {
       violation: "plumbing",
-      detail: what,
-      note: `\n\nCRITICAL PLUMBING CORRECTION: the previous attempt INVENTED plumbing the real room does not have — ${what}. A toilet, bidet, bath, shower, basin or heated towel rail needs a waste pipe, and this room shows no drainage on that wall. Render the room with ONLY the plumbed fixtures visible in the input photograph, in their existing positions. Do not add a toilet. Do not add a towel rail. Bare wall is the correct answer where the photograph shows bare wall.`,
+      detail: added.map((a) => `${a.fixture.replace("_", " ")} (0 in the real room, ${a.to} in the output)`).join(", "),
+      note: `\n\nPLUMBING CORRECTION: the previous attempt added ${names.map(article).join(" and ")} that the real room does not have. ${what.charAt(0).toUpperCase() + what.slice(1)} needs a waste pipe, and this photograph shows no drainage where it was placed. Remove it and leave that wall as a finished wall. Keep everything else from the previous attempt — the tiling, finishes, fittings, colours and styling were correct — and keep the fixtures the photograph does show in their existing positions.`,
     };
   }
 
