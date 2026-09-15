@@ -1,0 +1,86 @@
+# QA agent configuration. Read by .claude/skills/designature-qa/SKILL.md
+# and by .claude/designature-qa/helper.mjs. The agent re-reads this every run.
+
+environment:
+  production: https://www.designature.studio
+  staging: # none today
+  local: http://localhost:3000   # npm run dev (in memory state, no Postgres needed)
+
+# Single locale. The code is English only (src/LanguageContext.tsx).
+locales:
+  - en
+locale_url_strategy: no-prefix
+
+viewports:
+  desktop: { width: 1920, height: 1080 }
+  mobile: { width: 390, height: 844 }
+
+report_timezone: Asia/Yerevan
+
+# No written design system yet. When one exists, point here and the
+# agent will file `design-system` findings against it.
+design_system:
+
+# Hard rules for every pass on this site (in addition to the skill's own):
+#   - Never trigger an AI generation (AI Vision, Room Audit, Shopping identify).
+#     Each one spends real API credits.
+#   - Never confirm a consultation slot hold or a payment. Stop at the last
+#     screen before the action.
+#   - Never submit the contact, feedback, newsletter or comment forms on
+#     production; they send real email and create real records.
+
+sections:
+
+  home:
+    default: true
+    routes:
+      - /
+      - /studio
+      - /services
+      - /faq
+    primary_interaction: "Click the hero CTA on / and confirm it navigates. On /faq expand two questions and confirm the answers render."
+
+  portfolio:
+    routes:
+      - /portfolio
+      - /portfolio/32
+      - /portfolio/25
+    primary_interaction: "From /portfolio open the first project card and confirm the project page renders its images and the back navigation works."
+
+  ai-studio:
+    routes:
+      - /ai-concepts
+      - /deliverables
+      - /retail
+    primary_interaction: "On /ai-concepts start the Style Quiz and answer two questions, then leave. Do NOT upload a photo or run a generation."
+
+  pricing:
+    routes:
+      - /pricing
+    primary_interaction: "Expand the credits explainer and click one plan card to confirm it responds. If a monthly/annual switch is visible, toggle it and confirm prices update. Do NOT click a buy, credits or subscribe button."
+
+  consultation:
+    routes:
+      - /consultation
+      - /booking/confirmed
+      - /booking/failed
+    primary_interaction: "On /consultation open the slot picker and select a day. Do NOT hold or confirm a slot."
+
+  journal:
+    routes:
+      - /journal
+    primary_interaction: "From /journal open the first post and one category link; confirm both render and the post has a title, date and body. Do NOT post a comment."
+
+  legal:
+    routes:
+      - /terms
+      - /privacy
+      - /refund
+
+  account:
+    routes:
+      - /account
+      - /admin
+    auth_required:
+      - /account
+      - /admin

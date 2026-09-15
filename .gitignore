@@ -21,3 +21,10 @@ users.json
 # #12 identify test fixtures (dev-only, large binaries)
 scripts/identify-test-images/
 scripts/aivision/__pycache__/
+
+# QA agent runtime data (helper managed)
+qa-runs/state/
+qa-runs/baselines/
+qa-runs/screenshots/
+qa-runs/auth/
+secrets/
