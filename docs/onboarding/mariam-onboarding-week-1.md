@@ -125,15 +125,15 @@ Both are syndication channels. The website is always the original.
 
 ## 5. First week plan
 
-Start date: Monday 21 Sep 2026. Each day has one main deliverable. Post pairs come from the 15 live posts, oldest first, so the back catalogue is on both platforms within about eight working days.
+Start date: Wednesday 16 Sep 2026. Five working days, Wed 16 to Tue 22. Each day has one main deliverable. Post pairs come from the 15 live posts, oldest first, so the back catalogue is on both platforms within about eight working days. The complete shareable version of this brief is `docs/onboarding/Mariam-Onboarding-Guide.docx`.
 
 | Day | Main work | Journal syndication |
 |---|---|---|
-| **Mon** | Access and orientation. Get Drive, Sanity, Medium, Substack and site admin access. Read this brief, the Product Documentation handoff, and the Design System doc. Click through every live tool on the site as a first time user and write down every point of confusion. | Set up the Medium publication and the Substack. Agree names, bios, header images with Anahit. |
-| **Tue** | Product walkthrough with Anahit (60 min). Then start the persona draft: list who we think buys, from the Journal analytics, consultation bookings and competitor research. Aim for 4 to 5 candidate personas. | Publish Post 1 and Post 2 on Medium and Substack. |
-| **Wed** | UI/UX research: audit the AI Studio flow against MeltFlex and REimagine Home (competitor teardowns are in the repo `docs/competitor-intel/`). Record friction points with screenshots. | Publish Post 3 and Post 4. |
-| **Thu** | Persona work: turn the candidates into one page persona cards (goal, trigger, fear, device, which tool they need first). Review with Anahit, cut to the three we design for. | Publish Post 5 and Post 6. |
-| **Fri** | UI concept kickoff: from the three personas, sketch the ideal first session for each in the AI Studio (entry, first tool, first result, upgrade moment). Present as a short deck or Figma board. Wrap up: week summary and next week's plan. | Publish Post 7 and Post 8. Add the syndication URL column to the Schedule sheet. |
+| **Wed 16** | Access and orientation. Get Drive, Sanity, Medium, Substack and site admin access. Read this brief, the Product Documentation handoff, and the Design System doc. Click through every live tool on the site as a first time user and write down every point of confusion. | Set up the Medium publication and the Substack. Agree names, bios, header images with Anahit. |
+| **Thu 17** | Product walkthrough with Anahit (60 min). Then start the persona draft: list who we think buys, from the Journal analytics, consultation bookings and competitor research. Aim for 4 to 5 candidate personas. | Publish Post 1 and Post 2 on Medium and Substack. |
+| **Fri 18** | UI/UX research: audit the AI Studio flow against MeltFlex and REimagine Home (competitor teardowns are in the repo `docs/competitor-intel/`). Record friction points with screenshots. | Publish Post 3 and Post 4. |
+| **Mon 21** | Persona work: turn the candidates into one page persona cards (goal, trigger, fear, device, which tool they need first). Review with Anahit, cut to the three we design for. | Publish Post 5 and Post 6. |
+| **Tue 22** | UI concept kickoff: from the three personas, sketch the ideal first session for each in the AI Studio (entry, first tool, first result, upgrade moment). Present as a short deck or Figma board. Wrap up: week summary and next week's plan. | Publish Post 7 and Post 8. Add the syndication URL column to the Schedule sheet. |
 
 **Week 1 deliverables**
 
