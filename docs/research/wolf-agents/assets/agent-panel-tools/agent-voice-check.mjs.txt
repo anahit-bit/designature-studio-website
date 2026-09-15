@@ -1,0 +1,435 @@
+#!/usr/bin/env node
+// agent-voice-check.mjs — measures how interchangeable a fleet of AI agents' writing is.
+//
+// Motivated by arXiv:2510.22954 ("Artificial Hivemind"), which measured inter-model
+// homogeneity: different models converging on the same output. This checks the layer
+// above it. If a set of agents with distinct charters, memory and projects still writes
+// in one voice, cross-agent review adds no signal.
+//
+// Method (zero-LLM, deterministic, no network):
+//   corpus  = assistant text blocks from the main thread (no subagents), last N days,
+//             one project directory = one agent.
+//   features= authorship-attribution style profile: function-word frequencies +
+//             structural markers (bullets, bold, numbering, sentence length, dashes).
+//             Content words are deliberately excluded: topics differ by project,
+//             voice is what is being tested.
+//   score   = leave-one-out nearest-centroid attribution accuracy. If a classifier
+//             cannot tell which agent wrote a message, the agents are interchangeable.
+//             Chance level = majority-class share; both are reported.
+//   control = the human operator's own messages, and per-model grouping, to test
+//             whether swapping models actually buys voice diversity.
+// Russian and English are scored separately: a mixed corpus would let the classifier
+// win by detecting language instead of voice.
+//
+// Nothing leaves the machine. Output is aggregate numbers only, never message text.
+//
+// Usage: node agent-voice-check.mjs [--days=30] [--max-per-agent=400] [--dir=PATH] [--json]
+
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+const ARG = Object.fromEntries(process.argv.slice(2).map(a => {
+  const m = a.match(/^--([^=]+)(?:=(.*))?$/);
+  return m ? [m[1], m[2] ?? 'true'] : [a, 'true'];
+}));
+const DAYS = Number(ARG.days ?? 30);
+const MAX_PER_AGENT = Number(ARG['max-per-agent'] ?? 400);
+const MIN_MSGS = Number(ARG['min-msgs'] ?? 25);
+const MIN_LEN = 200;
+// Claude Code keeps one directory of .jsonl session logs per project. Point --dir
+// elsewhere if your harness stores transcripts somewhere else.
+const PROJECTS = ARG.dir ?? path.join(os.homedir(), '.claude', 'projects');
+const HUMAN = ARG.human ?? 'HUMAN';
+const CUTOFF = Date.now() - DAYS * 864e5;
+
+// Slots that are not project agents (test dirs, arena scratch, harness internals).
+const SKIP = /^(-tmp|-app|-data-arena|-tmp-lab)/;
+
+function agentName(dir) {
+  return dir.replace(/^-workspace-/, '').replace(/^-/, '') || dir;
+}
+
+function isCyrillic(s) {
+  const cyr = (s.match(/[Ѐ-ӿ]/g) || []).length;
+  const lat = (s.match(/[A-Za-z]/g) || []).length;
+  return cyr > lat ? 'ru' : 'en';
+}
+
+// ---------- corpus ----------
+
+function collect() {
+  const out = []; // {agent, model, lang, text}
+  let dirs = [];
+  try { dirs = fs.readdirSync(PROJECTS); } catch { return out; }
+  for (const d of dirs) {
+    if (SKIP.test(d)) continue;
+    const agent = agentName(d);
+    let files = [];
+    try {
+      files = fs.readdirSync(path.join(PROJECTS, d))
+        .filter(f => f.endsWith('.jsonl'))
+        .map(f => path.join(PROJECTS, d, f))
+        .filter(p => { try { return fs.statSync(p).mtimeMs > CUTOFF; } catch { return false; } });
+    } catch { continue; }
+    // newest sessions first, so a cap keeps the most recent voice
+    files.sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
+    let taken = 0;
+    for (const p of files) {
+      if (taken >= MAX_PER_AGENT) break;
+      let lines;
+      try { lines = fs.readFileSync(p, 'utf8').split('\n'); } catch { continue; }
+      for (const line of lines) {
+        if (taken >= MAX_PER_AGENT) break;
+        if (!line) continue;
+        let o;
+        try { o = JSON.parse(line); } catch { continue; }
+        if (o.type !== 'assistant' || o.isSidechain) continue;
+        const ts = o.timestamp ? Date.parse(o.timestamp) : 0;
+        if (ts && ts < CUTOFF) continue;
+        const content = o.message?.content;
+        if (!Array.isArray(content)) continue;
+        for (const b of content) {
+          if (b?.type !== 'text') continue;
+          const text = String(b.text || '').trim();
+          if (text.length < MIN_LEN) continue;
+          out.push({ agent, model: o.message?.model || 'unknown', lang: isCyrillic(text), text });
+          taken++;
+          break; // one text block per assistant turn
+        }
+      }
+    }
+  }
+  return out;
+}
+
+// The human operator's own writing, as the control: user turns are typed by a person.
+function collectHuman() {
+  const out = [];
+  let dirs = [];
+  try { dirs = fs.readdirSync(PROJECTS); } catch { return out; }
+  for (const d of dirs) {
+    if (SKIP.test(d)) continue;
+    let files = [];
+    try {
+      files = fs.readdirSync(path.join(PROJECTS, d))
+        .filter(f => f.endsWith('.jsonl'))
+        .map(f => path.join(PROJECTS, d, f))
+        .filter(p => { try { return fs.statSync(p).mtimeMs > CUTOFF; } catch { return false; } });
+    } catch { continue; }
+    for (const p of files) {
+      let lines;
+      try { lines = fs.readFileSync(p, 'utf8').split('\n'); } catch { continue; }
+      for (const line of lines) {
+        if (!line) continue;
+        let o;
+        try { o = JSON.parse(line); } catch { continue; }
+        if (o.type !== 'user' || o.isSidechain) continue;
+        const c = o.message?.content;
+        const text = typeof c === 'string'
+          ? c
+          : Array.isArray(c) ? (c.find(x => x?.type === 'text')?.text || '') : '';
+        const t = String(text).trim();
+        if (t.length < 120) continue;
+        if (/tool_result|<system-reminder|Caveat:|<command-name>/.test(t)) continue;
+        out.push({ agent: HUMAN, model: 'human', lang: isCyrillic(t), text: t });
+      }
+    }
+  }
+  return out;
+}
+
+// ---------- features ----------
+
+const FN_EN = `the a an and or but so then than that this these those it its is are was were be been being have has had do does did not no yes if when while because for from with without into onto over under about after before again still just only also even more most less least very much many few own same other another each every all any some none i you we they he she them us our your their my me him her what which who whom whose how why where here there now already yet once twice up down out off on in at by to of as like such per via than then thus hence however though although unless until since between across through during within beyond against toward upon nor either neither both`.split(/\s+/);
+const FN_RU = `и а но или же ли бы не ни да нет что чтобы как так тоже также еще ещё уже только даже почти вот это этот эта эти тот та те там тут здесь сейчас теперь потом раньше позже когда пока если хотя потому поэтому значит итак кроме вместо между через над под перед после при про для без из от до по за на в во с со у о об к ко я ты мы вы он она они его её их наш ваш свой сам весь все всё вся каждый любой другой такой какой который кто кого чей где куда откуда зачем почему сколько очень слишком совсем просто ведь мол тогда затем сначала теперь всегда никогда иногда`.split(/\s+/);
+
+function tokenize(s, lang) {
+  const re = lang === 'ru' ? /[Ѐ-ӿa-z]+/g : /[a-zЀ-ӿ]+/g;
+  return (s.toLowerCase().match(re) || []);
+}
+
+function features(text, lang) {
+  const toks = tokenize(text, lang);
+  const n = Math.max(toks.length, 1);
+  const vocab = lang === 'ru' ? FN_RU : FN_EN;
+  const idx = new Map(vocab.map((w, i) => [w, i]));
+  const v = new Float64Array(vocab.length + STRUCT.length);
+  for (const t of toks) {
+    const i = idx.get(t);
+    if (i !== undefined) v[i] += 1;
+  }
+  for (let i = 0; i < vocab.length; i++) v[i] = v[i] / n * 100;
+
+  const lines = text.split('\n');
+  const sentences = text.split(/[.!?]+\s/).filter(s => s.trim().length > 1);
+  const words = toks.length;
+  const st = {
+    bullets: lines.filter(l => /^\s*[-*•]\s/.test(l)).length / lines.length * 100,
+    numbered: lines.filter(l => /^\s*\d+[.)]\s/.test(l)).length / lines.length * 100,
+    headers: lines.filter(l => /^\s*#{1,6}\s/.test(l)).length / lines.length * 100,
+    bold: (text.match(/\*\*/g) || []).length / words * 100,
+    code: (text.match(/`/g) || []).length / words * 100,
+    emdash: (text.match(/—/g) || []).length / words * 100,
+    colon: (text.match(/:/g) || []).length / words * 100,
+    comma: (text.match(/,/g) || []).length / words * 100,
+    paren: (text.match(/\(/g) || []).length / words * 100,
+    question: (text.match(/\?/g) || []).length / words * 100,
+    upperWord: (text.match(/\b[A-ZА-Я]{3,}\b/g) || []).length / words * 100,
+    avgSent: sentences.length ? Math.min(words / sentences.length, 60) : 0,
+    avgLine: lines.length ? Math.min(words / lines.length, 60) : 0,
+    longWord: toks.filter(t => t.length > 7).length / n * 100,
+    blankLine: lines.filter(l => !l.trim()).length / lines.length * 100,
+  };
+  STRUCT.forEach((k, i) => { v[vocab.length + i] = st[k]; });
+  return v;
+}
+const STRUCT = ['bullets','numbered','headers','bold','code','emdash','colon','comma','paren','question','upperWord','avgSent','avgLine','longWord','blankLine'];
+
+function zscale(vectors) {
+  const d = vectors[0].length, mean = new Float64Array(d), sd = new Float64Array(d);
+  for (const v of vectors) for (let i = 0; i < d; i++) mean[i] += v[i];
+  for (let i = 0; i < d; i++) mean[i] /= vectors.length;
+  for (const v of vectors) for (let i = 0; i < d; i++) sd[i] += (v[i] - mean[i]) ** 2;
+  for (let i = 0; i < d; i++) sd[i] = Math.sqrt(sd[i] / vectors.length) || 1;
+  return vectors.map(v => {
+    const o = new Float64Array(d);
+    for (let i = 0; i < d; i++) o[i] = (v[i] - mean[i]) / sd[i];
+    return o;
+  });
+}
+
+function cos(a, b) {
+  let d = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+  return d / (Math.sqrt(na) * Math.sqrt(nb) || 1);
+}
+
+// ---------- attribution ----------
+
+// Leave-one-out nearest centroid: pull each message out, rebuild its own agent's
+// centroid without it, ask which agent it looks like.
+function attribution(items, labelOf) {
+  const labels = [...new Set(items.map(labelOf))];
+  const byLabel = new Map(labels.map(l => [l, []]));
+  items.forEach((it, i) => byLabel.get(labelOf(it)).push(i));
+  const d = items[0].vec.length;
+  const sums = new Map(), counts = new Map();
+  for (const l of labels) {
+    const s = new Float64Array(d);
+    for (const i of byLabel.get(l)) for (let k = 0; k < d; k++) s[k] += items[i].vec[k];
+    sums.set(l, s); counts.set(l, byLabel.get(l).length);
+  }
+  let correct = 0;
+  const confusion = new Map(labels.map(l => [l, new Map()]));
+  for (let i = 0; i < items.length; i++) {
+    const truth = labelOf(items[i]);
+    let best = null, bestScore = -Infinity;
+    for (const l of labels) {
+      const c = counts.get(l) - (l === truth ? 1 : 0);
+      if (c <= 0) continue;
+      const s = sums.get(l), cen = new Float64Array(d);
+      for (let k = 0; k < d; k++) cen[k] = (s[k] - (l === truth ? items[i].vec[k] : 0)) / c;
+      const sc = cos(items[i].vec, cen);
+      if (sc > bestScore) { bestScore = sc; best = l; }
+    }
+    if (best === truth) correct++;
+    const row = confusion.get(truth);
+    row.set(best, (row.get(best) || 0) + 1);
+  }
+  const majority = Math.max(...labels.map(l => counts.get(l))) / items.length;
+  return { acc: correct / items.length, chance: 1 / labels.length, majority, labels, counts, confusion };
+}
+
+// Mean pairwise style similarity between agent centroids: how close the voices sit.
+function centroidSimilarity(items, labelOf) {
+  const labels = [...new Set(items.map(labelOf))];
+  const d = items[0].vec.length;
+  const cen = new Map();
+  for (const l of labels) {
+    const s = new Float64Array(d);
+    let n = 0;
+    for (const it of items) if (labelOf(it) === l) { n++; for (let k = 0; k < d; k++) s[k] += it.vec[k]; }
+    for (let k = 0; k < d; k++) s[k] /= n;
+    cen.set(l, s);
+  }
+  const pairs = [];
+  for (let i = 0; i < labels.length; i++)
+    for (let j = i + 1; j < labels.length; j++)
+      pairs.push({ a: labels[i], b: labels[j], sim: cos(cen.get(labels[i]), cen.get(labels[j])) });
+  pairs.sort((x, y) => y.sim - x.sim);
+  return { pairs, mean: pairs.reduce((s, p) => s + p.sim, 0) / (pairs.length || 1), cen };
+}
+
+// Intra-agent repetition: word-5-gram Jaccard between an agent's own messages.
+function selfRepetition(texts, cap = 60) {
+  const sample = texts.slice(0, cap).map(t => {
+    const w = tokenize(t, isCyrillic(t));
+    const g = new Set();
+    for (let i = 0; i + 5 <= w.length; i++) g.add(w.slice(i, i + 5).join(' '));
+    return g;
+  }).filter(g => g.size > 5);
+  if (sample.length < 2) return null;
+  let sum = 0, n = 0;
+  for (let i = 0; i < sample.length; i++)
+    for (let j = i + 1; j < sample.length; j++) {
+      let inter = 0;
+      const [a, b] = sample[i].size < sample[j].size ? [sample[i], sample[j]] : [sample[j], sample[i]];
+      for (const g of a) if (b.has(g)) inter++;
+      sum += inter / (a.size + b.size - inter); n++;
+    }
+  return sum / n;
+}
+
+// Openers: how many agents start messages the same way.
+function openerOverlap(items, labelOf) {
+  const byAgent = new Map();
+  for (const it of items) {
+    const first = it.text.split('\n').find(l => l.trim()) || '';
+    const w = tokenize(first, it.lang).slice(0, 3).join(' ');
+    if (w.split(' ').length < 3) continue;
+    if (!byAgent.has(labelOf(it))) byAgent.set(labelOf(it), new Map());
+    const m = byAgent.get(labelOf(it));
+    m.set(w, (m.get(w) || 0) + 1);
+  }
+  const global = new Map();
+  for (const [, m] of byAgent) for (const [k, v] of m) {
+    if (!global.has(k)) global.set(k, { count: 0, agents: new Set() });
+    const g = global.get(k); g.count += v; g.agents.add(1);
+  }
+  const shared = [...byAgent.entries()].flatMap(([a, m]) => [...m.keys()].map(k => ({ a, k })));
+  const keyAgents = new Map();
+  for (const { a, k } of shared) {
+    if (!keyAgents.has(k)) keyAgents.set(k, new Set());
+    keyAgents.get(k).add(a);
+  }
+  const top = [...keyAgents.entries()]
+    .map(([k, s]) => ({ opener: k, agents: s.size, uses: global.get(k)?.count || 0 }))
+    .filter(x => x.agents > 1)
+    .sort((a, b) => b.agents - a.agents || b.uses - a.uses)
+    .slice(0, 15);
+  return top;
+}
+
+// ---------- run ----------
+
+const corpus = [...collect(), ...collectHuman()];
+const report = { days: DAYS, generated: null, sections: {} };
+const lines = [];
+const say = s => { lines.push(s); };
+
+say(`# Hivemind check — are our agents one voice?`);
+say('');
+say(`Window: last ${DAYS} days · corpus: ${corpus.length} messages ≥${MIN_LEN} chars, main thread only.`);
+say(`Method: leave-one-out nearest-centroid authorship attribution over function-word + structure features.`);
+say(`High accuracy = distinct voices. Accuracy near chance = interchangeable writers.`);
+say('');
+
+for (const lang of ['ru', 'en']) {
+  const pool = corpus.filter(c => c.lang === lang);
+  const byAgent = new Map();
+  for (const c of pool) {
+    if (!byAgent.has(c.agent)) byAgent.set(c.agent, []);
+    byAgent.get(c.agent).push(c);
+  }
+  const kept = [...byAgent.entries()].filter(([, v]) => v.length >= MIN_MSGS);
+  if (kept.length < 3) { say(`## ${lang.toUpperCase()}: too little data (${kept.length} agents over ${MIN_MSGS} msgs)`); say(''); continue; }
+
+  const items = kept.flatMap(([, v]) => v);
+  const raw = items.map(it => features(it.text, lang));
+  const scaled = zscale(raw);
+  scaled.forEach((v, i) => { items[i].vec = v; });
+
+  const agentsOnly = items.filter(it => it.agent !== HUMAN);
+  const att = attribution(agentsOnly, it => it.agent);
+  const sim = centroidSimilarity(agentsOnly, it => it.agent);
+
+  say(`## ${lang === 'ru' ? 'Russian' : 'English'} — ${agentsOnly.length} agent messages, ${att.labels.length} agents`);
+  say('');
+  say(`| metric | value |`);
+  say(`|---|---|`);
+  say(`| attribution accuracy | **${(att.acc * 100).toFixed(1)}%** |`);
+  say(`| chance (1/${att.labels.length}) | ${(att.chance * 100).toFixed(1)}% |`);
+  say(`| always-guess-biggest-agent baseline | ${(att.majority * 100).toFixed(1)}% |`);
+  say(`| mean style similarity between agent voices | ${sim.mean.toFixed(3)} (1.0 = identical) |`);
+  say('');
+
+  say(`Most interchangeable pairs:`);
+  for (const p of sim.pairs.slice(0, 6)) say(`- ${p.a} ↔ ${p.b}: ${p.sim.toFixed(3)}`);
+  say('');
+  say(`Most distinct pairs:`);
+  for (const p of sim.pairs.slice(-3)) say(`- ${p.a} ↔ ${p.b}: ${p.sim.toFixed(3)}`);
+  say('');
+
+  // human control
+  const human = items.filter(it => it.agent === HUMAN);
+  if (human.length >= MIN_MSGS) {
+    const withHuman = attribution(items, it => it.agent);
+    const humanRow = withHuman.confusion.get(HUMAN);
+    const humanCorrect = (humanRow?.get(HUMAN) || 0) / human.length;
+    say(`Human control: the operator's own ${human.length} messages are identified correctly ${(humanCorrect * 100).toFixed(1)}% of the time.`);
+    say(`A human writing in the same room is the ceiling this metric can reach.`);
+    say('');
+  }
+
+  // per-model: does swapping models buy voice diversity?
+  const byModel = new Map();
+  for (const it of agentsOnly) {
+    const m = (it.model || 'unknown').replace(/-\d{8}$/, '');
+    if (!byModel.has(m)) byModel.set(m, []);
+    byModel.get(m).push(it);
+  }
+  const modelKept = [...byModel.entries()].filter(([m, v]) => v.length >= MIN_MSGS && m !== 'unknown');
+  if (modelKept.length >= 2) {
+    const mItems = modelKept.flatMap(([, v]) => v);
+    const mAtt = attribution(mItems, it => (it.model || '').replace(/-\d{8}$/, ''));
+    const mSim = centroidSimilarity(mItems, it => (it.model || '').replace(/-\d{8}$/, ''));
+    say(`Model check (${modelKept.map(([m, v]) => `${m}: ${v.length}`).join(', ')}):`);
+    say(`- telling models apart by voice: ${(mAtt.acc * 100).toFixed(1)}% vs ${(mAtt.majority * 100).toFixed(1)}% baseline`);
+    say(`- mean similarity between model voices: ${mSim.mean.toFixed(3)}`);
+    say('');
+  }
+
+  // repetition
+  const rep = kept
+    .filter(([a]) => a !== HUMAN)
+    .map(([a, v]) => ({ agent: a, rep: selfRepetition(v.map(x => x.text)) }))
+    .filter(x => x.rep != null)
+    .sort((a, b) => b.rep - a.rep);
+  const humanRep = byAgent.has(HUMAN) ? selfRepetition(byAgent.get(HUMAN).map(x => x.text)) : null;
+  say(`Self-repetition (5-gram overlap between an agent's own messages, 0 = never repeats):`);
+  for (const r of rep.slice(0, 5)) say(`- ${r.agent}: ${(r.rep * 100).toFixed(2)}%`);
+  if (humanRep != null) say(`- ${HUMAN} (human control): ${(humanRep * 100).toFixed(2)}%`);
+  say('');
+
+  const openers = openerOverlap(agentsOnly, it => it.agent);
+  if (openers.length) {
+    say(`Openers shared across agents (same first 3 words):`);
+    for (const o of openers.slice(0, 8)) say(`- "${o.opener}" — ${o.agents} agents, ${o.uses} uses`);
+    say('');
+  }
+
+  report.sections[lang] = {
+    agents: att.labels.length,
+    messages: agentsOnly.length,
+    accuracy: att.acc,
+    chance: att.chance,
+    majority: att.majority,
+    meanVoiceSimilarity: sim.mean,
+    closestPairs: sim.pairs.slice(0, 6),
+    repetition: rep,
+  };
+}
+
+say(`Per-agent corpus size (messages kept):`);
+const sizes = new Map();
+for (const c of corpus) sizes.set(c.agent, (sizes.get(c.agent) || 0) + 1);
+for (const [a, n] of [...sizes.entries()].sort((x, y) => y[1] - x[1])) say(`- ${a}: ${n}`);
+
+const text = lines.join('\n');
+if (ARG.json) {
+  console.log(JSON.stringify(report, null, 2));
+} else {
+  console.log(text);
+}
+export { collect, features, attribution };

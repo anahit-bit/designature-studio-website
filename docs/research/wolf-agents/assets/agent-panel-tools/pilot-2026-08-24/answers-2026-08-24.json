@@ -1,0 +1,40 @@
+{
+  "run": "2026-08-24 pilot",
+  "conditionNames": {
+    "A": "copies (Claude Opus 5 ×3, identical prompt)",
+    "B": "charters (Claude Opus 5, three written characters)",
+    "C": "models (Claude Sonnet 5, Claude Haiku 4.5, Claude Fable 5)"
+  },
+  "note": "Raw structured answers, verbatim. Condition A = clones (same model, neutral prompt), B = charters (same model, three different written charters), C = models (neutral prompt, three different models). Three T3/C answers were still running when this file was first written and are appended on arrival.",
+  "answers": [
+    {"task": "T1", "cond": "A", "agent": "clone1", "choice": "a", "concerns": ["Verbal conditions, not signed; SSO may not close deals", "Enterprise sales cycles outlast six months of runway", "SSO scope creep: SCIM, audit logs, SAML edge cases"]},
+    {"task": "T1", "cond": "A", "agent": "clone2", "choice": "a", "concerns": ["Verbal conditions may hide other blockers; deals still slip", "Enterprise sales cycles outlast six months of runway", "SSO scope creep: SCIM, audit logs, SAML edge cases"]},
+    {"task": "T1", "cond": "A", "agent": "clone3", "choice": "a", "concerns": ["Verbal conditions rarely convert; SSO may unblock nothing", "Enterprise cycles outrun six months of runway", "SSO drags SCIM, audit logs, SOC2 scope creep"]},
+    {"task": "T1", "cond": "B", "agent": "risk-first", "choice": "a", "concerns": ["Verbal conditions, not signed contracts: prospects may still walk", "SSO scope creep across SAML, SCIM, IdP quirks eats runway", "Three logos closing late still leaves churn and drop-off unfixed"]},
+    {"task": "T1", "cond": "B", "agent": "user-first", "choice": "b", "concerns": ["Rebuild may not lift activation; drop-off cause unverified", "Three enterprise deals walk, near-term revenue gone", "Self-serve conversion too slow for six-month runway"]},
+    {"task": "T1", "cond": "B", "agent": "growth-first", "choice": "a", "concerns": ["Three verbal conditions may not convert after shipping", "Enterprise SSO drags SCIM, audit, security review scope", "Trial leak keeps compounding while quarter goes elsewhere"]},
+    {"task": "T1", "cond": "C", "agent": "sonnet", "choice": "a", "concerns": ["prospects add new blockers after SSO ships anyway", "SSO scope creeps past one quarter, missing close window", "ignoring 60% trial leak compounds while we build"]},
+    {"task": "T1", "cond": "C", "agent": "haiku", "choice": "b", "concerns": ["60% drop-off may signal misaligned product-market fit beyond UX fixes", "Three large prospects will move to competitors during onboarding rebuild timeline", "Conversion improvement must be dramatic enough to justify deprioritizing revenue certainty"]},
+    {"task": "T1", "cond": "C", "agent": "fable", "choice": "a", "concerns": ["prospects may still stall or demand more after SSO ships", "enterprise sales cycles could outlast the six-month runway", "SSO scope creep into SCIM, audit logs, compliance asks"]},
+
+    {"task": "T2", "cond": "A", "agent": "clone1", "choice": "b", "concerns": ["Strangler needs discipline the one senior may not sustain", "Two half-done tracks, neither finished, morale drains", "Seam boundaries wrong, rewrite bleeds into feature code"]},
+    {"task": "T2", "cond": "A", "agent": "clone2", "choice": "b", "concerns": ["Half-migrated codebase becomes permanent if funding or attention shifts", "Single senior engineer is the bottleneck and single point of failure", "Both tracks slip, CEO loses trust in the estimate"]},
+    {"task": "T2", "cond": "A", "agent": "clone3", "choice": "b", "concerns": ["Strangler needs discipline the one senior engineer may not enforce", "Both tracks slip; CEO sees late features and unfinished rewrite", "Bus factor: single senior owns the seam, no redundancy"]},
+    {"task": "T2", "cond": "B", "agent": "risk-first", "choice": "b", "concerns": ["Strangler needs discipline the single senior engineer may not enforce", "Two half-finished systems if he quits or burns out", "Both tracks slip, CEO loses trust in engineering"]},
+    {"task": "T2", "cond": "B", "agent": "user-first", "choice": "b", "concerns": ["Half-migrated codebase becomes permanent, worse than either end state", "Single senior engineer is the bottleneck and a resignation risk", "Both tracks slip, CEO loses faith, rewrite gets killed anyway"]},
+    {"task": "T2", "cond": "B", "agent": "growth-first", "choice": "b", "concerns": ["Both tracks slip; quarter ends with neither done", "Only one senior engineer becomes the bottleneck and burnout risk", "Seams chosen wrong, rewrite becomes permanent parallel codebase"]},
+    {"task": "T2", "cond": "C", "agent": "sonnet", "choice": "b", "concerns": ["Strangler boundaries picked wrong without an architecture review first", "No forcing function, rewrite quietly stalls once features take priority", "Only one senior engineer split across both, burnout risk"]},
+    {"task": "T2", "cond": "C", "agent": "haiku", "choice": "c", "concerns": ["New hires won't be productive for 3-4 months; rewrite still slips past quarter-end", "Senior engineer stays demoralized if hiring stalls or new hires lack depth", "Tech debt compounds; features may become harder to ship if debt festers badly"]},
+    {"task": "T2", "cond": "C", "agent": "fable", "choice": "b", "concerns": ["Strangler drifts into a stealth full rewrite without hard scope limits", "Single senior engineer bottlenecks both tracks; burnout or departure kills both", "Slower features may still miss the quarter, eroding CEO trust anyway"]},
+
+    {"task": "T3", "cond": "A", "agent": "clone1", "choice": "b", "concerns": ["Correction UI treats symptom; bad transcripts still lose first impressions", "Users may read editing as our error tax", "Measuring accuracy gain needs correction telemetry we likely lack"]},
+    {"task": "T3", "cond": "A", "agent": "clone2", "choice": "b", "concerns": ["Correction UI admits errors, does not remove complaint", "Fixing per note still costs user time", "Bad audio stays bad; some churn continues"]},
+    {"task": "T3", "cond": "A", "agent": "clone3", "choice": "b", "concerns": ["Correction UI treats symptom; bad transcripts still cost trust", "Users may see correction work as our failure offloaded", "No accuracy gain for silent churners who never correct"]},
+    {"task": "T3", "cond": "B", "agent": "risk-first", "choice": "b", "concerns": ["Correction UI treats symptom; bad transcripts still churn users", "Users may refuse manual work they never wanted", "Correction data worthless unless fed back into accuracy"]},
+    {"task": "T3", "cond": "B", "agent": "user-first", "choice": "b", "concerns": ["Correction UI treats symptom; bad transcripts still erode first-run trust", "Users may not correct, they churn silently instead", "Corrections must feed model improvement or value stays flat"]},
+    {"task": "T3", "cond": "B", "agent": "growth-first", "choice": "b", "concerns": ["Correction UI admits errors; churned users never see it", "Fix-it-yourself reads as work, not product", "Corrections may not feed back into accuracy gains"]},
+    {"task": "T3", "cond": "C", "agent": "sonnet", "choice": "b", "concerns": ["Users churn silently before ever opening correction interface", "Correction friction itself feels like admitting product is broken", "Masks which error patterns need real fixing later"]},
+    {"task": "T3", "cond": "C", "agent": "haiku", "choice": "b", "concerns": ["Users perceive correction as genuinely fast, not marginally faster than workaround", "Correction pipeline must feed model retraining or feature feels performative", "Labor-reducing feature offers weak monetization path versus accuracy tier pricing"]},
+    {"task": "T3", "cond": "C", "agent": "fable", "choice": "b", "concerns": ["Users may read manual fixing as the product admitting failure", "Correction data only pays off if a retraining loop actually exists", "If base accuracy trails competitors, edits slow churn, not stop it"]}
+  ]
+}

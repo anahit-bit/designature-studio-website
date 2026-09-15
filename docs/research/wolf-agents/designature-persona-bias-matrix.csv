@@ -1,0 +1,40 @@
+persona,bias_id,bias_name,surface,hypothesis,role,source
+P1 renter refresher,93,Ambiguity Effect,AI Vision result and shopping list,"Reversible / no drilling filter and badge raises add to list rate",leverage,proposal
+P1 renter refresher,88,Endowment Effect,AI Vision upload,"Rendering their own room raises perceived value versus gallery examples",leverage,Bob demo recipes
+P1 renter refresher,84,IKEA Effect,Style quiz,"Answering the quiz before renders raises attachment and share rate",leverage,Bob demo recipes
+P1 renter refresher,79,Hyperbolic Discounting,Pricing,"Ready this weekend framing beats annual savings framing on free to paid step",leverage,Bob bias index
+P1 renter refresher,57,Mental Accounting,Shopping list,"Grouping into keep when you move and leave behind lowers resistance to total",leverage,Bob bias index
+P1 renter refresher,23,Money Illusion,Pricing,"Monthly framing of 49 dollar plan converts better than annual",leverage,Bob bias index
+P1 renter refresher,83,Loss Aversion,Onboarding,"Loss framing on first contact raises anxiety and drop off",watch,Bob gotchas
+P2 homeowner renovator,48,Authority Bias,Consultation and deliverables,"Designer credentials and process beside the render raise bookings",leverage,Bob bias index
+P2 homeowner renovator,86,Zero Risk Bias,Pricing and consultation,"Named guarantee outperforms an equal value discount",leverage,Bob bias index
+P2 homeowner renovator,54,Halo Effect,Portfolio and first render,"First render quality sets perceived quality of whole service",leverage,Bob bias index
+P2 homeowner renovator,18,Anchoring Effect,Pricing,"99 dollar consultation next to typical studio fees anchors it as small",leverage,Bob demo recipes
+P2 homeowner renovator,92,Decoy Effect,Pricing,"19 dollar tier makes 49 read as the sensible middle; test position and copy",leverage,Bob demo recipes
+P2 homeowner renovator,49,Automation Bias,AI Vision,"Structure verified line plus human review option raises trust without false confidence",leverage,proposal
+P2 homeowner renovator,91,Reactance,Consultation CTA,"Pushy booking prompts reduce bookings",watch,Bob gotchas
+P3 listing agent,20,Contrast Effect,Landing and pricing,"Before after pairs and price per image beside physical staging cost read as cheap",leverage,Bob bias index
+P3 listing agent,50,Bandwagon Effect,Landing,"Used by N agents claim works only with real numbers",leverage,Bob bias index
+P3 listing agent,3,Illusory Truth Effect,Journal and landing,"Repeating we never move your walls across pages builds the trust claim",leverage,Bob bias index
+P3 listing agent,102,Serial Recall,Staging flow,"Numbered three step flow is remembered and repeated",leverage,Bob bias index
+P3 listing agent,58,Normality Bias,Compliance,"Automatic virtually staged label removes the disclosure decision",leverage,proposal
+P3 listing agent,35,Insensitivity to Sample Size,Testimonials,"Three testimonials read as proof; label sample honestly",watch,Bob bias index
+P4 short stay host,97,Less Is Better Effect,Shopping list,"One curated premium item outperforms a long cheap list",leverage,Bob bias index
+P4 short stay host,85,Unit Bias,Shopping list,"Batching by room with completion state sustains purchase progress",leverage,Bob bias index
+P4 short stay host,101,Peak End Rule,AI Vision flow,"Final screen determines rating of whole flow",leverage,Bob bias index
+P4 short stay host,14,Picture Superiority Effect,Journal,"Photo led guides outperform text led ones",leverage,Bob bias index
+P4 short stay host,22,Framing Effect,Pricing,"Pays for itself in one booking framing beats feature lists",leverage,Bob bias index
+P4 short stay host,81,Escalation of Commitment,Credits,"Sunk cost nudges around credits feel manipulative",watch,Bob gotchas
+P5 Yerevan local client,16,Self Reference Effect,Portfolio and journal,"Yerevan projects and local names on first screen raise local engagement",leverage,Bob bias index
+P5 Yerevan local client,4,Mere Exposure Effect,Retail page,"Familiar local retailer logos raise trust in the shopping list",leverage,Bob demo recipes
+P5 Yerevan local client,53,In Group Favoritism,Studio page,"Local identity and language raise consultation requests",leverage,Bob bias index
+P5 Yerevan local client,45,Stereotype,All copy and colour,"Cultural cues for a US audience may not read well locally; test by locale",watch,Bob bias index
+P5 Yerevan local client,99,Prejudice,All copy and colour,"Colours numbers and symbols need localisation",watch,Bob bias index
+P5 Yerevan local client,48,Authority Bias,Consultation,"Engineering plus design background is a credential; show it",leverage,proposal
+P5 Yerevan local client,33,Bias Blind Spot,Copy,"Never explain the persuasion in copy",watch,Bob bias index
+P6 free tier tinkerer,104,Primacy Effect,First render,"First free render decides paid conversion; spend the best model on it",leverage,Bob bias index
+P6 free tier tinkerer,80,Appeal to Novelty,Feature naming,"Named features raise perceived value over free tools",leverage,Bob bias index
+P6 free tier tinkerer,39,Recency Illusion,Account and email,"Re surfacing an unused feature as new brings tinkerers back",leverage,Bob bias index
+P6 free tier tinkerer,15,Von Restorff Effect,Pricing,"One visually distinct plan gets chosen; test which",leverage,Bob bias index
+P6 free tier tinkerer,6,Cue Dependent Forgetting,Email,"Reminder showing their own past render beats a generic nudge",leverage,Bob bias index
+P6 free tier tinkerer,87,Processing Difficulty Effect,Cancel and delete,"Friction on cancel is a dark pattern and is punished in reviews",watch,proposal

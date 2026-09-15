@@ -1,0 +1,25 @@
+{
+  "note": "Concept map used to match concerns as ideas rather than strings. Written by hand from the answer texts, published so the matching can be criticised. A concern maps to every concept whose pattern it matches; unmatched concerns keep their own identity as `other:<first three words>` so they still count toward union size.",
+  "concepts": {
+    "unsigned_commitment": "verbal|not signed|signed contracts|may still walk|stall|demand more|new blockers|hide other blockers|rarely convert|not guaranteed",
+    "sales_cycle_too_long": "sales cycle|cycles outlast|outrun|outlast|close window|past one quarter|six-month runway|six months of runway",
+    "scope_creep": "scope creep|scope creeps|scim|audit log|saml|soc2|compliance|security review|idp",
+    "trial_leak_ignored": "trial leak|drop-off|drop off|60%|leak keeps|churn and drop-off|compounds while",
+    "pmf_doubt": "product-market fit|pmf|misaligned",
+    "competitor_takes_deal": "competitors|move to competitors|deals walk|prospects walk|revenue gone",
+    "activation_unproven": "may not lift activation|cause unverified|conversion improvement|dramatic enough|conversion too slow",
+    "discipline_required": "discipline|forcing function|hard scope limits|stealth full rewrite|quietly stalls|drifts into",
+    "half_migrated_permanent": "half-migrated|half-done|half-finished|permanent parallel|becomes permanent|neither done|neither finished",
+    "single_engineer_risk": "single senior|one senior|only one senior|bus factor|bottleneck|burnout|resignation|quits|departure|demoralized",
+    "schedule_slip_trust": "both tracks slip|tracks slip|loses trust|loses faith|eroding ceo trust|late features|miss the quarter|slips past quarter",
+    "wrong_seams": "seam boundaries|seams chosen|seams picked|boundaries picked|architecture review|bleeds into feature",
+    "hiring_ramp": "new hires|hire two|productive for|hiring stalls",
+    "debt_compounds": "tech debt compounds|debt festers|rot compound|debt compounds",
+    "symptom_not_cause": "treats symptom|admits errors|admitting product is broken|admitting failure|does not remove complaint|masks which error",
+    "user_burden": "error tax|failure offloaded|manual work|fix-it-yourself|reads as work|costs user time|refuse manual",
+    "no_feedback_loop": "telemetry|feed back|feeds model|retraining|training data|feature feels performative|only pays off",
+    "silent_churn": "silent churn|churn silently|never see it|never opening|silent churners|some churn continues",
+    "audio_quality_floor": "bad audio|base accuracy trails|vertical vocabularies still fail",
+    "monetization_weak": "monetization|accuracy tier pricing"
+  }
+}

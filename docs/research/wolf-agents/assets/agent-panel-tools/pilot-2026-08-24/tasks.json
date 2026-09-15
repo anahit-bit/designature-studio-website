@@ -1,0 +1,39 @@
+{
+  "fixed": "2026-08-24, before any run",
+  "output_contract": "Reply with ONLY a JSON object, no prose, no code fence: {\"choice\":\"a\"|\"b\"|\"c\",\"concerns\":[\"...\",\"...\",\"...\"],\"rationale\":\"one line\"}. The three concerns are the risks or unknowns that most worry you about YOUR chosen option, ranked, in your own words, max 12 words each.",
+  "tasks": [
+    {
+      "id": "T1",
+      "text": "A B2B SaaS company has 6 months of runway and can fund exactly one initiative this quarter. (a) Ship enterprise SSO, which three large prospects have made a condition of signing. (b) Rebuild onboarding, where 60% of trials drop off before the first value moment. (c) Cut the price 40% and chase self-serve volume. Choose one."
+    },
+    {
+      "id": "T2",
+      "text": "A 12-person startup's only senior engineer says the codebase needs a three-month rewrite before anything else ships; the CEO wants two customer-facing features this quarter. (a) Do the full rewrite and pause feature work. (b) Strangler-pattern the rewrite alongside the features, accepting both go slower. (c) Freeze the rewrite, ship the features, hire two engineers and revisit in six months. Choose one."
+    },
+    {
+      "id": "T3",
+      "text": "An AI note-taking app is losing users to complaints about transcript accuracy. (a) Switch to a larger model, tripling inference cost per user. (b) Keep the current model and add a correction interface where users fix errors in seconds. (c) Narrow the product to one vertical, medical dictation, and tune hard for its vocabulary. Choose one."
+    }
+  ],
+  "conditions": {
+    "A": {
+      "label": "clones",
+      "model": "inherited (single model)",
+      "prompt": "You are an experienced operator advising on a product decision. Read the situation and decide."
+    },
+    "B": {
+      "label": "charters",
+      "model": "same as A",
+      "charters": [
+        "You are a risk-first operator. You have watched companies die from commitments they could not fund. You weigh downside, cash and reversibility above upside.",
+        "You are a user-first operator. You believe retention follows from removing friction people actually feel, and you distrust decisions driven by the loudest buyer in the room.",
+        "You are a growth-first founder. You believe distribution and momentum compound, and that a company that stalls in place loses regardless of how sound its internals are."
+      ]
+    },
+    "C": {
+      "label": "models",
+      "prompt": "same neutral prompt as A",
+      "models": ["claude-sonnet-5", "claude-haiku-4-5-20251001", "claude-fable-5"]
+    }
+  }
+}

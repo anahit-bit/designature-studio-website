@@ -1,0 +1,165 @@
+#!/usr/bin/env node
+// agent-quorum-score.mjs — scores an agent-panel experiment: do independent agents given the
+// same decision actually disagree, or is a panel of N one opinion counted N times?
+//
+// Deterministic, no model calls, no network. You supply the answers; this scores them.
+//   --answers   path to a JSON file of agent answers (see pilot-2026-08-24/ for the shape)
+//   --concepts  path to the concept map used to match worries as ideas, not strings
+//   --json      machine-readable output instead of the markdown report
+//
+// Answer shape: {"answers":[{"task":"T1","cond":"A","agent":"clone1","choice":"a",
+//                            "concerns":["...","...","..."]}, ...]}
+// `cond` is whatever you varied between agents; every condition is scored separately.
+//
+// Metrics:
+//   1. choice agreement  — share of agent pairs picking the same option
+//   2. concern overlap   — mean pairwise Jaccard over concept sets
+//   3. union size        — distinct concepts a condition produced
+//   4. marginal value    — expected new concepts contributed by the Nth agent,
+//                          averaged over every ordering of the agents
+//
+// Usage: node scripts/quorum-score.mjs [--json]
+
+import fs from 'node:fs';
+import path from 'node:path';
+
+const ARG = Object.fromEntries(process.argv.slice(2).map(a => {
+  const m = a.match(/^--([^=]+)(?:=(.*))?$/);
+  return m ? [m[1], m[2] ?? 'true'] : [a, 'true'];
+}));
+const HERE = path.dirname(new URL(import.meta.url).pathname);
+const ANSWERS = ARG.answers ?? path.join(HERE, 'pilot-2026-08-24', 'answers-2026-08-24.json');
+const CONCEPTS = ARG.concepts ?? path.join(HERE, 'pilot-2026-08-24', 'concept-map.json');
+const data = JSON.parse(fs.readFileSync(ANSWERS, 'utf8'));
+const map = JSON.parse(fs.readFileSync(CONCEPTS, 'utf8')).concepts;
+const RX = Object.entries(map).map(([k, v]) => [k, new RegExp(v, 'i')]);
+
+const conceptsOf = concerns => {
+  const s = new Set();
+  for (const c of concerns) {
+    let hit = false;
+    for (const [k, rx] of RX) if (rx.test(c)) { s.add(k); hit = true; }
+    if (!hit) s.add('other:' + c.toLowerCase().split(/\s+/).slice(0, 3).join(' '));
+  }
+  return s;
+};
+
+const jaccard = (a, b) => {
+  let inter = 0;
+  for (const x of a) if (b.has(x)) inter++;
+  const uni = a.size + b.size - inter;
+  return uni ? inter / uni : 0;
+};
+
+// expected number of new concepts contributed by the k-th agent, over all orderings
+function marginal(sets) {
+  const n = sets.length;
+  const perms = [];
+  const permute = (arr, cur = []) => {
+    if (!arr.length) { perms.push(cur); return; }
+    arr.forEach((x, i) => permute([...arr.slice(0, i), ...arr.slice(i + 1)], [...cur, x]));
+  };
+  permute(sets.map((_, i) => i));
+  const gain = new Array(n).fill(0);
+  for (const p of perms) {
+    const seen = new Set();
+    p.forEach((idx, pos) => {
+      let fresh = 0;
+      for (const c of sets[idx]) if (!seen.has(c)) { fresh++; seen.add(c); }
+      gain[pos] += fresh;
+    });
+  }
+  return gain.map(g => g / perms.length);
+}
+
+const tasks = [...new Set(data.answers.map(a => a.task))];
+const conds = [...new Set(data.answers.map(a => a.cond))];
+const CONDNAME = data.conditionNames || {};
+
+const out = { perCondition: {}, perTask: {}, overall: {} };
+const lines = [];
+const say = s => lines.push(s);
+
+say(`# Agent quorum — ${data.run || 'results'}`);
+say('');
+say(`${data.answers.length} answers · ${tasks.length} tasks · ${conds.length} conditions.`);
+say(`Answers: \`${path.basename(ANSWERS)}\` · concept map: \`${path.basename(CONCEPTS)}\`.`);
+say('');
+
+for (const cond of conds) {
+  let agrees = 0, pairs = 0, jsum = 0, jn = 0;
+  const unions = [], marg = [];
+  for (const task of tasks) {
+    const cell = data.answers.filter(a => a.cond === cond && a.task === task);
+    const sets = cell.map(a => conceptsOf(a.concerns));
+    for (let i = 0; i < cell.length; i++) for (let j = i + 1; j < cell.length; j++) {
+      pairs++; if (cell[i].choice === cell[j].choice) agrees++;
+      jsum += jaccard(sets[i], sets[j]); jn++;
+    }
+    const uni = new Set(); sets.forEach(s => s.forEach(c => uni.add(c)));
+    unions.push(uni.size);
+    marg.push(marginal(sets));
+  }
+  const m = [0, 1, 2].map(k => marg.reduce((s, g) => s + g[k], 0) / marg.length);
+  out.perCondition[cond] = {
+    choiceAgreement: agrees / pairs,
+    concernOverlap: jsum / jn,
+    meanUnionSize: unions.reduce((a, b) => a + b, 0) / unions.length,
+    marginalConcernsByPosition: m,
+  };
+  say(`## Condition ${cond}${CONDNAME[cond] ? ' — ' + CONDNAME[cond] : ''}`);
+  say('');
+  say(`- choice agreement: **${(agrees / pairs * 100).toFixed(0)}%** of agent pairs picked the same option`);
+  say(`- concern overlap: **${(jsum / jn).toFixed(3)}** mean pairwise Jaccard`);
+  say(`- distinct concerns per task (3 agents, 9 concern slots): **${(unions.reduce((a, b) => a + b, 0) / unions.length).toFixed(1)}**`);
+  say(`- new concerns contributed by agent 1 / 2 / 3: **${m.map(x => x.toFixed(2)).join(' / ')}**`);
+  say('');
+}
+
+say('## Per task');
+say('');
+say('| task | choices | agreement | distinct concerns (all 9 agents) |');
+say('|---|---|---|---|');
+for (const task of tasks) {
+  const cell = data.answers.filter(a => a.task === task);
+  const counts = {};
+  for (const a of cell) counts[a.choice] = (counts[a.choice] || 0) + 1;
+  let agrees = 0, pairs = 0;
+  for (let i = 0; i < cell.length; i++) for (let j = i + 1; j < cell.length; j++) {
+    pairs++; if (cell[i].choice === cell[j].choice) agrees++;
+  }
+  const uni = new Set(); cell.forEach(a => conceptsOf(a.concerns).forEach(c => uni.add(c)));
+  out.perTask[task] = { counts, agreement: agrees / pairs, union: uni.size };
+  say(`| ${task} | ${Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}:${v}`).join(' ')} | ${(agrees / pairs * 100).toFixed(0)}% | ${uni.size} |`);
+}
+say('');
+
+// overall + a random-choice reference
+const allPairs = [];
+for (const task of tasks) {
+  const cell = data.answers.filter(a => a.task === task);
+  for (let i = 0; i < cell.length; i++) for (let j = i + 1; j < cell.length; j++) allPairs.push(cell[i].choice === cell[j].choice);
+}
+out.overall = {
+  choiceAgreement: allPairs.filter(Boolean).length / allPairs.length,
+  randomReference: 1 / 3,
+  answers: data.answers.length,
+};
+const optionCount = new Set(data.answers.map(a => a.choice)).size;
+say(`Overall: **${(out.overall.choiceAgreement * 100).toFixed(0)}%** of all ${allPairs.length} within-task agent pairs chose the same option. Independent choosers among ${optionCount} options would agree ${(100 / optionCount).toFixed(0)}% of the time.`);
+say('');
+
+// most repeated concept per task, as evidence of shared framing
+say('## Most shared concern per task');
+say('');
+for (const task of tasks) {
+  const cell = data.answers.filter(a => a.task === task);
+  const tally = new Map();
+  for (const a of cell) for (const c of conceptsOf(a.concerns)) tally.set(c, (tally.get(c) || 0) + 1);
+  const top = [...tally.entries()].sort((x, y) => y[1] - x[1]).slice(0, 3);
+  say(`- ${task}: ${top.map(([c, n]) => `\`${c}\` ${n}/9 agents`).join(' · ')}`);
+}
+
+const text = lines.join('\n') + '\n';
+if (process.argv.includes('--json')) console.log(JSON.stringify(out, null, 2));
+else console.log(text);
