@@ -74,9 +74,10 @@ export function compareStructures(
     };
   }
 
-  // RD25 — opening count.
-  const expected = countOpenings(source);
-  const got = countOpenings(output);
+  // RD25 — opening count. Openings cut off by the picture edge are excluded on
+  // both sides: the analyser reads them inconsistently (see countOpenings).
+  const expected = countOpenings(source, { excludeFrameEdge: true });
+  const got = countOpenings(output, { excludeFrameEdge: true });
   if (got.windows > expected.windows || got.doors > expected.doors) {
     const extraWindows = got.windows - expected.windows;
     const extraDoors = got.doors - expected.doors;
@@ -128,8 +129,8 @@ export async function verifyStructure(
   if (verdict) {
     console.warn(`[${tag}] structure violation (${verdict.violation}): ${verdict.detail}`);
   } else {
-    const o = countOpenings(measured);
-    const e = countOpenings(source);
+    const o = countOpenings(measured, { excludeFrameEdge: true });
+    const e = countOpenings(source, { excludeFrameEdge: true });
     console.log(`[${tag}] structure check passed: ${e.windows}w/${e.doors}d -> ${o.windows}w/${o.doors}d`);
   }
   return verdict;

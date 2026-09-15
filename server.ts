@@ -19,8 +19,8 @@ import { extractStyleBrief } from "./services/aiVision/styleExtraction.js";
 import { pickAccent, detectProgrammeConflict } from "./services/aiVision/promptTemplates.js";
 import { generateConcept } from "./services/aiVision/generateConcept.js";
 import { getCacheKey, getCachedBrief, setCachedBrief } from "./services/aiVision/styleCache.js";
-import { analyzeRoomStructure, renderSpatialConstraints, isSingleWallShot } from "./services/aiVision/spatialAnalysis.js";
-import { getSpatialCacheKey, getCachedStructure, setCachedStructure } from "./services/aiVision/spatialCache.js";
+import { renderSpatialConstraints, isSingleWallShot } from "./services/aiVision/spatialAnalysis.js";
+import { getOrAnalyzeStructure } from "./services/aiVision/spatialCache.js";
 import { STYLE_NAME_TO_PRESET, ROOM_NAME_TO_TYPE, ROOM_TYPE_TO_CHIP } from "./services/aiVision/stylePresets.js";
 
 // ─── Shopping List search-accuracy (#12): price + direct-link + match helpers ─
@@ -3223,14 +3223,11 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     const parsedRoom = { mimeType: m[1], data: m[2] };
 
     try {
-      const spatialKey = getSpatialCacheKey(parsedRoom.data);
-      let structure = getCachedStructure(spatialKey);
-      if (!structure) {
-        structure = await analyzeRoomStructure(parsedRoom);
-        if (structure) {
-          setCachedStructure(spatialKey, structure);
-          bumpApiCount("gemini"); // AI-029 — analysis (reused by /generate via cache)
-        }
+      // One measurement per photo: cache → in-flight → fresh consensus read.
+      const { structure, fresh } = await getOrAnalyzeStructure(parsedRoom);
+      if (fresh) {
+        bumpApiCount("gemini"); // AI-029 — analysis (two parallel reads, reused by /generate via cache)
+        bumpApiCount("gemini");
       }
       // RD26 — if the user has already picked a room, say whether this photo can
       // actually carry that programme, so the tip appears before a generation is
@@ -3388,14 +3385,10 @@ Output ONLY valid JSON, no markdown fences, no commentary:
       // Measure the room's fixed architecture so Step 2 can preserve each wall,
       // window, and door at its exact position — and NOT invent out-of-frame
       // walls. Non-fatal: on any failure we fall back to the plain prompt.
-      const spatialKey = getSpatialCacheKey(parsedRoom.data);
-      let structure = getCachedStructure(spatialKey);
-      if (!structure) {
-        structure = await analyzeRoomStructure(parsedRoom);
-        if (structure) {
-          setCachedStructure(spatialKey, structure);
-          bumpApiCount("gemini"); // AI-029 — spatial analysis (skipped on cache hit / variations)
-        }
+      const { structure, fresh: freshAnalysis } = await getOrAnalyzeStructure(parsedRoom);
+      if (freshAnalysis) {
+        bumpApiCount("gemini"); // AI-029 — spatial analysis, two parallel reads (skipped on cache hit / variations)
+        bumpApiCount("gemini");
       }
       const spatialConstraints = renderSpatialConstraints(structure);
 

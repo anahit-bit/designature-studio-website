@@ -71,6 +71,20 @@ describe('compareStructures', () => {
     expect(v?.note).toMatch(/ONE FLAT PLANE/);
   });
 
+  it('ignores a door cut off by the picture edge — the analyser reads those inconsistently (tub bathroom, 2026-09-15)', () => {
+    // Source reading missed the door frame at the left edge; the output reading saw it.
+    const out = clone({ doors: [{ wall: 'left', box: [0.0, 0.05, 0.08, 0.9] }] as any });
+    expect(compareStructures(base, out)).toBeNull();
+    // The other way round is equally noise, never a "lost" door.
+    const src = clone({ doors: [{ wall: 'left', box: [0.0, 0.05, 0.08, 0.9] }] as any });
+    expect(compareStructures(src, clone({}))).toBeNull();
+  });
+
+  it('still flags a door that appears well inside the frame', () => {
+    const out = clone({ doors: [{ wall: 'left', box: [0.12, 0.1, 0.3, 0.9] }] as any });
+    expect(compareStructures(base, out)?.violation).toBe('openings');
+  });
+
   it('flags an invented opening (RD25) and states the real counts', () => {
     const out = clone({
       windows: [...base.windows, { wall: 'left', box: [0.1, 0.2, 0.2, 0.6], shape: 'rectangular' }] as any,

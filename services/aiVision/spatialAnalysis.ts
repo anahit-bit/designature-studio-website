@@ -596,15 +596,80 @@ export function inventedCeiling(
   return (output.ceiling?.features ?? []).filter((f) => !had.has(f));
 }
 
-/** Windows + doors: everything whose count must survive generation (RD1/RD2/RD7). */
-export function countOpenings(s: RoomStructure | null | undefined): {
+/** How close to the picture edge (normalised) an opening must sit to count as cut off by the frame. */
+export const FRAME_EDGE_TOLERANCE = 0.03;
+
+/** True when the box touches any edge of the frame — the opening is partly out of shot. */
+export function touchesFrameEdge(box: Box | undefined, tol = FRAME_EDGE_TOLERANCE): boolean {
+  if (!box) return false;
+  return box[0] <= tol || box[1] <= tol || box[2] >= 1 - tol || box[3] >= 1 - tol;
+}
+
+/**
+ * Windows + doors: everything whose count must survive generation (RD1/RD2/RD7).
+ *
+ * `excludeFrameEdge` drops openings cut off by the picture edge. Used by the
+ * post-generation comparison only: a door frame at the very edge of the shot
+ * is read as a door by one analysis and as nothing by the next (the tub-only
+ * bathroom, 2026-09-15 — the retry fired on exactly that and cost 40 s), so it
+ * cannot be evidence of an invented opening. The prompt's OPENING COUNT line
+ * keeps the full count, so a real edge door is still preserved.
+ */
+export function countOpenings(
+  s: RoomStructure | null | undefined,
+  opts: { excludeFrameEdge?: boolean } = {},
+): {
   windows: number;
   doors: number;
   total: number;
 } {
-  const windows = s?.windows?.length ?? 0;
-  const doors = s?.doors?.length ?? 0;
+  const keep = (o: { box?: Box }) => !(opts.excludeFrameEdge && touchesFrameEdge(o.box));
+  const windows = (s?.windows ?? []).filter(keep).length;
+  const doors = (s?.doors ?? []).filter(keep).length;
   return { windows, doors, total: windows + doors };
+}
+
+/**
+ * Two readings of the same photo, reconciled: the primary reading is kept in
+ * full except that a plumbed fixture TYPE survives only if the second reading
+ * saw it too. Pure.
+ *
+ * Why: a single analysis hallucinated a basin on the tub-only bathroom
+ * (2026-09-15), the prompt then told the generator the room already had one,
+ * and a wall-hung basin appeared on a bare wall — a failure the RD27 check
+ * could not catch because, on paper, the basin was real. Two independent
+ * readings rarely invent the same fixture. Openings, walls and features are
+ * left as the primary read them: intersecting those would delete real ones.
+ */
+export function reconcilePlumbing(
+  primary: RoomStructure | null,
+  second: RoomStructure | null,
+): RoomStructure | null {
+  if (!primary) return second;
+  if (!second) return primary;
+  const seenTwice = new Set((second.plumbing ?? []).map((p) => p.fixture));
+  const plumbing = (primary.plumbing ?? []).filter((p) => seenTwice.has(p.fixture));
+  const dropped = (primary.plumbing ?? []).length - plumbing.length;
+  if (dropped > 0) {
+    const gone = (primary.plumbing ?? [])
+      .filter((p) => !seenTwice.has(p.fixture))
+      .map((p) => p.fixture)
+      .join(", ");
+    console.log(`[ai-vision] Spatial consensus dropped unconfirmed plumbing: ${gone}`);
+  }
+  return { ...primary, plumbing };
+}
+
+/**
+ * Measure the room twice in parallel and reconcile — same latency as one
+ * reading, one extra cheap text-model call. See reconcilePlumbing.
+ */
+export async function analyzeRoomStructureConsensus(roomPhoto: {
+  data: string;
+  mimeType: string;
+}): Promise<RoomStructure | null> {
+  const [a, b] = await Promise.all([analyzeRoomStructure(roomPhoto), analyzeRoomStructure(roomPhoto)]);
+  return reconcilePlumbing(a, b);
 }
 
 const boxArea = (b: Box) => (b[2] - b[0]) * (b[3] - b[1]);
