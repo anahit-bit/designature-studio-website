@@ -21,6 +21,7 @@ import {
   renderSpatialConstraints,
   countPlumbing,
   inventedPlumbing,
+  reconcilePlumbing,
   parseRoomStructure,
   type RoomStructure,
 } from '../../services/aiVision/spatialAnalysis';
@@ -70,6 +71,16 @@ describe('the bathroom programme no longer mandates a toilet', () => {
     expect(bathroom).toMatch(/PLUMBING SURVEY ABOVE DECIDES WHICH FIXTURES EXIST/i);
     expect(bathroom).toMatch(/photographed without a toilet is rendered without a toilet/i);
     expect(bathroom).toMatch(/do NOT add a heated towel rail unless the photograph already has one/i);
+  });
+
+  it('asks for the fixtures to be UPGRADED in place, not merely repainted (owner, 2026-09-15)', () => {
+    // The tub-only bathroom came back with the same alcove tub and a curtain:
+    // "at its own size" + "no new recess" read as "keep it as is". The rule now
+    // spells out what an upgrade at the same footprint looks like.
+    expect(bathroom).toMatch(/UPGRADE THE FIXTURES THEMSELVES/);
+    expect(bathroom).toMatch(/same alcove at the same footprint/i);
+    expect(bathroom).toMatch(/fixed glass screen/i);
+    expect(bathroom).toMatch(/drain and supply positions do not move/i);
   });
 
   it('still asks for the things that need no drainage', () => {
@@ -192,6 +203,37 @@ describe('RD25 · post-generation plumbing count', () => {
       ],
     };
     expect(inventedPlumbing(source, output)).toEqual([]);
+  });
+
+  it('consensus: a fixture only one of two readings saw is dropped — the hallucinated basin, 2026-09-15', () => {
+    const first: RoomStructure = {
+      ...noDrainage,
+      plumbing: [
+        { fixture: 'bath', box: [0.2, 0.6, 0.9, 0.95] },
+        { fixture: 'shower', box: [0.5, 0.1, 0.7, 0.4] },
+        { fixture: 'soil_stack', box: [0.85, 0.8, 0.9, 0.9] },
+        { fixture: 'basin', box: [0.9, 0.5, 1.0, 0.7] },
+      ],
+    };
+    const second: RoomStructure = {
+      ...noDrainage,
+      plumbing: [
+        { fixture: 'shower', box: [0.5, 0.1, 0.7, 0.4] },
+        { fixture: 'bath', box: [0.2, 0.6, 0.9, 0.95] },
+        { fixture: 'soil_stack', box: [0.85, 0.8, 0.9, 0.9] },
+      ],
+    };
+    const merged = reconcilePlumbing(first, second)!;
+    expect(merged.plumbing.map((p) => p.fixture)).toEqual(['bath', 'shower', 'soil_stack']);
+    // Everything else comes from the primary reading untouched.
+    expect(merged.visibleWalls).toEqual(first.visibleWalls);
+    expect(merged.doors).toEqual(first.doors);
+  });
+
+  it('consensus: a failed second reading falls back to the first, and vice versa', () => {
+    expect(reconcilePlumbing(fullyPlumbed, null)).toBe(fullyPlumbed);
+    expect(reconcilePlumbing(null, fullyPlumbed)).toBe(fullyPlumbed);
+    expect(reconcilePlumbing(null, null)).toBeNull();
   });
 
   it('does not flag a room that merely restyled what it had', () => {
