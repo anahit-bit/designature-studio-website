@@ -80,6 +80,30 @@ describe('compareStructures', () => {
     expect(compareStructures(src, clone({}))).toBeNull();
   });
 
+  it('does not treat a source edge door drawn a little further in as invented (home office, 2026-09-15 · two OpenAI calls)', () => {
+    // Source: one window + four doors, every door touching the frame. Output:
+    // the rendering placed two of them clear of the edge. Excluding the edge on
+    // both sides read that as "0 doors -> 2 doors" and paid for a retry.
+    const src = clone({
+      windows: [{ wall: 'back', box: [0.3, 0.2, 0.6, 0.7], shape: 'rectangular' }] as any,
+      doors: [
+        { wall: 'left', box: [0.0, 0.1, 0.06, 0.9] },
+        { wall: 'left', box: [0.0, 0.1, 0.1, 0.95] },
+        { wall: 'right', box: [0.94, 0.1, 1.0, 0.9] },
+        { wall: 'right', box: [0.9, 0.1, 1.0, 0.95] },
+      ] as any,
+    });
+    const out = clone({
+      windows: [{ wall: 'back', box: [0.3, 0.2, 0.6, 0.7], shape: 'rectangular' }] as any,
+      doors: [
+        { wall: 'left', box: [0.05, 0.1, 0.14, 0.9] },
+        { wall: 'right', box: [0.86, 0.1, 0.95, 0.9] },
+        { wall: 'right', box: [0.96, 0.1, 1.0, 0.9] },
+      ] as any,
+    });
+    expect(compareStructures(src, out)).toBeNull();
+  });
+
   it('still flags a door that appears well inside the frame', () => {
     const out = clone({ doors: [{ wall: 'left', box: [0.12, 0.1, 0.3, 0.9] }] as any });
     expect(compareStructures(base, out)?.violation).toBe('openings');
