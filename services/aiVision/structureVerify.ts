@@ -74,9 +74,15 @@ export function compareStructures(
     };
   }
 
-  // RD25 — opening count. Openings cut off by the picture edge are excluded on
-  // both sides: the analyser reads them inconsistently (see countOpenings).
-  const expected = countOpenings(source, { excludeFrameEdge: true });
+  // RD25 — opening count. The SOURCE keeps its full count (an edge door in the
+  // photo is still a door the output may show); the OUTPUT counts only
+  // openings clear of the picture edge (an edge opening is read inconsistently
+  // by the analyser, so it cannot be evidence of invention). Excluding the edge
+  // on BOTH sides — the 2026-09-15 version — misfired the other way: a home
+  // office whose four doors all touched the frame read as "0 doors", the
+  // rendering drew two of them a few percent further in, and the check called
+  // that two invented doorways and paid for a retry.
+  const expected = countOpenings(source);
   const got = countOpenings(output, { excludeFrameEdge: true });
   if (got.windows > expected.windows || got.doors > expected.doors) {
     const extraWindows = got.windows - expected.windows;
@@ -130,7 +136,7 @@ export async function verifyStructure(
     console.warn(`[${tag}] structure violation (${verdict.violation}): ${verdict.detail}`);
   } else {
     const o = countOpenings(measured, { excludeFrameEdge: true });
-    const e = countOpenings(source, { excludeFrameEdge: true });
+    const e = countOpenings(source);
     console.log(`[${tag}] structure check passed: ${e.windows}w/${e.doors}d -> ${o.windows}w/${o.doors}d`);
   }
   return verdict;
