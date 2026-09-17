@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 // GoogleGenAI removed — AI Vision generation is now handled server-side.
 import { useLanguage } from '../LanguageContext';
 import { useAuth, AuthUser } from '../AuthContext';
+import MeasureRoom, { type MeasureAsk } from "./measure/MeasureRoom";
+import type { RoomDimensions } from "../../services/measure/dimensions.js";
 import Header from './Header';
 import Footer from './Footer';
 import RoomAuditExperience from './RoomAuditExperience';
@@ -88,6 +90,21 @@ declare global {
 }
 
 // ─── Main Component ────────────────────────────────────────────────────────
+/**
+ * What a redesign needs from the room, in the order it is asked for. Two numbers
+ * are enough to place furniture: how high the room is and how wide the wall is.
+ */
+const REDESIGN_ASKS: MeasureAsk[] = [
+  {
+    label: "Ceiling height",
+    hint: "Ceiling height: tap the floor, then the ceiling straight above it.",
+  },
+  {
+    label: "Wall width",
+    hint: "Wall width: tap the corner where that wall begins, then the corner where it ends.",
+  },
+];
+
 const AIConceptsPage: React.FC = () => {
   const { language, t, navigateTo, setNavGuard } = useLanguage();
 
@@ -129,6 +146,11 @@ const AIConceptsPage: React.FC = () => {
   const [pinterestError, setPinterestError] = useState('');
   const [pinterestOpen, setPinterestOpen] = useState(false);
   const [roomImage, setRoomImage] = useState<string | null>(null);
+  // The room's real size, measured from this very photo. Optional: a
+  // redesign without it behaves exactly as it always has.
+  const [roomDims, setRoomDims] = useState<RoomDimensions | null>(null);
+  const [measuring, setMeasuring] = useState(false);
+  const [dimsDraft, setDimsDraft] = useState<RoomDimensions | null>(null);
   // AI-029 Phase 1.5 — soft warning when the uploaded photo shows only one wall
   // (head-on), where the generator can't hold the real proportions. Non-blocking.
   const [roomStructureWarning, setRoomStructureWarning] = useState(false);
@@ -917,6 +939,9 @@ const AIConceptsPage: React.FC = () => {
           stylePreset: selectedStyle || undefined,
           roomType: selectedRoom || undefined,
           paintColor2026: paintColor2026 || undefined,
+          // Measured from this same photo, so the furniture comes back at the
+          // scale the room can take. Undefined when nobody measured.
+          dimensions: roomDims ?? undefined,
           variationSeed: isVariation ? variationSeedRef.current : undefined,
           isSampleRun: isSampleRun || undefined,
         }),
@@ -1233,9 +1258,72 @@ const AIConceptsPage: React.FC = () => {
     return s;
   }, [quizResultForVision, allSessionConcepts, shoppingDone, shoppingResults, auditComplete]);
 
+  const measureDialog = measuring && roomImage ? (
+    <div
+      className="fixed inset-0 z-[300] overflow-y-auto bg-black/70 p-4 pt-6 md:pt-10"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Measure your room"
+    >
+      <div className="mx-auto mb-10 w-full max-w-5xl bg-white p-5 text-black shadow-2xl">
+        <div className="flex items-start justify-between gap-6">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[.3em] text-[#0047AB]">
+              Your room's real size
+            </p>
+            <p className="mt-1 max-w-xl text-[12px] text-black/60">
+              Optional, and it takes a minute: tell us the size of one thing you can see in the
+              photo, and we read the rest off the picture.
+            </p>
+          </div>
+          <div className="flex flex-none items-center gap-4">
+            <button
+              type="button"
+              onClick={() => { setMeasuring(false); setDimsDraft(null); }}
+              className="text-[11px] font-semibold uppercase tracking-[.14em] text-black/50 hover:text-black"
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              disabled={!dimsDraft}
+              onClick={() => { setRoomDims(dimsDraft); setMeasuring(false); }}
+              className="bg-[#0047AB] px-4 py-2.5 text-[11px] font-bold uppercase tracking-[.14em] text-white hover:bg-[#003a8c] disabled:cursor-not-allowed disabled:bg-black/15 disabled:text-black/40"
+            >
+              {dimsDraft
+                ? `Use ${dimsDraft.items.length === 1 ? "this size" : "these sizes"} \u2192`
+                : "Measure something first"}
+            </button>
+          </div>
+        </div>
+        <div className="mt-5">
+          <MeasureRoom
+            key={roomImage}
+            src={roomImage}
+            asks={REDESIGN_ASKS}
+            onResult={setDimsDraft}
+            controls={
+              <button
+                type="button"
+                disabled={!dimsDraft}
+                onClick={() => { setRoomDims(dimsDraft); setMeasuring(false); }}
+                className="border-0 bg-[#0047AB] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[.14em] text-white hover:bg-[#003a8c] disabled:cursor-not-allowed disabled:bg-black/15 disabled:text-black/40"
+              >
+                {dimsDraft
+                  ? `Use ${dimsDraft.items.length === 1 ? "this size" : "these sizes"}`
+                  : "Measure something first"}
+              </button>
+            }
+          />
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div className="min-h-screen bg-white flex flex-col font-body text-black">
       <Header />
+      {measureDialog}
 
       {/* Someone still scrolling the rail after a while has told us, by that act,
           that they have not found their card. Offered once, from the corner. */}
@@ -1295,6 +1383,9 @@ const AIConceptsPage: React.FC = () => {
         <VisionExperience
           onGoToTool={handleSelectTool}
           roomImage={roomImage}
+          roomDimensions={roomDims}
+          onMeasureRoom={() => { setDimsDraft(null); setMeasuring(true); }}
+          onClearRoomDimensions={() => setRoomDims(null)}
           structureWarning={roomStructureWarning}
           detectedRoom={detectedRoom}
           programmeTip={programmeTip}

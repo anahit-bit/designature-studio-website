@@ -10,6 +10,7 @@
  * scripts/aivision/compile-rulebook.py.
  */
 
+import { describeDimensions, type RoomDimensions } from "../measure/dimensions.js";
 import type { RoomType } from "./stylePresets.js";
 import { ROOM_TYPE_LABELS } from "./stylePresets.js";
 import type { RoomStructure } from "./spatialAnalysis.js";
@@ -382,6 +383,11 @@ export function buildGenerationPrompt(args: {
    * programme is sent generic, exactly as before.
    */
   structure?: RoomStructure | null;
+  /**
+   * What the client measured in the real room, when they measured it. Absent for
+   * every photo nobody has measured, and the prompt is then exactly as before.
+   */
+  dimensions?: RoomDimensions | null;
 }): string {
   const roomTypeKey: RoomType = args.roomType ?? "living_room"; // safe fallback when auto-detect is selected
   const roomTypeLabel = ROOM_TYPE_LABELS[roomTypeKey];
@@ -391,6 +397,16 @@ export function buildGenerationPrompt(args: {
     ? `
 
 This is variation #${args.variationSeed}. Use a different furniture arrangement, lighting fixture choice, and accent details than previous variations, while maintaining the same target style and the same architectural constraints.`
+    : "";
+
+  // Real sizes are about the FURNITURE, not the shell — a model given a room's
+  // true width will otherwise happily rebuild the room to suit the furniture.
+  const measuredBlock = args.dimensions
+    ? `
+
+MEASURED IN THE REAL ROOM (±${args.dimensions.bandPct}%${
+        args.dimensions.ruler ? `, scaled from the ${args.dimensions.ruler}` : ""
+      }): ${describeDimensions(args.dimensions)}. Size and space every piece to fit those numbers — on a 4 m wall a sofa is a sofa, not a wall-length bench. They describe the room exactly as photographed, so they are never a reason to move a wall, change the ceiling height or shift the camera.`
     : "";
 
   const spatialBlock =
@@ -416,7 +432,7 @@ STEP 3 — FURNISH THE EMPTY SHELL as a ${roomTypeLabel}, from scratch, in the t
 
 ${GEMINI_RULE_SECTIONS.programme}
 
-${ROOM_PROGRAM_RULES[roomTypeKey]}${programmeNote}
+${ROOM_PROGRAM_RULES[roomTypeKey]}${programmeNote}${measuredBlock}
 
 ${GEMINI_RULE_SECTIONS.furnish}
 

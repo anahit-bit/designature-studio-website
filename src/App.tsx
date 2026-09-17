@@ -38,6 +38,7 @@ import Blog from './components/Blog';
 import Footer from './components/Footer';
 import AccountPage from './components/account/AccountPage';
 import SharedItemPage from './components/SharedItemPage';
+import TapMeasure from './components/measure/TapMeasure';
 import { useAuth } from './AuthContext';
 import { USE_MOCK_ACCOUNT } from './lib/accountApi';
 import RouteTracker from './components/RouteTracker';
@@ -184,6 +185,7 @@ const App: React.FC = () => (
             <Route path="/subscribe/failed" element={<SubscribeFailedPage />} />
             <Route path="/credits/success" element={<CreditsSuccessPage />} />
             <Route path="/credits/failed" element={<CreditsFailedPage />} />
+            <Route path="/measure" element={<TapMeasure />} />
             <Route path="/deliverables" element={<DeliverablesRoute />} />
             <Route path="/account" element={<AccountRoute />} />
             <Route path="/shared/:id" element={<SharedItemPage />} />
@@ -208,3 +210,4 @@ const App: React.FC = () => (
 );
 
 export default App;
+

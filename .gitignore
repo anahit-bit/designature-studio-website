@@ -21,3 +21,16 @@ users.json
 # #12 identify test fixtures (dev-only, large binaries)
 scripts/identify-test-images/
 scripts/aivision/__pycache__/
+
+# Room measurement bench cache (dev-only, regenerable)
+bench-rooms-out/
+scratch/
+
+zone-obs-*.json
+
+
+# Vite dependency cache — build output, never source
+.vite/
+
+# Bench output from scripts/export-room-measurements.ts — regenerate, do not commit
+room-measurements.json

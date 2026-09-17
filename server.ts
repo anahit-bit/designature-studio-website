@@ -13,6 +13,8 @@ import * as net from "net";
 
 // ─── Gemini SDK (used by shopping identify + room audit endpoints) ─────────────
 import { GoogleGenAI } from "@google/genai";
+import { parseDimensions } from "./services/measure/dimensions.js";
+import { identifyMeasurables } from "./services/measure/identify.js";
 
 // ─── AI Vision pipeline services ──────────────────────────────────────────────
 import { extractStyleBrief } from "./services/aiVision/styleExtraction.js";
@@ -2170,6 +2172,40 @@ async function startServer() {
     }
   });
 
+  // ── POST /api/measure/identify — name the flat rectangles in a room photo ──
+  // Deliberately narrow: it NAMES things and nothing else. The bench showed the
+  // model cannot place a point on the object it just named, so coordinates come
+  // from the person's taps and sizes come from services/measure/objects.ts.
+  app.post("/api/measure/identify", async (req, res) => {
+    // Auth exists because this spends Gemini credit, and every model endpoint
+    // here is gated for that reason. But /measure is an internal bench, and
+    // making the owner sign in to try their own tool on their own machine is
+    // friction that buys nothing: a loopback request outside production cannot
+    // come from the internet.
+    const remote = req.socket?.remoteAddress ?? "";
+    const isLoopback = ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(remote);
+    const localBench = isLoopback && process.env.NODE_ENV !== "production";
+    if (!localBench) {
+      const googleId = requireAuth(req, res);
+      if (!googleId) return;
+    }
+
+    const { imageDataUrl } = req.body ?? {};
+    if (!imageDataUrl || typeof imageDataUrl !== "string") {
+      return res.status(400).json({ error: "imageDataUrl is required." });
+    }
+    const m = imageDataUrl.match(/^data:(image\/[\w+]+);base64,(.+)$/);
+    if (!m) return res.status(400).json({ error: "Invalid image format." });
+
+    const apiKey = process.env.GEMINI_API_KEY ?? "";
+    if (!apiKey) return res.status(500).json({ error: "GEMINI_API_KEY is not set." });
+
+    const out = await identifyMeasurables(Buffer.from(m[2], "base64"), apiKey);
+    if ("error" in out) return res.status(502).json({ error: out.error });
+    bumpApiCount("gemini");
+    return res.json(out);
+  });
+
   // ── POST /api/shopping/identify — identify shoppable items from an image ──
   app.post("/api/shopping/identify", async (req, res) => {
     const googleId = requireAuth(req, res);
@@ -3273,8 +3309,13 @@ Output ONLY valid JSON, no markdown fences, no commentary:
       roomType,
       variationSeed,
       paintColor2026,
+      dimensions,
       isSampleRun = false,
     } = req.body ?? {};
+
+    // Measured in the browser from one known size and four taps. Refused rather
+    // than half-trusted if it arrives malformed — see parseDimensions.
+    const measured = parseDimensions(dimensions);
 
     // ── Validate inputs ────────────────────────────────────────────────────────
     if (!roomPhoto || typeof roomPhoto !== "string") {
@@ -3426,6 +3467,7 @@ Output ONLY valid JSON, no markdown fences, no commentary:
         spatialConstraints,
         sourceStructure: structure,
         accent,
+        dimensions: measured,
       });
       // I-010 — concept image generation. Attribute cost to the engine actually used.
       bumpApiCount(engine === "openai" ? "openai" : "gemini");
