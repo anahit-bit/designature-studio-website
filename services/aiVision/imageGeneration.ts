@@ -7,6 +7,7 @@
  * data URL string (data:image/png;base64,…).
  */
 
+import type { RoomDimensions } from "../measure/dimensions.js";
 import { GoogleGenAI } from "@google/genai";
 import sharp from "sharp";
 import type { RoomType } from "./stylePresets.js";
@@ -35,6 +36,11 @@ export interface ImageGenerationInput {
    * verification entirely.
    */
   sourceStructure?: RoomStructure | null;
+  /**
+   * Sizes the client measured from this photo, in millimetres. Used to scale the
+   * furniture; omitted for photos nobody measured.
+   */
+  dimensions?: RoomDimensions | null;
   /**
    * The single palette colour (or 2026 paint) emphasised in this concept.
    * Chosen once per request in server.ts so the same colour is reported back to
@@ -79,6 +85,7 @@ export async function generateConceptImage(
     spatialConstraints: input.spatialConstraints,
     accent: input.accent,
     structure: input.sourceStructure, // RD26 — the photo-specific programme note
+    dimensions: input.dimensions,
   });
 
   // ── Preprocess room photo: resize large images before sending to Gemini ──

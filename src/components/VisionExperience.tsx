@@ -8,6 +8,7 @@ import { fingerprint, isSaved, markSaved } from '../lib/savedMarks';
 import FeedbackBand from './FeedbackBand';
 import Marquee from './studio/Marquee';
 import { STYLES } from './AIVisionShowcase';
+import type { RoomDimensions } from '../../services/measure/dimensions.js';
 import { ConsultationReviewBand } from './ConsultationCTA';
 import NextStepBand from './studio/NextStepBand';
 
@@ -130,6 +131,12 @@ interface VisionExperienceProps {
   setIsLightboxOpen: (b: boolean) => void;
   /** AI-032 v2 seam — hand off to the next card in the workflow. */
   onGoToTool?: (id: string) => void;
+  /** What the room actually measures, when the person has measured it. */
+  roomDimensions?: RoomDimensions | null;
+  /** Opens the measuring dialog on this same photo. */
+  onMeasureRoom?: () => void;
+  /** Throws the measurements away again. */
+  onClearRoomDimensions?: () => void;
   translateStyle: (s: string) => string;
 }
 
@@ -255,7 +262,7 @@ export default function VisionExperience(p: VisionExperienceProps) {
   // ── Hidden file inputs (one shared for room) ──
   const renderHiddenFileInputs = () => (
     <>
-      <input ref={roomFileRef} type="file" className="hidden" accept="image/*" onChange={(e) => p.handleFileChange(e, 'room')} />
+      <input id="vision-room-upload" ref={roomFileRef} type="file" className="hidden" accept="image/*" onChange={(e) => p.handleFileChange(e, 'room')} />
       <input ref={replaceFileRef} type="file" className="hidden" accept="image/*" onChange={(e) => p.handleFileChange(e, 'room')} />
       <input ref={inspoFileRef} type="file" className="hidden" accept="image/*" multiple onChange={(e) => p.handleFileChange(e, 'inspiration')} />
     </>
@@ -802,9 +809,76 @@ export default function VisionExperience(p: VisionExperienceProps) {
             )}
             <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg,rgba(0,0,0,.15) 0%,rgba(0,0,0,0) 30%,rgba(0,0,0,.45) 100%)' }} />
             <span className="absolute top-6 left-6 bg-black/[0.62] text-white text-[9px] font-bold uppercase tracking-[0.22em] px-3 py-1.5">{t('ai.vision.theRoom')}</span>
-            <button type="button" onClick={() => replaceFileRef.current?.click()} className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/90 text-black text-[9px] font-bold uppercase tracking-[0.2em] px-4 py-2.5 hover:bg-white transition-colors">{t('ai.vision.changePhoto')}</button>
+            {/* Centred with flex, not a translate class — this app's stylesheet
+                applies translate utilities twice. */}
+            <div className="absolute bottom-6 inset-x-0 flex flex-wrap items-center justify-center gap-2 px-4">
+              <button type="button" onClick={() => replaceFileRef.current?.click()} className="bg-white/90 text-black text-[9px] font-bold uppercase tracking-[0.2em] px-4 py-2.5 hover:bg-white transition-colors">{t('ai.vision.changePhoto')}</button>
+              {p.roomImage && p.onMeasureRoom && (
+                <button
+                  type="button"
+                  onClick={p.onMeasureRoom}
+                  className={`text-[9px] font-bold uppercase tracking-[0.2em] px-4 py-2.5 transition-colors ${
+                    p.roomDimensions
+                      ? 'bg-[#15803d] text-white hover:bg-[#126c34]'
+                      : 'bg-[#0047AB] text-white hover:bg-[#003a8c]'
+                  }`}
+                >
+                  {p.roomDimensions ? '\u2713 Size added' : '\u21a7 Measure the room'}
+                </button>
+              )}
+            </div>
           </div>
           <p className="text-[10px] text-black/60 uppercase tracking-[0.16em] px-6 py-3">{t('ai.vision.keepProportions')}</p>
+
+          {/* The room's real size — optional, and only once there is a photo to
+              measure. Sizes make the furniture come back at a scale the room can
+              take; without them the redesign behaves exactly as it always has. */}
+          {p.roomImage && p.onMeasureRoom && (
+            <div className="mx-6 mb-5 border border-black/10 bg-[#FAFAFA] px-4 py-3">
+              {p.roomDimensions ? (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                  {p.roomDimensions.items.map((d) => (
+                    <span key={d.label} className="text-[11px] text-black/70">
+                      <b className="font-mono text-[12px]">{(d.mm / 1000).toFixed(2)} m</b>{' '}
+                      {d.label.toLowerCase()}
+                    </span>
+                  ))}
+                  <span className="text-[10px] text-black/40">±{p.roomDimensions.bandPct}%</span>
+                  <button
+                    type="button"
+                    onClick={p.onMeasureRoom}
+                    className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#0047AB] underline underline-offset-2"
+                  >
+                    measure again
+                  </button>
+                  {p.onClearRoomDimensions && (
+                    <button
+                      type="button"
+                      onClick={p.onClearRoomDimensions}
+                      className="text-[10px] font-bold uppercase tracking-[0.14em] text-black/40 underline underline-offset-2"
+                    >
+                      remove
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <p className="text-[11px] leading-relaxed text-black/60">
+                    <span className="font-bold text-black">The room's real size — optional.</span>{' '}
+                    Tell us the size of one thing in this photo and we work out the rest, so the
+                    furniture comes back at the scale your room can actually take.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={p.onMeasureRoom}
+                    className="mt-3 inline-flex items-center gap-2 border border-[#0047AB] bg-white px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#0047AB] transition-colors hover:bg-[#0047AB] hover:text-white"
+                  >
+                    Measure the room <span aria-hidden>&rarr;</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           {/* AI-029 — soft single-wall warning (non-blocking; generate still works) */}
           {p.structureWarning && (
             <div className="mx-6 mb-5 flex items-start gap-2.5 bg-[#FBF3EC] border-l-2 border-[#9E5E41] px-4 py-3">

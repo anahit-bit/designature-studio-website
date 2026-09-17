@@ -67,6 +67,7 @@ export async function generateConcept(
         spatialConstraints: input.spatialConstraints,
         sourceStructure: input.sourceStructure,
         accent: input.accent,
+        dimensions: input.dimensions,
       });
       return { url, engine: "openai" };
     } catch (err: any) {

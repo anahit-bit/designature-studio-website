@@ -34,6 +34,7 @@
 
 import sharp from "sharp";
 import type { RoomType } from "./stylePresets.js";
+import type { RoomDimensions } from "../measure/dimensions.js";
 import {
   buildGenerationPrompt,
   buildStagingPrompt,
@@ -55,6 +56,11 @@ export interface OpenAIImageInput {
   sourceStructure?: RoomStructure | null;
   /** The single palette colour (or 2026 paint) emphasised in this concept. */
   accent?: ReturnType<typeof pickAccent>;
+  /**
+   * What the client measured in the real room; only used by the `full` prompt.
+   * The short prompt stays at its ~110 words, where length costs photo fidelity.
+   */
+  dimensions?: RoomDimensions | null;
   /** Overrides OPENAI_IMAGE_PROMPT for this call (benchmarks run both side by side). */
   promptMode?: "short" | "full";
   /**
@@ -150,6 +156,7 @@ export function buildOpenAIPrompt(input: OpenAIImageInput): string {
       spatialConstraints: input.spatialConstraints,
       accent: input.accent,
       structure: input.sourceStructure,
+      dimensions: input.dimensions,
     });
   }
   return buildStagingPrompt({

@@ -79,6 +79,27 @@ describe('buildOpenAIPrompt · prompt shape is switchable per run', () => {
     expect(p.split(/\s+/).length).toBeGreaterThan(200);
   });
 
+  it('carries the room the client measured, when they measured it', () => {
+    delete process.env.OPENAI_IMAGE_PROMPT;
+    const measured = {
+      items: [
+        { label: 'Ceiling height', mm: 2800 },
+        { label: 'Wall width', mm: 4100 },
+      ],
+      bandPct: 12,
+      ruler: 'television',
+    };
+    const p = buildOpenAIPrompt({ ...input, dimensions: measured });
+    expect(p).toContain('ceiling height 2.80 m · wall width 4.10 m');
+    expect(p).toContain('±12%');
+    // Not in the short prompt: 110 words is the whole point of that shape.
+    expect(buildOpenAIPrompt({ ...input, dimensions: measured, promptMode: 'short' })).not.toContain(
+      'MEASURED IN THE REAL ROOM',
+    );
+    // And an unmeasured room's prompt is untouched.
+    expect(buildOpenAIPrompt(input)).not.toContain('MEASURED IN THE REAL ROOM');
+  });
+
   it('OPENAI_IMAGE_PROMPT=short (or promptMode) sends the ~110-word edit instruction', () => {
     process.env.OPENAI_IMAGE_PROMPT = 'short';
     const p = buildOpenAIPrompt(input);
