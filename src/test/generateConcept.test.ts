@@ -42,15 +42,18 @@ describe('generateConcept · engine routing', () => {
     else process.env.AI_VISION_ENGINE = originalEnv;
   });
 
-  it('defaults to GPT Image — the owner-reviewed winner of the ten-room comparison', async () => {
+  it('defaults to Gemini — TEMP override while the OpenAI account has no funds', async () => {
     const r = await generateConcept(INPUT);
-    expect(r.engine).toBe('openai');
-    expect(r.url).toContain('OPENAI');
-    expect(geminiMock).not.toHaveBeenCalled();
+    expect(r.engine).toBe('gemini');
+    expect(r.url).toContain('GEMINI');
+    expect(openaiMock).not.toHaveBeenCalled();
   });
 
-  it('hands GPT Image the full production inputs — constraints, structure and accent', async () => {
-    await generateConcept(INPUT);
+  it('AI_VISION_ENGINE=openai overrides the temp default back to GPT Image', async () => {
+    process.env.AI_VISION_ENGINE = 'openai';
+    const r = await generateConcept(INPUT);
+    expect(r.engine).toBe('openai');
+    expect(geminiMock).not.toHaveBeenCalled();
     const arg = openaiMock.mock.calls[0][0];
     expect(arg.spatialConstraints).toBe('SPATIAL');
     expect(arg.sourceStructure).toEqual({ summary: 's' });
@@ -65,6 +68,7 @@ describe('generateConcept · engine routing', () => {
   });
 
   it('falls back to Gemini when OPENAI_API_KEY is missing, rather than failing the request', async () => {
+    process.env.AI_VISION_ENGINE = 'openai';
     openaiAvailableMock.mockReturnValue(false);
     const r = await generateConcept(INPUT);
     expect(r.engine).toBe('gemini');
@@ -72,6 +76,7 @@ describe('generateConcept · engine routing', () => {
   });
 
   it('falls back to Gemini when GPT Image throws', async () => {
+    process.env.AI_VISION_ENGINE = 'openai';
     openaiMock.mockRejectedValue(new Error('openai exploded'));
     const r = await generateConcept(INPUT);
     expect(r.engine).toBe('gemini');
@@ -79,6 +84,7 @@ describe('generateConcept · engine routing', () => {
   });
 
   it('reports the engine that actually ran, so cost is attributed correctly', async () => {
+    process.env.AI_VISION_ENGINE = 'openai';
     openaiMock.mockRejectedValue(new Error('down'));
     expect((await generateConcept(INPUT)).engine).toBe('gemini');
     openaiMock.mockReset().mockResolvedValue('data:image/png;base64,OPENAI');
@@ -89,6 +95,6 @@ describe('generateConcept · engine routing', () => {
     process.env.AI_VISION_ENGINE = 'staging';
     const r = await generateConcept(INPUT);
     expect(['openai', 'gemini']).toContain(r.engine);
-    expect(r.engine).toBe('openai');
+    expect(r.engine).toBe('gemini');
   });
 });

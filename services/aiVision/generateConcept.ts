@@ -1,9 +1,15 @@
 /**
  * AI Vision — concept generation orchestrator.
  *
- * DEFAULT is GPT Image (OpenAI, full production prompt). Gemini is the automatic
- * fallback and can be forced with AI_VISION_ENGINE=gemini. Returns which engine
- * actually ran so the cost lands in the right bucket.
+ * DEFAULT is GPT Image (OpenAI, full production prompt) — see the owner-review
+ * rationale below. Gemini is the automatic fallback and can be forced with
+ * AI_VISION_ENGINE=gemini. Returns which engine actually ran so the cost lands
+ * in the right bucket.
+ *
+ * TEMP OVERRIDE (2026-09-18): the OpenAI account has no funds, so every request
+ * was paying for a failed OpenAI call before falling back to Gemini. DEFAULT_ENGINE
+ * below is set to "gemini" until the account is funded again — set it back to
+ * "openai", or set AI_VISION_ENGINE=openai to override without a code change.
  *
  * Why (2026-09-14). Seven engines were run on the same ten hard rooms — four
  * bathrooms including one where only the tub is visible, a raw-plaster shell,
@@ -40,11 +46,16 @@ export interface GenerateConceptResult {
   engine: ConceptEngine;
 }
 
+/** See the TEMP OVERRIDE note above — set back to "openai" once funded. */
+const DEFAULT_ENGINE: ConceptEngine = "gemini";
+
 export async function generateConcept(
   input: ImageGenerationInput
 ): Promise<GenerateConceptResult> {
   const forcedEngine = (process.env.AI_VISION_ENGINE || "").trim().toLowerCase();
-  const geminiForced = forcedEngine === "gemini";
+  const engine: ConceptEngine =
+    forcedEngine === "openai" ? "openai" : forcedEngine === "gemini" ? "gemini" : DEFAULT_ENGINE;
+  const geminiForced = engine === "gemini";
   const openaiAvailable = isOpenAIImageAvailable();
 
   if (!geminiForced && !openaiAvailable) {
