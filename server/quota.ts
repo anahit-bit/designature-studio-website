@@ -22,6 +22,7 @@ export const UNLIMITED_QUOTA = 999;
 export const UNLIMITED_ACCOUNT_EMAILS = [
   "anahit@designature.studio",
   "anahit.ghasabyan@gmail.com",
+  "mariamh.rafa@gmail.com",
 ];
 
 /** True for the owner/demo accounts that bypass all free-tier quota limits. */
