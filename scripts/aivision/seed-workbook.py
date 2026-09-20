@@ -1,5 +1,5 @@
 """
-Seed the ONE AI Vision workbook — _Plan\\Website\\AI-Vision-Rulebook.xlsx.
+Seed the ONE AI Vision workbook — Doc\\cards\\redesign-my-room\\rules\\AI-Vision-Rulebook.xlsx (docs repo).
 
     python scripts/aivision/seed-workbook.py            # refuses if it exists
     python scripts/aivision/seed-workbook.py --force    # OVERWRITES OWNER EDITS
@@ -30,7 +30,8 @@ from palettes import PALETTES, PAINT_2026  # noqa: E402
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.normpath(os.path.join(HERE, "..", ".."))
 PLAN = r"E:\Business\Claude\_Plan\Website"
-OUT = os.path.join(PLAN, "AI-Vision-Rulebook.xlsx")
+RULES_DIR = r"E:\Business\Claude\Doc\cards\redesign-my-room\rules"
+OUT = os.path.join(RULES_DIR, "AI-Vision-Rulebook.xlsx")
 OLD_RULES = os.path.join(PLAN, "Redesign-My-Room-Rulebook.xlsx")
 
 force = "--force" in sys.argv

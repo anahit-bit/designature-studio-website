@@ -21,8 +21,8 @@ try:
 except ImportError:
     sys.exit("openpyxl is required:  pip install openpyxl")
 
-XLSX = r"E:\Business\Claude\_Plan\Website\AI-Vision-Rulebook.xlsx"
-OUT = sys.argv[1] if len(sys.argv) > 1 else r"E:\Business\Claude\_Plan\Website\AI-Vision-Palettes.html"
+XLSX = r"E:\Business\Claude\Doc\cards\redesign-my-room\rules\AI-Vision-Rulebook.xlsx"
+OUT = sys.argv[1] if len(sys.argv) > 1 else r"E:\Business\Claude\Doc\cards\redesign-my-room\rules\AI-Vision-Palettes.html"
 
 wb = load_workbook(XLSX, data_only=True)
 sb, pal, p26 = wb["Style Briefs"], wb["Palettes"], wb["Paint 2026"]

@@ -1,7 +1,7 @@
 /**
  * GENERATED FILE — DO NOT EDIT BY HAND.
  *
- * Source of truth: _Plan\Website\AI-Vision-Rulebook.xlsx
+ * Source of truth: Doc\cards\redesign-my-room\rules\AI-Vision-Rulebook.xlsx (docs repo)
  * Regenerate with:  python scripts/aivision/compile-rulebook.py
  *
  * Edit the workbook, re-run the compiler, commit both. Hand-editing this file

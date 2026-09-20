@@ -5,7 +5,7 @@
  * Step 2 — buildGenerationPrompt: fed to the image model with the room photo.
  *
  * The constraint text, the room programs and the palettes are NOT written here.
- * They are compiled from _Plan\Website\AI-Vision-Rulebook.xlsx into
+ * They are compiled from Doc\cards\redesign-my-room\rules\AI-Vision-Rulebook.xlsx (docs repo) into
  * rulebook.generated.ts. Edit the workbook, re-run
  * scripts/aivision/compile-rulebook.py.
  */

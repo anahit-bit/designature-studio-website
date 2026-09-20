@@ -3,7 +3,7 @@ Compile the owner's workbook into the text the image models actually receive.
 
     python scripts/aivision/compile-rulebook.py
 
-Reads   E:\\Business\\Claude\\_Plan\\Website\\AI-Vision-Rulebook.xlsx
+Reads   E:\\Business\\Claude\\Doc\\cards\\redesign-my-room\\rules\\AI-Vision-Rulebook.xlsx
 Writes  services/aiVision/rulebook.generated.ts
 
 The owner edits the workbook; the code imports the generated constants. Nobody
@@ -43,7 +43,7 @@ try:
 except ImportError:
     sys.exit("openpyxl is required:  pip install openpyxl")
 
-XLSX = r"E:\Business\Claude\_Plan\Website\AI-Vision-Rulebook.xlsx"
+XLSX = r"E:\Business\Claude\Doc\cards\redesign-my-room\rules\AI-Vision-Rulebook.xlsx"
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.normpath(os.path.join(HERE, "..", "..", "services", "aiVision", "rulebook.generated.ts"))
 
@@ -257,7 +257,7 @@ def main() -> None:
     src = f'''/**
  * GENERATED FILE — DO NOT EDIT BY HAND.
  *
- * Source of truth: _Plan\\Website\\AI-Vision-Rulebook.xlsx
+ * Source of truth: Doc\\cards\\redesign-my-room\\rules\\AI-Vision-Rulebook.xlsx (docs repo)
  * Regenerate with:  python scripts/aivision/compile-rulebook.py
  *
  * Edit the workbook, re-run the compiler, commit both. Hand-editing this file

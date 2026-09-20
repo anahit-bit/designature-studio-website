@@ -2,7 +2,7 @@
   * Style preset wiring for AI Vision — the type unions and the display-name maps.
  *
  * The CONTENT (briefs, palettes, room programmes) is not here: it is compiled
- * from _Plan\Website\AI-Vision-Rulebook.xlsx into rulebook.generated.ts. This
+ * from Doc\cards\redesign-my-room\rules\AI-Vision-Rulebook.xlsx (docs repo) into rulebook.generated.ts. This
  * file is the code side of that contract — which presets exist, and which chip
  * label resolves to which one.
  */
@@ -42,7 +42,7 @@ export type RoomType =
 // Style briefs — the seven-section description behind every style chip.
 //
 // NOT written here any more. The owner edits them on the "Style Briefs" sheet of
-// _Plan\Website\AI-Vision-Rulebook.xlsx and `scripts/aivision/compile-rulebook.py`
+// Doc\cards\redesign-my-room\rules\AI-Vision-Rulebook.xlsx (docs repo) and `scripts/aivision/compile-rulebook.py`
 // generates rulebook.generated.ts. Using a preset costs no API call: the text
 // below goes to the image model verbatim.
 //

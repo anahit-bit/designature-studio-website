@@ -42,7 +42,7 @@ export const VISION_STYLES_FULL = [
 // 2026 Colours of the Year. A MODIFIER, not a style: the chosen colour replaces
 // whichever accent the style's palette would have supplied, so it appears
 // whatever style — or reference photo — the concept is built from. Ids must match
-// the "Paint 2026" sheet of AI-Vision-Rulebook.xlsx; the server looks them up there.
+// the "Paint 2026" sheet of AI-Vision-Rulebook.xlsx (Doc\cards\redesign-my-room\rules\); the server looks them up there.
 export const PAINT_2026 = [
   { id: 'cloud_dancer',    label: 'Cloud Dancer',    hex: '#F0EEE9', brand: 'Pantone 11-4201' },
   { id: 'silhouette',      label: 'Silhouette',      hex: '#6B4F3F', brand: 'Benjamin Moore AF-655' },

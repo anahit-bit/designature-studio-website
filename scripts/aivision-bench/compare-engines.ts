@@ -97,7 +97,18 @@ const ALL_ENGINES: EngineId[] = ["gemini", "gemini-nb2", "gemini-pro", "openai",
  * hallway that is nothing but a door, a head-on window, a brick fireplace, a
  * dated kitchen and a room that is already furnished.
  */
-const SRC = "E:/Business/Claude/_Inputs/source-rooms";
+// 2026-09-20: source photos moved from _Inputs\source-rooms (retired) into the
+// docs repo, sorted into residential/commercial subfolders — no more "useless"
+// bucket or flat root, so resolve against each subfolder in turn.
+const SRC = "E:/Business/Claude/Doc/inputs/source_rooms";
+const SRC_SUBDIRS = ["residential", "commercial"];
+function resolveRoomFile(file: string): string {
+  for (const sub of SRC_SUBDIRS) {
+    const p = path.join(SRC, sub, file);
+    if (existsSync(p)) return p;
+  }
+  throw new Error(`Room file not found in ${SRC} or its residential/commercial/useless subfolders: ${file}`);
+}
 interface Case { id: string; file: string; roomType: RoomType; note: string }
 const CASES: Case[] = [
   { id: "bath-tub-only", file: "20220521_144435.jpg", roomType: "bathroom", note: "Bathtub + pink shower curtain, nothing else visible" },
@@ -125,7 +136,7 @@ async function thumb(src: Buffer, dest: string, width = 1000): Promise<void> {
 }
 
 async function runCase(c: Case, index: number): Promise<void> {
-  const room = loadImage(path.join(SRC, c.file));
+  const room = loadImage(resolveRoomFile(c.file));
   const beforePath = path.join(IMG, `${c.id}__before.jpg`);
   if (!existsSync(beforePath)) await thumb(Buffer.from(room.data, "base64"), beforePath, 1400);
 
