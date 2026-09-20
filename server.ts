@@ -185,6 +185,10 @@ interface User {
   /** Remaining shopping-list runs (Serper searches) for free tier; optional in older `users.json` */
   shoppingListsLeft?: number;
   isPaid?: boolean;
+  /** Owner-set tier label from the admin Users tab (I-020c, 2026-09-20). When set,
+   *  it WINS over the payment-derived tier in the admin list. Never touched by the
+   *  login / subscription sync, so it survives the user's next login. */
+  adminTier?: "free" | "paid";
   auditQuota?: number;
   /** Cache of the user's current subscription tier (source of truth = the
    *  `subscriptions` table). Restored from Postgres on each login; 'free' or
@@ -4117,7 +4121,9 @@ Output ONLY valid JSON with no markdown fences, no explanation:
     const db = readDB();
     const allActivity = db.activityLog || [];
 
+    // Owner's manual label (adminTier) wins; else derive from owner-allowlist / isPaid.
     const tierOf = (u: User): "paid" | "free" =>
+      u.adminTier ? u.adminTier :
       isConceptTestAccountEmail(u.email) || u.isPaid ? "paid" : "free";
 
     const emailQuery = typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : null;
@@ -4187,6 +4193,26 @@ Output ONLY valid JSON with no markdown fences, no explanation:
         lastConsultation: consultByGid[u.googleId]?.last || null,
       }));
     res.json({ users });
+  });
+
+  // ── POST /api/admin/users/tier — owner sets a manual tier label (I-020c) ───
+  // Body { email, tier: "free" | "paid" }. Sets user.adminTier, which WINS over
+  // the payment-derived tier in the Users list and is never touched by the login
+  // / subscription sync. Durable (write-through Postgres). Admin-gated.
+  app.post("/api/admin/users/tier", (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const email = String(req.body?.email ?? "").trim().toLowerCase();
+    const tier = String(req.body?.tier ?? "").trim().toLowerCase();
+    if (!email) return res.status(400).json({ error: "email required" });
+    if (tier !== "free" && tier !== "paid") return res.status(400).json({ error: "tier must be 'free' or 'paid'" });
+    const db = readDB();
+    const entry = Object.entries(db.users).find(([, u]) => (u.email || "").trim().toLowerCase() === email);
+    if (!entry) return res.status(404).json({ error: "user not found" });
+    const [gid, u] = entry;
+    u.adminTier = tier as "free" | "paid";
+    db.users[gid] = u;
+    writeDB(db);
+    res.json({ ok: true, email, tier });
   });
 
   // ── GET /api/admin/counts — sidebar badge counts (2026-07-10) ──────────────

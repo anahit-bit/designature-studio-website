@@ -213,6 +213,9 @@ const AdminUsersPage: React.FC = () => {
   const [sortKey, setSortKey] = useState<SortKey>('signupDate');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
+  // Per-row tier-save status, keyed by email ('saving' | 'saved' | 'error').
+  const [tierSave, setTierSave] = useState<Record<string, 'saving' | 'saved' | 'error'>>({});
+
   useEffect(() => {
     if (!me?.authed) return;
     let cancelled = false;
@@ -261,6 +264,26 @@ const AdminUsersPage: React.FC = () => {
     } else {
       setSortKey(key);
       setSortDir(key === 'totalActivityCount' || key === 'lastLogin' || key === 'consultations' ? 'desc' : 'asc');
+    }
+  }
+
+  // Owner sets a manual free/paid label. Optimistic row update, then POST; the
+  // server stores it as the winning override (survives the user's next login).
+  async function saveTier(email: string, tier: Tier) {
+    setRows((prev) => (prev ? prev.map((r) => (r.email === email ? { ...r, tier } : r)) : prev));
+    setTierSave((s) => ({ ...s, [email]: 'saving' }));
+    try {
+      const res = await fetch('/api/admin/users/tier', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, tier }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      setTierSave((s) => ({ ...s, [email]: 'saved' }));
+      setTimeout(() => setTierSave((s) => { const n = { ...s }; delete n[email]; return n; }), 1500);
+    } catch {
+      setTierSave((s) => ({ ...s, [email]: 'error' }));
     }
   }
 
@@ -381,13 +404,29 @@ const AdminUsersPage: React.FC = () => {
                         </td>
                         <td className="px-5 py-4 text-xs text-neutral-700">{fmtDate(r.signupDate)}</td>
                         <td className="px-5 py-4 text-xs text-neutral-700">{fmtDateTime(r.lastLogin)}</td>
-                        <td className="px-5 py-4 text-xs">
-                          <span className={`inline-block text-[9px] tracking-[0.22em] uppercase font-bold px-2 py-0.5 ${
-                            r.tier === 'free'      ? 'bg-black/[0.06] text-neutral-500' :
-                                                      'bg-[#0047AB] text-white'
-                          }`}>
-                            {r.tier}
-                          </span>
+                        <td className="px-5 py-4 text-xs" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={r.tier}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => saveTier(r.email, e.target.value as Tier)}
+                              title="Set this user's tier — saves instantly"
+                              className={`text-[10px] tracking-[0.16em] uppercase font-bold border px-2 py-1 pr-6 cursor-pointer appearance-none ${
+                                r.tier === 'free' ? 'bg-black/[0.04] text-neutral-600 border-[#DAD2C3]' : 'bg-[#0047AB] text-white border-[#0047AB]'
+                              }`}
+                              style={{
+                                backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%23999' d='M0 0l5 6 5-6z'/></svg>\")",
+                                backgroundRepeat: 'no-repeat',
+                                backgroundPosition: 'right 6px center',
+                              }}
+                            >
+                              <option value="free">free</option>
+                              <option value="paid">paid</option>
+                            </select>
+                            {tierSave[r.email] === 'saving' && <span className="text-[10px] text-neutral-400">…</span>}
+                            {tierSave[r.email] === 'saved' && <span className="text-[11px] text-green-600 font-bold">✓</span>}
+                            {tierSave[r.email] === 'error' && <span className="text-[10px] text-red-600 font-bold" title="Save failed — try again">!</span>}
+                          </div>
                         </td>
                         <td
                           className="px-5 py-4 text-xs text-right text-neutral-700 tabular-nums"
