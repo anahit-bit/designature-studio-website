@@ -26,7 +26,7 @@ brand searches, and AI citations even when they don't pass full "link juice.")
 
 ## Assets we already have to build links around
 - **A unique dataset:** our Q3-2026 scan of **96 AI interior design competitors**
-  (`docs/competitor-intel/competitors-2026-Q3.csv`) and an interactive map artifact. **Original data =
+  (`E:/Dev/doc/research/competitor-intel/competitors-2026-Q3.csv` (private docs repo)) and an interactive map artifact. **Original data =
   the strongest link magnet we have** (journalists link to data). See Task 3.
 - **GEO articles** (drafted, `docs/marketing/journal-drafts/`): "Best AI interior design tools 2026,"
   "AI virtual staging guide," "Rental-friendly design," "Interior design Yerevan."
@@ -96,7 +96,7 @@ Do these now; they set up everything else:
    expert answer, (b) guest-post pitch, (c) unlinked-mention request, (d) listicle-inclusion pitch,
    (e) partner/referral proposal. Short, personal, no spam.
 3. **The "State of AI Interior Design 2026" report page** — build from
-   `docs/competitor-intel/competitors-2026-Q3.csv`; publish as a Journal post or a standalone page,
+   `E:/Dev/doc/research/competitor-intel/competitors-2026-Q3.csv` (private docs repo); publish as a Journal post or a standalone page,
    with a few headline stats and a "cite this / data by Designature" line. This is the flagship link magnet.
 4. **Unlinked-mentions list**: search for existing "Designature" mentions without links → add to the tracker.
 5. **Competitor backlink intersection list**: compile sites linking to MeltFlex/REimagine/Havenly → add
@@ -125,7 +125,7 @@ must come from a real, relevant site. Prefer 10 relevant links over 100 junk one
 > `claude/ai-interior-design-competitors-zylz6w`). Start with the five "produce first" deliverables:
 > (1) build `docs/marketing/backlink-targets.csv` with 50–80 prioritized prospects, (2) write
 > `docs/marketing/outreach-templates.md` with the 5 templates, (3) build the "State of AI Interior
-> Design 2026" link-magnet page from `docs/competitor-intel/competitors-2026-Q3.csv`, (4) find existing
+> Design 2026" link-magnet page from `E:/Dev/doc/research/competitor-intel/competitors-2026-Q3.csv` (private docs repo), (4) find existing
 > unlinked mentions of "Designature," and (5) compile a competitor-backlink-intersection list
 > (who links to MeltFlex / REimagine Home / Havenly). Follow the one rule: only real, relevant links —
 > never buy links or spam. Commit your work and leave the owner a short "what to submit/send" checklist,
