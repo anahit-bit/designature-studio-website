@@ -10,13 +10,12 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { adminLogout } from '../../lib/adminAuth';
 
-export type AdminNavKey = 'overview' | 'insights' | 'users' | 'comments' | 'feedback' | 'waitlist' | 'orders' | 'credits' | 'consultations' | 'platforms';
+export type AdminNavKey = 'overview' | 'insights' | 'users' | 'comments' | 'feedback' | 'orders' | 'credits' | 'consultations' | 'platforms';
 
 interface Counts {
   users: number;
   comments: number;
   feedback: number;
-  waitlist: number;
   orders: number;
 }
 
@@ -35,7 +34,6 @@ const NAV: NavDef[] = [
   { key: 'users', label: 'Users', to: '/admin/users', icon: '◍' },
   { key: 'comments', label: 'Comments', to: '/admin/comments', icon: '❝', alerts: true },
   { key: 'feedback', label: 'Feedback', to: '/admin/feedback', icon: '✎', alerts: true },
-  { key: 'waitlist', label: 'Waitlist', to: '/admin/waitlist', icon: '✦' },
   { key: 'orders', label: 'Orders', to: '/admin/orders', icon: '▣' },
   { key: 'credits', label: 'Credit packs', to: '/admin/credits', icon: '❖' },
   { key: 'consultations', label: 'Consultations', to: '/admin/consultations', icon: '☎' },

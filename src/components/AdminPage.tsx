@@ -78,7 +78,7 @@ interface UsageResponse {
   };
 }
 
-interface Counts { users: number; comments: number; feedback: number; waitlist: number; orders: number; }
+interface Counts { users: number; comments: number; feedback: number; orders: number; }
 
 // ── Acquisition (I-027) — mirrors server/analytics/acquisition.ts ────────────
 interface Ga4Acq {
@@ -342,7 +342,7 @@ const NewsletterBody: React.FC<{ data: UsageResponse['newsletter'] }> = ({ data 
       </div>
     </div>
     <p className="mt-4 text-[11px] text-neutral-500">
-      Showing {data.recent.length} of {data.count} · full list on the <a href="/admin/waitlist" className="text-[#0047AB] hover:underline">Waitlist page</a>.
+      Showing {data.recent.length} of {data.count}.
     </p>
   </>
 );
@@ -666,9 +666,8 @@ const AdminPage: React.FC = () => {
       {/* AT-A-GLANCE — reordered around the owner's daily questions */}
       {data && (
         <section className="bg-[#F4EFE7] border-b border-[#DAD2C3] py-7 px-8">
-          <div className="grid grid-cols-6 gap-3.5">
+          <div className="grid grid-cols-5 gap-3.5">
             <GlanceTile label="New signups · 7d" value={data.users.signups7d} delta={data.users.signups7d > 0 ? `+${data.users.signups7d} this week` : 'flat'} deltaTone={data.users.signups7d > 0 ? 'up' : 'flat'} />
-            <GlanceTile label="Waitlist" value={counts ? counts.waitlist : '—'} delta="wants paid tools" deltaTone="alert" />
             <GlanceTile label="Comments" value={counts ? counts.comments : '—'} delta={counts && counts.comments > 0 ? 'pending review' : 'none pending'} deltaTone={counts && counts.comments > 0 ? 'alert' : 'flat'} />
             <GlanceTile label="Feedback" value={counts ? counts.feedback : '—'} delta={counts && counts.feedback > 0 ? 'unread' : 'none new'} deltaTone={counts && counts.feedback > 0 ? 'alert' : 'flat'} />
             <GlanceTile label="Total users" value={data.users.total} delta={`MAU ${data.retention.mau}`} deltaTone="flat" />
@@ -700,7 +699,7 @@ const AdminPage: React.FC = () => {
             <FunnelsBody rows={data.funnels} />
           </CollapsibleSection>
 
-          <CollapsibleSection title="Newsletter & waitlist" sub={<>Google Sheet · <a href="/admin/waitlist" className="text-[#0047AB] hover:underline">see all →</a></>} storageKey="newsletter" defaultOpen>
+          <CollapsibleSection title="Newsletter" sub={<>Google Sheet</>} storageKey="newsletter" defaultOpen>
             <NewsletterBody data={data.newsletter} />
           </CollapsibleSection>
 

@@ -310,6 +310,12 @@ const AdminPlatformsPage: React.FC = () => {
 
   const monthlyTotal = useMemo(() => paid.reduce((a, p) => a + monthlyEstimate(p), 0), [paid]);
   const yearlyTotal = useMemo(() => paid.reduce((a, p) => a + yearlyEstimate(p), 0), [paid]);
+  // Committed auto-renewals per month (monthly subs + annual/12). These renew on
+  // their own — the figure the owner wants at a glance (no "did it renew?" email).
+  const recurringMonthly = useMemo(
+    () => view.filter((p) => p.cadence === 'monthly' || p.cadence === 'annual').reduce((a, p) => a + monthlyEstimate(p), 0),
+    [view],
+  );
   const nextRenewals = useMemo(
     () =>
       view
@@ -416,6 +422,7 @@ const AdminPlatformsPage: React.FC = () => {
         </p>
         {items && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5 mt-5">
+            <SummaryTile label="Renews / mo" value={fmtMoney(recurringMonthly)} sub="auto-renews — no action needed" />
             <SummaryTile label="Est. monthly · max" value={fmtMoney(monthlyTotal)} sub="upper bound, incl. usage caps" />
             <SummaryTile label="Est. yearly · max" value={fmtMoney(yearlyTotal)} sub="upper bound" />
             <SummaryTile label="Paid services" value={paid.length} sub={`of ${view.length} total`} />

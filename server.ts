@@ -297,9 +297,6 @@ interface DB {
    *  Consultations tab + HubSpot-sync status survive redeploys. Keyed/deduped by
    *  inviteeUri. Capped FIFO. */
   calendlyBookings?: Array<ConsultationBooking & { hubspot?: { synced: boolean; at?: string; error?: string } }>;
-  /** UTC YYYY-MM-DD of the last renewal-digest email send. Guards the digest to at
-   *  most once per UTC day (I-012, 2026-08-27). */
-  platformsDigestLastSent?: string;
   /** GEO watchlist — owner-editable phrases we track Google rank for (Insights tab).
    *  Durable so edits survive redeploys. Seeded on first boot. */
   geoPhrases?: string[];
@@ -1183,70 +1180,6 @@ async function syncBookingsToHubspot(): Promise<void> {
   }
 }
 
-/**
- * Once-a-day renewal digest (I-012, 2026-08-27). Emails the owner a short list of
- * recurring platforms whose derived renewal is just-passed / imminent, so she can
- * confirm each actually charged. Runs at most once per UTC day (tracked in
- * dbCache.platformsDigestLastSent). No-op unless email is configured. Best-effort —
- * wrapped like syncBookingsToHubspot so a hiccup never crashes the interval.
- */
-async function sendRenewalDigestIfDue(): Promise<void> {
-  try {
-    if (!process.env.RESEND_API_KEY) return; // email not configured — nothing to send through
-    if (!dbCache) return;
-    const today = utcDateString();
-    if (dbCache.platformsDigestLastSent === today) return; // already ran today
-
-    // Days-until for a derived (UTC-midnight) YYYY-MM-DD date; ceil, UTC.
-    const daysUntilUtc = (dateStr: string | null): number | null => {
-      if (!dateStr) return null;
-      const ms = Date.parse(dateStr);
-      if (!Number.isFinite(ms)) return null;
-      const now = new Date();
-      const todayMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-      return Math.ceil((ms - todayMs) / (24 * 60 * 60 * 1000));
-    };
-
-    // Recurring platforms only (skip static / pay-as-you-go) whose derived renewal
-    // is in [-1, 3] days: just passed yesterday through due in 3 days.
-    const due = getPlatformsWithDerived()
-      .filter((p) => p.cadence === "monthly" || p.cadence === "annual")
-      .map((p) => ({ p, days: daysUntilUtc(p.next_renewal) }))
-      .filter((x) => x.days !== null && x.days >= -1 && x.days <= 3);
-
-    if (due.length === 0) {
-      // Still mark today so we compute exactly once per day.
-      dbCache.platformsDigestLastSent = today;
-      writeDB(dbCache);
-      return;
-    }
-
-    const esc = (s: string): string =>
-      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const rows = due
-      .map(({ p, days }) => {
-        const when = days === 0 ? "today" : days! < 0 ? `${-days!}d ago` : `in ${days}d`;
-        return `<li style="margin:0 0 8px"><strong>${esc(p.name)}</strong> — ${esc(p.monthly_cost || "—")} · renews ${p.next_renewal} (${when})<br><span style="color:#666">renewed? if not, update it in /admin/platforms</span></li>`;
-      })
-      .join("");
-    const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111">
-      <p>These recurring platforms renew around now — confirm each actually charged:</p>
-      <ul style="padding-left:18px">${rows}</ul>
-      <p style="color:#666">Auto-sent once a day from the Platforms tab. Manage the inventory at /admin/platforms.</p>
-    </div>`;
-
-    await sendEmail({
-      to: "anahit@designature.studio",
-      subject: `Renewal check — ${due.length} due`,
-      html,
-    });
-    dbCache.platformsDigestLastSent = today;
-    writeDB(dbCache);
-  } catch (e) {
-    console.error("[renewal-digest]", (e as Error)?.message || e);
-  }
-}
-
 // ─── Session store (in-memory, keyed by session token) ─────────────────────
 const sessions: Record<string, string> = {}; // token → googleId
 
@@ -1428,13 +1361,6 @@ async function startServer() {
   setTimeout(() => void syncBookingsToHubspot(), 15_000).unref();
   const calendlySyncTimer = setInterval(() => void syncBookingsToHubspot(), 3 * 60 * 1000);
   calendlySyncTimer.unref();
-
-  // Once-a-day renewal digest (I-012). Best-effort; self-guards to one send/UTC-day.
-  // Run once at boot, then every 6h so the day is caught even across restarts. The
-  // timer is unref'd so it never keeps the process alive on its own.
-  void sendRenewalDigestIfDue();
-  const renewalDigestTimer = setInterval(() => void sendRenewalDigestIfDue(), 6 * 60 * 60 * 1000);
-  renewalDigestTimer.unref();
 
   // Snapshot GEO watchlist positions daily (Search Console lags ~2-3d, so daily
   // is plenty) → the Insights tab shows position movement over time. Best-effort.
@@ -4216,10 +4142,8 @@ Output ONLY valid JSON with no markdown fences, no explanation:
   });
 
   // ── GET /api/admin/counts — sidebar badge counts (2026-07-10) ──────────────
-  // Cheap-ish rollup for the admin left-nav badges. DB counts are instant; the
-  // waitlist count comes from the newsletter Sheet (cached 60s so nav mounts are
-  // snappy). Each source degrades to 0 independently rather than 500-ing.
-  let waitlistCountCache: { val: number; exp: number } | null = null;
+  // Cheap-ish rollup for the admin left-nav badges. DB counts are instant; each
+  // source degrades to 0 independently rather than 500-ing.
   app.get("/api/admin/counts", async (req, res) => {
     if (!requireAdmin(req, res)) return;
     const db = readDB();
@@ -4238,16 +4162,7 @@ Output ONLY valid JSON with no markdown fences, no explanation:
       );
       orders = orq.rows[0]?.n || 0;
     } catch { /* degrade */ }
-    let waitlist = 0;
-    try {
-      if (waitlistCountCache && waitlistCountCache.exp > Date.now()) {
-        waitlist = waitlistCountCache.val;
-      } else {
-        waitlist = (await readNewsletterFromSheet()).count;
-        waitlistCountCache = { val: waitlist, exp: Date.now() + 60_000 };
-      }
-    } catch { /* degrade */ }
-    res.json({ users, comments, feedback: feedbackNew, waitlist, orders });
+    res.json({ users, comments, feedback: feedbackNew, orders });
   });
 
   // ── GET /api/admin/acquisition — GA4 + Search Console read-back (I-027) ────
