@@ -138,7 +138,10 @@ describe('owner / unlimited accounts are unaffected', () => {
   it('recognizes the studio owner + demo emails as unlimited', () => {
     expect(isUnlimitedAccountEmail('anahit@designature.studio')).toBe(true);
     expect(isUnlimitedAccountEmail('anahit.ghasabyan@gmail.com')).toBe(true);
-    expect(isUnlimitedAccountEmail('Maraimh.Rafa@gmail.com')).toBe(true);
+    expect(isUnlimitedAccountEmail('Mariamh.Rafa@gmail.com')).toBe(true);
+    // A misspelling of that address once sat on this list by mistake. It is a different
+    // Gmail account, so it must get no free generations.
+    expect(isUnlimitedAccountEmail('maraimh.rafa@gmail.com')).toBe(false);
     expect(isUnlimitedAccountEmail('  ANAHIT@Designature.Studio ')).toBe(true);
     expect(isUnlimitedAccountEmail('free@example.com')).toBe(false);
   });

@@ -1403,6 +1403,7 @@ const AIConceptsPage: React.FC = () => {
             onLogout={handleLogout}
             unlimitedLabel={t('ai.unlimited')}
             remainingLabel={t('ai.remaining')}
+            creditLabel={creditsOn && !isUnlimitedUser && typeof creditBalance === 'number' ? formatCredits(creditBalance) : undefined}
             unlockAllLabel={t('ai.unlockAll')}
             noCardLabel={t('ai.noCard')}
           />

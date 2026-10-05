@@ -25,9 +25,11 @@ export const ExplorerPanelHeader: React.FC<{
   onLogout: () => void;
   unlimitedLabel: string;
   remainingLabel: string;
+  /** Credit balance text ("5 credits") when the ledger is the live meter. Replaces the legacy concept counter. */
+  creditLabel?: string;
   unlockAllLabel: string;
   noCardLabel: string;
-}> = ({ tool, user, authLoading, onLogout, unlimitedLabel, remainingLabel, unlockAllLabel, noCardLabel }) => {
+}> = ({ tool, user, authLoading, onLogout, unlimitedLabel, remainingLabel, creditLabel, unlockAllLabel, noCardLabel }) => {
   const phase = PHASES[tool.phase];
   const paid = tool.lvl !== 'free';
   const statusColor =
@@ -84,7 +86,7 @@ export const ExplorerPanelHeader: React.FC<{
             <div className="text-[11px] font-bold uppercase tracking-[0.15em] text-black/70">
               {user.generationsLeft >= 999
                 ? unlimitedLabel
-                : `${user.generationsLeft} ${remainingLabel}`}
+                : creditLabel ?? `${user.generationsLeft} ${remainingLabel}`}
             </div>
           </div>
         ) : (
