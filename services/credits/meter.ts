@@ -101,8 +101,15 @@ export async function meterRefund(receipt: SpendReceipt | null): Promise<void> {
   }
 }
 
-/** Balance for `/account` and the studio header. Zeroed when credits are not active. */
+/**
+ * Balance for `/account` and the studio. Null when credits are not active.
+ *
+ * Grants the free credits first (idempotent, see `ensureSignupGrant`). A user with no
+ * ledger row would otherwise read as 0, and the studio disables Generate below a run's
+ * price, so they would be locked out before ever spending, which is the only moment
+ * the grant would otherwise land.
+ */
 export async function meterBalance(userId: string): Promise<CreditBalance | null> {
   if (!creditsEnabled()) return null;
-  return getBalance(userId);
+  return ensureSignupGrant(userId);
 }

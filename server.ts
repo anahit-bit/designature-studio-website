@@ -1858,8 +1858,12 @@ async function startServer() {
           generationsLeft: user.generationsLeft,
           shoppingListsLeft: user.shoppingListsLeft,
           isPaid: ownerLogin || plan !== "free",
-          auditsLeft: ownerLogin ? 999 : plan !== "free" ? user.generationsLeft : 0,
+          // Under credits a subscriber's audits are unmetered (isPaid), and their legacy
+          // generationsLeft is never refilled, so reporting it here read as 0 until the
+          // next /api/auth/me. Match what /me already says.
+          auditsLeft: ownerLogin || (creditsEnabled() && plan !== "free") ? 999 : plan !== "free" ? user.generationsLeft : 0,
           plan,
+          creditsEnabled: creditsEnabled(),
         },
       });
     } catch (err) {
@@ -1946,6 +1950,9 @@ async function startServer() {
       isPaid: isPaidUser,
       auditsLeft: isPaidUser ? 999 : 0,
       plan: user.plan ?? "free",
+      // Tells the client which meter is live, so it doesn't gate on the legacy
+      // generationsLeft counter while the credit ledger is the one charging.
+      creditsEnabled: creditsEnabled(),
     });
   });
 

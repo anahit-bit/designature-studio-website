@@ -114,6 +114,13 @@ interface VisionExperienceProps {
   PROCESSING_PHASES: string[];
   maxConceptSlots: number;
   generationsLeft: number;
+  /** Credit ledger is the active meter (CREDITS_ENABLED). Optional so legacy callers keep the tier counter. */
+  creditsOn?: boolean;
+  /** Parent's verdict on whether another run is affordable; falls back to generationsLeft. */
+  outOfGenerations?: boolean;
+  /** Ready-made quota text (credits or concepts remaining); falls back to generationsLeft. */
+  quotaLabel?: string;
+  redesignCredits?: number;
   unlimitedLabel: string;
   remainingLabel: string;
   quizResult: { style: string; pct: number }[];
@@ -676,7 +683,7 @@ export default function VisionExperience(p: VisionExperienceProps) {
               aria-label); only the Shop this room conversion CTA keeps its words,
               so the bar stays compact and doesn't run the full width. */}
           <div className="flex gap-2 flex-wrap items-center">
-            {p.generationsLeft > 0 && (
+            {!(p.outOfGenerations ?? p.generationsLeft <= 0) && (
               <button
                 type="button"
                 onClick={() => p.handleGenerate(true, false)}
@@ -788,7 +795,7 @@ export default function VisionExperience(p: VisionExperienceProps) {
   const renderSetup = () => {
     const styleLabel = p.selectedStyle ? p.translateStyle(p.selectedStyle) : t('ai.vision.autoStyle');
     const roomLabel = p.selectedRoom || t('ai.vision.autoRoom');
-    const quota = p.generationsLeft >= 999 ? p.unlimitedLabel : `${p.generationsLeft} ${p.remainingLabel}`;
+    const quota = p.quotaLabel ?? (p.generationsLeft >= 999 ? p.unlimitedLabel : `${p.generationsLeft} ${p.remainingLabel}`);
     return (
     <section className="bg-white">
       {/* titlehdr */}
@@ -1170,14 +1177,14 @@ export default function VisionExperience(p: VisionExperienceProps) {
 
         {/* Quota counter (compact) */}
         <div className="flex items-center justify-center gap-3 text-[11px] uppercase tracking-[0.22em] font-bold text-[#6B6B6B] mt-1">
-          <span>{p.unlimitedLabel === 'Unlimited' && p.generationsLeft >= 999 ? p.unlimitedLabel : `${p.generationsLeft} ${p.remainingLabel}`}</span>
+          <span>{p.quotaLabel ?? (p.unlimitedLabel === 'Unlimited' && p.generationsLeft >= 999 ? p.unlimitedLabel : `${p.generationsLeft} ${p.remainingLabel}`)}</span>
         </div>
 
-        {/* Quota exhausted (free tier) */}
-        {p.generationsLeft <= 0 && !p.isPaid && (
+        {/* Quota exhausted. Credits mode ignores isPaid: a subscriber with 0 credits is stuck too. */}
+        {(p.creditsOn ? !!p.outOfGenerations : p.generationsLeft <= 0 && !p.isPaid) && (
           <div className="bg-white border border-black/10 p-5 max-w-[520px] mx-auto w-full text-center">
-            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-black/55 mb-1.5">Free tier complete</p>
-            <p className="text-[14px] font-bold text-black mb-4 leading-snug">You've used your 3 free concepts.</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-black/55 mb-1.5">{p.creditsOn ? 'Out of credits' : 'Free tier complete'}</p>
+            <p className="text-[14px] font-bold text-black mb-4 leading-snug">{p.creditsOn ? `A redesign costs ${p.redesignCredits ?? 10} credits.` : "You've used your 3 free concepts."}</p>
             <button
               type="button"
               onClick={() => p.navigateTo('pricing')}

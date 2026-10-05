@@ -39,6 +39,11 @@ import { useShoppingStatus } from '../lib/shoppingStatus';
 import { trackCalendly, trackVisionStart, trackShoppingStart } from '../lib/track';
 import { trackEvent } from '../lib/analytics';
 import { popSigninSource } from '../lib/signinSource';
+import { creditsFor } from '../data/creditPricing';
+import { cannotAffordRun, formatCredits, isUnlimitedUser as isUnlimitedAccount, notEnoughCreditsMessage } from '../lib/credits';
+
+/** What one redesign costs when the credit ledger is the active meter. */
+const REDESIGN_CREDITS = creditsFor('redesign');
 
 const CALENDLY_URL = 'https://calendly.com/hello-designature/quick-conversation';
 /** Where a guest's in-progress workflow is kept for the session. */
@@ -124,6 +129,8 @@ const AIConceptsPage: React.FC = () => {
     signOut,
     setUser,
     refreshQuota,
+    creditBalance,
+    refreshCredits,
     apiFetch,
   } = useAuth();
   const prevUserRef = useRef<AuthUser | null>(null);
@@ -221,6 +228,32 @@ const AIConceptsPage: React.FC = () => {
   // TODO(Design tier): Design-tier slot count not yet defined in tier config — confirm with product before shipping Design tier.
   // Free: FREE_TIER_MAX_CONCEPT_SLOTS (3) | Studio (isPaid): unlimited — no fixed cap, grows as user generates.
   const maxConceptSlots = user?.isPaid ? Infinity : FREE_TIER_MAX_CONCEPT_SLOTS;
+
+  // ── Credit metering ──
+  // With CREDITS_ENABLED the ledger meters redesign runs, so the legacy generationsLeft
+  // counter must not gate Generate. It sits at 0 for anyone who spent their 3 old
+  // concepts, which blocked them silently and kept them from their 50 free credits.
+  // The balance itself lives in AuthContext so every tool sees the same number after a spend.
+  const creditsOn = !!user?.creditsEnabled;
+  const isUnlimitedUser = isUnlimitedAccount(user);
+
+  /** True when the user cannot afford another redesign under whichever meter is live. */
+  const outOfGenerations = isUnlimitedUser
+    ? false
+    : creditsOn
+      ? cannotAffordRun(user, creditBalance, 'redesign')
+      : (user?.generationsLeft ?? 0) <= 0;
+  /** Same question for a shopping list. Legacy counter keeps its "missing means 1" default. */
+  const shopOutOfLists = isUnlimitedUser
+    ? false
+    : creditsOn
+      ? cannotAffordRun(user, creditBalance, 'shop')
+      : (user?.shoppingListsLeft ?? 1) <= 0;
+  const quotaLabel = isUnlimitedUser
+    ? t('ai.unlimited')
+    : creditsOn
+      ? typeof creditBalance === 'number' ? formatCredits(creditBalance) : ''
+      : `${user?.generationsLeft ?? 0} ${t('ai.remaining')}`;
 
   // ── Drag-over state for upload zones ──
   const [roomDragOver, setRoomDragOver] = useState(false);
@@ -898,7 +931,11 @@ const AIConceptsPage: React.FC = () => {
       return;
     }
     // Allow sample runs even if quota is 0 (server handles the bypass)
-    if (!isSampleRun && (user?.generationsLeft ?? 0) <= 0) return;
+    if (!isSampleRun && outOfGenerations) {
+      // Say so instead of returning silently, which looked like a dead button.
+      setError(creditsOn ? `Not enough credits. A redesign costs ${REDESIGN_CREDITS} credits.` : t('ai.noGenerationsLeft'));
+      return;
+    }
 
     setIsProcessing(true);
     setError(null);
@@ -950,6 +987,12 @@ const AIConceptsPage: React.FC = () => {
       const data = await res.json();
 
       if (!res.ok) {
+        if (res.status === 402) {
+          // Credit ledger refused the run (server/quota is authoritative).
+          void refreshCredits();
+          setError(notEnoughCreditsMessage('A redesign', 'redesign', data?.available));
+          return;
+        }
         if (res.status === 403) {
           setUser(prev => prev ? { ...prev, generationsLeft: 0 } : null);
           setError(t('ai.noGenerationsLeft'));
@@ -983,9 +1026,10 @@ const AIConceptsPage: React.FC = () => {
       // A-004/I-023 — GA4 engagement events (client-side, env-gated). Sample runs
       // don't consume quota, so they can't have "burned" the user to 0.
       trackEvent('ai_vision_completed');
-      if (!isSampleRun && data.generationsLeft === 0) {
+      if (!creditsOn && !isSampleRun && data.generationsLeft === 0) {
         trackEvent('quota_burned', { tool: 'ai_vision' });
       }
+      if (creditsOn && !isSampleRun && !isUnlimitedUser) void refreshCredits();
 
     } catch (err: any) {
       console.error('[AI Vision] handleGenerate error:', err);
@@ -1144,6 +1188,11 @@ const AIConceptsPage: React.FC = () => {
           setShoppingOffline({ code: data.code, resetAt: data.resetAt });
           return;
         }
+        if (res.status === 402) {
+          // Credit ledger refused the run; resync the balance the UI is gating on.
+          void refreshCredits();
+          throw new Error(notEnoughCreditsMessage('A shopping list', 'shop', data?.available));
+        }
         throw new Error(data.error || 'Search failed');
       }
       setShoppingResults(data.searched || data.results || []);
@@ -1155,7 +1204,8 @@ const AIConceptsPage: React.FC = () => {
       }
       // A-004/I-023 — GA4 engagement events (client-side, env-gated).
       trackEvent('ai_shopping_completed', { item_count: Array.isArray(data.results) ? data.results.length : 0 });
-      if (data.shoppingListsLeft === 0) trackEvent('quota_burned', { tool: 'ai_shopping' });
+      if (!creditsOn && data.shoppingListsLeft === 0) trackEvent('quota_burned', { tool: 'ai_shopping' });
+      if (creditsOn && !isUnlimitedUser) void refreshCredits();
     } catch (err: any) {
       console.error("Shopping search error:", err);
       setShoppingError(err.message || t('ai.searchFailed'));
@@ -1224,7 +1274,7 @@ const AIConceptsPage: React.FC = () => {
     !roomImage ||
     (inspirationImages.length === 0 && !selectedStyle) ||
     !user ||
-    (user?.generationsLeft ?? 0) <= 0;
+    outOfGenerations;
 
   // I-021b: vision_started fires when the Generate button transitions
   // disabled → enabled. One-shot per session; re-arms when results clear.
@@ -1424,6 +1474,10 @@ const AIConceptsPage: React.FC = () => {
           PROCESSING_PHASES={PROCESSING_PHASES}
           maxConceptSlots={maxConceptSlots}
           generationsLeft={user?.generationsLeft ?? 3}
+          creditsOn={creditsOn}
+          outOfGenerations={outOfGenerations}
+          quotaLabel={quotaLabel}
+          redesignCredits={REDESIGN_CREDITS}
           unlimitedLabel={t('ai.unlimited')}
           remainingLabel={t('ai.remaining')}
           quizResult={quizResultForVision}
@@ -1471,6 +1525,7 @@ const AIConceptsPage: React.FC = () => {
         <ShoppingExperience
           onGoToTool={handleSelectTool}
           user={user}
+          creditBalance={creditBalance}
           shoppingResults={shoppingResults}
           shoppingTeaser={shoppingTeaser}
           shoppingTotalIdentified={shoppingTotalIdentified}
@@ -1545,10 +1600,12 @@ const AIConceptsPage: React.FC = () => {
         <>
           <RoomAuditExperience
             user={user}
+            creditBalance={creditBalance}
             onProcessingChange={setAuditProcessing}
             onAuditComplete={async () => {
               setAuditComplete(true);
               await refreshQuota();
+              if (creditsOn && !isUnlimitedUser) await refreshCredits();
             }}
             onRedesignWithVision={(auditedRoom) => {
               // Preload the audited room as AI Vision's source room (no auto-generate).
@@ -1935,8 +1992,10 @@ const AIConceptsPage: React.FC = () => {
                   <span className="text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/55">
                     {t('ai.remaining')}
                   </span>
-                  {maxConceptSlots === Infinity ? (
+                  {maxConceptSlots === Infinity || isUnlimitedUser ? (
                     <span className="text-sm font-bold text-black/55">{t('ai.unlimited')}</span>
+                  ) : creditsOn ? (
+                    <span className="text-sm font-bold text-black/55">{quotaLabel}</span>
                   ) : (
                     <div className="flex gap-1">
                       {Array.from({ length: FREE_TIER_MAX_CONCEPT_SLOTS }).map((_, i) => (
@@ -1950,11 +2009,11 @@ const AIConceptsPage: React.FC = () => {
                   <p className="text-[12px] font-semibold text-red-500 leading-relaxed">{validationError}</p>
                 )}
 
-                {(user?.generationsLeft ?? 0) <= 0 && (
+                {outOfGenerations && (
                   <div className="border border-black/10 p-5 space-y-4 bg-neutral-50">
                     <div>
-                      <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-black/55 mb-1">Free tier complete</p>
-                      <p className="text-sm font-bold text-black leading-snug">{t('ai.usedAll')}</p>
+                      <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-black/55 mb-1">{creditsOn ? 'Out of credits' : 'Free tier complete'}</p>
+                      <p className="text-sm font-bold text-black leading-snug">{creditsOn ? `A redesign costs ${REDESIGN_CREDITS} credits.` : t('ai.usedAll')}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <button
@@ -2246,7 +2305,7 @@ const AIConceptsPage: React.FC = () => {
                   </span>
                 </div>
                 <div className="flex gap-2">
-                  {(user?.generationsLeft ?? 0) > 0 && (
+                  {!outOfGenerations && (
                     <button onClick={() => handleGenerate(true)} disabled={isProcessing} className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-white bg-black px-4 py-2 hover:bg-black/70 transition-all disabled:opacity-40 disabled:pointer-events-none">
                       <RefreshCw className="w-3 h-3" />
                       {t('ai.genVariation')}
@@ -2443,12 +2502,12 @@ const AIConceptsPage: React.FC = () => {
                   <>
 
                 {/* Shopping quota exhausted */}
-                {(user?.shoppingListsLeft ?? 1) <= 0 && !shoppingDone && (
+                {shopOutOfLists && !shoppingDone && (
                   <div className="px-8 py-6">
                     <div className="border border-black/10 p-5 space-y-4 bg-neutral-50">
                       <div>
-                        <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-black/55 mb-1">Free tier complete</p>
-                        <p className="text-sm font-bold text-black leading-snug">You've used all 3 free shopping lists.</p>
+                        <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-black/55 mb-1">{creditsOn ? 'Out of credits' : 'Free tier complete'}</p>
+                        <p className="text-sm font-bold text-black leading-snug">{creditsOn ? `A shopping list costs ${creditsFor('shop')} credits.` : "You've used all 3 free shopping lists."}</p>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <button
@@ -2472,7 +2531,7 @@ const AIConceptsPage: React.FC = () => {
                 )}
 
                 {/* Initial CTA — first time or after clear */}
-                {!shoppingDone && !shoppingLoading && !shoppingError && shoppingItems.length === 0 && (user?.shoppingListsLeft ?? 1) > 0 && (
+                {!shoppingDone && !shoppingLoading && !shoppingError && shoppingItems.length === 0 && !shopOutOfLists && (
                   <div className="bg-white">
 
                     {/* Logo strip banner — sets scope ("4-6 items") + retailers, includes upsell. */}

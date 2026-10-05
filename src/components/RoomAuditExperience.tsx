@@ -7,6 +7,7 @@ import { ConsultationReviewBand } from './ConsultationCTA';
 import { getStoredToken } from '../sessionClient';
 import { trackAuditStart } from '../lib/track';
 import { trackEvent } from '../lib/analytics';
+import { cannotAffordRun, formatCredits, isUnlimitedUser, notEnoughCreditsMessage } from '../lib/credits';
 
 // Locked Room Audit sample/demo room (same version-form URL as the paid landing).
 const SAMPLE_ROOM = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1774950187/12_iwshvs.jpg';
@@ -66,6 +67,8 @@ interface AuditResult {
 
 interface Props {
   user: AuthUser | null;
+  /** Credit balance when the ledger is the live meter; null/undefined = unknown (never blocks). */
+  creditBalance?: number | null;
   /** Refresh quota + mark audit-complete in the parent (mirrors the old onAuditComplete). */
   onAuditComplete?: () => void;
   /** Lets the parent lock tab-switching while an audit is running. */
@@ -148,12 +151,20 @@ const RoomAuditExperience: React.FC<Props> = (p) => {
   // ── Quota (paid only; 999 / undefined / >50 == unlimited) ──
   const isPaid = p.user?.isPaid ?? false;
   const auditsLeftRaw = p.user?.auditsLeft;
-  const unlimited = auditsLeftRaw === 999 || auditsLeftRaw === undefined || auditsLeftRaw > 50;
   const auditsLeft = typeof auditsLeftRaw === 'number' ? auditsLeftRaw : 0;
+  // With CREDITS_ENABLED the ledger decides, not auditsLeft. The server never meters a
+  // paid (isPaid) user's audit, and charges everyone else; mirror that so a paid user
+  // whose legacy auditsLeft reads 0 right after login is not blocked.
+  const creditsOn = !!p.user?.creditsEnabled;
+  const unlimited = creditsOn
+    ? isPaid || isUnlimitedUser(p.user)
+    : auditsLeftRaw === 999 || auditsLeftRaw === undefined || auditsLeftRaw > 50;
   const quotaLine = unlimited
     ? t('ai.audit.quotaUnlimited')
-    : t('ai.audit.quotaLeft').replace('{n}', String(auditsLeft));
-  const canAudit = unlimited || auditsLeft > 0;
+    : creditsOn
+      ? (typeof p.creditBalance === 'number' ? formatCredits(p.creditBalance) : '')
+      : t('ai.audit.quotaLeft').replace('{n}', String(auditsLeft));
+  const canAudit = unlimited || (creditsOn ? !cannotAffordRun(p.user, p.creditBalance, 'score-room') : auditsLeft > 0);
 
   // Derived view (mirrors ShoppingExperience's `view` derivation).
   const view: 'landing' | 'setup' | 'analyzing' | 'report' =
@@ -239,6 +250,7 @@ const RoomAuditExperience: React.FC<Props> = (p) => {
         body: JSON.stringify({ imageDataUrl: roomImage, goals: buildGoalsPayload() }),
       });
       const analyzeData = await analyzeRes.json().catch(() => ({}));
+      if (analyzeRes.status === 402) throw new Error(notEnoughCreditsMessage('A room audit', 'score-room', analyzeData?.available));
       if (!analyzeRes.ok) throw new Error(analyzeData?.error || 'Audit failed');
 
       const raw = analyzeData.result;
@@ -260,7 +272,7 @@ const RoomAuditExperience: React.FC<Props> = (p) => {
       // A-004/I-023 — GA4 engagement events (client-side, env-gated). The server
       // returns the post-decrement balance so we can flag a burned free quota.
       trackEvent('ai_audit_completed', { score: parsed.overallScore });
-      if (!isPaid && analyzeData?.generationsLeft === 0) trackEvent('quota_burned', { tool: 'ai_audit' });
+      if (!creditsOn && !isPaid && analyzeData?.generationsLeft === 0) trackEvent('quota_burned', { tool: 'ai_audit' });
     } catch (err: unknown) {
       console.error('Room Audit error:', err);
       setError(formatGeminiError(err, t('ai.audit.errorGeneric')));

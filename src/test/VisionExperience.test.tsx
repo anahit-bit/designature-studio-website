@@ -340,3 +340,29 @@ describe('VisionExperience · AI-030 (cont.)', () => {
     expect(reReadImg?.className).not.toMatch(/object-cover/);
   });
 });
+
+describe('VisionExperience · credit metering', () => {
+  const renderSetupWith = (over: Record<string, unknown>) => render(
+    <MemoryRouter><LanguageProvider><VisionExperience {...setupProps} {...over} /></LanguageProvider></MemoryRouter>
+  );
+
+  it('does not show the exhausted panel when credits are on and the legacy counter is 0', () => {
+    // The lockout: generationsLeft is 0 for anyone who spent their 3 old concepts,
+    // but under credits they still hold a balance and must be able to generate.
+    renderSetupWith({ creditsOn: true, generationsLeft: 0, outOfGenerations: false, quotaLabel: '50 credits' });
+    expect(screen.queryByText('Out of credits')).toBeNull();
+    expect(screen.queryByText('Free tier complete')).toBeNull();
+    expect(screen.getAllByText('50 credits').length).toBeGreaterThan(0);
+  });
+
+  it('shows the out of credits panel when the balance cannot cover a run', () => {
+    renderSetupWith({ creditsOn: true, generationsLeft: 0, outOfGenerations: true, quotaLabel: '4 credits', redesignCredits: 10 });
+    expect(screen.getByText('Out of credits')).toBeTruthy();
+    expect(screen.getByText('A redesign costs 10 credits.')).toBeTruthy();
+  });
+
+  it('keeps the legacy free tier panel when credits are off', () => {
+    renderSetupWith({ generationsLeft: 0 });
+    expect(screen.getByText('Free tier complete')).toBeTruthy();
+  });
+});

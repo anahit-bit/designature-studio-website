@@ -165,3 +165,34 @@ describe('ShoppingExperience · locked marquee band (§2 — Landing + Entry onl
     expect(container.querySelector('.marquee-track')).toBeNull();
   });
 });
+
+describe('ShoppingExperience — credit metering', () => {
+  // The lockout: shoppingListsLeft is 0 for anyone who spent their 3 old lists, but under
+  // credits they hold a balance and must be able to run a search.
+  const creditUser = { email: 'c@x.com', name: 'C', picture: '', isPaid: false, creditsEnabled: true, shoppingListsLeft: 0, generationsLeft: 0 } as unknown as AuthUser;
+  const entry = { shoppingDone: false, shoppingResults: [], standaloneShoppingImage: 'data:image/png;base64,AAAA' };
+
+  it('enables Find products when the balance covers a list, even with the legacy counter at 0', () => {
+    renderSE(creditUser, { ...entry, creditBalance: 50 });
+    expect((screen.getByText(/Find products in this image/) as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.queryByText('Out of credits')).toBeNull();
+    expect(screen.getAllByText('50 credits').length).toBeGreaterThan(0);
+  });
+
+  it('disables Find products and shows the out of credits panel below the list price', () => {
+    renderSE(creditUser, { ...entry, creditBalance: 24 });
+    expect((screen.getByText(/Find products in this image/) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText('Out of credits')).toBeTruthy();
+    expect(screen.getByText('A shopping list costs 25 credits.')).toBeTruthy();
+  });
+
+  it('does not block while the balance is still loading', () => {
+    renderSE(creditUser, { ...entry, creditBalance: null });
+    expect((screen.getByText(/Find products in this image/) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('keeps the legacy gate when credits are off', () => {
+    renderSE({ ...creditUser, creditsEnabled: false } as AuthUser, { ...entry });
+    expect((screen.getByText(/Find products in this image/) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
