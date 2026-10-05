@@ -53,6 +53,10 @@ interface AuthContextType {
   setUser: React.Dispatch<React.SetStateAction<AuthUser | null>>;
   /** Re-fetch /api/auth/me and merge quota fields into the current user. */
   refreshQuota: () => Promise<void>;
+  /** Credit balance when the ledger is the live meter. null = not metered, or not loaded yet. */
+  creditBalance: number | null;
+  /** Re-read the credit balance (call after a run, or after the server answers 402). */
+  refreshCredits: () => Promise<void>;
   /** Fetch helper that adds the x-session-token header. */
   apiFetch: (path: string, options?: RequestInit) => Promise<Response>;
 }
@@ -89,6 +93,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [googleReady, setGoogleReady] = useState(false);
+  const [creditBalance, setCreditBalance] = useState<number | null>(null);
   /** Set by signIn() before the Google credential callback fires; consumed by handleGoogleCallback. */
   const pendingSignInOptionsRef = useRef<SignInOptions | undefined>(undefined);
 
@@ -273,9 +278,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
+  const refreshCredits = useCallback(async () => {
+    try {
+      const res = await apiFetchHelper('/api/credits/balance');
+      if (!res.ok) return;
+      const body = await res.json();
+      if (body?.enabled && typeof body.balance?.total === 'number') setCreditBalance(body.balance.total);
+    } catch {
+      /* leave it as is: a click still reaches the server, which decides */
+    }
+  }, []);
+
+  // Load the balance whenever the ledger is the live meter for this user. Unlimited
+  // accounts are never metered, so they skip it (it would also seed a pointless grant).
+  const metersByCredits = !!user?.creditsEnabled && (user.generationsLeft ?? 0) < 999;
+  useEffect(() => {
+    if (metersByCredits) void refreshCredits();
+    else setCreditBalance(null);
+  }, [metersByCredits, user?.email, refreshCredits]);
+
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, googleReady, signIn, signOut, setUser, refreshQuota, apiFetch }}
+      value={{ user, isLoading, googleReady, signIn, signOut, setUser, refreshQuota, creditBalance, refreshCredits, apiFetch }}
     >
       {children}
     </AuthContext.Provider>

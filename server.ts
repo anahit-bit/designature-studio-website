@@ -1858,7 +1858,10 @@ async function startServer() {
           generationsLeft: user.generationsLeft,
           shoppingListsLeft: user.shoppingListsLeft,
           isPaid: ownerLogin || plan !== "free",
-          auditsLeft: ownerLogin ? 999 : plan !== "free" ? user.generationsLeft : 0,
+          // Under credits a subscriber's audits are unmetered (isPaid), and their legacy
+          // generationsLeft is never refilled, so reporting it here read as 0 until the
+          // next /api/auth/me. Match what /me already says.
+          auditsLeft: ownerLogin || (creditsEnabled() && plan !== "free") ? 999 : plan !== "free" ? user.generationsLeft : 0,
           plan,
           creditsEnabled: creditsEnabled(),
         },

@@ -40,11 +40,10 @@ import { trackCalendly, trackVisionStart, trackShoppingStart } from '../lib/trac
 import { trackEvent } from '../lib/analytics';
 import { popSigninSource } from '../lib/signinSource';
 import { creditsFor } from '../data/creditPricing';
+import { cannotAffordRun, formatCredits, isUnlimitedUser as isUnlimitedAccount, notEnoughCreditsMessage } from '../lib/credits';
 
 /** What one redesign costs when the credit ledger is the active meter. */
 const REDESIGN_CREDITS = creditsFor('redesign');
-/** generationsLeft value the server pins owner / unlimited accounts to (server/quota.ts). */
-const UNLIMITED_GENERATIONS = 999;
 
 const CALENDLY_URL = 'https://calendly.com/hello-designature/quick-conversation';
 /** Where a guest's in-progress workflow is kept for the session. */
@@ -130,6 +129,8 @@ const AIConceptsPage: React.FC = () => {
     signOut,
     setUser,
     refreshQuota,
+    creditBalance,
+    refreshCredits,
     apiFetch,
   } = useAuth();
   const prevUserRef = useRef<AuthUser | null>(null);
@@ -232,35 +233,26 @@ const AIConceptsPage: React.FC = () => {
   // With CREDITS_ENABLED the ledger meters redesign runs, so the legacy generationsLeft
   // counter must not gate Generate. It sits at 0 for anyone who spent their 3 old
   // concepts, which blocked them silently and kept them from their 50 free credits.
+  // The balance itself lives in AuthContext so every tool sees the same number after a spend.
   const creditsOn = !!user?.creditsEnabled;
-  const isUnlimitedUser = (user?.generationsLeft ?? 0) >= UNLIMITED_GENERATIONS;
-  /** null until the balance arrives; the server stays the authority either way. */
-  const [creditBalance, setCreditBalance] = useState<number | null>(null);
-  const loadCreditBalance = useCallback(async () => {
-    try {
-      const res = await apiFetch('/api/credits/balance');
-      if (!res.ok) return;
-      const body = await res.json();
-      if (body?.enabled && typeof body.balance?.total === 'number') setCreditBalance(body.balance.total);
-    } catch {
-      /* leave it null: the click still reaches the server, which decides */
-    }
-  }, [apiFetch]);
-  useEffect(() => {
-    if (creditsOn && user && !isUnlimitedUser) void loadCreditBalance();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [creditsOn, user?.email, isUnlimitedUser, loadCreditBalance]);
+  const isUnlimitedUser = isUnlimitedAccount(user);
 
   /** True when the user cannot afford another redesign under whichever meter is live. */
   const outOfGenerations = isUnlimitedUser
     ? false
     : creditsOn
-      ? creditBalance !== null && creditBalance < REDESIGN_CREDITS
+      ? cannotAffordRun(user, creditBalance, 'redesign')
       : (user?.generationsLeft ?? 0) <= 0;
+  /** Same question for a shopping list. Legacy counter keeps its "missing means 1" default. */
+  const shopOutOfLists = isUnlimitedUser
+    ? false
+    : creditsOn
+      ? cannotAffordRun(user, creditBalance, 'shop')
+      : (user?.shoppingListsLeft ?? 1) <= 0;
   const quotaLabel = isUnlimitedUser
     ? t('ai.unlimited')
     : creditsOn
-      ? creditBalance === null ? '' : `${creditBalance.toLocaleString('en-US')} credits`
+      ? typeof creditBalance === 'number' ? formatCredits(creditBalance) : ''
       : `${user?.generationsLeft ?? 0} ${t('ai.remaining')}`;
 
   // ── Drag-over state for upload zones ──
@@ -997,9 +989,8 @@ const AIConceptsPage: React.FC = () => {
       if (!res.ok) {
         if (res.status === 402) {
           // Credit ledger refused the run (server/quota is authoritative).
-          const available = typeof data?.available === 'number' ? data.available : 0;
-          setCreditBalance(available);
-          setError(`Not enough credits. A redesign costs ${REDESIGN_CREDITS} credits and you have ${available}.`);
+          void refreshCredits();
+          setError(notEnoughCreditsMessage('A redesign', 'redesign', data?.available));
           return;
         }
         if (res.status === 403) {
@@ -1038,7 +1029,7 @@ const AIConceptsPage: React.FC = () => {
       if (!creditsOn && !isSampleRun && data.generationsLeft === 0) {
         trackEvent('quota_burned', { tool: 'ai_vision' });
       }
-      if (creditsOn && !isSampleRun && !isUnlimitedUser) void loadCreditBalance();
+      if (creditsOn && !isSampleRun && !isUnlimitedUser) void refreshCredits();
 
     } catch (err: any) {
       console.error('[AI Vision] handleGenerate error:', err);
@@ -1197,6 +1188,11 @@ const AIConceptsPage: React.FC = () => {
           setShoppingOffline({ code: data.code, resetAt: data.resetAt });
           return;
         }
+        if (res.status === 402) {
+          // Credit ledger refused the run; resync the balance the UI is gating on.
+          void refreshCredits();
+          throw new Error(notEnoughCreditsMessage('A shopping list', 'shop', data?.available));
+        }
         throw new Error(data.error || 'Search failed');
       }
       setShoppingResults(data.searched || data.results || []);
@@ -1208,7 +1204,8 @@ const AIConceptsPage: React.FC = () => {
       }
       // A-004/I-023 — GA4 engagement events (client-side, env-gated).
       trackEvent('ai_shopping_completed', { item_count: Array.isArray(data.results) ? data.results.length : 0 });
-      if (data.shoppingListsLeft === 0) trackEvent('quota_burned', { tool: 'ai_shopping' });
+      if (!creditsOn && data.shoppingListsLeft === 0) trackEvent('quota_burned', { tool: 'ai_shopping' });
+      if (creditsOn && !isUnlimitedUser) void refreshCredits();
     } catch (err: any) {
       console.error("Shopping search error:", err);
       setShoppingError(err.message || t('ai.searchFailed'));
@@ -1528,6 +1525,7 @@ const AIConceptsPage: React.FC = () => {
         <ShoppingExperience
           onGoToTool={handleSelectTool}
           user={user}
+          creditBalance={creditBalance}
           shoppingResults={shoppingResults}
           shoppingTeaser={shoppingTeaser}
           shoppingTotalIdentified={shoppingTotalIdentified}
@@ -1602,10 +1600,12 @@ const AIConceptsPage: React.FC = () => {
         <>
           <RoomAuditExperience
             user={user}
+            creditBalance={creditBalance}
             onProcessingChange={setAuditProcessing}
             onAuditComplete={async () => {
               setAuditComplete(true);
               await refreshQuota();
+              if (creditsOn && !isUnlimitedUser) await refreshCredits();
             }}
             onRedesignWithVision={(auditedRoom) => {
               // Preload the audited room as AI Vision's source room (no auto-generate).
@@ -2502,12 +2502,12 @@ const AIConceptsPage: React.FC = () => {
                   <>
 
                 {/* Shopping quota exhausted */}
-                {(user?.shoppingListsLeft ?? 1) <= 0 && !shoppingDone && (
+                {shopOutOfLists && !shoppingDone && (
                   <div className="px-8 py-6">
                     <div className="border border-black/10 p-5 space-y-4 bg-neutral-50">
                       <div>
-                        <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-black/55 mb-1">Free tier complete</p>
-                        <p className="text-sm font-bold text-black leading-snug">You've used all 3 free shopping lists.</p>
+                        <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-black/55 mb-1">{creditsOn ? 'Out of credits' : 'Free tier complete'}</p>
+                        <p className="text-sm font-bold text-black leading-snug">{creditsOn ? `A shopping list costs ${creditsFor('shop')} credits.` : "You've used all 3 free shopping lists."}</p>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <button
@@ -2531,7 +2531,7 @@ const AIConceptsPage: React.FC = () => {
                 )}
 
                 {/* Initial CTA — first time or after clear */}
-                {!shoppingDone && !shoppingLoading && !shoppingError && shoppingItems.length === 0 && (user?.shoppingListsLeft ?? 1) > 0 && (
+                {!shoppingDone && !shoppingLoading && !shoppingError && shoppingItems.length === 0 && !shopOutOfLists && (
                   <div className="bg-white">
 
                     {/* Logo strip banner — sets scope ("4-6 items") + retailers, includes upsell. */}

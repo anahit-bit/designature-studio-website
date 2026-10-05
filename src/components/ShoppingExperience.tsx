@@ -11,6 +11,8 @@ import { SHOPPING_TAXONOMY, SHOPPING_TAXONOMY_IDS, categoryToTaxonomyId } from '
 import { parsePrice } from '../lib/priceParse';
 import { accountApi } from '../lib/accountApi';
 import { fingerprint, isSaved, markSaved } from '../lib/savedMarks';
+import { cannotAffordRun, formatCredits, isUnlimitedUser } from '../lib/credits';
+import { creditsFor } from '../data/creditPricing';
 
 // Locked Shopping hero (lock §11 · folder "Inputs").
 const SHOP_HERO = 'https://res.cloudinary.com/dys2k5muv/image/upload/v1780414472/Example_03_xyljim.png';
@@ -40,6 +42,8 @@ const priceOf = (s?: string) => parsePrice(s); // whole-dollar value; fixes the 
 
 interface Props {
   user: AuthUser | null;
+  /** Credit balance when the ledger is the live meter; null/undefined = unknown (never blocks). */
+  creditBalance?: number | null;
   shoppingResults: any[];
   /** Free tier: identified-but-not-searched items (names only) — the upgrade teaser. Empty for paid. */
   shoppingTeaser: { category: string; label: string }[];
@@ -92,8 +96,16 @@ const ShoppingExperience: React.FC<Props> = (p) => {
   const conceptUrl = p.selectedConceptUrl;
   const sourceImg = p.searchSourceImage || p.standaloneShoppingImage || conceptUrl || null;
   const listsLeft = p.user?.shoppingListsLeft ?? 3;
-  const unlimited = listsLeft >= 999;
-  const quotaLine = unlimited ? t('ai.unlimited') : `${listsLeft} ${t('ai.shopli.listsLeft')}`;
+  // With CREDITS_ENABLED the ledger meters a list; the legacy shoppingListsLeft counter
+  // is 0 for anyone who spent their old free lists and must not gate the button.
+  const creditsOn = !!p.user?.creditsEnabled;
+  const unlimited = creditsOn ? isUnlimitedUser(p.user) : listsLeft >= 999;
+  const outOfLists = unlimited ? false : creditsOn ? cannotAffordRun(p.user, p.creditBalance, 'shop') : listsLeft <= 0;
+  const quotaLine = unlimited
+    ? t('ai.unlimited')
+    : creditsOn
+      ? (typeof p.creditBalance === 'number' ? formatCredits(p.creditBalance) : '')
+      : `${listsLeft} ${t('ai.shopli.listsLeft')}`;
 
   // ── PAID refinement controls (real state; gated for free by .paid/as-free) ──
   // Find scope = MULTI-SELECT over the canonical taxonomy (paid refinement). Default = all on.
@@ -354,13 +366,13 @@ const ShoppingExperience: React.FC<Props> = (p) => {
             </div>
           </div>
           <div className="mt-auto pt-1 flex items-center gap-4">
-            <button type="button" onClick={() => p.runSearch({ budgetLevel, roomCap, scopeIds: allOn ? null : [...findCats] })} disabled={!sourceImg || listsLeft <= 0} className="cta-primary flex-1 text-[13px] font-bold uppercase tracking-[0.25em] py-4 transition disabled:opacity-40 disabled:cursor-not-allowed">{t('ai.shopli.findProducts')}</button>
+            <button type="button" onClick={() => p.runSearch({ budgetLevel, roomCap, scopeIds: allOn ? null : [...findCats] })} disabled={!sourceImg || outOfLists} className="cta-primary flex-1 text-[13px] font-bold uppercase tracking-[0.25em] py-4 transition disabled:opacity-40 disabled:cursor-not-allowed">{t('ai.shopli.findProducts')}</button>
             <span className="text-[11px] text-black/60 uppercase tracking-[0.18em] whitespace-nowrap">~15 {t('ai.shopli.sec')}</span>
           </div>
-          {listsLeft <= 0 && !p.user?.isPaid && (
+          {(creditsOn ? outOfLists : listsLeft <= 0 && !p.user?.isPaid) && (
             <div className="bg-white border border-black/10 p-5 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-black/55 mb-1.5">{t('ai.shopli.freeComplete')}</p>
-              <p className="text-[14px] font-bold text-black mb-4 leading-snug">{t('ai.shopli.usedAll')}</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-black/55 mb-1.5">{creditsOn ? 'Out of credits' : t('ai.shopli.freeComplete')}</p>
+              <p className="text-[14px] font-bold text-black mb-4 leading-snug">{creditsOn ? `A shopping list costs ${creditsFor('shop')} credits.` : t('ai.shopli.usedAll')}</p>
               <button type="button" onClick={() => p.navigateTo('pricing')} className="bg-[#0047AB] text-white px-6 py-3 text-[10px] font-bold uppercase tracking-[0.28em] hover:bg-[#003d99] transition-colors">{t('ai.shopli.upgrade')}</button>
             </div>
           )}
@@ -376,7 +388,7 @@ const ShoppingExperience: React.FC<Props> = (p) => {
       <>
         <div className="statushdr">
           <div className="flex items-center gap-2.5"><span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /><span className="text-[12px] font-bold uppercase tracking-[0.3em] text-black/60">{t('ai.shopli.identifying')}</span></div>
-          <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-black/60">{t('ai.shopli.usingOne').replace('{n}', String(listsLeft))}</span>
+          <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-black/60">{creditsOn && !unlimited ? `Using ${creditsFor('shop')} credits` : t('ai.shopli.usingOne').replace('{n}', String(listsLeft))}</span>
         </div>
         <div className="hero">
           <div className="hero-media"><img src={cld(sourceImg || SHOP_HERO, 2000, { crop: 'fill', aspectRatio: '16/9' })} alt="" /></div>

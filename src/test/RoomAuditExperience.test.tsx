@@ -155,3 +155,31 @@ describe('RoomAuditExperience — STATE 3 · REPORT (dynamic data)', () => {
     expect(onRedesignWithVision).toHaveBeenCalledWith(expect.stringMatching(/^data:image\/png/));
   });
 });
+
+describe('RoomAuditExperience — credit metering', () => {
+  const creditsPaid = { email: 'p@x.com', name: 'P', picture: '', isPaid: true, creditsEnabled: true, auditsLeft: 0, generationsLeft: 0 } as unknown as AuthUser;
+
+  it('a paid user is not blocked by a legacy auditsLeft of 0 when credits are on', async () => {
+    // Login used to report auditsLeft = generationsLeft (0 under credits) for subscribers.
+    const { container } = renderRAE({ user: creditsPaid });
+    uploadPhoto(container);
+    const cta = (await screen.findByText(/Score my room/i)).closest('button') as HTMLButtonElement;
+    expect(cta.disabled).toBe(false);
+  });
+
+  it('keeps the legacy gate when credits are off', async () => {
+    const legacy = { ...creditsPaid, creditsEnabled: false, isPaid: true } as unknown as AuthUser;
+    const { container } = renderRAE({ user: legacy });
+    uploadPhoto(container);
+    const cta = (await screen.findByText(/Score my room/i)).closest('button') as HTMLButtonElement;
+    expect(cta.disabled).toBe(true);
+  });
+
+  it('a metered user below the audit price is blocked', async () => {
+    const free = { ...creditsPaid, isPaid: false } as unknown as AuthUser;
+    const { container } = renderRAE({ user: free, creditBalance: 4 });
+    uploadPhoto(container);
+    const cta = (await screen.findByText(/Score my room/i)).closest('button') as HTMLButtonElement;
+    expect(cta.disabled).toBe(true);
+  });
+});
