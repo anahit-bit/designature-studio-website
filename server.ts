@@ -1860,6 +1860,7 @@ async function startServer() {
           isPaid: ownerLogin || plan !== "free",
           auditsLeft: ownerLogin ? 999 : plan !== "free" ? user.generationsLeft : 0,
           plan,
+          creditsEnabled: creditsEnabled(),
         },
       });
     } catch (err) {
@@ -1946,6 +1947,9 @@ async function startServer() {
       isPaid: isPaidUser,
       auditsLeft: isPaidUser ? 999 : 0,
       plan: user.plan ?? "free",
+      // Tells the client which meter is live, so it doesn't gate on the legacy
+      // generationsLeft counter while the credit ledger is the one charging.
+      creditsEnabled: creditsEnabled(),
     });
   });
 

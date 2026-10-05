@@ -31,6 +31,8 @@ export interface AuthUser {
   auditsLeft?: number;
   /** Subscription tier — 'free' | 'design' | 'studio'. Drives plan labels. */
   plan?: 'free' | 'design' | 'studio';
+  /** True when the credit ledger (not the legacy generationsLeft counter) meters runs. */
+  creditsEnabled?: boolean;
 }
 
 export interface SignInOptions {
@@ -262,6 +264,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               auditsLeft: data?.auditsLeft ?? prev.auditsLeft,
               isPaid: data?.isPaid ?? prev.isPaid,
               plan: data?.plan ?? prev.plan,
+              creditsEnabled: data?.creditsEnabled ?? prev.creditsEnabled,
             }
           : prev
       );

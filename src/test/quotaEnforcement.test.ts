@@ -138,6 +138,7 @@ describe('owner / unlimited accounts are unaffected', () => {
   it('recognizes the studio owner + demo emails as unlimited', () => {
     expect(isUnlimitedAccountEmail('anahit@designature.studio')).toBe(true);
     expect(isUnlimitedAccountEmail('anahit.ghasabyan@gmail.com')).toBe(true);
+    expect(isUnlimitedAccountEmail('Maraimh.Rafa@gmail.com')).toBe(true);
     expect(isUnlimitedAccountEmail('  ANAHIT@Designature.Studio ')).toBe(true);
     expect(isUnlimitedAccountEmail('free@example.com')).toBe(false);
   });

@@ -39,6 +39,12 @@ import { useShoppingStatus } from '../lib/shoppingStatus';
 import { trackCalendly, trackVisionStart, trackShoppingStart } from '../lib/track';
 import { trackEvent } from '../lib/analytics';
 import { popSigninSource } from '../lib/signinSource';
+import { creditsFor } from '../data/creditPricing';
+
+/** What one redesign costs when the credit ledger is the active meter. */
+const REDESIGN_CREDITS = creditsFor('redesign');
+/** generationsLeft value the server pins owner / unlimited accounts to (server/quota.ts). */
+const UNLIMITED_GENERATIONS = 999;
 
 const CALENDLY_URL = 'https://calendly.com/hello-designature/quick-conversation';
 /** Where a guest's in-progress workflow is kept for the session. */
@@ -221,6 +227,41 @@ const AIConceptsPage: React.FC = () => {
   // TODO(Design tier): Design-tier slot count not yet defined in tier config — confirm with product before shipping Design tier.
   // Free: FREE_TIER_MAX_CONCEPT_SLOTS (3) | Studio (isPaid): unlimited — no fixed cap, grows as user generates.
   const maxConceptSlots = user?.isPaid ? Infinity : FREE_TIER_MAX_CONCEPT_SLOTS;
+
+  // ── Credit metering ──
+  // With CREDITS_ENABLED the ledger meters redesign runs, so the legacy generationsLeft
+  // counter must not gate Generate. It sits at 0 for anyone who spent their 3 old
+  // concepts, which blocked them silently and kept them from their 50 free credits.
+  const creditsOn = !!user?.creditsEnabled;
+  const isUnlimitedUser = (user?.generationsLeft ?? 0) >= UNLIMITED_GENERATIONS;
+  /** null until the balance arrives; the server stays the authority either way. */
+  const [creditBalance, setCreditBalance] = useState<number | null>(null);
+  const loadCreditBalance = useCallback(async () => {
+    try {
+      const res = await apiFetch('/api/credits/balance');
+      if (!res.ok) return;
+      const body = await res.json();
+      if (body?.enabled && typeof body.balance?.total === 'number') setCreditBalance(body.balance.total);
+    } catch {
+      /* leave it null: the click still reaches the server, which decides */
+    }
+  }, [apiFetch]);
+  useEffect(() => {
+    if (creditsOn && user && !isUnlimitedUser) void loadCreditBalance();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [creditsOn, user?.email, isUnlimitedUser, loadCreditBalance]);
+
+  /** True when the user cannot afford another redesign under whichever meter is live. */
+  const outOfGenerations = isUnlimitedUser
+    ? false
+    : creditsOn
+      ? creditBalance !== null && creditBalance < REDESIGN_CREDITS
+      : (user?.generationsLeft ?? 0) <= 0;
+  const quotaLabel = isUnlimitedUser
+    ? t('ai.unlimited')
+    : creditsOn
+      ? creditBalance === null ? '' : `${creditBalance.toLocaleString('en-US')} credits`
+      : `${user?.generationsLeft ?? 0} ${t('ai.remaining')}`;
 
   // ── Drag-over state for upload zones ──
   const [roomDragOver, setRoomDragOver] = useState(false);
@@ -898,7 +939,11 @@ const AIConceptsPage: React.FC = () => {
       return;
     }
     // Allow sample runs even if quota is 0 (server handles the bypass)
-    if (!isSampleRun && (user?.generationsLeft ?? 0) <= 0) return;
+    if (!isSampleRun && outOfGenerations) {
+      // Say so instead of returning silently, which looked like a dead button.
+      setError(creditsOn ? `Not enough credits. A redesign costs ${REDESIGN_CREDITS} credits.` : t('ai.noGenerationsLeft'));
+      return;
+    }
 
     setIsProcessing(true);
     setError(null);
@@ -950,6 +995,13 @@ const AIConceptsPage: React.FC = () => {
       const data = await res.json();
 
       if (!res.ok) {
+        if (res.status === 402) {
+          // Credit ledger refused the run (server/quota is authoritative).
+          const available = typeof data?.available === 'number' ? data.available : 0;
+          setCreditBalance(available);
+          setError(`Not enough credits. A redesign costs ${REDESIGN_CREDITS} credits and you have ${available}.`);
+          return;
+        }
         if (res.status === 403) {
           setUser(prev => prev ? { ...prev, generationsLeft: 0 } : null);
           setError(t('ai.noGenerationsLeft'));
@@ -983,9 +1035,10 @@ const AIConceptsPage: React.FC = () => {
       // A-004/I-023 — GA4 engagement events (client-side, env-gated). Sample runs
       // don't consume quota, so they can't have "burned" the user to 0.
       trackEvent('ai_vision_completed');
-      if (!isSampleRun && data.generationsLeft === 0) {
+      if (!creditsOn && !isSampleRun && data.generationsLeft === 0) {
         trackEvent('quota_burned', { tool: 'ai_vision' });
       }
+      if (creditsOn && !isSampleRun && !isUnlimitedUser) void loadCreditBalance();
 
     } catch (err: any) {
       console.error('[AI Vision] handleGenerate error:', err);
@@ -1224,7 +1277,7 @@ const AIConceptsPage: React.FC = () => {
     !roomImage ||
     (inspirationImages.length === 0 && !selectedStyle) ||
     !user ||
-    (user?.generationsLeft ?? 0) <= 0;
+    outOfGenerations;
 
   // I-021b: vision_started fires when the Generate button transitions
   // disabled → enabled. One-shot per session; re-arms when results clear.
@@ -1424,6 +1477,10 @@ const AIConceptsPage: React.FC = () => {
           PROCESSING_PHASES={PROCESSING_PHASES}
           maxConceptSlots={maxConceptSlots}
           generationsLeft={user?.generationsLeft ?? 3}
+          creditsOn={creditsOn}
+          outOfGenerations={outOfGenerations}
+          quotaLabel={quotaLabel}
+          redesignCredits={REDESIGN_CREDITS}
           unlimitedLabel={t('ai.unlimited')}
           remainingLabel={t('ai.remaining')}
           quizResult={quizResultForVision}
@@ -1935,8 +1992,10 @@ const AIConceptsPage: React.FC = () => {
                   <span className="text-sm md:text-base font-bold uppercase tracking-[0.25em] text-black/55">
                     {t('ai.remaining')}
                   </span>
-                  {maxConceptSlots === Infinity ? (
+                  {maxConceptSlots === Infinity || isUnlimitedUser ? (
                     <span className="text-sm font-bold text-black/55">{t('ai.unlimited')}</span>
+                  ) : creditsOn ? (
+                    <span className="text-sm font-bold text-black/55">{quotaLabel}</span>
                   ) : (
                     <div className="flex gap-1">
                       {Array.from({ length: FREE_TIER_MAX_CONCEPT_SLOTS }).map((_, i) => (
@@ -1950,11 +2009,11 @@ const AIConceptsPage: React.FC = () => {
                   <p className="text-[12px] font-semibold text-red-500 leading-relaxed">{validationError}</p>
                 )}
 
-                {(user?.generationsLeft ?? 0) <= 0 && (
+                {outOfGenerations && (
                   <div className="border border-black/10 p-5 space-y-4 bg-neutral-50">
                     <div>
-                      <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-black/55 mb-1">Free tier complete</p>
-                      <p className="text-sm font-bold text-black leading-snug">{t('ai.usedAll')}</p>
+                      <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-black/55 mb-1">{creditsOn ? 'Out of credits' : 'Free tier complete'}</p>
+                      <p className="text-sm font-bold text-black leading-snug">{creditsOn ? `A redesign costs ${REDESIGN_CREDITS} credits.` : t('ai.usedAll')}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <button
@@ -2246,7 +2305,7 @@ const AIConceptsPage: React.FC = () => {
                   </span>
                 </div>
                 <div className="flex gap-2">
-                  {(user?.generationsLeft ?? 0) > 0 && (
+                  {!outOfGenerations && (
                     <button onClick={() => handleGenerate(true)} disabled={isProcessing} className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-white bg-black px-4 py-2 hover:bg-black/70 transition-all disabled:opacity-40 disabled:pointer-events-none">
                       <RefreshCw className="w-3 h-3" />
                       {t('ai.genVariation')}
