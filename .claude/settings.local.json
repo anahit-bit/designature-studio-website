@@ -92,7 +92,8 @@
       "Bash(git -C \"E:\\\\Business\\\\Claude\\\\Website\\\\.claude\\\\worktrees\\\\agitated-nash-2b66d3\" add src/components/AdminPage.tsx)",
       "Bash(git -C \"E:\\\\Business\\\\Claude\\\\Website\\\\.claude\\\\worktrees\\\\agitated-nash-2b66d3\" add server.ts server/config/platforms.json)",
       "mcp__Claude_Code_Remote__create_trigger",
-      "mcp__Claude_Code_Remote__update_trigger"
+      "mcp__Claude_Code_Remote__update_trigger",
+      "mcp__claude-code-remote__add_repo"
     ]
   }
 }
