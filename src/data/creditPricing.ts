@@ -89,7 +89,11 @@ export const CREDIT_PRICES: Record<string, CreditPrice> = {
   },
 
   // ── Anytime ───────────────────────────────────────────────────────────────
-  'write-brief': { credits: 10, estCostUsd: 0.02 },
+  'write-brief': {
+    credits: 0,
+    estCostUsd: 0.001,
+    note: 'Free forever (decided 9 Oct 2026). It only outputs what the visitor already made or wrote, as PDF or HTML, with no model call.',
+  },
 };
 
 /** Credits for one run of a tool. Unknown ids are a programming error, not a free pass. */
@@ -99,7 +103,7 @@ export function creditsFor(toolId: string): number {
   return price.credits;
 }
 
-/** True when a tool never costs credits (currently only the style quiz). */
+/** True when a tool never costs credits (the style quiz and the project brief). */
 export const isFreeTool = (toolId: string): boolean => creditsFor(toolId) === 0;
 
 /**

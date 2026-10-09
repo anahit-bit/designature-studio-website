@@ -165,9 +165,9 @@ describe('creditsFor', () => {
     expect(creditsFor('shop')).toBe(25);
   });
 
-  it('treats only the style quiz as free', () => {
+  it('treats only the style quiz and the project brief as free', () => {
     const free = EXPLORER_TOOLS.filter((t) => isFreeTool(t.id)).map((t) => t.id);
-    expect(free).toEqual(['find-style']);
+    expect(free).toEqual(['find-style', 'write-brief']);
   });
 
   it('throws on an unknown tool rather than silently charging nothing', () => {
