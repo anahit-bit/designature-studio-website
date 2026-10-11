@@ -21,6 +21,17 @@
     "criticality": 4
   },
   {
+    "name": "Microsoft Exchange Online",
+    "owner_email": "anahit@designature.studio",
+    "monthly_cost": "$4.80",
+    "annual_cost": "$57.60",
+    "free_tier_quota": null,
+    "renewal_date": "2027-07-10",
+    "cadence": "annual",
+    "powers": "Business email for designature.studio (Exchange Online Plan 1, 1 license)",
+    "criticality": 4
+  },
+  {
     "name": "Google Cloud",
     "owner_email": "anahit@designature.studio",
     "monthly_cost": "$0-10",
