@@ -54,9 +54,6 @@ const EXACT_REDIRECTS: Readonly<Record<string, string>> = {
   "/portfolio/roundhill-contemporary-house": "/portfolio",
   "/alternative-home-designs-atriums": "/journal",
   "/interior-photography": "/journal",
-  // Armenian locale root. The site is EN-only; the root has a true equivalent
-  // (the English home page). Every CHILD of /hy is 410 — see GONE_CHILD_PREFIXES.
-  "/hy": "/",
   // Old WordPress pages that have a genuine modern equivalent (2026-10-19 GSC audit).
   "/about-us": "/studio",
   "/contacts": "/studio",
@@ -82,10 +79,11 @@ const GONE_PREFIXES: ReadonlyArray<string> = [
 ];
 
 /**
- * Prefixes whose CHILDREN are 410 Gone (the base path itself is handled by an
- * exact rule). `/hy/*` is the retired Armenian locale: there is no Armenian site
- * and none of its pages has an equivalent, so redirecting them all to the home
- * page would be read by Google as a soft-404 and keep them on its re-check list.
+ * Prefixes that are 410 Gone: the base path AND every child. `/hy` is the retired
+ * Armenian locale: there is no Armenian site and none of its pages has an
+ * equivalent, so redirecting them to the home page would be read by Google as a
+ * soft-404 and keep them on its re-check list. (The root `/hy` is 410 too — the
+ * owner is keeping no Armenian pages at all, 2026-10-19.)
  */
 const GONE_CHILD_PREFIXES: ReadonlyArray<string> = ["/hy"];
 
@@ -125,7 +123,7 @@ export function matchLegacyRedirect(rawPath: string): RedirectResult | null {
   // 1b) 410 Gone — WP feeds, retired locale children, retired WP articles.
   if (p.endsWith("/feed") || GONE_EXACT.has(p)) return { status: 410 };
   for (const base of GONE_CHILD_PREFIXES) {
-    if (p.startsWith(base + "/")) return { status: 410 };
+    if (p === base || p.startsWith(base + "/")) return { status: 410 };
   }
 
   // 2) Exact legacy → canonical 301s.

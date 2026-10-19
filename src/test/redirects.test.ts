@@ -89,7 +89,6 @@ describe('legacy redirect map — 301 prefix (wildcard) rules', () => {
 
 describe('legacy redirect map — pages with a true modern equivalent (2026-10-19 GSC audit)', () => {
   const cases: Array<[string, string]> = [
-    ['/hy', '/'],
     ['/about-us', '/studio'],
     ['/contacts', '/studio'],
     ['/faqs', '/faq'],
@@ -110,14 +109,12 @@ describe('legacy redirect map — pages with a true modern equivalent (2026-10-1
 });
 
 describe('legacy redirect map — retired Armenian locale (/hy)', () => {
-  // The root has a true equivalent (the English home page); every CHILD is 410.
-  // Redirecting all of them to "/" reads as a soft-404 to Google.
-  it('/hy and /hy/ redirect to the home page', () => {
-    expect(matchLegacyRedirect('/hy')).toEqual({ status: 301, target: '/' });
-    expect(matchLegacyRedirect('/hy/')).toEqual({ status: 301, target: '/' });
-  });
-
+  // The site is EN-only and no Armenian page has an equivalent, so the root AND
+  // every child is 410. Redirecting them to "/" reads as a soft-404 to Google.
   for (const child of [
+    '/hy',
+    '/hy/',
+    '/HY',
     '/hy/contacts',
     '/hy/kitchen-planning',
     '/hy/portfolio/traditional-home',
