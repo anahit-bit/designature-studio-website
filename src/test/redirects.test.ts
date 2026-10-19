@@ -68,11 +68,9 @@ describe('legacy redirect map — 301 exact rules', () => {
 
 describe('legacy redirect map — 301 prefix (wildcard) rules', () => {
   const cases: Array<[string, string]> = [
-    // /hy Armenian locale — base + children all collapse to home
-    ['/hy', '/'],
-    ['/hy/contacts', '/'],
-    ['/hy/kitchen-planning', '/'],
-    ['/hy/portfolio/traditional-home', '/'],
+    // old WP portfolio archives
+    ['/portfolio-category/residential', '/portfolio'],
+    ['/portfolio-category/commercial', '/portfolio'],
     // old WP blog
     ['/blog', '/journal'],
     ['/blog/page/1', '/journal'],
@@ -87,6 +85,99 @@ describe('legacy redirect map — 301 prefix (wildcard) rules', () => {
       expect(matchLegacyRedirect(from)).toEqual({ status: 301, target: to });
     });
   }
+});
+
+describe('legacy redirect map — pages with a true modern equivalent (2026-10-19 GSC audit)', () => {
+  const cases: Array<[string, string]> = [
+    ['/hy', '/'],
+    ['/about-us', '/studio'],
+    ['/contacts', '/studio'],
+    ['/faqs', '/faq'],
+    ['/privacy-policy', '/privacy'],
+    ['/projects', '/portfolio'],
+    ['/portfolio/coffee-cafe-design', '/portfolio'],
+    ['/portfolio/nyc-apartment-design', '/portfolio'],
+    ['/portfolio/small-apartment-design', '/portfolio'],
+    ['/portfolio/traditional-home', '/portfolio'],
+    ['/portfolio/industrial-loft-office', '/portfolio'],
+    ['/portfolio/mountain-ski-house', '/portfolio'],
+  ];
+  for (const [from, to] of cases) {
+    it(`${from} → ${to} (301)`, () => {
+      expect(matchLegacyRedirect(from)).toEqual({ status: 301, target: to });
+    });
+  }
+});
+
+describe('legacy redirect map — retired Armenian locale (/hy)', () => {
+  // The root has a true equivalent (the English home page); every CHILD is 410.
+  // Redirecting all of them to "/" reads as a soft-404 to Google.
+  it('/hy and /hy/ redirect to the home page', () => {
+    expect(matchLegacyRedirect('/hy')).toEqual({ status: 301, target: '/' });
+    expect(matchLegacyRedirect('/hy/')).toEqual({ status: 301, target: '/' });
+  });
+
+  for (const child of [
+    '/hy/contacts',
+    '/hy/kitchen-planning',
+    '/hy/portfolio/traditional-home',
+    '/hy/how-to-measure-room/',
+    '/HY/About-Us',
+  ]) {
+    it(`${child} is 410 Gone`, () => {
+      expect(matchLegacyRedirect(child)).toEqual({ status: 410 });
+    });
+  }
+
+  it('does not catch look-alike live paths', () => {
+    expect(matchLegacyRedirect('/hype')).toBeNull();
+    expect(matchLegacyRedirect('/hyper/loop')).toBeNull();
+  });
+});
+
+describe('legacy redirect map — 410 for retired WP pages with no equivalent', () => {
+  for (const gone of [
+    '/kitchen-planning',
+    '/atriums-in-homes',
+    '/accessory-dwelling-unit',
+    '/thoughtful-floor-planning',
+    '/mountian-house',
+    '/wp-includes/js/mediaelement/',
+    '/wp-json/wp/v2/posts',
+    '/portfolio-category/residential/feed/',
+    '/blog/feed',
+  ]) {
+    it(`${gone} is 410 Gone`, () => {
+      expect(matchLegacyRedirect(gone)).toEqual({ status: 410 });
+    });
+  }
+});
+
+describe('legacy redirect middleware — WP site search', () => {
+  function run(path: string, query: Record<string, unknown>) {
+    let status: number | null = null;
+    let nextCalled = false;
+    const req = { path, query } as any;
+    const res = {
+      status(c: number) { status = c; return this; },
+      type() { return this; },
+      send() {},
+      redirect() {},
+    } as any;
+    legacyRedirects(req, res, () => { nextCalled = true; });
+    return { status, nextCalled };
+  }
+
+  it('/?s=… is 410 (the old WP SearchAction template)', () => {
+    expect(run('/', { s: '{search_term_string}' })).toEqual({ status: 410, nextCalled: false });
+    expect(run('/', { s: 'sofa' })).toEqual({ status: 410, nextCalled: false });
+  });
+
+  it('plain / and other queries pass through', () => {
+    expect(run('/', {})).toEqual({ status: null, nextCalled: true });
+    expect(run('/', { utm_source: 'x' })).toEqual({ status: null, nextCalled: true });
+    expect(run('/journal', { s: 'x' })).toEqual({ status: null, nextCalled: true });
+  });
 });
 
 describe('legacy redirect map — 410 Gone rules', () => {

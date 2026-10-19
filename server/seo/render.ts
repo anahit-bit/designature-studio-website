@@ -15,10 +15,11 @@ import { readFileSync } from "fs";
 import {
   classifyRoute,
   buildMeta,
-  resolveProject,
-  resolvePost,
-  resolveCategory,
-  resolveCategoryPosts,
+  lookupProject,
+  lookupPost,
+  lookupCategory,
+  lookupCategoryPosts,
+  statusForRoute,
   type RouteInfo,
   type RouteMeta,
   type JournalData,
@@ -259,30 +260,57 @@ export function renderHtmlFromTemplate(
   return html;
 }
 
+/** Enriched HTML plus the HTTP status the response must carry. */
+export interface RenderResult {
+  html: string;
+  status: 200 | 404 | 503;
+}
+
+/**
+ * Resolve a pathname to enriched HTML AND its HTTP status. Unknown routes and
+ * missing projects / articles / categories are 404; a CMS outage is 503 (retry
+ * later) — never a 200 soft-404.
+ */
+export async function renderRouteWithStatus(
+  pathname: string,
+  distPath?: string
+): Promise<RenderResult> {
+  const info = classifyRoute(pathname);
+  let lookupFailed = false;
+
+  let project: import("../../src/constants").ProjectData | null = null;
+  if (info.key === "portfolioDetail" && info.projectId) {
+    const r = await lookupProject(info.projectId);
+    project = r.value;
+    lookupFailed = r.failed;
+  }
+
+  // Resolve journal data (post / category + its posts) for the blog routes.
+  let journal: JournalData | undefined;
+  if (info.key === "journalDetail" && info.slug) {
+    const r = await lookupPost(info.slug);
+    journal = { post: r.value };
+    lookupFailed = r.failed;
+  } else if (info.key === "journalCategory" && info.slug) {
+    const [category, categoryPosts] = await Promise.all([
+      lookupCategory(info.slug),
+      lookupCategoryPosts(info.slug),
+    ]);
+    journal = { category: category.value, categoryPosts: categoryPosts.value };
+    lookupFailed = category.failed || categoryPosts.failed;
+  }
+
+  const template = loadTemplate(distPath);
+  return {
+    html: renderHtmlFromTemplate(template, info, project, undefined, journal),
+    status: statusForRoute(info, { project, journal, lookupFailed }),
+  };
+}
+
 /** Resolve a pathname to fully enriched HTML (reads cached template + Sanity). */
 export async function renderRoute(
   pathname: string,
   distPath?: string
 ): Promise<string> {
-  const info = classifyRoute(pathname);
-
-  const project =
-    info.key === "portfolioDetail" && info.projectId
-      ? await resolveProject(info.projectId)
-      : null;
-
-  // Resolve journal data (post / category + its posts) for the blog routes.
-  let journal: JournalData | undefined;
-  if (info.key === "journalDetail" && info.slug) {
-    journal = { post: await resolvePost(info.slug) };
-  } else if (info.key === "journalCategory" && info.slug) {
-    const [category, categoryPosts] = await Promise.all([
-      resolveCategory(info.slug),
-      resolveCategoryPosts(info.slug),
-    ]);
-    journal = { category, categoryPosts };
-  }
-
-  const template = loadTemplate(distPath);
-  return renderHtmlFromTemplate(template, info, project, undefined, journal);
+  return (await renderRouteWithStatus(pathname, distPath)).html;
 }

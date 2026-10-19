@@ -99,7 +99,7 @@ import { upsertContactBooking, isHubspotConfigured } from "./services/crm/hubspo
 // ─── GEO / SEO (Phase 1): robots, sitemap, per-route meta + JSON-LD injection ──
 import { buildRobotsTxt } from "./server/config/bots.js";
 import { buildSitemap } from "./server/seo/sitemap.js";
-import { renderRoute, loadTemplate } from "./server/seo/render.js";
+import { renderRouteWithStatus, loadTemplate } from "./server/seo/render.js";
 import { absUrl } from "./server/seo/config.js";
 // ─── Legacy WordPress → canonical redirect map (GSC unindexed-pages fix) ───────
 import { legacyRedirects, trailingSlashRedirect } from "./server/redirects.js";
@@ -6264,8 +6264,9 @@ ${bodyHtml}
     // SPA still boots and takes over on mount.
     app.get("*all", async (req, res) => {
       try {
-        const html = await renderRoute(req.path);
-        res.status(200).type("html").send(html);
+        const { html, status } = await renderRouteWithStatus(req.path);
+        if (status === 503) res.set("Retry-After", "300");
+        res.status(status).type("html").send(html);
       } catch (err) {
         console.error("[seo] route render failed, serving raw shell:", err);
         res.sendFile("dist/index.html", { root: "." });

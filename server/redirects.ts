@@ -35,9 +35,9 @@ export interface RedirectResult {
  * Bases are stored WITHOUT a trailing slash. `/hy` covers `/hy` and `/hy/*`.
  */
 const PREFIX_REDIRECTS: ReadonlyArray<{ base: string; target: string }> = [
-  { base: "/hy", target: "/" }, // Armenian locale — site is EN-only now
   { base: "/blog", target: "/journal" }, // old WP blog (incl. /blog/page/N)
   { base: "/category", target: "/journal" }, // old WP category archives
+  { base: "/portfolio-category", target: "/portfolio" }, // old WP portfolio archives
 ];
 
 /** Exact-path rules: one legacy URL → one canonical target. */
@@ -54,10 +54,56 @@ const EXACT_REDIRECTS: Readonly<Record<string, string>> = {
   "/portfolio/roundhill-contemporary-house": "/portfolio",
   "/alternative-home-designs-atriums": "/journal",
   "/interior-photography": "/journal",
+  // Armenian locale root. The site is EN-only; the root has a true equivalent
+  // (the English home page). Every CHILD of /hy is 410 — see GONE_CHILD_PREFIXES.
+  "/hy": "/",
+  // Old WordPress pages that have a genuine modern equivalent (2026-10-19 GSC audit).
+  "/about-us": "/studio",
+  "/contacts": "/studio",
+  "/faqs": "/faq",
+  "/privacy-policy": "/privacy",
+  "/projects": "/portfolio",
+  // Old WP portfolio slugs. Real portfolio URLs are numeric ids (/portfolio/14),
+  // so none of these resolve to a project; send them to the index.
+  "/portfolio/coffee-cafe-design": "/portfolio",
+  "/portfolio/nyc-apartment-design": "/portfolio",
+  "/portfolio/small-apartment-design": "/portfolio",
+  "/portfolio/traditional-home": "/portfolio",
+  "/portfolio/industrial-loft-office": "/portfolio",
+  "/portfolio/mountain-ski-house": "/portfolio",
 };
 
 /** Prefixes served as 410 Gone (permanently removed assets, not redirected). */
-const GONE_PREFIXES: ReadonlyArray<string> = ["/wp-content"];
+const GONE_PREFIXES: ReadonlyArray<string> = [
+  "/wp-content",
+  "/wp-includes",
+  "/wp-admin",
+  "/wp-json",
+];
+
+/**
+ * Prefixes whose CHILDREN are 410 Gone (the base path itself is handled by an
+ * exact rule). `/hy/*` is the retired Armenian locale: there is no Armenian site
+ * and none of its pages has an equivalent, so redirecting them all to the home
+ * page would be read by Google as a soft-404 and keep them on its re-check list.
+ */
+const GONE_CHILD_PREFIXES: ReadonlyArray<string> = ["/hy"];
+
+/**
+ * Exact paths served as 410 Gone: old WordPress articles with no modern
+ * equivalent (a redirect to a generic page would be a soft-404).
+ */
+const GONE_EXACT: ReadonlySet<string> = new Set([
+  "/kitchen-planning",
+  "/atriums-in-homes",
+  "/accessory-dwelling-unit",
+  "/thoughtful-floor-planning",
+  "/mountian-house", // sic — the original WP slug was misspelled
+  "/how-to-measure-room",
+  "/how-to-organize-bookshelf",
+  "/stylish-single-family-home",
+  "/apartment-with-brick-wall-charm",
+]);
 
 /**
  * Resolve a legacy path to its redirect action, or null if nothing matches
@@ -74,6 +120,12 @@ export function matchLegacyRedirect(rawPath: string): RedirectResult | null {
   // 1) 410 Gone — legacy WordPress assets.
   for (const base of GONE_PREFIXES) {
     if (p === base || p.startsWith(base + "/")) return { status: 410 };
+  }
+
+  // 1b) 410 Gone — WP feeds, retired locale children, retired WP articles.
+  if (p.endsWith("/feed") || GONE_EXACT.has(p)) return { status: 410 };
+  for (const base of GONE_CHILD_PREFIXES) {
+    if (p.startsWith(base + "/")) return { status: 410 };
   }
 
   // 2) Exact legacy → canonical 301s.
@@ -93,6 +145,12 @@ export function matchLegacyRedirect(rawPath: string): RedirectResult | null {
  * the static handler, and the SPA catch-all.
  */
 export function legacyRedirects(req: Request, res: Response, next: NextFunction): void {
+  // WordPress site-search URLs (`/?s=…`). The site has no search endpoint; Google
+  // remembers the old WP SearchAction template `/?s={search_term_string}`.
+  if (req.path === "/" && req.query && "s" in req.query) {
+    res.status(410).type("text/plain").send("Gone");
+    return;
+  }
   const hit = matchLegacyRedirect(req.path);
   if (!hit) {
     next();
