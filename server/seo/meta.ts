@@ -77,7 +77,16 @@ export function normalizePath(pathname: string): string {
 /** URL-path prefixes that must never be indexed (private / transactional).
  * `/retail` is the internal supplier directory — reachable by a shared link
  * (no login), but kept out of search indexes. */
-const PRIVATE_PREFIXES = ["/admin", "/booking", "/retail"];
+const PRIVATE_PREFIXES = [
+  "/admin",
+  "/booking",
+  "/retail",
+  "/measure",
+  "/account",
+  "/shared",
+  "/subscribe",
+  "/credits",
+];
 
 export function classifyRoute(pathname: string): RouteInfo {
   const p = normalizePath(pathname);
@@ -277,46 +286,93 @@ export function clampDescription(text: string, max = 300): string {
   return (lastSpace > 60 ? cut.slice(0, lastSpace) : cut).trimEnd() + "…";
 }
 
-/** Fetch a single project by URL id, tolerant of Sanity being unreachable. */
-export async function resolveProject(id: string): Promise<ProjectData | null> {
+/**
+ * A CMS lookup that distinguishes "not found" from "could not ask". `failed`
+ * means Sanity was unreachable, so `value` says nothing about whether the page
+ * exists — the caller must not 404 (or index) on the strength of it.
+ */
+export interface Lookup<T> {
+  value: T;
+  failed: boolean;
+}
+
+async function lookup<T>(label: string, empty: T, fn: () => Promise<T>): Promise<Lookup<T>> {
   try {
+    return { value: await fn(), failed: false };
+  } catch (err) {
+    console.warn(`[seo] ${label}: Sanity fetch failed:`, (err as Error)?.message);
+    return { value: empty, failed: true };
+  }
+}
+
+export const lookupProject = (id: string) =>
+  lookup<ProjectData | null>("resolveProject", null, async () => {
     const projects = await fetchProjects();
     return projects.find((p) => p.id === id) ?? null;
-  } catch (err) {
-    console.warn("[seo] resolveProject: Sanity fetch failed:", (err as Error)?.message);
-    return null;
-  }
+  });
+
+export const lookupPost = (slug: string) =>
+  lookup<BlogPost | null>("resolvePost", null, () => fetchPost(slug));
+
+export const lookupCategory = (slug: string) =>
+  lookup<Category | null>("resolveCategory", null, async () => {
+    const cats = await fetchCategories();
+    return cats.find((c) => c.slug === slug) ?? null;
+  });
+
+export const lookupCategoryPosts = (slug: string) =>
+  lookup<BlogPost[]>("resolveCategoryPosts", [], async () => {
+    const posts = await fetchPosts();
+    return posts.filter((p) => p.category?.slug === slug);
+  });
+
+/** Fetch a single project by URL id, tolerant of Sanity being unreachable. */
+export async function resolveProject(id: string): Promise<ProjectData | null> {
+  return (await lookupProject(id)).value;
 }
 
 /** Fetch a single published post by slug, tolerant of Sanity being unreachable. */
 export async function resolvePost(slug: string): Promise<BlogPost | null> {
-  try {
-    return await fetchPost(slug);
-  } catch (err) {
-    console.warn("[seo] resolvePost: Sanity fetch failed:", (err as Error)?.message);
-    return null;
-  }
+  return (await lookupPost(slug)).value;
 }
 
 /** Fetch a category by slug, tolerant of Sanity being unreachable. */
 export async function resolveCategory(slug: string): Promise<Category | null> {
-  try {
-    const cats = await fetchCategories();
-    return cats.find((c) => c.slug === slug) ?? null;
-  } catch (err) {
-    console.warn("[seo] resolveCategory: Sanity fetch failed:", (err as Error)?.message);
-    return null;
-  }
+  return (await lookupCategory(slug)).value;
 }
 
 /** Fetch the published posts in a category, tolerant of Sanity being unreachable. */
 export async function resolveCategoryPosts(slug: string): Promise<BlogPost[]> {
-  try {
-    const posts = await fetchPosts();
-    return posts.filter((p) => p.category?.slug === slug);
-  } catch (err) {
-    console.warn("[seo] resolveCategoryPosts: Sanity fetch failed:", (err as Error)?.message);
-    return [];
+  return (await lookupCategoryPosts(slug)).value;
+}
+
+/**
+ * HTTP status for a classified route.
+ *  - 404: the route is unknown, or names a project / article / category that
+ *    does not exist. Google drops these; a 200 + noindex is a soft-404 it keeps
+ *    re-listing forever.
+ *  - 503: the CMS was unreachable so existence is unknown. Google retries later
+ *    and keeps any already-indexed page meanwhile.
+ *  - 200: everything else (including private routes, which are noindex).
+ */
+export function statusForRoute(
+  info: RouteInfo,
+  found: { project?: ProjectData | null; journal?: JournalData; lookupFailed?: boolean },
+): 200 | 404 | 503 {
+  switch (info.key) {
+    case "unknown":
+      return 404;
+    case "portfolioDetail":
+      if (found.project) return 200;
+      return found.lookupFailed ? 503 : 404;
+    case "journalDetail":
+      if (found.journal?.post) return 200;
+      return found.lookupFailed ? 503 : 404;
+    case "journalCategory":
+      if (found.journal?.category) return 200;
+      return found.lookupFailed ? 503 : 404;
+    default:
+      return 200;
   }
 }
 
@@ -416,7 +472,10 @@ export function buildMeta(
         noindex: false,
       };
     }
-    // Project not found / Sanity down — still return a valid, indexable record.
+    // Project not found (or CMS unreachable). The response status is 404 / 503
+    // (see statusForRoute) — never leave an indexable page behind for an id that
+    // does not exist, or old WordPress slugs like /portfolio/coffee-cafe-design
+    // get indexed as thin pages.
     return {
       title: "Project — Interior Design" + SUFFIX,
       description:
@@ -425,7 +484,7 @@ export function buildMeta(
       ogTitle: "Interior Design Project" + SUFFIX,
       ogDescription: "An interior design project by Designature Studio.",
       ogImage: DEFAULT_OG_IMAGE,
-      noindex: false,
+      noindex: true,
     };
   }
 

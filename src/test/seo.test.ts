@@ -58,7 +58,9 @@ import {
   resolveProject,
   clampDescription,
   normalizePath,
+  statusForRoute,
 } from '../../server/seo/meta';
+import * as sanity from '../lib/sanity';
 import { buildJsonLd } from '../../server/seo/jsonld';
 import {
   renderSitemapXml,
@@ -70,6 +72,7 @@ import {
   renderHtmlFromTemplate,
   __setTemplateForTest,
   renderRoute,
+  renderRouteWithStatus,
 } from '../../server/seo/render';
 
 // A minimal shell mirroring the real index.html shape we inject into.
@@ -167,6 +170,16 @@ describe('route classification + metadata', () => {
     expect(buildMeta(classifyRoute('/whatever')).noindex).toBe(true);
   });
 
+  it('treats every signed-in / transactional route as private, not "unknown"', () => {
+    for (const p of [
+      '/measure', '/account', '/account/library', '/shared/abc123',
+      '/subscribe/success', '/subscribe/failed', '/credits/success', '/credits/failed',
+    ]) {
+      expect(classifyRoute(p).key).toBe('private');
+      expect(statusForRoute(classifyRoute(p), {})).toBe(200);
+    }
+  });
+
   it('resolves portfolio detail meta from the project', () => {
     const info = classifyRoute('/portfolio/0022');
     const meta = buildMeta(info, SAMPLE_PROJECT);
@@ -177,11 +190,11 @@ describe('route classification + metadata', () => {
     expect(meta.noindex).toBe(false);
   });
 
-  it('falls back to a valid indexable record when the project is missing', () => {
+  it('marks a missing project noindex (no indexable page for an id that does not exist)', () => {
     const info = classifyRoute('/portfolio/does-not-exist');
     const meta = buildMeta(info, null);
     expect(meta.title.length).toBeGreaterThan(10);
-    expect(meta.noindex).toBe(false);
+    expect(meta.noindex).toBe(true);
   });
 
   it('resolveProject returns the matching project via Sanity', async () => {
@@ -418,5 +431,67 @@ describe('journal (Phase 2) routes', () => {
     expect(html).toContain('data-seo-prerender');
     expect(html).toContain('Practical, step-by-step');
     expect(html).toContain('How to Light a Living Room');
+  });
+});
+
+describe('HTTP status (no soft-404s)', () => {
+  it('unknown routes are 404, not 200', () => {
+    expect(statusForRoute(classifyRoute('/faqs'), {})).toBe(404);
+    expect(statusForRoute(classifyRoute('/totally-fake-page'), {})).toBe(404);
+    expect(statusForRoute(classifyRoute('/portfolio-category/residential'), {})).toBe(404);
+  });
+
+  it('known public + private routes stay 200', () => {
+    for (const p of ['/', '/portfolio', '/services', '/pricing', '/faq', '/journal', '/admin']) {
+      expect(statusForRoute(classifyRoute(p), {})).toBe(200);
+    }
+  });
+
+  it('a project that exists is 200, a missing one is 404, an outage is 503', () => {
+    const info = classifyRoute('/portfolio/0022');
+    expect(statusForRoute(info, { project: SAMPLE_PROJECT as any })).toBe(200);
+    expect(statusForRoute(info, { project: null })).toBe(404);
+    expect(statusForRoute(info, { project: null, lookupFailed: true })).toBe(503);
+  });
+
+  it('an article / category that exists is 200, missing is 404, outage is 503', () => {
+    const art = classifyRoute('/journal/light-a-living-room');
+    expect(statusForRoute(art, { journal: { post: SAMPLE_POST as any } })).toBe(200);
+    expect(statusForRoute(art, { journal: { post: null } })).toBe(404);
+    expect(statusForRoute(art, { journal: { post: null }, lookupFailed: true })).toBe(503);
+    const cat = classifyRoute('/journal/category/how-to');
+    expect(statusForRoute(cat, { journal: { category: SAMPLE_CATEGORY as any } })).toBe(200);
+    expect(statusForRoute(cat, { journal: { category: null } })).toBe(404);
+    expect(statusForRoute(cat, { journal: { category: null }, lookupFailed: true })).toBe(503);
+  });
+
+  it('renderRouteWithStatus: real pages 200, old WP slug + fake ids 404', async () => {
+    expect((await renderRouteWithStatus('/portfolio/0022')).status).toBe(200);
+    expect((await renderRouteWithStatus('/journal/light-a-living-room')).status).toBe(200);
+    expect((await renderRouteWithStatus('/journal/category/how-to')).status).toBe(200);
+    expect((await renderRouteWithStatus('/faq')).status).toBe(200);
+
+    const oldSlug = await renderRouteWithStatus('/portfolio/coffee-cafe-design');
+    expect(oldSlug.status).toBe(404);
+    expect(oldSlug.html).toContain('name="robots" content="noindex,nofollow"');
+    expect((await renderRouteWithStatus('/portfolio/zzz-nonexistent')).status).toBe(404);
+    expect((await renderRouteWithStatus('/journal/not-a-real-post')).status).toBe(404);
+    expect((await renderRouteWithStatus('/journal/category/nope')).status).toBe(404);
+    expect((await renderRouteWithStatus('/faqs')).status).toBe(404);
+  });
+
+  it('renderRouteWithStatus: a Sanity outage is 503 (retry later), never 404 or 200', async () => {
+    vi.mocked(sanity.fetchProjects).mockRejectedValueOnce(new Error('sanity down'));
+    expect((await renderRouteWithStatus('/portfolio/0022')).status).toBe(503);
+
+    vi.mocked(sanity.fetchPost).mockRejectedValueOnce(new Error('sanity down'));
+    expect((await renderRouteWithStatus('/journal/light-a-living-room')).status).toBe(503);
+
+    vi.mocked(sanity.fetchCategories).mockRejectedValueOnce(new Error('sanity down'));
+    expect((await renderRouteWithStatus('/journal/category/how-to')).status).toBe(503);
+  });
+
+  it('renderRoute still returns just the HTML string', async () => {
+    expect(typeof (await renderRoute('/faq'))).toBe('string');
   });
 });

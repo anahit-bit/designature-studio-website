@@ -34,6 +34,7 @@ import RetailPage from './components/RetailPage';
 import JournalCategoryPage from './components/JournalCategoryPage';
 import JournalArticlePage from './components/JournalArticlePage';
 import Blog from './components/Blog';
+import NotFoundPage from './components/NotFoundPage';
 import Footer from './components/Footer';
 import AccountPage from './components/account/AccountPage';
 import SharedItemPage from './components/SharedItemPage';
@@ -198,7 +199,7 @@ const App: React.FC = () => (
             <Route path="/admin/consultations" element={<AdminConsultationsPage />} />
             <Route path="/admin/insights" element={<AdminInsightsPage />} />
             <Route path="/admin" element={<AdminPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
           </RetailersProvider>
         </ProjectsProvider>
